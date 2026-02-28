@@ -1,0 +1,27 @@
+{
+  "name": "voryn",
+  "version": "0.1.0",
+  "description": "TypeScript npm package based on ethers",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [
+    "ethers",
+    "typescript",
+    "web3"
+  ],
+  "author": "drillcoder",
+  "license": "MIT",
+  "dependencies": {
+    "ethers": "^6.16.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
