@@ -1,14 +1,13 @@
 # Voryn
 
-TypeScript npm package based on `ethers`.
+TypeScript npm-библиотека для мониторинга EVM-подобных сетей.
 
-## Install
+## Документация
 
-```bash
-npm install voryn
-```
+- Архитектура: [ARCHITECTURE.md](/docs/ARCHITECTURE.md)
+- Схема БД: [DB_SCHEMA.md](/docs/DB_SCHEMA.md)
 
-## Development
+## Разработка
 
 ```bash
 npm install

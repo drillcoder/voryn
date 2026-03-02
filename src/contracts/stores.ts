@@ -1,0 +1,63 @@
+import type { ChainId, Hex } from "../types/chain.js";
+import type {
+    BlockJob,
+    CanonicalEvent,
+    CanonicalTransaction,
+    RawBlockEnvelope,
+    StreamType,
+    WorkerCursor,
+} from "../types/pipeline.js";
+
+export interface ChainCursor {
+    chainId: ChainId;
+    lastEnqueuedBlock: number;
+    lastCommittedBlock: number;
+    lastCommittedHash: Hex;
+    updatedAt: Date;
+}
+
+export interface ChainCursorStore {
+    get(chainId: ChainId): Promise<ChainCursor>;
+
+    setLastEnqueued(chainId: ChainId, blockNumber: number): Promise<void>;
+}
+
+export interface BlockJobQueueStore {
+    enqueueRange(chainId: ChainId, fromBlock: number, toBlock: number): Promise<void>;
+
+    claimForFetch(chainId: ChainId, workerId: string): Promise<BlockJob | null>;
+
+    markFetched(chainId: ChainId, blockNumber: number): Promise<void>;
+
+    markFetchFailed(chainId: ChainId, blockNumber: number, error: string, nextRetryAt: Date | null): Promise<void>;
+}
+
+export interface RawBlockStore {
+    save(block: RawBlockEnvelope): Promise<void>;
+
+    get(chainId: ChainId, blockNumber: number): Promise<RawBlockEnvelope | null>;
+}
+
+export interface SequencerCommitStore {
+    commitNextBlock(chainId: ChainId, expectedBlockNumber: number): Promise<void>;
+}
+
+export interface EventStreamStore {
+    readFromSeq(chainId: ChainId, fromSeqExclusive: bigint, limit: number): Promise<CanonicalEvent[]>;
+}
+
+export interface TransactionStreamStore {
+    readFromSeq(chainId: ChainId, fromSeqExclusive: bigint, limit: number): Promise<CanonicalTransaction[]>;
+}
+
+export interface WorkerCursorStore {
+    get(workerName: string, chainId: ChainId, streamType: StreamType): Promise<WorkerCursor>;
+
+    advance(workerName: string, chainId: ChainId, streamType: StreamType, seq: bigint): Promise<void>;
+}
+
+export interface RetentionStore {
+    purgeRawBlocks(chainId: ChainId, olderThan: Date): Promise<number>;
+
+    purgeCanonical(chainId: ChainId, olderThan: Date): Promise<number>;
+}
