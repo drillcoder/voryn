@@ -84,7 +84,8 @@
 - `log_index` (`INT`): индекс лога.
 - `payload` (`JSONB`): данные события.
 
-Индексы:
+Ключи и индексы:
+- PK: (`seq`)
 - UNIQUE: (`chain_id`, `block_number`, `tx_index`, `log_index`)
 - Index: (`chain_id`, `seq`)
 
