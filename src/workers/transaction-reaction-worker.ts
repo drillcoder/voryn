@@ -17,7 +17,7 @@ export interface TransactionReactionWorkerDeps {
 export class TransactionReactionWorker extends SingletonPollingWorker {
     constructor(private readonly deps: TransactionReactionWorkerDeps) {
         super(
-            `reaction-tx:${deps.config.chainId}:${deps.config.workerName}`,
+            `reaction-tx:${String(deps.config.chainId)}:${deps.config.workerName}`,
             deps.config.pollIntervalMs,
             deps.logger ?? noopLogger,
             deps.leaderLock

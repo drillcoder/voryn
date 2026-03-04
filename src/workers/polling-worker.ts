@@ -2,7 +2,6 @@ import type { Logger } from "../contracts/logger.js";
 import type { WorkerLifecycle } from "../types/runtime.js";
 import { asErrorMessage } from "../utils/errors.js";
 
-
 export abstract class PollingWorker implements WorkerLifecycle {
     private active = false;
     private runPromise: Promise<void> | null = null;
@@ -14,6 +13,7 @@ export abstract class PollingWorker implements WorkerLifecycle {
     ) {
     }
 
+    // eslint-disable-next-line @typescript-eslint/require-await -- async API symmetry with stop()
     async start(): Promise<void> {
         if (this.active) {
             return;
@@ -46,6 +46,7 @@ export abstract class PollingWorker implements WorkerLifecycle {
                 });
             }
 
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- may change during awaited tick()
             if (!this.active) {
                 break;
             }

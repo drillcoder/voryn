@@ -15,7 +15,7 @@ export interface SequencerWorkerDeps {
 export class SequencerWorker extends SingletonPollingWorker {
     constructor(private readonly deps: SequencerWorkerDeps) {
         super(
-            `sequencer:${deps.config.chainId}`,
+            `sequencer:${String(deps.config.chainId)}`,
             deps.config.pollIntervalMs,
             deps.logger ?? noopLogger,
             deps.leaderLock

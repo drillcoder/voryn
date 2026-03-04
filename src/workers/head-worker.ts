@@ -17,7 +17,7 @@ export interface HeadWorkerDeps {
 export class HeadWorker extends SingletonPollingWorker {
     constructor(private readonly deps: HeadWorkerDeps) {
         super(
-            `head:${deps.config.chainId}`,
+            `head:${String(deps.config.chainId)}`,
             deps.config.pollIntervalMs,
             deps.logger ?? noopLogger,
             deps.leaderLock

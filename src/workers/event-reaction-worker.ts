@@ -17,7 +17,7 @@ export interface EventReactionWorkerDeps {
 export class EventReactionWorker extends SingletonPollingWorker {
     constructor(private readonly deps: EventReactionWorkerDeps) {
         super(
-            `reaction-event:${deps.config.chainId}:${deps.config.workerName}`,
+            `reaction-event:${String(deps.config.chainId)}:${deps.config.workerName}`,
             deps.config.pollIntervalMs,
             deps.logger ?? noopLogger,
             deps.leaderLock

@@ -17,7 +17,7 @@ export interface FetchWorkerDeps {
 export class FetchWorker extends PollingWorker {
     constructor(private readonly deps: FetchWorkerDeps) {
         super(
-            `fetch:${deps.config.chainId}:${deps.workerId}`,
+            `fetch:${String(deps.config.chainId)}:${deps.workerId}`,
             deps.config.pollIntervalMs,
             deps.logger ?? noopLogger
         );

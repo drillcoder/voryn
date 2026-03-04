@@ -17,7 +17,7 @@ export interface RetentionWorkerDeps {
 export class RetentionWorker extends SingletonPollingWorker {
     constructor(private readonly deps: RetentionWorkerDeps) {
         super(
-            `retention:${deps.config.chainId}`,
+            `retention:${String(deps.config.chainId)}`,
             deps.config.pollIntervalMs,
             deps.logger ?? noopLogger,
             deps.leaderLock
