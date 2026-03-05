@@ -78,5 +78,13 @@ export default tseslint.config(
                 },
             ],
         },
+    },
+    {
+        files: ["test/**/*.ts"],
+        rules: {
+            "@typescript-eslint/require-await": "off",
+            "@typescript-eslint/array-type": "off",
+            "@typescript-eslint/no-unused-vars": "off",
+        },
     }
 );
