@@ -1,11 +1,11 @@
 import type { LeaderLock } from "../contracts/leader-lock.js";
 import { type Logger, noopLogger } from "../contracts/logger.js";
 import type { ChainCursorStore, SequencerCommitStore } from "../contracts/stores.js";
-import type { IngestionConfig } from "../types/runtime.js";
+import type { SequencerWorkerConfig } from "../types/runtime.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
 export interface SequencerWorkerDeps {
-    config: IngestionConfig;
+    config: SequencerWorkerConfig;
     cursorStore: ChainCursorStore;
     commitStore: SequencerCommitStore;
     leaderLock: LeaderLock;

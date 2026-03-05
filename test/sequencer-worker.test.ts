@@ -1,5 +1,5 @@
 import type { ChainCursorStore, SequencerCommitStore } from "../src/index.js";
-import type { IngestionConfig } from "../src/index.js";
+import type { SequencerWorkerConfig } from "../src/index.js";
 import { SequencerWorker } from "../src/index.js";
 
 const invokeTick = async (worker: object): Promise<void> => {
@@ -9,20 +9,9 @@ const invokeTick = async (worker: object): Promise<void> => {
 test("sequencer worker commits next block after cursor", async () => {
     const commitCalls: Array<{ chainId: number; block: number }> = [];
 
-    const config: IngestionConfig = {
+    const config: SequencerWorkerConfig = {
         chainId: 10,
-        confirmations: 0,
         pollIntervalMs: 1000,
-        fetchBatchSize: 1,
-        retry: {
-            maxAttempts: 3,
-            baseDelayMs: 100,
-            maxDelayMs: 1000,
-        },
-        retention: {
-            rawBlocksHours: 24,
-            canonicalHours: 24,
-        },
     };
 
     const cursorStore: ChainCursorStore = {

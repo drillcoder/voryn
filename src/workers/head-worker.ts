@@ -2,11 +2,11 @@ import type { BlockSource } from "../contracts/block-source.js";
 import type { LeaderLock } from "../contracts/leader-lock.js";
 import { type Logger, noopLogger } from "../contracts/logger.js";
 import type { BlockJobQueueStore, ChainCursorStore, } from "../contracts/stores.js";
-import type { IngestionConfig } from "../types/runtime.js";
+import type { HeadWorkerConfig } from "../types/runtime.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
 export interface HeadWorkerDeps {
-    config: IngestionConfig;
+    config: HeadWorkerConfig;
     source: BlockSource;
     cursorStore: ChainCursorStore;
     jobStore: BlockJobQueueStore;

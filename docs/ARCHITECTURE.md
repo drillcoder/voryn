@@ -31,7 +31,8 @@ Voryn — каркас индексатора для EVM-сетей, где по
   - `CanonicalEvent` / `CanonicalTransaction` — элементы потоков реакций.
   - `WorkerCursor` — позиция конкретного реактора в потоке (`streamType`, `lastSeq`).
 - `types/runtime.ts` — настройки, которые управляют поведением воркеров:
-  - `IngestionConfig` — подтверждения, размер fetch-пакета, retry/backoff и retention.
+  - `IngestionConfig` — полный набор ingestion-настроек приложения.
+  - `HeadWorkerConfig`, `FetchWorkerConfig`, `SequencerWorkerConfig`, `RetentionWorkerConfig` — узкие типы для конкретных ingestion-воркеров.
   - `ReactionConfig` — имя реактора, сеть, частота и размер батча.
 
 ## Контракты

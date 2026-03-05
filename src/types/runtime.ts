@@ -20,6 +20,26 @@ export interface IngestionConfig {
     retention: RetentionPolicy;
 }
 
+export type HeadWorkerConfig = Pick<
+    IngestionConfig,
+    "chainId" | "pollIntervalMs" | "confirmations"
+>;
+
+export type FetchWorkerConfig = Pick<
+    IngestionConfig,
+    "chainId" | "pollIntervalMs" | "fetchBatchSize" | "retry"
+>;
+
+export type SequencerWorkerConfig = Pick<
+    IngestionConfig,
+    "chainId" | "pollIntervalMs"
+>;
+
+export type RetentionWorkerConfig = Pick<
+    IngestionConfig,
+    "chainId" | "pollIntervalMs" | "retention"
+>;
+
 export interface ReactionConfig {
     chainId: ChainId;
     workerName: string;

@@ -1,14 +1,14 @@
 import type { LeaderLock } from "../contracts/leader-lock.js";
 import { type Logger, noopLogger } from "../contracts/logger.js";
 import type { RetentionStore } from "../contracts/stores.js";
-import type { IngestionConfig } from "../types/runtime.js";
+import type { RetentionWorkerConfig } from "../types/runtime.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
 const hoursToDate = (hours: number): Date =>
     new Date(Date.now() - hours * 60 * 60 * 1000);
 
 export interface RetentionWorkerDeps {
-    config: IngestionConfig;
+    config: RetentionWorkerConfig;
     store: RetentionStore;
     leaderLock: LeaderLock;
     logger?: Logger;

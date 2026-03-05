@@ -5,8 +5,6 @@ const invokeTick = async (worker: object): Promise<void> => {
     await (worker as { tick: () => Promise<void> }).tick();
 };
 
-const lock = { tryAcquire: async () => true, release: async () => undefined };
-
 test("event reaction worker processes events and advances cursor", async () => {
     const handled: bigint[] = [];
     const advanced: bigint[] = [];
@@ -63,7 +61,7 @@ test("event reaction worker processes events and advances cursor", async () => {
         handler,
         eventStore,
         cursorStore,
-        leaderLock: lock,
+        leaderLock: { tryAcquire: async () => true, release: async () => undefined },
     });
 
     await invokeTick(worker);

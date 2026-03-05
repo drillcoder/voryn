@@ -1,26 +1,21 @@
 import type { BlockSource } from "../src/index.js";
 import type { BlockJobQueueStore, RawBlockStore } from "../src/index.js";
 import type { FetchedBlock } from "../src/index.js";
-import type { IngestionConfig } from "../src/index.js";
+import type { FetchWorkerConfig } from "../src/index.js";
 import { FetchWorker } from "../src/index.js";
 
 const invokeTick = async (worker: object): Promise<void> => {
     await (worker as { tick: () => Promise<void> }).tick();
 };
 
-const config: IngestionConfig = {
+const config: FetchWorkerConfig = {
     chainId: 7,
-    confirmations: 2,
     pollIntervalMs: 1000,
     fetchBatchSize: 3,
     retry: {
         maxAttempts: 4,
         baseDelayMs: 100,
         maxDelayMs: 1000,
-    },
-    retention: {
-        rawBlocksHours: 24,
-        canonicalHours: 24,
     },
 };
 

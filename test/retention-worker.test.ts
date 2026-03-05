@@ -1,5 +1,5 @@
 import type { RetentionStore } from "../src/index.js";
-import type { IngestionConfig } from "../src/index.js";
+import type { RetentionWorkerConfig } from "../src/index.js";
 import { RetentionWorker } from "../src/index.js";
 
 const invokeTick = async (worker: object): Promise<void> => {
@@ -17,16 +17,9 @@ test("retention worker purges both streams with calculated cutoff dates", async 
     const rawCalls: Date[] = [];
     const canonicalCalls: Date[] = [];
 
-    const config: IngestionConfig = {
+    const config: RetentionWorkerConfig = {
         chainId: 1,
-        confirmations: 0,
         pollIntervalMs: 1000,
-        fetchBatchSize: 1,
-        retry: {
-            maxAttempts: 3,
-            baseDelayMs: 100,
-            maxDelayMs: 1000,
-        },
         retention: {
             rawBlocksHours: 2,
             canonicalHours: 5,
@@ -60,16 +53,9 @@ test("retention worker skips disabled retention windows", async () => {
     let rawCalled = false;
     let canonicalCalled = false;
 
-    const config: IngestionConfig = {
+    const config: RetentionWorkerConfig = {
         chainId: 1,
-        confirmations: 0,
         pollIntervalMs: 1000,
-        fetchBatchSize: 1,
-        retry: {
-            maxAttempts: 3,
-            baseDelayMs: 100,
-            maxDelayMs: 1000,
-        },
         retention: {
             rawBlocksHours: 0,
             canonicalHours: -1,

@@ -1,13 +1,13 @@
 import type { BlockSource } from "../contracts/block-source.js";
 import { type Logger, noopLogger } from "../contracts/logger.js";
 import type { BlockJobQueueStore, RawBlockStore } from "../contracts/stores.js";
-import type { IngestionConfig } from "../types/runtime.js";
+import type { FetchWorkerConfig } from "../types/runtime.js";
 import { asErrorMessage } from "../utils/errors.js";
 import { PollingWorker } from "./polling-worker.js";
 
 export interface FetchWorkerDeps {
     workerId: string;
-    config: IngestionConfig;
+    config: FetchWorkerConfig;
     source: BlockSource;
     jobStore: BlockJobQueueStore;
     rawBlockStore: RawBlockStore;

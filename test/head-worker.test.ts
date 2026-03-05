@@ -1,22 +1,12 @@
 import type { BlockSource } from "../src/index.js";
 import type { ChainCursorStore, BlockJobQueueStore } from "../src/index.js";
-import type { IngestionConfig } from "../src/index.js";
+import type { HeadWorkerConfig } from "../src/index.js";
 import { HeadWorker } from "../src/index.js";
 
-const defaultConfig: IngestionConfig = {
+const defaultConfig: HeadWorkerConfig = {
     chainId: 1,
     confirmations: 2,
     pollIntervalMs: 1000,
-    fetchBatchSize: 2,
-    retry: {
-        maxAttempts: 3,
-        baseDelayMs: 100,
-        maxDelayMs: 1000,
-    },
-    retention: {
-        rawBlocksHours: 24,
-        canonicalHours: 24,
-    },
 };
 
 const invokeTick = async (worker: object): Promise<void> => {
