@@ -7,6 +7,32 @@ TypeScript npm-библиотека для мониторинга EVM-подоб
 - Архитектура: [ARCHITECTURE.md](/docs/ARCHITECTURE.md)
 - Схема БД: [DB_SCHEMA.md](/docs/DB_SCHEMA.md)
 
+## Логгер
+
+Библиотека использует интерфейс `Logger` (`debug`, `info`, `warn`, `error`).
+
+- `noopLogger` ничего не выводит и подходит как безопасный дефолт.
+- `createConsoleLogger` дает простую реализацию для локальной разработки и CLI.
+
+Пример:
+
+```ts
+import { createConsoleLogger } from "voryn";
+
+const logger = createConsoleLogger({
+    minLevel: "debug",
+    colorize: true,
+    timestamp: true,
+});
+```
+
+Опции `createConsoleLogger`:
+
+- `minLevel`: минимальный уровень (`debug` | `info` | `warn` | `error`).
+- `colorize`: цветные уровни в консоли (`DEBUG`, `INFO`, `WARN`, `ERROR`).
+- `timestamp`: добавляет ISO-время в начало строки.
+- `stdout` / `stderr`: можно передать свои потоки вывода.
+
 ## Разработка
 
 ```bash

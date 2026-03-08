@@ -8,6 +8,8 @@ export * from "./contracts/stores.js";
 export * from "./contracts/reaction.js";
 export * from "./contracts/logger.js";
 
+export * from "./loggers/console-logger.js";
+
 export * from "./workers/polling-worker.js";
 export * from "./workers/singleton-polling-worker.js";
 export * from "./workers/head-worker.js";
