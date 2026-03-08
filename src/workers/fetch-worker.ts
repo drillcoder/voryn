@@ -1,6 +1,6 @@
-import type { BlockSource } from "../contracts/block-source.js";
-import { type Logger, noopLogger } from "../contracts/logger.js";
-import type { BlockJobQueueStore, RawBlockStore } from "../contracts/stores.js";
+import type { BlockSource } from "../interfaces/block-source.js";
+import { type Logger, noopLogger } from "../interfaces/logger.js";
+import type { BlockJobQueueStore, RawBlockStore } from "../interfaces/stores.js";
 import type { FetchWorkerConfig } from "../types/runtime.js";
 import { asErrorMessage } from "../utils/errors.js";
 import { PollingWorker } from "./polling-worker.js";

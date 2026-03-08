@@ -1,5 +1,5 @@
-import type { LeaderLock } from "../contracts/leader-lock.js";
-import type { Logger } from "../contracts/logger.js";
+import type { LeaderLock } from "../interfaces/leader-lock.js";
+import type { Logger } from "../interfaces/logger.js";
 import { asErrorMessage } from "../utils/errors.js";
 import { PollingWorker } from "./polling-worker.js";
 

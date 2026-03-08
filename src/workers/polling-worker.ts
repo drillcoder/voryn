@@ -1,4 +1,4 @@
-import type { Logger } from "../contracts/logger.js";
+import type { Logger } from "../interfaces/logger.js";
 import type { WorkerLifecycle } from "../types/runtime.js";
 import { asErrorMessage } from "../utils/errors.js";
 

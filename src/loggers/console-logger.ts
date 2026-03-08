@@ -1,4 +1,4 @@
-import type { Logger } from "../contracts/logger.js";
+import type { Logger } from "../interfaces/logger.js";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 

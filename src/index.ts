@@ -2,11 +2,11 @@ export * from "./types/chain.js";
 export * from "./types/pipeline.js";
 export * from "./types/runtime.js";
 
-export * from "./contracts/block-source.js";
-export * from "./contracts/leader-lock.js";
-export * from "./contracts/stores.js";
-export * from "./contracts/reaction.js";
-export * from "./contracts/logger.js";
+export * from "./interfaces/block-source.js";
+export * from "./interfaces/leader-lock.js";
+export * from "./interfaces/stores.js";
+export * from "./interfaces/reaction.js";
+export * from "./interfaces/logger.js";
 
 export * from "./loggers/console-logger.js";
 

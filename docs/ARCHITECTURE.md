@@ -15,7 +15,7 @@ Voryn — каркас индексатора для EVM-сетей, где по
 ## Слои кода
 
 - `src/types` — модели домена и конфиги воркеров.
-- `src/contracts` — интерфейсы источников данных и хранилищ.
+- `src/interfaces` — интерфейсы источников данных и хранилищ.
 - `src/workers` — рабочие процессы (`PollingWorker` и `SingletonPollingWorker`).
 - `src/sql/postgres-schema.sql` — базовая схема таблиц.
 
@@ -35,12 +35,12 @@ Voryn — каркас индексатора для EVM-сетей, где по
   - `HeadWorkerConfig`, `FetchWorkerConfig`, `SequencerWorkerConfig`, `RetentionWorkerConfig` — узкие типы для конкретных ingestion-воркеров.
   - `ReactionConfig` — имя реактора, сеть, частота и размер батча.
 
-## Контракты
+## Интерфейсы
 
-- `contracts/block-source.ts` — получение head и блока с транзакциями.
-- `contracts/leader-lock.ts` — абстракция распределенной блокировки (`tryAcquire`, `release`).
-- `contracts/reaction.ts` — интерфейсы пользовательских обработчиков (`EventReactionHandler`, `TransactionReactionHandler`).
-- `contracts/stores.ts`:
+- `interfaces/block-source.ts` — получение head и блока с транзакциями.
+- `interfaces/leader-lock.ts` — абстракция распределенной блокировки (`tryAcquire`, `release`).
+- `interfaces/reaction.ts` — интерфейсы пользовательских обработчиков (`EventReactionHandler`, `TransactionReactionHandler`).
+- `interfaces/stores.ts`:
   - `ChainCursorStore` — прогресс по сети.
   - `BlockJobQueueStore` — очередь блоков, claim/fail/retry метаданные.
   - `RawBlockStore` — сохранение сырых блоков.

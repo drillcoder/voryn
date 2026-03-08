@@ -1,7 +1,7 @@
-import type { LeaderLock } from "../contracts/leader-lock.js";
-import { type Logger, noopLogger } from "../contracts/logger.js";
-import type { EventReactionHandler } from "../contracts/reaction.js";
-import type { EventStreamStore, WorkerCursorStore } from "../contracts/stores.js";
+import type { LeaderLock } from "../interfaces/leader-lock.js";
+import { type Logger, noopLogger } from "../interfaces/logger.js";
+import type { EventReactionHandler } from "../interfaces/reaction.js";
+import type { EventStreamStore, WorkerCursorStore } from "../interfaces/stores.js";
 import type { ReactionConfig } from "../types/runtime.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 

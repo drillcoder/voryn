@@ -1,6 +1,6 @@
-import type { LeaderLock } from "../contracts/leader-lock.js";
-import { type Logger, noopLogger } from "../contracts/logger.js";
-import type { RetentionStore } from "../contracts/stores.js";
+import type { LeaderLock } from "../interfaces/leader-lock.js";
+import { type Logger, noopLogger } from "../interfaces/logger.js";
+import type { RetentionStore } from "../interfaces/stores.js";
 import type { RetentionWorkerConfig } from "../types/runtime.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
