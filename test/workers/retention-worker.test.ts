@@ -1,6 +1,6 @@
-import type { RetentionStore } from "../src/index.js";
-import type { RetentionWorkerConfig } from "../src/index.js";
-import { RetentionWorker } from "../src/index.js";
+import type { RetentionStore } from "../../src/index.js";
+import type { RetentionWorkerConfig } from "../../src/index.js";
+import { RetentionWorker } from "../../src/index.js";
 
 const invokeTick = async (worker: object): Promise<void> => {
     await (worker as { tick: () => Promise<void> }).tick();

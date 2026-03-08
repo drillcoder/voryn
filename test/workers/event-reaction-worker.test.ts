@@ -1,5 +1,5 @@
-import type { EventReactionHandler, EventStreamStore, ReactionConfig, WorkerCursorStore } from "../src/index.js";
-import { EventReactionWorker } from "../src/index.js";
+import type { EventReactionHandler, EventStreamStore, ReactionConfig, WorkerCursorStore } from "../../src/index.js";
+import { EventReactionWorker } from "../../src/index.js";
 
 const invokeTick = async (worker: object): Promise<void> => {
     await (worker as { tick: () => Promise<void> }).tick();

@@ -3,8 +3,8 @@ import type {
     TransactionReactionHandler,
     TransactionStreamStore,
     WorkerCursorStore,
-} from "../src/index.js";
-import { TransactionReactionWorker } from "../src/index.js";
+} from "../../src/index.js";
+import { TransactionReactionWorker } from "../../src/index.js";
 
 const invokeTick = async (worker: object): Promise<void> => {
     await (worker as { tick: () => Promise<void> }).tick();

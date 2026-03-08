@@ -1,6 +1,6 @@
-import type { ChainCursorStore, SequencerCommitStore } from "../src/index.js";
-import type { SequencerWorkerConfig } from "../src/index.js";
-import { SequencerWorker } from "../src/index.js";
+import type { ChainCursorStore, SequencerCommitStore } from "../../src/index.js";
+import type { SequencerWorkerConfig } from "../../src/index.js";
+import { SequencerWorker } from "../../src/index.js";
 
 const invokeTick = async (worker: object): Promise<void> => {
     await (worker as { tick: () => Promise<void> }).tick();

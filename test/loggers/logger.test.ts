@@ -1,4 +1,4 @@
-import { createConsoleLogger, type ConsoleLogWriter } from "../src/index.js";
+import { createConsoleLogger, type ConsoleLogWriter } from "../../src/index.js";
 
 const createWriter = (isTTY = false) => {
     const lines: string[] = [];

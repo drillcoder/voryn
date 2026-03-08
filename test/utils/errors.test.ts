@@ -1,4 +1,4 @@
-import { asErrorMessage } from "../src/utils/errors.js";
+import { asErrorMessage } from "../../src/utils/errors.js";
 
 test("asErrorMessage returns message from Error", () => {
     expect(asErrorMessage(new Error("boom"))).toBe("boom");

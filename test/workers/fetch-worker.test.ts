@@ -1,8 +1,8 @@
-import type { BlockSource } from "../src/index.js";
-import type { BlockJobQueueStore, RawBlockStore } from "../src/index.js";
-import type { FetchedBlock } from "../src/index.js";
-import type { FetchWorkerConfig } from "../src/index.js";
-import { FetchWorker } from "../src/index.js";
+import type { BlockSource } from "../../src/index.js";
+import type { BlockJobQueueStore, RawBlockStore } from "../../src/index.js";
+import type { FetchedBlock } from "../../src/index.js";
+import type { FetchWorkerConfig } from "../../src/index.js";
+import { FetchWorker } from "../../src/index.js";
 
 const invokeTick = async (worker: object): Promise<void> => {
     await (worker as { tick: () => Promise<void> }).tick();

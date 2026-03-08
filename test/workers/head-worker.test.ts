@@ -1,7 +1,7 @@
-import type { BlockSource } from "../src/index.js";
-import type { ChainCursorStore, BlockJobQueueStore } from "../src/index.js";
-import type { HeadWorkerConfig } from "../src/index.js";
-import { HeadWorker } from "../src/index.js";
+import type { BlockSource } from "../../src/index.js";
+import type { ChainCursorStore, BlockJobQueueStore } from "../../src/index.js";
+import type { HeadWorkerConfig } from "../../src/index.js";
+import { HeadWorker } from "../../src/index.js";
 
 const defaultConfig: HeadWorkerConfig = {
     chainId: 1,
