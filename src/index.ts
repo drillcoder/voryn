@@ -10,6 +10,8 @@ export * from "./interfaces/logger.js";
 
 export * from "./loggers/console-logger.js";
 
+export * from "./adapters/ethers-block-source.js";
+
 export * from "./workers/polling-worker.js";
 export * from "./workers/singleton-polling-worker.js";
 export * from "./workers/head-worker.js";

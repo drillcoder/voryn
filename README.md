@@ -7,6 +7,37 @@ TypeScript npm-библиотека для мониторинга EVM-подоб
 - Архитектура: [ARCHITECTURE.md](/docs/ARCHITECTURE.md)
 - Схема БД: [DB_SCHEMA.md](/docs/DB_SCHEMA.md)
 
+## Адаптер ethers v6
+
+В пакете есть готовый `EthersBlockSource`, который реализует интерфейс `BlockSource`
+и подходит для `HeadWorker` / `FetchWorker`.
+
+Пример:
+
+```ts
+import { JsonRpcProvider } from "ethers";
+import { EthersBlockSource } from "voryn";
+
+const providers = new Map([
+    [1, new JsonRpcProvider(process.env.MAINNET_RPC_URL)],
+    [137, new JsonRpcProvider(process.env.POLYGON_RPC_URL)],
+]);
+
+const source = new EthersBlockSource({
+    providers,
+    validateProviderChainId: true,
+});
+```
+
+Опции:
+
+- `providers` (обязательно): `Map<chainId, provider>`.
+- `validateProviderChainId` (опционально): проверяет, что `provider.getNetwork().chainId`
+  совпадает с запрошенным `chainId` (проверка кэшируется после первого успешного вызова).
+
+`EthersBlockSource` валидирует хеши, адреса и `data`-поля, а также индексы и соответствие
+номера блока. При некорректном ответе RPC бросает ошибку, чтобы воркеры могли повторить задачу.
+
 ## Логгер
 
 Библиотека использует интерфейс `Logger` (`debug`, `info`, `warn`, `error`).
