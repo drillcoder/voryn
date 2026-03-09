@@ -1,4 +1,4 @@
-import type { ChainId, FetchedBlock, Hex } from "./chain.js";
+import type { ChainId, FetchedBlock, HashHex } from "./chain.js";
 
 export type StreamType = "event" | "tx";
 
@@ -23,8 +23,8 @@ export interface BlockJob {
 export interface RawBlockEnvelope {
     chainId: ChainId;
     blockNumber: number;
-    blockHash: Hex;
-    parentHash: Hex;
+    blockHash: HashHex;
+    parentHash: HashHex;
     payload: FetchedBlock;
     fetchedAt: Date;
 }
@@ -43,7 +43,7 @@ export interface CanonicalTransaction {
     chainId: ChainId;
     blockNumber: number;
     txIndex: number;
-    txHash: Hex;
+    txHash: HashHex;
     payload: unknown;
 }
 

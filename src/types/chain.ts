@@ -1,34 +1,39 @@
+type Brand<TValue, TName extends string> = TValue & { readonly __brand: TName };
+
 export type ChainId = number;
 export type Hex = `0x${string}`;
+export type HashHex = Brand<Hex, "hash32">;
+export type AddressHex = Brand<Hex, "address20">;
+export type DataHex = Brand<Hex, "bytes">;
 
 export interface ChainBlock {
     chainId: ChainId;
     number: number;
-    hash: Hex;
-    parentHash: Hex;
+    hash: HashHex;
+    parentHash: HashHex;
     timestamp: number;
 }
 
 export interface ChainTransaction {
     chainId: ChainId;
     blockNumber: number;
-    hash: Hex;
+    hash: HashHex;
     index: number;
-    from: Hex;
-    to: Hex | null;
+    from: AddressHex;
+    to: AddressHex | null;
     value: string;
-    input: Hex;
+    input: DataHex;
 }
 
 export interface ChainLog {
     chainId: ChainId;
     blockNumber: number;
-    txHash: Hex;
+    txHash: HashHex;
     txIndex: number;
     logIndex: number;
-    address: Hex;
-    topics: Hex[];
-    data: Hex;
+    address: AddressHex;
+    topics: HashHex[];
+    data: DataHex;
 }
 
 export interface FetchedBlock {

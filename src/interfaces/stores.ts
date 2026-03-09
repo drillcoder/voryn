@@ -1,4 +1,4 @@
-import type { ChainId, Hex } from "../types/chain.js";
+import type { ChainId, HashHex } from "../types/chain.js";
 import type {
     BlockJob,
     CanonicalEvent,
@@ -12,7 +12,7 @@ export interface ChainCursor {
     chainId: ChainId;
     lastEnqueuedBlock: number;
     lastCommittedBlock: number;
-    lastCommittedHash: Hex;
+    lastCommittedHash: HashHex;
     updatedAt: Date;
 }
 
