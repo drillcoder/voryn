@@ -1,45 +1,45 @@
 {
-  "name": "voryn",
-  "version": "0.1.0",
-  "description": "TypeScript npm package based on ethers",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
-  "scripts": {
-    "build": "tsc",
-    "test": "jest",
-    "test:coverage": "jest --coverage",
-    "test:watch": "jest --watch",
-    "lint": "eslint .",
-    "lint:fix": "npm run lint -- --fix"
-  },
-  "keywords": [
-    "ethers",
-    "typescript",
-    "web3"
-  ],
-  "author": "drillcoder",
-  "license": "MIT",
-  "dependencies": {
-    "ethers": "^6.16.0",
-    "pg": "^8.20.0"
-  },
-  "devDependencies": {
-    "@types/jest": "^30.0.0",
-    "@types/pg": "^8.18.0",
-    "eslint": "^9.39.3",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-import-resolver-typescript": "^4.4.4",
-    "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-import-newlines": "^1.4.1",
-    "eslint-plugin-n": "^17.24.0",
-    "jest": "^30.2.0",
-    "prettier": "^3.8.1",
-    "ts-jest": "^29.4.6",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.56.1"
-  }
+	"name": "voryn",
+	"version": "0.1.0",
+	"description": "TypeScript npm package based on ethers",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc",
+		"test": "jest",
+		"test:coverage": "jest --coverage",
+		"test:watch": "jest --watch",
+		"lint": "eslint .",
+		"lint:fix": "npm run lint -- --fix"
+	},
+	"keywords": [
+		"ethers",
+		"typescript",
+		"web3"
+	],
+	"author": "drillcoder",
+	"license": "MIT",
+	"dependencies": {
+		"ethers": "^6.16.0",
+		"pg": "^8.20.0"
+	},
+	"devDependencies": {
+		"@types/jest": "^30.0.0",
+		"@types/pg": "^8.18.0",
+		"eslint": "^9.39.3",
+		"eslint-config-prettier": "^10.1.8",
+		"eslint-import-resolver-typescript": "^4.4.4",
+		"eslint-plugin-import": "^2.32.0",
+		"eslint-plugin-import-newlines": "^1.4.1",
+		"eslint-plugin-n": "^17.24.0",
+		"jest": "^30.2.0",
+		"prettier": "^3.8.1",
+		"ts-jest": "^29.4.6",
+		"typescript": "^5.9.3",
+		"typescript-eslint": "^8.56.1"
+	}
 }
