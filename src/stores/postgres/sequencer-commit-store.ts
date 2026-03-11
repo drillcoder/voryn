@@ -1,10 +1,12 @@
-import type { SequencerCommitStore } from "../../interfaces/stores.js";
 import { notImplemented } from "./not-implemented.js";
-import type { PostgresStoreDeps } from "./store-deps.js";
+import type { SequencerCommitStore } from "../../interfaces/stores.js";
+import type { PgPool } from "./client.js";
 
 export class PostgresSequencerCommitStore implements SequencerCommitStore {
-    constructor(private readonly deps: PostgresStoreDeps) {
-        void this.deps;
+    constructor(
+        private readonly pool: PgPool,
+    ) {
+        void this.pool;
     }
 
     commitNextBlock(): Promise<never> {

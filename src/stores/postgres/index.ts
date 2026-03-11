@@ -1,10 +1,10 @@
 export { PostgresBlockJobQueueStore } from "./block-job-queue-store.js";
 export { PostgresChainCursorStore } from "./chain-cursor-store.js";
+export type { ChainCursorBootstrap, ChainCursorBootstrapper } from "./chain-cursor-store.js";
 export { PostgresEventStreamStore } from "./event-stream-store.js";
 export { PostgresRawBlockStore } from "./raw-block-store.js";
 export { PostgresRetentionStore } from "./retention-store.js";
 export { PostgresSequencerCommitStore } from "./sequencer-commit-store.js";
-export type { PostgresStoreDeps } from "./store-deps.js";
 export { PostgresTransactionStreamStore } from "./transaction-stream-store.js";
 export { PostgresWorkerCursorStore } from "./worker-cursor-store.js";
 
@@ -24,7 +24,7 @@ export {
 } from "./factory.js";
 
 export type {
-    CreatePostgresRuntimeInput,
+    PostgresStoreOptions,
     PostgresRuntime,
     PostgresStores,
 } from "./factory.js";

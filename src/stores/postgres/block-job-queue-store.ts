@@ -1,10 +1,12 @@
-import type { BlockJobQueueStore } from "../../interfaces/stores.js";
 import { notImplemented } from "./not-implemented.js";
-import type { PostgresStoreDeps } from "./store-deps.js";
+import type { BlockJobQueueStore } from "../../interfaces/stores.js";
+import type { PgPool } from "./client.js";
 
 export class PostgresBlockJobQueueStore implements BlockJobQueueStore {
-    constructor(private readonly deps: PostgresStoreDeps) {
-        void this.deps;
+    constructor(
+        private readonly pool: PgPool,
+    ) {
+        void this.pool;
     }
 
     enqueueRange(): Promise<never> {

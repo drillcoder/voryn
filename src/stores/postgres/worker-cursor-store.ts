@@ -1,10 +1,12 @@
-import type { WorkerCursorStore } from "../../interfaces/stores.js";
 import { notImplemented } from "./not-implemented.js";
-import type { PostgresStoreDeps } from "./store-deps.js";
+import type { WorkerCursorStore } from "../../interfaces/stores.js";
+import type { PgPool } from "./client.js";
 
 export class PostgresWorkerCursorStore implements WorkerCursorStore {
-    constructor(private readonly deps: PostgresStoreDeps) {
-        void this.deps;
+    constructor(
+        private readonly pool: PgPool,
+    ) {
+        void this.pool;
     }
 
     get(): Promise<never> {
