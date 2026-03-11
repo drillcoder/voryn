@@ -33,4 +33,5 @@ export type {
 export {
     parsePgBigint,
     parsePgInt,
+    parsePgTimestamp,
 } from "./pg-parsers.js";

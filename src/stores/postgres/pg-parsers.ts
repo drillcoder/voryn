@@ -18,3 +18,7 @@ export function parsePgInt(value: bigint | number | string): number {
 
     return parsed;
 }
+
+export function parsePgTimestamp(value: Date | string): Date {
+    return value instanceof Date ? value : new Date(value);
+}

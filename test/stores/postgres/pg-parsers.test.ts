@@ -1,4 +1,4 @@
-import { parsePgBigint, parsePgInt } from "../../../src/stores/postgres/index.js";
+import { parsePgBigint, parsePgInt, parsePgTimestamp } from "../../../src/stores/postgres/index.js";
 
 test("parsePgBigint parses string and number values", () => {
     expect(parsePgBigint("123")).toBe(123n);
@@ -24,4 +24,11 @@ test("parsePgInt throws for unsafe integers", () => {
 
 test("parsePgInt throws for non-numeric values", () => {
     expect(() => parsePgInt("abc")).toThrow(RangeError);
+});
+
+test("parsePgTimestamp keeps Date and parses ISO string", () => {
+    const date = new Date("2026-03-12T10:00:00.000Z");
+
+    expect(parsePgTimestamp(date)).toBe(date);
+    expect(parsePgTimestamp("2026-03-12T11:00:00.000Z").toISOString()).toBe("2026-03-12T11:00:00.000Z");
 });
