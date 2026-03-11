@@ -1,4 +1,4 @@
-import type { ChainId, HashHex } from "../types/chain.js";
+import type { BlockNumber, ChainId, HashHex } from "../types/chain.js";
 import type {
     BlockJob,
     CanonicalEvent,
@@ -10,8 +10,8 @@ import type {
 
 export interface ChainCursor {
     chainId: ChainId;
-    lastEnqueuedBlock: number;
-    lastCommittedBlock: number;
+    lastEnqueuedBlock: BlockNumber;
+    lastCommittedBlock: BlockNumber;
     lastCommittedHash: HashHex;
     updatedAt: Date;
 }
@@ -19,27 +19,27 @@ export interface ChainCursor {
 export interface ChainCursorStore {
     get(chainId: ChainId): Promise<ChainCursor>;
 
-    setLastEnqueued(chainId: ChainId, blockNumber: number): Promise<void>;
+    setLastEnqueued(chainId: ChainId, blockNumber: BlockNumber): Promise<void>;
 }
 
 export interface BlockJobQueueStore {
-    enqueueRange(chainId: ChainId, fromBlock: number, toBlock: number): Promise<void>;
+    enqueueRange(chainId: ChainId, fromBlock: BlockNumber, toBlock: BlockNumber): Promise<void>;
 
     claimForFetch(chainId: ChainId, workerId: string): Promise<BlockJob | null>;
 
-    markFetched(chainId: ChainId, blockNumber: number): Promise<void>;
+    markFetched(chainId: ChainId, blockNumber: BlockNumber): Promise<void>;
 
-    markFetchFailed(chainId: ChainId, blockNumber: number, error: string, nextRetryAt: Date | null): Promise<void>;
+    markFetchFailed(chainId: ChainId, blockNumber: BlockNumber, error: string, nextRetryAt: Date | null): Promise<void>;
 }
 
 export interface RawBlockStore {
     save(block: RawBlockEnvelope): Promise<void>;
 
-    get(chainId: ChainId, blockNumber: number): Promise<RawBlockEnvelope | null>;
+    get(chainId: ChainId, blockNumber: BlockNumber): Promise<RawBlockEnvelope | null>;
 }
 
 export interface SequencerCommitStore {
-    commitNextBlock(chainId: ChainId, expectedBlockNumber: number): Promise<void>;
+    commitNextBlock(chainId: ChainId, expectedBlockNumber: BlockNumber): Promise<void>;
 }
 
 export interface EventStreamStore {

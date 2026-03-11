@@ -1,4 +1,4 @@
-import type { ChainId, FetchedBlock, HashHex } from "./chain.js";
+import type { BlockNumber, ChainId, FetchedBlock, HashHex } from "./chain.js";
 
 export type StreamType = "event" | "tx";
 
@@ -11,7 +11,7 @@ export type BlockJobStatus =
 
 export interface BlockJob {
     chainId: ChainId;
-    blockNumber: number;
+    blockNumber: BlockNumber;
     status: BlockJobStatus;
     attempts: number;
     nextRetryAt: Date | null;
@@ -22,7 +22,7 @@ export interface BlockJob {
 
 export interface RawBlockEnvelope {
     chainId: ChainId;
-    blockNumber: number;
+    blockNumber: BlockNumber;
     blockHash: HashHex;
     parentHash: HashHex;
     payload: FetchedBlock;
@@ -32,7 +32,7 @@ export interface RawBlockEnvelope {
 export interface CanonicalEvent {
     seq: bigint;
     chainId: ChainId;
-    blockNumber: number;
+    blockNumber: BlockNumber;
     txIndex: number;
     logIndex: number;
     payload: unknown;
@@ -41,7 +41,7 @@ export interface CanonicalEvent {
 export interface CanonicalTransaction {
     seq: bigint;
     chainId: ChainId;
-    blockNumber: number;
+    blockNumber: BlockNumber;
     txIndex: number;
     txHash: HashHex;
     payload: unknown;

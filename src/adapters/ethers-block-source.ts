@@ -1,6 +1,7 @@
 import type { Block, Log, Provider, TransactionResponse } from "ethers";
 import type { BlockSource } from "../interfaces/block-source.js";
 import type {
+    BlockNumber,
     ChainId,
     ChainLog,
     ChainTransaction,
@@ -31,13 +32,13 @@ export type EthersBlockLike = Pick<
 export interface EthersProviderLike {
     getNetwork(): Promise<EthersNetworkLike>;
 
-    getBlockNumber(): Promise<number>;
+    getBlockNumber(): Promise<BlockNumber>;
 
-    getBlock(blockNumber: number, prefetchTxs?: boolean): Promise<EthersBlockLike | null>;
+    getBlock(blockNumber: BlockNumber, prefetchTxs?: boolean): Promise<EthersBlockLike | null>;
 
     getTransaction(hash: string): Promise<EthersTransactionLike | null>;
 
-    getLogs(filter: { fromBlock: number; toBlock: number }): Promise<EthersLogLike[]>;
+    getLogs(filter: { fromBlock: BlockNumber; toBlock: BlockNumber }): Promise<EthersLogLike[]>;
 }
 
 export interface EthersBlockSourceDeps {
@@ -51,12 +52,12 @@ export class EthersBlockSource implements BlockSource {
     constructor(private readonly deps: EthersBlockSourceDeps) {
     }
 
-    async getLatestBlockNumber(chainId: ChainId): Promise<number> {
+    async getLatestBlockNumber(chainId: ChainId): Promise<BlockNumber> {
         const provider = await this.getProvider(chainId);
         return provider.getBlockNumber();
     }
 
-    async getBlockData(chainId: ChainId, blockNumber: number): Promise<FetchedBlock> {
+    async getBlockData(chainId: ChainId, blockNumber: BlockNumber): Promise<FetchedBlock> {
         const provider = await this.getProvider(chainId);
         const block = await provider.getBlock(blockNumber, true);
 
@@ -131,7 +132,7 @@ export class EthersBlockSource implements BlockSource {
     private async fetchTransactions(
         provider: EthersProviderLike,
         chainId: ChainId,
-        blockNumber: number,
+        blockNumber: BlockNumber,
         block: EthersBlockLike
     ): Promise<ChainTransaction[]> {
         const transactions = await this.resolveTransactions(provider, chainId, blockNumber, block);
@@ -141,7 +142,7 @@ export class EthersBlockSource implements BlockSource {
     private async resolveTransactions(
         provider: EthersProviderLike,
         chainId: ChainId,
-        blockNumber: number,
+        blockNumber: BlockNumber,
         block: EthersBlockLike
     ): Promise<EthersTransactionLike[]> {
         try {
@@ -163,7 +164,7 @@ export class EthersBlockSource implements BlockSource {
         }
     }
 
-    private mapTransaction(tx: EthersTransactionLike, chainId: ChainId, blockNumber: number): ChainTransaction {
+    private mapTransaction(tx: EthersTransactionLike, chainId: ChainId, blockNumber: BlockNumber): ChainTransaction {
         if (tx.blockNumber === null || tx.blockNumber !== blockNumber) {
             throw new Error(
                 "transaction block number mismatch for chain "
@@ -192,7 +193,7 @@ export class EthersBlockSource implements BlockSource {
     private async fetchLogs(
         provider: EthersProviderLike,
         chainId: ChainId,
-        blockNumber: number,
+        blockNumber: BlockNumber,
         blockHash: HashHex
     ): Promise<ChainLog[]> {
         const logs = await provider.getLogs({ fromBlock: blockNumber, toBlock: blockNumber });

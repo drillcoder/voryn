@@ -1,6 +1,7 @@
 import { getBytes, isAddress, isHexString } from "ethers";
 import type {
     AddressHex,
+    BlockNumber,
     ChainId,
     DataHex,
     HashHex,
@@ -9,7 +10,7 @@ import type {
 export interface HexFieldContext {
     field: string;
     chainId: ChainId;
-    blockNumber: number;
+    blockNumber: BlockNumber;
 }
 
 const buildContextError = (context: HexFieldContext, expected: string): Error => (
