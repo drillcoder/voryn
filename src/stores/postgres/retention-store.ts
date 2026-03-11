@@ -1,10 +1,10 @@
 import { notImplemented } from "./not-implemented.js";
 import type { RetentionStore } from "../../interfaces/stores.js";
-import type { PgPool } from "./client.js";
+import type { PgQueryExecutor } from "./client.js";
 
 export class PostgresRetentionStore implements RetentionStore {
     constructor(
-        private readonly pool: PgPool,
+        private readonly pool: PgQueryExecutor,
     ) {
         void this.pool;
     }

@@ -1,7 +1,7 @@
 import type { ChainCursorStore } from "../../interfaces/stores.js";
 import type { BlockNumber, ChainId, HashHex } from "../../types/chain.js";
 import { notImplemented } from "./not-implemented.js";
-import type { PgPool } from "./client.js";
+import type { PgQueryExecutor } from "./client.js";
 
 export interface ChainCursorBootstrap {
     lastEnqueuedBlock: BlockNumber;
@@ -13,7 +13,7 @@ export type ChainCursorBootstrapper = (chainId: ChainId) => Promise<ChainCursorB
 
 export class PostgresChainCursorStore implements ChainCursorStore {
     constructor(
-        private readonly pool: PgPool,
+        private readonly pool: PgQueryExecutor,
         private readonly bootstrap: ChainCursorBootstrapper
     ) {
         void this.pool;

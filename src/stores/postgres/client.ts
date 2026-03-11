@@ -2,6 +2,7 @@ import { Pool, type PoolClient, type PoolConfig } from "pg";
 
 export type PgPool = Pool;
 export type PgPoolClient = PoolClient;
+export type PgQueryExecutor = Pick<PgPool, "query">;
 
 export function createPostgresPool(config?: PoolConfig): PgPool {
     return new Pool(config);

@@ -16,6 +16,7 @@ export {
 export type {
     PgPool,
     PgPoolClient,
+    PgQueryExecutor,
 } from "./client.js";
 
 export {

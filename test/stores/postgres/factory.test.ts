@@ -12,6 +12,7 @@ import {
     createPostgresRuntime,
     createPostgresStores,
     type PgPool,
+    type PgQueryExecutor,
 } from "../../../src/stores/postgres/index.js";
 
 jest.mock("pg", () => ({
@@ -21,7 +22,9 @@ jest.mock("pg", () => ({
 const HASH_1 = "0x1111111111111111111111111111111111111111111111111111111111111111" as HashHex;
 
 test("createPostgresStores returns postgres store instances", () => {
-    const pool = {} as PgPool;
+    const pool: PgQueryExecutor = {
+        query: jest.fn() as PgPool["query"],
+    };
     const chainCursorBootstrap = jest.fn(async () => ({
         lastEnqueuedBlock: 1,
         lastCommittedBlock: 1,
@@ -42,7 +45,8 @@ test("createPostgresStores returns postgres store instances", () => {
 
 test("createPostgresRuntime reuses external pool and does not dispose it", async () => {
     const end = jest.fn(async () => undefined);
-    const externalPool = { end } as unknown as PgPool;
+    const externalPool = new Pool();
+    externalPool.end = end;
     const chainCursorBootstrap = jest.fn(async () => ({
         lastEnqueuedBlock: 1,
         lastCommittedBlock: 1,
@@ -58,8 +62,9 @@ test("createPostgresRuntime reuses external pool and does not dispose it", async
 
 test("createPostgresRuntime creates and disposes internal pool", async () => {
     const end = jest.fn(async () => undefined);
-    const internalPool = { end } as unknown as PgPool;
-    const mockedPool = Pool as unknown as jest.Mock;
+    const internalPool = new Pool();
+    internalPool.end = end;
+    const mockedPool = jest.mocked(Pool);
     mockedPool.mockImplementation(() => internalPool);
 
     const runtime = createPostgresRuntime(

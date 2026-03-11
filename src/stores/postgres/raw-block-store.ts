@@ -1,10 +1,10 @@
 import { notImplemented } from "./not-implemented.js";
 import type { RawBlockStore } from "../../interfaces/stores.js";
-import type { PgPool } from "./client.js";
+import type { PgQueryExecutor } from "./client.js";
 
 export class PostgresRawBlockStore implements RawBlockStore {
     constructor(
-        private readonly pool: PgPool,
+        private readonly pool: PgQueryExecutor,
     ) {
         void this.pool;
     }
