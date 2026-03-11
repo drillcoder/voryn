@@ -7,7 +7,7 @@ import type {
     FetchedBlock,
     HashHex,
 } from "../types/chain.js";
-import { asAddress, asHash32, asHexData } from "../utils/hex.js";
+import { asAddressWithContext, asHash32WithContext, asHexDataWithContext } from "../utils/hex.js";
 
 export type EthersNetworkLike = Pick<Awaited<ReturnType<Provider["getNetwork"]>>, "chainId">;
 
@@ -79,12 +79,12 @@ export class EthersBlockSource implements BlockSource {
             );
         }
 
-        const blockHash = asHash32(block.hash, {
+        const blockHash = asHash32WithContext(block.hash, {
             field: "block.hash",
             chainId,
             blockNumber: block.number,
         });
-        const parentHash = asHash32(block.parentHash, {
+        const parentHash = asHash32WithContext(block.parentHash, {
             field: "block.parentHash",
             chainId,
             blockNumber: block.number,
@@ -180,12 +180,12 @@ export class EthersBlockSource implements BlockSource {
         return {
             chainId,
             blockNumber,
-            hash: asHash32(tx.hash, { field: "transaction.hash", chainId, blockNumber }),
+            hash: asHash32WithContext(tx.hash, { field: "transaction.hash", chainId, blockNumber }),
             index: tx.index,
-            from: asAddress(tx.from, { field: "transaction.from", chainId, blockNumber }),
-            to: tx.to === null ? null : asAddress(tx.to, { field: "transaction.to", chainId, blockNumber }),
+            from: asAddressWithContext(tx.from, { field: "transaction.from", chainId, blockNumber }),
+            to: tx.to === null ? null : asAddressWithContext(tx.to, { field: "transaction.to", chainId, blockNumber }),
             value: tx.value.toString(),
-            input: asHexData(tx.data, { field: "transaction.data", chainId, blockNumber }),
+            input: asHexDataWithContext(tx.data, { field: "transaction.data", chainId, blockNumber }),
         };
     }
 
@@ -219,12 +219,24 @@ export class EthersBlockSource implements BlockSource {
             return {
                 chainId,
                 blockNumber,
-                txHash: asHash32(log.transactionHash, { field: "log.transactionHash", chainId, blockNumber }),
+                txHash: asHash32WithContext(log.transactionHash, {
+                    field: "log.transactionHash",
+                    chainId,
+                    blockNumber,
+                }),
                 txIndex: log.transactionIndex,
                 logIndex: log.index,
-                address: asAddress(log.address, {field: "log.address", chainId, blockNumber }),
-                topics: log.topics.map((topic) => asHash32(topic, { field: "log.topic", chainId, blockNumber })),
-                data: asHexData(log.data, { field: "log.data", chainId, blockNumber }),
+                address: asAddressWithContext(log.address, {
+                    field: "log.address",
+                    chainId,
+                    blockNumber,
+                }),
+                topics: log.topics.map((topic) => asHash32WithContext(topic, {
+                    field: "log.topic",
+                    chainId,
+                    blockNumber,
+                })),
+                data: asHexDataWithContext(log.data, { field: "log.data", chainId, blockNumber }),
             };
         });
     }
