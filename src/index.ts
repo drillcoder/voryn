@@ -20,3 +20,5 @@ export * from "./workers/sequencer-worker.js";
 export * from "./workers/retention-worker.js";
 export * from "./workers/event-reaction-worker.js";
 export * from "./workers/transaction-reaction-worker.js";
+
+export * from "./stores/postgres/index.js";
