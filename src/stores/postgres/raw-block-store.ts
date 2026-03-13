@@ -6,7 +6,7 @@ import type { RawBlockEnvelope } from "../../types/pipeline.js";
 import type { PgQueryExecutor } from "./client.js";
 
 interface RawBlockRow {
-    chain_id: bigint | number | string;
+    chain_id: number;
     block_number: bigint | number | string;
     block_hash: string;
     parent_hash: string;
@@ -55,7 +55,7 @@ export class PostgresRawBlockStore implements RawBlockStore {
         }
 
         return {
-            chainId: parsePgInt(result.rows[0].chain_id),
+            chainId: result.rows[0].chain_id,
             blockNumber: parsePgInt(result.rows[0].block_number),
             blockHash: asHash32(result.rows[0].block_hash),
             parentHash: asHash32(result.rows[0].parent_hash),

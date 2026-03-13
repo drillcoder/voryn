@@ -1,4 +1,4 @@
-import { parsePgBigint, parsePgInt, parsePgTimestamp } from "./pg-parsers.js";
+import { parsePgBigint, parsePgTimestamp } from "./pg-parsers.js";
 import type { WorkerCursorStore } from "../../interfaces/stores.js";
 import type { ChainId } from "../../types/chain.js";
 import type { StreamType, WorkerCursor } from "../../types/pipeline.js";
@@ -6,7 +6,7 @@ import type { PgQueryExecutor } from "./client.js";
 
 interface WorkerCursorRow {
     worker_name: string;
-    chain_id: bigint | number | string;
+    chain_id: number;
     stream_type: StreamType;
     last_seq: bigint | number | string;
     updated_at: Date | string;
@@ -86,7 +86,7 @@ export class PostgresWorkerCursorStore implements WorkerCursorStore {
 
         return {
             workerName: result.rows[0].worker_name,
-            chainId: parsePgInt(result.rows[0].chain_id),
+            chainId: result.rows[0].chain_id,
             streamType: result.rows[0].stream_type,
             lastSeq: parsePgBigint(result.rows[0].last_seq),
             updatedAt: parsePgTimestamp(result.rows[0].updated_at),

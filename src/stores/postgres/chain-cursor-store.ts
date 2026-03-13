@@ -5,7 +5,7 @@ import type { BlockNumber, ChainId, HashHex } from "../../types/chain.js";
 import type { PgQueryExecutor } from "./client.js";
 
 interface ChainCursorRow {
-    chain_id: bigint | number | string;
+    chain_id: number;
     last_enqueued_block: bigint | number | string;
     last_committed_block: bigint | number | string;
     last_committed_hash: string;
@@ -89,7 +89,7 @@ export class PostgresChainCursorStore implements ChainCursorStore {
         }
 
         return {
-            chainId: parsePgInt(result.rows[0].chain_id),
+            chainId: result.rows[0].chain_id,
             lastEnqueuedBlock: parsePgInt(result.rows[0].last_enqueued_block),
             lastCommittedBlock: parsePgInt(result.rows[0].last_committed_block),
             lastCommittedHash: asHash32(result.rows[0].last_committed_hash),
