@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS chain_cursor
     chain_id             INT PRIMARY KEY,
     last_enqueued_block  BIGINT      NOT NULL,
     last_committed_block BIGINT      NOT NULL,
-    last_committed_hash  TEXT        NOT NULL,
+    last_committed_hash  VARCHAR(66) NOT NULL,
     updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -31,8 +31,8 @@ CREATE TABLE IF NOT EXISTS raw_blocks
 (
     chain_id     INT         NOT NULL,
     block_number BIGINT      NOT NULL,
-    block_hash   TEXT        NOT NULL,
-    parent_hash  TEXT        NOT NULL,
+    block_hash   VARCHAR(66) NOT NULL,
+    parent_hash  VARCHAR(66) NOT NULL,
     payload      JSONB       NOT NULL,
     fetched_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (chain_id, block_number)
@@ -41,22 +41,22 @@ CREATE TABLE IF NOT EXISTS raw_blocks
 -- Canonical block/tx/event stream used by downstream workers.
 CREATE TABLE IF NOT EXISTS canonical_blocks
 (
-    chain_id        INT    NOT NULL,
-    block_number    BIGINT NOT NULL,
-    block_hash      TEXT   NOT NULL,
-    parent_hash     TEXT   NOT NULL,
-    block_timestamp BIGINT NOT NULL,
+    chain_id        INT         NOT NULL,
+    block_number    BIGINT      NOT NULL,
+    block_hash      VARCHAR(66) NOT NULL,
+    parent_hash     VARCHAR(66) NOT NULL,
+    block_timestamp BIGINT      NOT NULL,
     PRIMARY KEY (chain_id, block_number)
 );
 
 CREATE TABLE IF NOT EXISTS canonical_transactions
 (
     seq          BIGSERIAL PRIMARY KEY,
-    chain_id     INT    NOT NULL,
-    block_number BIGINT NOT NULL,
-    tx_index     INT    NOT NULL,
-    tx_hash      TEXT   NOT NULL,
-    payload      JSONB  NOT NULL,
+    chain_id     INT         NOT NULL,
+    block_number BIGINT      NOT NULL,
+    tx_index     INT         NOT NULL,
+    tx_hash      VARCHAR(66) NOT NULL,
+    payload      JSONB       NOT NULL,
     UNIQUE (chain_id, block_number, tx_index)
 );
 
