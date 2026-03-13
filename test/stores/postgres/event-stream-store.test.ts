@@ -9,7 +9,7 @@ test("readFromSeq returns mapped events ordered by seq", async () => {
         rows: [
             {
                 seq: "11",
-                chain_id: "1",
+                chain_id: 1,
                 block_number: "100",
                 tx_index: 2,
                 log_index: 0,
@@ -17,7 +17,7 @@ test("readFromSeq returns mapped events ordered by seq", async () => {
             },
             {
                 seq: "12",
-                chain_id: "1",
+                chain_id: 1,
                 block_number: "100",
                 tx_index: 3,
                 log_index: 1,

@@ -43,7 +43,7 @@ test("get returns mapped raw block when row exists", async () => {
     const fetchedAt = "2026-03-13T11:00:00.000Z";
     const query = jest.fn().mockResolvedValue({
         rows: [{
-            chain_id: "5",
+            chain_id: 5,
             block_number: "100",
             block_hash: HASH_B,
             parent_hash: HASH_C,

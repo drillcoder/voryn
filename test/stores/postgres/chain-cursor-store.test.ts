@@ -9,7 +9,7 @@ const createPool = (query: jest.Mock): PgQueryExecutor => ({ query: query as PgP
 test("get returns existing chain cursor without bootstrap", async () => {
     const query = jest.fn().mockResolvedValue({
         rows: [{
-            chain_id: "1",
+            chain_id: 1,
             last_enqueued_block: "42",
             last_committed_block: "41",
             last_committed_hash: HASH_A,
@@ -43,7 +43,7 @@ test("get bootstraps missing chain cursor and reads created row", async () => {
         .mockResolvedValueOnce({ rows: [], rowCount: 1 })
         .mockResolvedValueOnce({
             rows: [{
-                chain_id: "5",
+                chain_id: 5,
                 last_enqueued_block: "100",
                 last_committed_block: "100",
                 last_committed_hash: HASH_B,

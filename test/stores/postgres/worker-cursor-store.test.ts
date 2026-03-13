@@ -6,7 +6,7 @@ test("get returns existing worker cursor without bootstrap", async () => {
     const query = jest.fn().mockResolvedValue({
         rows: [{
             worker_name: "event-worker",
-            chain_id: "1",
+            chain_id: 1,
             stream_type: "event",
             last_seq: "42",
             updated_at: new Date("2026-03-12T10:00:00.000Z"),
@@ -34,7 +34,7 @@ test("get bootstraps missing event cursor from current canonical_events seq", as
         .mockResolvedValueOnce({
             rows: [{
                 worker_name: "event-worker",
-                chain_id: "5",
+                chain_id: 5,
                 stream_type: "event",
                 last_seq: "12",
                 updated_at: "2026-03-12T11:00:00.000Z",
@@ -63,7 +63,7 @@ test("get bootstraps missing tx cursor from current canonical_transactions seq",
         .mockResolvedValueOnce({
             rows: [{
                 worker_name: "tx-worker",
-                chain_id: "7",
+                chain_id: 7,
                 stream_type: "tx",
                 last_seq: "99",
                 updated_at: "2026-03-12T11:30:00.000Z",
