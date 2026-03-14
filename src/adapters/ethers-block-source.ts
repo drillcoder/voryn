@@ -8,7 +8,7 @@ import type {
     FetchedBlock,
     HashHex,
 } from "../types/chain.js";
-import { asAddressWithContext, asHash32WithContext, asHexDataWithContext } from "../utils/hex.js";
+import { asAddress, asHash32, asHexData } from "../utils/hex.js";
 
 export type EthersNetworkLike = Pick<Awaited<ReturnType<Provider["getNetwork"]>>, "chainId">;
 
@@ -80,16 +80,8 @@ export class EthersBlockSource implements BlockSource {
             );
         }
 
-        const blockHash = asHash32WithContext(block.hash, {
-            field: "block.hash",
-            chainId,
-            blockNumber: block.number,
-        });
-        const parentHash = asHash32WithContext(block.parentHash, {
-            field: "block.parentHash",
-            chainId,
-            blockNumber: block.number,
-        });
+        const blockHash = asHash32(block.hash);
+        const parentHash = asHash32(block.parentHash);
 
         const transactions = await this.fetchTransactions(provider, chainId, block.number, blockHash, block);
         const logs = await this.fetchLogs(provider, chainId, block.number, blockHash);
@@ -205,12 +197,10 @@ export class EthersBlockSource implements BlockSource {
             blockNumber,
             blockHash,
             index: transaction.index,
-            hash: asHash32WithContext(transaction.hash, { field: "transaction.hash", chainId, blockNumber }),
-            to: transaction.to === null
-                ? null
-                : asAddressWithContext(transaction.to, { field: "transaction.to", chainId, blockNumber }),
-            from: asAddressWithContext(transaction.from, { field: "transaction.from", chainId, blockNumber }),
-            data: asHexDataWithContext(transaction.data, { field: "transaction.data", chainId, blockNumber }),
+            hash: asHash32(transaction.hash),
+            to: transaction.to === null ? null : asAddress(transaction.to),
+            from: asAddress(transaction.from),
+            data: asHexData(transaction.data),
             value: transaction.value.toString(),
             raw: transaction,
         };
@@ -248,22 +238,10 @@ export class EthersBlockSource implements BlockSource {
                 blockNumber,
                 blockHash,
                 transactionIndex: log.transactionIndex,
-                transactionHash: asHash32WithContext(log.transactionHash, {
-                    field: "log.transactionHash",
-                    chainId,
-                    blockNumber,
-                }),
-                address: asAddressWithContext(log.address, {
-                    field: "log.address",
-                    chainId,
-                    blockNumber,
-                }),
-                data: asHexDataWithContext(log.data, { field: "log.data", chainId, blockNumber }),
-                topics: log.topics.map((topic) => asHash32WithContext(topic, {
-                    field: "log.topic",
-                    chainId,
-                    blockNumber,
-                })),
+                transactionHash: asHash32(log.transactionHash),
+                address: asAddress(log.address),
+                data: asHexData(log.data),
+                topics: log.topics.map((topic) => asHash32(topic)),
                 index: log.index,
                 raw: log,
             };
