@@ -34,7 +34,8 @@ export class PostgresWorkerCursorStore implements WorkerCursorStore {
         const created = await this.readCursor(workerName, chainId, streamType);
         if (!created) {
             throw new Error(
-                `Failed to create worker cursor for worker "${workerName}", chain ${String(chainId)}, stream ${streamType}`
+                `Failed to create worker cursor for worker "${workerName}", ` +
+                `chain ${String(chainId)}, stream ${streamType}`
             );
         }
 
@@ -57,7 +58,9 @@ export class PostgresWorkerCursorStore implements WorkerCursorStore {
         }
 
         throw new Error(
-            `Worker cursor is missing for worker "${workerName}", chain ${String(chainId)}, stream ${streamType}. Call get() to bootstrap first`
+            `Worker cursor is missing for worker "${workerName}", ` +
+            `chain ${String(chainId)}, stream ${streamType}. ` +
+            "Call get() to bootstrap first"
         );
     }
 
@@ -70,7 +73,11 @@ export class PostgresWorkerCursorStore implements WorkerCursorStore {
         return parsePgBigint(result.rows[0].current_seq);
     }
 
-    private async readCursor(workerName: string, chainId: ChainId, streamType: StreamType): Promise<WorkerCursor | null> {
+    private async readCursor(
+        workerName: string,
+        chainId: ChainId,
+        streamType: StreamType
+    ): Promise<WorkerCursor | null> {
         const result = await this.pool.query<WorkerCursorRow>(
             `SELECT worker_name, chain_id, stream_type, last_seq, updated_at
              FROM worker_cursors

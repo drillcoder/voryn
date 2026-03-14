@@ -1,4 +1,5 @@
-import { PostgresTransactionStreamStore, type PgPool, type PgQueryExecutor } from "../../../src/stores/postgres/index.js";
+import { PostgresTransactionStreamStore } from "../../../src/stores/postgres/index.js";
+import type { PgPool, PgQueryExecutor } from "../../../src/stores/postgres/index.js";
 import type { HashHex } from "../../../src/types/chain.js";
 
 const HASH_A = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as HashHex;
