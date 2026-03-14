@@ -14,7 +14,7 @@ export type EthersNetworkLike = Pick<Awaited<ReturnType<Provider["getNetwork"]>>
 
 export type EthersTransactionLike = Pick<
     TransactionResponse,
-    "blockNumber" | "index" | "hash" | "from" | "to" | "value" | "data"
+    "chainId" | "blockNumber" | "blockHash" | "index" | "hash" | "from" | "to" | "value" | "data"
 >;
 
 export type EthersLogLike = Pick<
@@ -91,7 +91,7 @@ export class EthersBlockSource implements BlockSource {
             blockNumber: block.number,
         });
 
-        const transactions = await this.fetchTransactions(provider, chainId, block.number, block);
+        const transactions = await this.fetchTransactions(provider, chainId, block.number, blockHash, block);
         const logs = await this.fetchLogs(provider, chainId, block.number, blockHash);
 
         return {
@@ -101,6 +101,7 @@ export class EthersBlockSource implements BlockSource {
                 hash: blockHash,
                 parentHash,
                 timestamp: block.timestamp,
+                raw: block,
             },
             transactions,
             logs,
@@ -133,10 +134,11 @@ export class EthersBlockSource implements BlockSource {
         provider: EthersProviderLike,
         chainId: ChainId,
         blockNumber: BlockNumber,
+        blockHash: HashHex,
         block: EthersBlockLike
     ): Promise<ChainTransaction[]> {
         const transactions = await this.resolveTransactions(provider, chainId, blockNumber, block);
-        return transactions.map((tx) => this.mapTransaction(tx, chainId, blockNumber));
+        return transactions.map((transaction) => this.mapTransaction(transaction, chainId, blockNumber, blockHash));
     }
 
     private async resolveTransactions(
@@ -150,43 +152,67 @@ export class EthersBlockSource implements BlockSource {
         } catch {
             return await Promise.all(
                 block.transactions.map(async (hash) => {
-                    const tx = await provider.getTransaction(hash);
-                    if (!tx) {
+                    const transaction = await provider.getTransaction(hash);
+                    if (!transaction) {
                         throw new Error(
                             "transaction not found for chain "
                             + `${String(chainId)} block ${String(blockNumber)} hash ${hash}`
                         );
                     }
 
-                    return tx;
+                    return transaction;
                 })
             );
         }
     }
 
-    private mapTransaction(tx: EthersTransactionLike, chainId: ChainId, blockNumber: BlockNumber): ChainTransaction {
-        if (tx.blockNumber === null || tx.blockNumber !== blockNumber) {
+    private mapTransaction(
+        transaction: EthersTransactionLike,
+        chainId: ChainId,
+        blockNumber: BlockNumber,
+        blockHash: HashHex
+    ): ChainTransaction {
+        if (transaction.chainId !== BigInt(chainId)) {
             throw new Error(
-                "transaction block number mismatch for chain "
-                + `${String(chainId)} block ${String(blockNumber)} tx ${tx.hash}`
+                "transaction chain id mismatch for chain "
+                + `${String(chainId)} block ${String(blockNumber)} transaction ${transaction.hash}`
             );
         }
 
-        if (!Number.isInteger(tx.index) || tx.index < 0) {
+        if (transaction.blockNumber === null || transaction.blockNumber !== blockNumber) {
             throw new Error(
-                `transaction index is invalid for chain ${String(chainId)} block ${String(blockNumber)} tx ${tx.hash}`
+                "transaction block number mismatch for chain "
+                + `${String(chainId)} block ${String(blockNumber)} transaction ${transaction.hash}`
+            );
+        }
+
+        if (transaction.blockHash === null || transaction.blockHash !== blockHash) {
+            throw new Error(
+                "transaction block hash mismatch for chain "
+                + `${String(chainId)} block ${String(blockNumber)} transaction ${transaction.hash}`
+            );
+        }
+
+        if (!Number.isInteger(transaction.index) || transaction.index < 0) {
+            throw new Error(
+                "transaction index is invalid for chain "
+                + `${String(chainId)} block ${String(blockNumber)} transaction ${transaction.hash}`
             );
         }
 
         return {
             chainId,
             blockNumber,
-            hash: asHash32WithContext(tx.hash, { field: "transaction.hash", chainId, blockNumber }),
-            index: tx.index,
-            from: asAddressWithContext(tx.from, { field: "transaction.from", chainId, blockNumber }),
-            to: tx.to === null ? null : asAddressWithContext(tx.to, { field: "transaction.to", chainId, blockNumber }),
-            value: tx.value.toString(),
-            input: asHexDataWithContext(tx.data, { field: "transaction.data", chainId, blockNumber }),
+            blockHash,
+            index: transaction.index,
+            hash: asHash32WithContext(transaction.hash, { field: "transaction.hash", chainId, blockNumber }),
+            to: transaction.to === null
+                ? null
+                : asAddressWithContext(transaction.to, { field: "transaction.to", chainId, blockNumber }),
+            from: asAddressWithContext(transaction.from, { field: "transaction.from", chainId, blockNumber }),
+            data: asHexDataWithContext(transaction.data, { field: "transaction.data", chainId, blockNumber }),
+            value: transaction.value.toString(),
+            raw: transaction,
         };
     }
 
@@ -220,24 +246,26 @@ export class EthersBlockSource implements BlockSource {
             return {
                 chainId,
                 blockNumber,
-                txHash: asHash32WithContext(log.transactionHash, {
+                blockHash,
+                transactionIndex: log.transactionIndex,
+                transactionHash: asHash32WithContext(log.transactionHash, {
                     field: "log.transactionHash",
                     chainId,
                     blockNumber,
                 }),
-                txIndex: log.transactionIndex,
-                logIndex: log.index,
                 address: asAddressWithContext(log.address, {
                     field: "log.address",
                     chainId,
                     blockNumber,
                 }),
+                data: asHexDataWithContext(log.data, { field: "log.data", chainId, blockNumber }),
                 topics: log.topics.map((topic) => asHash32WithContext(topic, {
                     field: "log.topic",
                     chainId,
                     blockNumber,
                 })),
-                data: asHexDataWithContext(log.data, { field: "log.data", chainId, blockNumber }),
+                index: log.index,
+                raw: log,
             };
         });
     }

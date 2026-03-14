@@ -26,8 +26,10 @@ test("maps latest block, transactions and logs from ethers provider", async () =
     provider.getBlockNumber.mockResolvedValue(120);
     provider.getBlock.mockImplementation(async (blockNumber: number, prefetchTxs?: boolean) => {
         blockCalls.push({ blockNumber, prefetchTxs });
-        const tx: EthersTransactionLike = {
+        const transaction: EthersTransactionLike = {
+            chainId: 7n,
             blockNumber: 12,
+            blockHash: hash("a"),
             index: 0,
             hash: hash("c"),
             from: address("1"),
@@ -42,7 +44,7 @@ test("maps latest block, transactions and logs from ethers provider", async () =
             parentHash: hash("b"),
             timestamp: 1000,
             transactions: [hash("c")],
-            prefetchedTransactions: [tx],
+            prefetchedTransactions: [transaction],
         };
 
         return block;
@@ -68,7 +70,9 @@ test("maps latest block, transactions and logs from ethers provider", async () =
     });
 
     await expect(source.getLatestBlockNumber(7)).resolves.toBe(120);
-    await expect(source.getBlockData(7, 12)).resolves.toEqual({
+
+    const fetchedBlock = await source.getBlockData(7, 12);
+    expect(fetchedBlock).toMatchObject({
         block: {
             chainId: 7,
             number: 12,
@@ -79,24 +83,29 @@ test("maps latest block, transactions and logs from ethers provider", async () =
         transactions: [{
             chainId: 7,
             blockNumber: 12,
-            hash: hash("c"),
+            blockHash: hash("a"),
             index: 0,
-            from: address("1"),
+            hash: hash("c"),
             to: address("2"),
+            from: address("1"),
+            data: "0x1234",
             value: "123",
-            input: "0x1234",
         }],
         logs: [{
             chainId: 7,
             blockNumber: 12,
-            txHash: hash("c"),
-            txIndex: 0,
-            logIndex: 3,
+            blockHash: hash("a"),
+            transactionIndex: 0,
+            transactionHash: hash("c"),
             address: address("f"),
-            topics: [hash("d"), hash("e")],
             data: "0x99",
+            topics: [hash("d"), hash("e")],
+            index: 3,
         }],
     });
+    expect(fetchedBlock.block.raw).toBeDefined();
+    expect(fetchedBlock.transactions[0]?.raw).toBeDefined();
+    expect(fetchedBlock.logs[0]?.raw).toBeDefined();
 
     expect(blockCalls).toEqual([{ blockNumber: 12, prefetchTxs: true }]);
     expect(logCalls).toEqual([{ fromBlock: 12, toBlock: 12 }]);
@@ -104,8 +113,8 @@ test("maps latest block, transactions and logs from ethers provider", async () =
 
 test("falls back to getTransaction when prefetched transactions are unavailable", async () => {
     const requestedHashes: string[] = [];
-    const txHashA = hash("a");
-    const txHashB = hash("b");
+    const transactionHashA = hash("a");
+    const transactionHashB = hash("b");
 
     const provider = createProviderMock();
     const block: EthersBlockLike = {
@@ -113,7 +122,7 @@ test("falls back to getTransaction when prefetched transactions are unavailable"
         hash: hash("c"),
         parentHash: hash("d"),
         timestamp: 77,
-        transactions: [txHashA, txHashB],
+        transactions: [transactionHashA, transactionHashB],
         get prefetchedTransactions(): EthersTransactionLike[] {
             throw new Error("prefetch unsupported");
         },
@@ -121,13 +130,15 @@ test("falls back to getTransaction when prefetched transactions are unavailable"
 
     provider.getNetwork.mockResolvedValue({ chainId: 1n });
     provider.getBlock.mockResolvedValue(block);
-    provider.getTransaction.mockImplementation(async (txHash: string) => {
-        requestedHashes.push(txHash);
-        if (txHash === txHashA) {
+    provider.getTransaction.mockImplementation(async (transactionHash: string) => {
+        requestedHashes.push(transactionHash);
+        if (transactionHash === transactionHashA) {
             return {
+                chainId: 1n,
                 blockNumber: 55,
+                blockHash: hash("c"),
                 index: 0,
-                hash: txHashA,
+                hash: transactionHashA,
                 from: address("1"),
                 to: null,
                 value: 1n,
@@ -136,9 +147,11 @@ test("falls back to getTransaction when prefetched transactions are unavailable"
         }
 
         return {
+            chainId: 1n,
             blockNumber: 55,
+            blockHash: hash("c"),
             index: 1,
-            hash: txHashB,
+            hash: transactionHashB,
             from: address("2"),
             to: address("3"),
             value: 2n,
@@ -160,24 +173,28 @@ test("falls back to getTransaction when prefetched transactions are unavailable"
             {
                 chainId: 1,
                 blockNumber: 55,
-                hash: txHashA,
+                blockHash: hash("c"),
                 index: 0,
+                hash: transactionHashA,
                 to: null,
+                data: "0x",
                 value: "1",
             },
             {
                 chainId: 1,
                 blockNumber: 55,
-                hash: txHashB,
+                blockHash: hash("c"),
                 index: 1,
+                hash: transactionHashB,
                 to: address("3"),
+                data: "0x11",
                 value: "2",
             },
         ],
         logs: [],
     });
 
-    expect(requestedHashes).toEqual([txHashA, txHashB]);
+    expect(requestedHashes).toEqual([transactionHashA, transactionHashB]);
 });
 
 test("throws for unsupported chain id", async () => {
@@ -316,14 +333,14 @@ test("throws when block number mismatches requested number", async () => {
 });
 
 test("throws when fallback transaction is not found", async () => {
-    const txHash = hash("a");
+    const transactionHash = hash("a");
     const provider = createProviderMock();
     const block: EthersBlockLike = {
         number: 55,
         hash: hash("c"),
         parentHash: hash("d"),
         timestamp: 77,
-        transactions: [txHash],
+        transactions: [transactionHash],
         get prefetchedTransactions(): EthersTransactionLike[] {
             throw new Error("prefetch unsupported");
         },
@@ -339,7 +356,39 @@ test("throws when fallback transaction is not found", async () => {
     });
 
     await expect(source.getBlockData(1, 55)).rejects.toThrow(
-        `transaction not found for chain 1 block 55 hash ${txHash}`
+        `transaction not found for chain 1 block 55 hash ${transactionHash}`
+    );
+});
+
+test("throws on transaction chain id mismatch", async () => {
+    const provider = createProviderMock();
+    provider.getNetwork.mockResolvedValue({ chainId: 7n });
+    provider.getBlock.mockResolvedValue({
+        number: 9,
+        hash: hash("a"),
+        parentHash: hash("b"),
+        timestamp: 1,
+        transactions: [hash("c")],
+        prefetchedTransactions: [{
+            chainId: 8n,
+            blockNumber: 9,
+            blockHash: hash("a"),
+            index: 0,
+            hash: hash("c"),
+            from: address("1"),
+            to: address("2"),
+            value: 1n,
+            data: "0x",
+        }],
+    });
+    provider.getLogs.mockResolvedValue([]);
+
+    const source = new EthersBlockSource({
+        providers: new Map([[7, provider]]),
+    });
+
+    await expect(source.getBlockData(7, 9)).rejects.toThrow(
+        "transaction chain id mismatch for chain 7 block 9"
     );
 });
 
@@ -353,7 +402,9 @@ test("throws on transaction block number mismatch", async () => {
         timestamp: 1,
         transactions: [hash("c")],
         prefetchedTransactions: [{
+            chainId: 7n,
             blockNumber: 8,
+            blockHash: hash("a"),
             index: 0,
             hash: hash("c"),
             from: address("1"),
@@ -373,6 +424,38 @@ test("throws on transaction block number mismatch", async () => {
     );
 });
 
+test("throws on transaction block hash mismatch", async () => {
+    const provider = createProviderMock();
+    provider.getNetwork.mockResolvedValue({ chainId: 7n });
+    provider.getBlock.mockResolvedValue({
+        number: 9,
+        hash: hash("a"),
+        parentHash: hash("b"),
+        timestamp: 1,
+        transactions: [hash("c")],
+        prefetchedTransactions: [{
+            chainId: 7n,
+            blockNumber: 9,
+            blockHash: hash("f"),
+            index: 0,
+            hash: hash("c"),
+            from: address("1"),
+            to: address("2"),
+            value: 1n,
+            data: "0x",
+        }],
+    });
+    provider.getLogs.mockResolvedValue([]);
+
+    const source = new EthersBlockSource({
+        providers: new Map([[7, provider]]),
+    });
+
+    await expect(source.getBlockData(7, 9)).rejects.toThrow(
+        "transaction block hash mismatch for chain 7 block 9"
+    );
+});
+
 test("throws on negative transaction index", async () => {
     const provider = createProviderMock();
     provider.getNetwork.mockResolvedValue({ chainId: 7n });
@@ -383,7 +466,9 @@ test("throws on negative transaction index", async () => {
         timestamp: 1,
         transactions: [hash("c")],
         prefetchedTransactions: [{
+            chainId: 7n,
             blockNumber: 9,
+            blockHash: hash("a"),
             index: -1,
             hash: hash("c"),
             from: address("1"),
@@ -413,7 +498,9 @@ test("throws on non-integer transaction index", async () => {
         timestamp: 1,
         transactions: [hash("c")],
         prefetchedTransactions: [{
+            chainId: 7n,
             blockNumber: 9,
+            blockHash: hash("a"),
             index: 0.5,
             hash: hash("c"),
             from: address("1"),

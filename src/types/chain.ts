@@ -7,38 +7,43 @@ export type HashHex = Brand<Hex, "hash32">;
 export type AddressHex = Brand<Hex, "address20">;
 export type DataHex = Brand<Hex, "bytes">;
 
-export interface ChainBlock {
+export interface ChainBlock<TRaw = unknown> {
     chainId: ChainId;
     number: BlockNumber;
     hash: HashHex;
     parentHash: HashHex;
     timestamp: number;
+    raw: TRaw;
 }
 
-export interface ChainTransaction {
+export interface ChainTransaction<TRaw = unknown> {
     chainId: ChainId;
     blockNumber: BlockNumber;
-    hash: HashHex;
+    blockHash: HashHex;
     index: number;
+    hash: HashHex;
     from: AddressHex;
     to: AddressHex | null;
     value: string;
-    input: DataHex;
+    data: DataHex;
+    raw: TRaw;
 }
 
-export interface ChainLog {
+export interface ChainLog<TRaw = unknown> {
     chainId: ChainId;
     blockNumber: BlockNumber;
-    txHash: HashHex;
-    txIndex: number;
-    logIndex: number;
+    blockHash: HashHex;
+    transactionIndex: number;
+    transactionHash: HashHex;
+    index: number;
     address: AddressHex;
     topics: HashHex[];
     data: DataHex;
+    raw: TRaw;
 }
 
-export interface FetchedBlock {
-    block: ChainBlock;
-    transactions: ChainTransaction[];
-    logs: ChainLog[];
+export interface FetchedBlock<TBlockRaw = unknown, TTransactionRaw = unknown, TLogRaw = unknown> {
+    block: ChainBlock<TBlockRaw>;
+    transactions: ChainTransaction<TTransactionRaw>[];
+    logs: ChainLog<TLogRaw>[];
 }
