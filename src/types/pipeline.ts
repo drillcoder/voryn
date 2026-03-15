@@ -1,4 +1,11 @@
-import type { BlockNumber, ChainId, FetchedBlock, HashHex } from "./chain.js";
+import type {
+    AddressHex,
+    BlockNumber,
+    ChainId,
+    DataHex,
+    FetchedBlock,
+    HashHex,
+} from "./chain.js";
 
 export type StreamType = "event" | "tx";
 
@@ -29,22 +36,32 @@ export interface RawBlockEnvelope {
     fetchedAt: Date;
 }
 
-export interface CanonicalEvent {
+export interface CanonicalEvent<TRaw = unknown> {
     seq: bigint;
     chainId: ChainId;
     blockNumber: BlockNumber;
-    txIndex: number;
-    logIndex: number;
-    payload: unknown;
+    blockHash: HashHex;
+    transactionIndex: number;
+    transactionHash: HashHex;
+    index: number;
+    address: AddressHex;
+    topics: HashHex[];
+    data: DataHex;
+    raw: TRaw;
 }
 
-export interface CanonicalTransaction {
+export interface CanonicalTransaction<TRaw = unknown> {
     seq: bigint;
     chainId: ChainId;
     blockNumber: BlockNumber;
-    txIndex: number;
-    txHash: HashHex;
-    payload: unknown;
+    blockHash: HashHex;
+    index: number;
+    hash: HashHex;
+    from: AddressHex;
+    to: AddressHex | null;
+    value: string;
+    data: DataHex;
+    raw: TRaw;
 }
 
 export interface WorkerCursor {

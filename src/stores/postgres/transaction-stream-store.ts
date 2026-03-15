@@ -1,4 +1,4 @@
-import { asHash32 } from "../../utils/hex.js";
+import { asAddress, asHash32, asHexData } from "../../utils/hex.js";
 import { parsePgBigint, parsePgInt } from "./pg-parsers.js";
 import type { TransactionStreamStore } from "../../interfaces/stores.js";
 import type { ChainId } from "../../types/chain.js";
@@ -9,9 +9,14 @@ interface CanonicalTransactionRow {
     seq: bigint | number | string;
     chain_id: number;
     block_number: bigint | number | string;
+    block_hash: string;
     tx_index: number;
     tx_hash: string;
-    payload: unknown;
+    from_address: string;
+    to_address: string | null;
+    value: string;
+    data: string;
+    raw: unknown;
 }
 
 export class PostgresTransactionStreamStore implements TransactionStreamStore {
@@ -27,7 +32,8 @@ export class PostgresTransactionStreamStore implements TransactionStreamStore {
         }
 
         const result = await this.pool.query<CanonicalTransactionRow>(
-            `SELECT seq, chain_id, block_number, tx_index, tx_hash, payload
+            `SELECT seq, chain_id, block_number, block_hash, tx_index, tx_hash,
+                    from_address, to_address, value, data, raw
              FROM canonical_transactions
              WHERE chain_id = $1
                AND seq > $2
@@ -40,9 +46,14 @@ export class PostgresTransactionStreamStore implements TransactionStreamStore {
             seq: parsePgBigint(row.seq),
             chainId: row.chain_id,
             blockNumber: parsePgInt(row.block_number),
-            txIndex: row.tx_index,
-            txHash: asHash32(row.tx_hash),
-            payload: row.payload,
+            blockHash: asHash32(row.block_hash),
+            index: row.tx_index,
+            hash: asHash32(row.tx_hash),
+            from: asAddress(row.from_address),
+            to: row.to_address === null ? null : asAddress(row.to_address),
+            value: row.value,
+            data: asHexData(row.data),
+            raw: row.raw,
         }));
     }
 }

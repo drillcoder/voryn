@@ -1,3 +1,4 @@
+import { asAddress, asHash32, asHexData } from "../../utils/hex.js";
 import { parsePgBigint, parsePgInt } from "./pg-parsers.js";
 import type { EventStreamStore } from "../../interfaces/stores.js";
 import type { ChainId } from "../../types/chain.js";
@@ -8,9 +9,14 @@ interface CanonicalEventRow {
     seq: bigint | number | string;
     chain_id: number;
     block_number: bigint | number | string;
+    block_hash: string;
     tx_index: number;
+    tx_hash: string;
     log_index: number;
-    payload: unknown;
+    address: string;
+    topics: unknown;
+    data: string;
+    raw: unknown;
 }
 
 export class PostgresEventStreamStore implements EventStreamStore {
@@ -26,7 +32,7 @@ export class PostgresEventStreamStore implements EventStreamStore {
         }
 
         const result = await this.pool.query<CanonicalEventRow>(
-            `SELECT seq, chain_id, block_number, tx_index, log_index, payload
+            `SELECT seq, chain_id, block_number, block_hash, tx_index, tx_hash, log_index, address, topics, data, raw
              FROM canonical_events
              WHERE chain_id = $1
                AND seq > $2
@@ -39,9 +45,22 @@ export class PostgresEventStreamStore implements EventStreamStore {
             seq: parsePgBigint(row.seq),
             chainId: row.chain_id,
             blockNumber: parsePgInt(row.block_number),
-            txIndex: row.tx_index,
-            logIndex: row.log_index,
-            payload: row.payload,
+            blockHash: asHash32(row.block_hash),
+            transactionIndex: row.tx_index,
+            transactionHash: asHash32(row.tx_hash),
+            index: row.log_index,
+            address: asAddress(row.address),
+            topics: parseTopics(row.topics),
+            data: asHexData(row.data),
+            raw: row.raw,
         }));
     }
 }
+
+const parseTopics = (value: unknown): ReturnType<typeof asHash32>[] => {
+    if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) {
+        throw new Error("invalid topics: expected array of hashes");
+    }
+
+    return value.map((topic) => asHash32(topic));
+};

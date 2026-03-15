@@ -1,5 +1,12 @@
 import type { EventReactionHandler, EventStreamStore, ReactionConfig, WorkerCursorStore } from "../../src/index.js";
 import { EventReactionWorker } from "../../src/index.js";
+import type { AddressHex, DataHex, HashHex } from "../../src/types/chain.js";
+
+const BLOCK_HASH = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as HashHex;
+const TX_HASH = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as HashHex;
+const ADDRESS = "0x1111111111111111111111111111111111111111" as AddressHex;
+const TOPIC = "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" as HashHex;
+const DATA = "0x01" as DataHex;
 
 const invokeTick = async (worker: object): Promise<void> => {
     await (worker as { tick: () => Promise<void> }).tick();
@@ -28,17 +35,27 @@ test("event reaction worker processes events and advances cursor", async () => {
                 seq: 11n,
                 chainId: 5,
                 blockNumber: 100,
-                txIndex: 0,
-                logIndex: 0,
-                payload: { v: 1 },
+                blockHash: BLOCK_HASH,
+                transactionIndex: 0,
+                transactionHash: TX_HASH,
+                index: 0,
+                address: ADDRESS,
+                topics: [TOPIC],
+                data: DATA,
+                raw: { v: 1 },
             },
             {
                 seq: 12n,
                 chainId: 5,
                 blockNumber: 101,
-                txIndex: 0,
-                logIndex: 1,
-                payload: { v: 2 },
+                blockHash: BLOCK_HASH,
+                transactionIndex: 0,
+                transactionHash: TX_HASH,
+                index: 1,
+                address: ADDRESS,
+                topics: [TOPIC],
+                data: DATA,
+                raw: { v: 2 },
             },
         ],
     };

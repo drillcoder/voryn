@@ -46,18 +46,24 @@ CREATE TABLE IF NOT EXISTS canonical_blocks
     block_hash      VARCHAR(66) NOT NULL,
     parent_hash     VARCHAR(66) NOT NULL,
     block_timestamp BIGINT      NOT NULL,
+    raw             JSONB       NOT NULL,
     PRIMARY KEY (chain_id, block_number)
 );
 
 CREATE TABLE IF NOT EXISTS canonical_transactions
 (
-    seq          BIGSERIAL PRIMARY KEY,
-    chain_id     INT         NOT NULL,
-    block_number BIGINT      NOT NULL,
-    tx_index     INT         NOT NULL,
-    tx_hash      VARCHAR(66) NOT NULL,
-    payload      JSONB       NOT NULL,
-    UNIQUE (chain_id, block_number, tx_index)
+    seq               BIGSERIAL PRIMARY KEY,
+    chain_id          INT         NOT NULL,
+    block_number      BIGINT      NOT NULL,
+    block_hash        VARCHAR(66) NOT NULL,
+    transaction_index INT         NOT NULL,
+    transaction_hash  VARCHAR(66) NOT NULL,
+    from_address      VARCHAR(42) NOT NULL,
+    to_address        VARCHAR(42),
+    value             TEXT        NOT NULL,
+    data              TEXT        NOT NULL,
+    raw               JSONB       NOT NULL,
+    UNIQUE (chain_id, block_number, transaction_index)
 );
 
 CREATE INDEX IF NOT EXISTS canonical_transactions_order_idx
@@ -65,13 +71,18 @@ CREATE INDEX IF NOT EXISTS canonical_transactions_order_idx
 
 CREATE TABLE IF NOT EXISTS canonical_events
 (
-    seq          BIGSERIAL PRIMARY KEY,
-    chain_id     INT    NOT NULL,
-    block_number BIGINT NOT NULL,
-    tx_index     INT    NOT NULL,
-    log_index    INT    NOT NULL,
-    payload      JSONB  NOT NULL,
-    UNIQUE (chain_id, block_number, tx_index, log_index)
+    seq               BIGSERIAL PRIMARY KEY,
+    chain_id          INT         NOT NULL,
+    block_number      BIGINT      NOT NULL,
+    block_hash        VARCHAR(66) NOT NULL,
+    transaction_index INT         NOT NULL,
+    transaction_hash  VARCHAR(66) NOT NULL,
+    log_index         INT         NOT NULL,
+    address           VARCHAR(42) NOT NULL,
+    topics            TEXT[]      NOT NULL,
+    data              TEXT        NOT NULL,
+    raw               JSONB       NOT NULL,
+    UNIQUE (chain_id, block_number, transaction_index, log_index)
 );
 
 CREATE INDEX IF NOT EXISTS canonical_events_order_idx

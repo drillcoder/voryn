@@ -27,8 +27,11 @@ Voryn — каркас индексатора для EVM-сетей, где по
   - `ChainBlock`, `ChainTransaction`, `ChainLog` — единый формат данных RPC.
   - `FetchedBlock` — результат одного запроса блока для fetch-воркера.
 - `types/pipeline.ts` — внутренние записи, которые уже живут в БД и читаются воркерами:
-  - `BlockJob` — запись очереди блока (`status`, `attempts`, `nextRetryAt`).
-  - `CanonicalEvent` / `CanonicalTransaction` — элементы потоков реакций.
+  - `StreamType` — тип потока реакции (`event` | `tx`).
+  - `BlockJobStatus` — статусы задания в очереди (`pending`, `fetching`, `fetched`, `committed`, `failed`).
+  - `BlockJob` — запись очереди блока.
+  - `RawBlockEnvelope` — структура сырого блока, который сохраняется после fetch-этапа.
+  - `CanonicalEvent` / `CanonicalTransaction` — элементы канонических потоков реакций.
   - `WorkerCursor` — позиция конкретного реактора в потоке (`streamType`, `lastSeq`).
 - `types/runtime.ts` — настройки, которые управляют поведением воркеров:
   - `IngestionConfig` — полный набор ingestion-настроек приложения.

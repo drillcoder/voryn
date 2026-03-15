@@ -1,10 +1,20 @@
 import type {
+    AddressHex,
+    DataHex,
+    HashHex,
     ReactionConfig,
     TransactionReactionHandler,
     TransactionStreamStore,
     WorkerCursorStore,
 } from "../../src/index.js";
 import { TransactionReactionWorker } from "../../src/index.js";
+
+const BLOCK_HASH = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as HashHex;
+const TX_HASH_A = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as HashHex;
+const TX_HASH_B = "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" as HashHex;
+const FROM = "0x1111111111111111111111111111111111111111" as AddressHex;
+const TO = "0x2222222222222222222222222222222222222222" as AddressHex;
+const DATA = "0x01" as DataHex;
 
 const invokeTick = async (worker: object): Promise<void> => {
     await (worker as { tick: () => Promise<void> }).tick();
@@ -33,17 +43,27 @@ test("transaction reaction worker processes txs and advances cursor", async () =
                 seq: 101n,
                 chainId: 9,
                 blockNumber: 200,
-                txIndex: 1,
-                txHash: "0xabc",
-                payload: { amount: 1 },
+                blockHash: BLOCK_HASH,
+                index: 1,
+                hash: TX_HASH_A,
+                from: FROM,
+                to: TO,
+                value: "1",
+                data: DATA,
+                raw: { amount: 1 },
             },
             {
                 seq: 102n,
                 chainId: 9,
                 blockNumber: 201,
-                txIndex: 2,
-                txHash: "0xdef",
-                payload: { amount: 2 },
+                blockHash: BLOCK_HASH,
+                index: 2,
+                hash: TX_HASH_B,
+                from: FROM,
+                to: null,
+                value: "2",
+                data: DATA,
+                raw: { amount: 2 },
             },
         ],
     };
