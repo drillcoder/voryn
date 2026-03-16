@@ -1,4 +1,4 @@
-import type { PgPool, PgQueryExecutor } from "./client.js";
+import type { PgPool } from "./client.js";
 import { createPostgresPool } from "./client.js";
 import type { PoolConfig } from "pg";
 import { PostgresBlockJobQueueStore } from "./block-job-queue-store.js";
@@ -33,7 +33,7 @@ export interface PostgresStoreOptions {
     chainCursorBootstrap: ChainCursorBootstrapper;
 }
 
-export function createPostgresStores(pool: PgQueryExecutor, options: PostgresStoreOptions): PostgresStores {
+export function createPostgresStores(pool: PgPool, options: PostgresStoreOptions): PostgresStores {
     return {
         chainCursorStore: new PostgresChainCursorStore(pool, options.chainCursorBootstrap),
         blockJobQueueStore: new PostgresBlockJobQueueStore(pool),

@@ -11,8 +11,6 @@ import {
     PostgresWorkerCursorStore,
     createPostgresRuntime,
     createPostgresStores,
-    type PgPool,
-    type PgQueryExecutor,
 } from "../../../src/stores/postgres/index.js";
 
 jest.mock("pg", () => ({
@@ -22,9 +20,7 @@ jest.mock("pg", () => ({
 const HASH_1 = "0x1111111111111111111111111111111111111111111111111111111111111111" as HashHex;
 
 test("createPostgresStores returns postgres store instances", () => {
-    const pool: PgQueryExecutor = {
-        query: jest.fn() as PgPool["query"],
-    };
+    const pool = new Pool();
     const chainCursorBootstrap = jest.fn(async () => ({
         lastEnqueuedBlock: 1,
         lastCommittedBlock: 1,
