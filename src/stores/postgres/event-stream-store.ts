@@ -10,8 +10,8 @@ interface CanonicalEventRow {
     chain_id: number;
     block_number: bigint | number | string;
     block_hash: string;
-    tx_index: number;
-    tx_hash: string;
+    transaction_index: number;
+    transaction_hash: string;
     log_index: number;
     address: string;
     topics: unknown;
@@ -32,7 +32,8 @@ export class PostgresEventStreamStore implements EventStreamStore {
         }
 
         const result = await this.pool.query<CanonicalEventRow>(
-            `SELECT seq, chain_id, block_number, block_hash, tx_index, tx_hash, log_index, address, topics, data, raw
+            `SELECT seq, chain_id, block_number, block_hash, transaction_index, transaction_hash,
+                    log_index, address, topics, data, raw
              FROM canonical_events
              WHERE chain_id = $1
                AND seq > $2
@@ -46,8 +47,8 @@ export class PostgresEventStreamStore implements EventStreamStore {
             chainId: row.chain_id,
             blockNumber: parsePgInt(row.block_number),
             blockHash: asHash32(row.block_hash),
-            transactionIndex: row.tx_index,
-            transactionHash: asHash32(row.tx_hash),
+            transactionIndex: row.transaction_index,
+            transactionHash: asHash32(row.transaction_hash),
             index: row.log_index,
             address: asAddress(row.address),
             topics: parseTopics(row.topics),
