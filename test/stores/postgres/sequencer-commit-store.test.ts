@@ -344,3 +344,74 @@ test("commitNextBlock inserts multiple transactions and logs in batch queries", 
         1, 101, HASH_B, 1, HASH_C, 1, ADDRESS_C, [HASH_A], "0xcd", logRawB,
     ]);
 });
+
+test("commitNextBlock rolls back when chain cursor update affects zero rows", async () => {
+    const rawPayload = {
+        block: { chainId: 1, number: 101, hash: HASH_B, parentHash: HASH_A, timestamp: 1, raw: {} },
+        transactions: [],
+        logs: [],
+    };
+
+    const poolQuery = jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ last_committed_hash: HASH_A }], rowCount: 1 })
+        .mockResolvedValueOnce({
+            rows: [{ block_hash: HASH_B, parent_hash: HASH_A, payload: rawPayload }],
+            rowCount: 1,
+        });
+
+    const clientQuery = jest
+        .fn()
+        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 }) // canonical_blocks
+        .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // canonical_transactions
+        .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // canonical_events
+        .mockResolvedValueOnce({ rows: [], rowCount: 0 }); // chain_cursor
+
+    const pool = createPool(poolQuery, clientQuery);
+    const store = new PostgresSequencerCommitStore(pool);
+
+    await expect(store.commitNextBlock(1, 101)).rejects.toThrow(
+        "Failed to advance chain cursor for chain 1 to block 101"
+    );
+
+    expect(clientQuery).toHaveBeenCalledTimes(4);
+    const clientCalls = clientQuery.mock.calls as Array<[string, readonly unknown[] | undefined]>;
+    expect(clientCalls[0]?.[0]).toBe("BEGIN");
+    expect(clientCalls[3]?.[0]).toBe("ROLLBACK");
+});
+
+test("commitNextBlock rolls back when block job update affects zero rows", async () => {
+    const rawPayload = {
+        block: { chainId: 1, number: 101, hash: HASH_B, parentHash: HASH_A, timestamp: 1, raw: {} },
+        transactions: [],
+        logs: [],
+    };
+
+    const poolQuery = jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ last_committed_hash: HASH_A }], rowCount: 1 })
+        .mockResolvedValueOnce({
+            rows: [{ block_hash: HASH_B, parent_hash: HASH_A, payload: rawPayload }],
+            rowCount: 1,
+        });
+
+    const clientQuery = jest
+        .fn()
+        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 }) // canonical_blocks
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 }) // chain_cursor
+        .mockResolvedValueOnce({ rows: [], rowCount: 0 }); // block_jobs
+
+    const pool = createPool(poolQuery, clientQuery);
+    const store = new PostgresSequencerCommitStore(pool);
+
+    await expect(store.commitNextBlock(1, 101)).rejects.toThrow(
+        "Failed to mark block job as committed for chain 1 block 101"
+    );
+
+    expect(clientQuery).toHaveBeenCalledTimes(5);
+    const clientCalls = clientQuery.mock.calls as Array<[string, readonly unknown[] | undefined]>;
+    expect(clientCalls[0]?.[0]).toBe("BEGIN");
+    expect(clientCalls[4]?.[0]).toBe("ROLLBACK");
+});

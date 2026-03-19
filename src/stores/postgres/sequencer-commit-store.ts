@@ -74,7 +74,7 @@ export class PostgresSequencerCommitStore implements SequencerCommitStore {
             await this.insertTransactions(client, chainId, expectedBlockNumber, raw.blockHash, transactions);
             await this.insertEvents(client, chainId, expectedBlockNumber, raw.blockHash, logs);
 
-            await client.query(
+            const updatedCursor = await client.query(
                 `UPDATE chain_cursor
                  SET last_committed_block = $2,
                      last_committed_hash = $3,
@@ -85,7 +85,14 @@ export class PostgresSequencerCommitStore implements SequencerCommitStore {
                 [chainId, expectedBlockNumber, raw.blockHash, cursor.lastCommittedHash]
             );
 
-            await client.query(
+            if ((updatedCursor.rowCount ?? 0) !== 1) {
+                throw new Error(
+                    `Failed to advance chain cursor for chain ${String(chainId)} `
+                    + `to block ${String(expectedBlockNumber)}`
+                );
+            }
+
+            const updatedJob = await client.query(
                 `UPDATE block_jobs
                  SET status = 'committed',
                      updated_at = NOW()
@@ -94,6 +101,13 @@ export class PostgresSequencerCommitStore implements SequencerCommitStore {
                    AND status <> 'committed'`,
                 [chainId, expectedBlockNumber]
             );
+
+            if ((updatedJob.rowCount ?? 0) !== 1) {
+                throw new Error(
+                    `Failed to mark block job as committed for chain ${String(chainId)} `
+                    + `block ${String(expectedBlockNumber)}`
+                );
+            }
         });
     }
 
