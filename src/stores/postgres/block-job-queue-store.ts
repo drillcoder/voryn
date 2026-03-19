@@ -1,27 +1,139 @@
-import { notImplemented } from "./not-implemented.js";
+import { parsePgInt, parsePgTimestamp } from "./pg-parsers.js";
 import type { BlockJobQueueStore } from "../../interfaces/stores.js";
+import type { BlockNumber, ChainId } from "../../types/chain.js";
+import type { BlockJob, BlockJobStatus } from "../../types/pipeline.js";
 import type { PgQueryExecutor } from "./client.js";
+
+interface BlockJobRow {
+    chain_id: number;
+    block_number: bigint | number | string;
+    status: BlockJobStatus;
+    attempts: number;
+    next_retry_at: Date | string | null;
+    error: string | null;
+    claimed_at: Date | string | null;
+    updated_at: Date | string;
+}
 
 export class PostgresBlockJobQueueStore implements BlockJobQueueStore {
     constructor(
         private readonly pool: PgQueryExecutor,
     ) {
-        void this.pool;
     }
 
-    enqueueRange(): Promise<never> {
-        return notImplemented("PostgresBlockJobQueueStore.enqueueRange");
+    async enqueueRange(chainId: ChainId, fromBlock: BlockNumber, toBlock: BlockNumber): Promise<void> {
+        if (fromBlock > toBlock) {
+            return;
+        }
+
+        await this.pool.query(
+            `INSERT INTO block_jobs (chain_id, block_number, status)
+             SELECT $1, gs, 'pending'
+             FROM generate_series($2::BIGINT, $3::BIGINT) AS gs
+             ON CONFLICT (chain_id, block_number) DO NOTHING`,
+            [chainId, fromBlock, toBlock]
+        );
     }
 
-    claimForFetch(): Promise<never> {
-        return notImplemented("PostgresBlockJobQueueStore.claimForFetch");
+    async claimForFetch(chainId: ChainId, workerId: string): Promise<BlockJob | null> {
+        const result = await this.pool.query<BlockJobRow>(
+            `WITH candidate AS (
+                 SELECT chain_id, block_number
+                 FROM block_jobs
+                 WHERE chain_id = $1
+                   AND (
+                       status = 'pending'
+                       OR (status = 'failed' AND next_retry_at IS NOT NULL AND next_retry_at <= NOW())
+                   )
+                 ORDER BY block_number
+                 FOR UPDATE SKIP LOCKED
+                 LIMIT 1
+             )
+             UPDATE block_jobs j
+             SET status = 'fetching',
+                 attempts = j.attempts + 1,
+                 claimed_by = $2,
+                 claimed_at = NOW(),
+                 error = NULL,
+                 next_retry_at = NULL,
+                 updated_at = NOW()
+             FROM candidate c
+             WHERE j.chain_id = c.chain_id
+               AND j.block_number = c.block_number
+             RETURNING
+                 j.chain_id,
+                 j.block_number,
+                 j.status,
+                 j.attempts,
+                 j.next_retry_at,
+                 j.error,
+                 j.claimed_at,
+                 j.updated_at`,
+            [chainId, workerId]
+        );
+
+        if (result.rows.length === 0) {
+            return null;
+        }
+
+        return {
+            chainId: result.rows[0].chain_id,
+            blockNumber: parsePgInt(result.rows[0].block_number),
+            status: result.rows[0].status,
+            attempts: result.rows[0].attempts,
+            nextRetryAt: result.rows[0].next_retry_at === null ? null : parsePgTimestamp(result.rows[0].next_retry_at),
+            error: result.rows[0].error,
+            claimedAt: result.rows[0].claimed_at === null ? null : parsePgTimestamp(result.rows[0].claimed_at),
+            updatedAt: parsePgTimestamp(result.rows[0].updated_at),
+        };
     }
 
-    markFetched(): Promise<never> {
-        return notImplemented("PostgresBlockJobQueueStore.markFetched");
+    async markFetched(chainId: ChainId, blockNumber: BlockNumber): Promise<void> {
+        const result = await this.pool.query(
+            `UPDATE block_jobs
+             SET status = 'fetched',
+                 claimed_by = NULL,
+                 claimed_at = NULL,
+                 error = NULL,
+                 next_retry_at = NULL,
+                 updated_at = NOW()
+             WHERE chain_id = $1
+               AND block_number = $2
+               AND status = 'fetching'`,
+            [chainId, blockNumber]
+        );
+
+        if ((result.rowCount ?? 0) === 0) {
+            throw new Error(
+                `Cannot mark block job as fetched for chain ${String(chainId)} block ${String(blockNumber)}`
+            );
+        }
     }
 
-    markFetchFailed(): Promise<never> {
-        return notImplemented("PostgresBlockJobQueueStore.markFetchFailed");
+    async markFetchFailed(
+        chainId: ChainId,
+        blockNumber: BlockNumber,
+        error: string,
+        nextRetryAt: Date | null
+    ): Promise<void> {
+        const result = await this.pool.query(
+            `UPDATE block_jobs
+             SET status = 'failed',
+                 claimed_by = NULL,
+                 claimed_at = NULL,
+                 error = $3,
+                 next_retry_at = $4,
+                 updated_at = NOW()
+             WHERE chain_id = $1
+               AND block_number = $2
+               AND status = 'fetching'`,
+            [chainId, blockNumber, error, nextRetryAt]
+        );
+
+        if ((result.rowCount ?? 0) === 0) {
+            throw new Error(
+                `Cannot mark block job as failed for chain ${String(chainId)} block ${String(blockNumber)}`
+            );
+        }
     }
 }
