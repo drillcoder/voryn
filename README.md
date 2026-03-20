@@ -80,15 +80,4 @@ const logger = createConsoleLogger({
 
 ## Разработка
 
-```bash
-npm install
-npm run build
-npm run lint
-npm test
-```
-
-Дополнительные команды:
-
-- `npm run lint:fix` — исправить часть ошибок линтера автоматически.
-- `npm run test:coverage` — запустить тесты с отчетом покрытия.
-- `npm run test:watch` — запускать тесты в watch-режиме.
+Команды для разработки собраны в `Makefile`
