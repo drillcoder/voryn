@@ -5,11 +5,14 @@
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
+	"bin": {
+		"voryn": "./dist/cli.js"
+	},
 	"files": [
 		"dist"
 	],
 	"scripts": {
-		"build": "tsc",
+		"build": "tsc && mkdir -p dist/sql && cp src/sql/postgres-schema.sql dist/sql/postgres-schema.sql",
 		"test": "jest",
 		"test:coverage": "jest --coverage",
 		"test:watch": "jest --watch",

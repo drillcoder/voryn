@@ -7,6 +7,20 @@ TypeScript npm-библиотека для мониторинга EVM-подоб
 - Архитектура: [ARCHITECTURE.md](/docs/ARCHITECTURE.md)
 - Схема БД: [DB_SCHEMA.md](/docs/DB_SCHEMA.md)
 
+## CLI: инициализация БД
+
+Команда применяет SQL-схему PostgreSQL из `postgres-schema.sql`.
+
+```bash
+voryn db init --url "postgres://user:pass@localhost:5432/voryn"
+```
+
+Можно использовать переменную окружения:
+
+```bash
+DATABASE_URL="postgres://user:pass@localhost:5432/voryn" voryn db init
+```
+
 ## Адаптер ethers v6
 
 В пакете есть готовый `EthersBlockSource`, который реализует интерфейс `BlockSource`
