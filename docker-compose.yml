@@ -1,3 +1,22 @@
+x-node-base: &node-base
+  image: node:24-bookworm-slim
+  working_dir: /workspace
+  volumes:
+    - .:/workspace
+    - node_modules:/workspace/node_modules
+
+x-worker-base: &worker-base
+  <<: *node-base
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+x-worker-env: &worker-env
+  DATABASE_URL: postgres://voryn:voryn@postgres:5432/voryn
+  VORYN_CHAIN_ID: ${VORYN_CHAIN_ID:?VORYN_CHAIN_ID is required}
+  VORYN_POLL_INTERVAL_MS: ${VORYN_POLL_INTERVAL_MS:-}
+  VORYN_LOG_LEVEL: ${VORYN_LOG_LEVEL:-}
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -16,18 +35,49 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
-  app:
-    image: node:24-bookworm-slim
-    working_dir: /workspace
-    depends_on:
-      postgres:
-        condition: service_healthy
+  tools:
+    <<: *node-base
     environment:
       DATABASE_URL: postgres://voryn:voryn@postgres:5432/voryn
-    volumes:
-      - .:/workspace
-      - node_modules:/workspace/node_modules
-    command: ["sleep", "infinity"]
+
+  head:
+    <<: *worker-base
+    environment:
+      <<: *worker-env
+      VORYN_RPC_URL: ${VORYN_RPC_URL:?VORYN_RPC_URL is required}
+      VORYN_CONFIRMATIONS: ${VORYN_CONFIRMATIONS:-}
+    command: ["node", "dist/cli.js", "head"]
+    restart: unless-stopped
+
+  fetch:
+    <<: *worker-base
+    environment:
+      <<: *worker-env
+      VORYN_RPC_URL: ${VORYN_RPC_URL:?VORYN_RPC_URL is required}
+      VORYN_FETCH_WORKER_ID: ${VORYN_FETCH_WORKER_ID:-}
+      VORYN_FETCH_BATCH_SIZE: ${VORYN_FETCH_BATCH_SIZE:-}
+      VORYN_FETCH_RETRY_MAX_ATTEMPTS: ${VORYN_FETCH_RETRY_MAX_ATTEMPTS:-}
+      VORYN_FETCH_RETRY_BASE_DELAY_MS: ${VORYN_FETCH_RETRY_BASE_DELAY_MS:-}
+      VORYN_FETCH_RETRY_MAX_DELAY_MS: ${VORYN_FETCH_RETRY_MAX_DELAY_MS:-}
+    command: ["node", "dist/cli.js", "fetch"]
+    restart: unless-stopped
+
+  sequencer:
+    <<: *worker-base
+    environment:
+      <<: *worker-env
+      VORYN_RPC_URL: ${VORYN_RPC_URL:?VORYN_RPC_URL is required}
+    command: ["node", "dist/cli.js", "sequencer"]
+    restart: unless-stopped
+
+  retention:
+    <<: *worker-base
+    environment:
+      <<: *worker-env
+      VORYN_RETENTION_RAW_BLOCKS_HOURS: ${VORYN_RETENTION_RAW_BLOCKS_HOURS:-}
+      VORYN_RETENTION_CANONICAL_HOURS: ${VORYN_RETENTION_CANONICAL_HOURS:-}
+    command: ["node", "dist/cli.js", "retention"]
+    restart: unless-stopped
 
 volumes:
   pgdata:

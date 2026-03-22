@@ -1,15 +1,41 @@
 COMPOSE := docker compose
-APP_EXEC := $(COMPOSE) exec app
+TOOLS_RUN := $(COMPOSE) run --rm tools
 
-.PHONY: up stop down install build lint test db-init lint-fix test-coverage test-watch
+.PHONY: \
+	init ingestion-up ingestion-restart ingestion-stop \
+	db-up db-restart db-stop down \
+	install build lint test db-init lint-fix test-coverage test-watch
 
-# Поднять контейнеры.
-up:
-	$(COMPOSE) up -d
+# Инициализация.
+init: install build db-init
 
-# Остановить окружение.
-stop:
-	$(COMPOSE) stop
+# Поднять ingestion окружение.
+ingestion-up:
+	$(COMPOSE) up -d head fetch sequencer retention
+
+# Рестарт ingestion окружения.
+ingestion-restart:
+	$(COMPOSE) restart head fetch sequencer retention
+
+# Остановить ingestion окружение.
+ingestion-stop:
+	$(COMPOSE) stop head fetch sequencer retention
+
+# Инициализировать схему БД.
+db-init: db-up
+	$(TOOLS_RUN) npm exec -- voryn init
+
+# Поднять контейнер с базой данных.
+db-up:
+	$(COMPOSE) up -d --wait postgres
+
+# Рестарт контейнера с базой данных.
+db-restart:
+	$(COMPOSE) restart postgres
+
+# Остановить контейнер с базой данных.
+db-stop:
+	$(COMPOSE) stop postgres
 
 # Удалить контейнеры и тома.
 down:
@@ -17,33 +43,28 @@ down:
 
 # Установить зависимости в контейнере.
 install:
-	$(APP_EXEC) npm ci
+	$(TOOLS_RUN) npm ci
 
 # Собрать проект.
 build:
-	$(APP_EXEC) npm run build
+	$(TOOLS_RUN) npm run build
 
 # Проверить линтер.
 lint:
-	$(APP_EXEC) npm run lint
+	$(TOOLS_RUN) npm run lint
 
 # Запустить тесты.
 test:
-	$(APP_EXEC) npm test
-
-# Инициализировать схему БД.
-db-init:
-	$(APP_EXEC) npm exec -- voryn db init
+	$(TOOLS_RUN) npm test
 
 # Автоисправления линтера.
 lint-fix:
-	$(APP_EXEC) npm run lint:fix
+	$(TOOLS_RUN) npm run lint:fix
 
 # Тесты с покрытием.
 test-coverage:
-	$(APP_EXEC) npm run test:coverage
+	$(TOOLS_RUN) npm run test:coverage
 
 # Тесты в watch-режиме.
 test-watch:
-	$(APP_EXEC) npm run test:watch
-
+	$(TOOLS_RUN) npm run test:watch

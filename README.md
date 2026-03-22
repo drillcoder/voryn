@@ -12,13 +12,55 @@ TypeScript npm-библиотека для мониторинга EVM-подоб
 Команда применяет SQL-схему PostgreSQL из `postgres-schema.sql`.
 
 ```bash
-voryn db init --url "postgres://user:pass@localhost:5432/voryn"
+DATABASE_URL="postgres://user:pass@localhost:5432/voryn" voryn init
 ```
 
-Можно использовать переменную окружения:
+## CLI: запуск ingestion-воркеров
+
+Доступны команды:
+
+- `voryn head`
+- `voryn fetch`
+- `voryn sequencer`
+- `voryn retention`
+
+Основные переменные окружения:
+
+- `DATABASE_URL` (`required`)
+- `VORYN_CHAIN_ID` (`required`)
+- `VORYN_POLL_INTERVAL_MS` (`optional`, по умолчанию `1000`)
+- `VORYN_LOG_LEVEL` (`optional`, `debug` | `info` | `warn` | `error`, по умолчанию `info`)
+
+Дополнительно для `head`:
+
+- `VORYN_RPC_URL` (`required`)
+- `VORYN_CONFIRMATIONS` (`optional`, по умолчанию `0`)
+
+Дополнительно для `fetch`:
+
+- `VORYN_RPC_URL` (`required`)
+- `VORYN_FETCH_WORKER_ID` (`optional`, по умолчанию {hostname}-{pid})
+- `VORYN_FETCH_BATCH_SIZE` (`optional`, по умолчанию `5`)
+- `VORYN_FETCH_RETRY_MAX_ATTEMPTS` (`optional`, по умолчанию `10`)
+- `VORYN_FETCH_RETRY_BASE_DELAY_MS` (`optional`, по умолчанию `1_000`)
+- `VORYN_FETCH_RETRY_MAX_DELAY_MS` (`optional`, по умолчанию `10_000`)
+
+Дополнительно для `sequencer`:
+
+- `VORYN_RPC_URL` (`required`)
+
+Дополнительно для `retention`:
+
+- `VORYN_RETENTION_RAW_BLOCKS_HOURS` (`optional`, по умолчанию `24`)
+- `VORYN_RETENTION_CANONICAL_HOURS` (`optional`, по умолчанию `24`)
+
+Пример:
 
 ```bash
-DATABASE_URL="postgres://user:pass@localhost:5432/voryn" voryn db init
+DATABASE_URL="postgres://user:pass@localhost:5432/voryn" \
+VORYN_CHAIN_ID=1 \
+VORYN_RPC_URL="https://rpc.example.org" \
+voryn head
 ```
 
 ## Адаптер ethers v6
@@ -78,3 +120,28 @@ const logger = createConsoleLogger({
 ## Разработка
 
 Команды для разработки собраны в `Makefile`
+
+## Docker (dev)
+
+Для docker-compose переменные `VORYN_CHAIN_ID` и `VORYN_RPC_URL` обязательны (`is required`)
+и берутся из окружения.
+Удобно начать с `.env.example`:
+
+```bash
+cp .env.example .env
+```
+
+Запуск воркеров:
+
+```bash
+docker compose up -d postgres head fetch sequencer retention
+```
+
+Логи:
+
+```bash
+docker compose logs -f head fetch sequencer retention
+```
+
+Для одноразовых команд (install/build/lint/test/db-init) используется сервис `tools`
+через `docker compose run --rm tools ...` (смотрите `Makefile`).
