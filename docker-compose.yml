@@ -1,5 +1,7 @@
 x-node-base: &node-base
-  image: node:24-bookworm-slim
+  build:
+    context: .
+    dockerfile: Dockerfile
   working_dir: /workspace
   volumes:
     - .:/workspace
@@ -67,6 +69,7 @@ services:
     environment:
       <<: *worker-env
       VORYN_RPC_URL: ${VORYN_RPC_URL:?VORYN_RPC_URL is required}
+      VORYN_POLL_INTERVAL_MS: 100
     command: ["node", "dist/cli.js", "sequencer"]
     restart: unless-stopped
 
