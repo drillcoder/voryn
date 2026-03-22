@@ -15,7 +15,9 @@ export type EthersNetworkLike = Pick<Awaited<ReturnType<Provider["getNetwork"]>>
 export type EthersTransactionLike = Pick<
     TransactionResponse,
     "chainId" | "blockNumber" | "blockHash" | "index" | "hash" | "from" | "to" | "value" | "data"
->;
+> & {
+    chainId: TransactionResponse["chainId"] | null;
+};
 
 export type EthersLogLike = Pick<
     Log,
@@ -160,7 +162,12 @@ export class EthersBlockSource implements BlockSource {
         blockNumber: BlockNumber,
         blockHash: HashHex
     ): ChainTransaction {
-        if (transaction.chainId !== BigInt(chainId)) {
+        const transactionChainId = transaction.chainId;
+        if (
+            transactionChainId !== null
+            && transactionChainId !== undefined
+            && transactionChainId !== BigInt(chainId)
+        ) {
             throw new Error(
                 "transaction chain id mismatch for chain "
                 + `${String(chainId)} block ${String(blockNumber)} transaction ${transaction.hash}`

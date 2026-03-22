@@ -395,6 +395,53 @@ test("throws on transaction chain id mismatch", async () => {
     );
 });
 
+test("allows transaction with null chain id", async () => {
+    const provider = createProviderMock();
+    provider.getNetwork.mockResolvedValue({ chainId: 7n });
+    provider.getBlock.mockResolvedValue({
+        number: 9,
+        hash: hash("a"),
+        parentHash: hash("b"),
+        timestamp: 1,
+        transactions: [hash("c")],
+        prefetchedTransactions: [{
+            chainId: null,
+            blockNumber: 9,
+            blockHash: hash("a"),
+            index: 0,
+            hash: hash("c"),
+            from: address("1"),
+            to: address("2"),
+            value: 1n,
+            data: "0x",
+        }],
+    });
+    provider.getLogs.mockResolvedValue([]);
+
+    const source = new EthersBlockSource({
+        provider,
+    });
+
+    await expect(source.getBlockData(7, 9)).resolves.toMatchObject({
+        block: {
+            chainId: 7,
+            number: 9,
+        },
+        transactions: [{
+            chainId: 7,
+            blockNumber: 9,
+            blockHash: hash("a"),
+            index: 0,
+            hash: hash("c"),
+            from: address("1"),
+            to: address("2"),
+            data: "0x",
+            value: "1",
+        }],
+        logs: [],
+    });
+});
+
 test("throws on transaction block number mismatch", async () => {
     const provider = createProviderMock();
     provider.getNetwork.mockResolvedValue({ chainId: 7n });
