@@ -32,20 +32,17 @@ DATABASE_URL="postgres://user:pass@localhost:5432/voryn" voryn db init
 import { JsonRpcProvider } from "ethers";
 import { EthersBlockSource } from "voryn";
 
-const providers = new Map([
-    [1, new JsonRpcProvider(process.env.MAINNET_RPC_URL)],
-    [137, new JsonRpcProvider(process.env.POLYGON_RPC_URL)],
-]);
+const provider = new JsonRpcProvider(process.env.MAINNET_RPC_URL);
 
 const source = new EthersBlockSource({
-    providers,
+    provider,
     validateProviderChainId: true,
 });
 ```
 
 Опции:
 
-- `providers` (обязательно): `Map<chainId, provider>`.
+- `provider` (обязательно): `ethers`-провайдер для нужной сети.
 - `validateProviderChainId` (опционально): проверяет, что `provider.getNetwork().chainId`
   совпадает с запрошенным `chainId` (проверка кэшируется после первого успешного вызова).
 

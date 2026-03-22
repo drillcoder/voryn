@@ -42,7 +42,7 @@ export interface EthersProviderLike {
 }
 
 export interface EthersBlockSourceDeps {
-    providers: ReadonlyMap<ChainId, EthersProviderLike>;
+    provider: EthersProviderLike;
     validateProviderChainId?: boolean;
 }
 
@@ -101,11 +101,7 @@ export class EthersBlockSource implements BlockSource {
     }
 
     private async getProvider(chainId: ChainId): Promise<EthersProviderLike> {
-        const provider = this.deps.providers.get(chainId);
-
-        if (!provider) {
-            throw new Error(`unsupported chain ${String(chainId)}: provider is not configured`);
-        }
+        const provider = this.deps.provider;
 
         if (!this.deps.validateProviderChainId || this.checkedProviderChainIds.has(chainId)) {
             return provider;
