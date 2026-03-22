@@ -21,17 +21,6 @@ export type {
 } from "./client.js";
 
 export {
-    createPostgresRuntime,
-    createPostgresStores,
-} from "./factory.js";
-
-export type {
-    PostgresStoreOptions,
-    PostgresRuntime,
-    PostgresStores,
-} from "./factory.js";
-
-export {
     parsePgBigint,
     parsePgInt,
     parsePgTimestamp,
