@@ -44,7 +44,7 @@ test("purgeCanonical returns number of deleted canonical blocks", async () => {
     expect(deleted).toBe(3);
     expect(query).toHaveBeenCalledTimes(1);
     const calls = query.mock.calls as Array<[string, readonly unknown[] | undefined]>;
-    expect(calls[0]?.[0]).toContain("WITH target_blocks AS");
+    expect(calls[0]?.[0]).toContain("WITH purge_boundary AS");
     expect(calls[0]?.[1]).toEqual([5, 1773405296]);
 });
 
