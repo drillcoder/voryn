@@ -12,10 +12,10 @@ import { asAddress, asHash32, asHexData } from "../utils/hex.js";
 
 export type EthersNetworkLike = Pick<Awaited<ReturnType<Provider["getNetwork"]>>, "chainId">;
 
-export type EthersTransactionLike = Pick<
+export type EthersTransactionLike = Omit<Pick<
     TransactionResponse,
     "chainId" | "blockNumber" | "blockHash" | "index" | "hash" | "from" | "to" | "value" | "data"
-> & {
+>, "chainId"> & {
     chainId: TransactionResponse["chainId"] | null;
 };
 
@@ -165,7 +165,6 @@ export class EthersBlockSource implements BlockSource {
         const transactionChainId = transaction.chainId;
         if (
             transactionChainId !== null
-            && transactionChainId !== undefined
             && transactionChainId !== BigInt(chainId)
         ) {
             throw new Error(
