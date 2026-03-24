@@ -415,3 +415,52 @@ test("commitNextBlock rolls back when block job update affects zero rows", async
     expect(clientCalls[0]?.[0]).toBe("BEGIN");
     expect(clientCalls[4]?.[0]).toBe("ROLLBACK");
 });
+
+test("commitNextBlock splits event inserts into batches when logs exceed parameter limit", async () => {
+    const logs = Array.from({ length: 7000 }, (_, index) => ({
+        chainId: 1,
+        blockNumber: 101,
+        blockHash: HASH_B,
+        transactionIndex: index,
+        transactionHash: HASH_B,
+        index,
+        address: ADDRESS_C,
+        topics: [] as HashHex[],
+        data: "0xab" as DataHex,
+        raw: { log: index },
+    }));
+
+    const rawPayload = {
+        block: { chainId: 1, number: 101, hash: HASH_B, parentHash: HASH_A, timestamp: 1, raw: {} },
+        transactions: [],
+        logs,
+    };
+
+    const poolQuery = jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ last_committed_hash: HASH_A }], rowCount: 1 })
+        .mockResolvedValueOnce({
+            rows: [{ block_hash: HASH_B, parent_hash: HASH_A, payload: rawPayload }],
+            rowCount: 1,
+        });
+
+    const clientQuery = jest
+        .fn()
+        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 }) // canonical_blocks
+        .mockResolvedValueOnce({ rows: [], rowCount: 6000 }) // canonical_events batch 1
+        .mockResolvedValueOnce({ rows: [], rowCount: 1000 }) // canonical_events batch 2
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 }) // chain_cursor
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 }) // block_jobs
+        .mockResolvedValueOnce({}); // COMMIT
+
+    const pool = createPool(poolQuery, clientQuery);
+    const store = new PostgresSequencerCommitStore(pool);
+
+    await store.commitNextBlock(1, 101);
+
+    expect(clientQuery).toHaveBeenCalledTimes(7);
+    const clientCalls = clientQuery.mock.calls as Array<[string, readonly unknown[] | undefined]>;
+    expect(clientCalls[2]?.[1]).toHaveLength(60000);
+    expect(clientCalls[3]?.[1]).toHaveLength(10000);
+});

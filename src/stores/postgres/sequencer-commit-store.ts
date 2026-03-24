@@ -33,6 +33,8 @@ interface RawBlockData {
     payload: FetchedBlock;
 }
 
+const MAX_SQL_PARAMS_PER_QUERY = 60000;
+
 export class PostgresSequencerCommitStore implements SequencerCommitStore {
     constructor(private readonly pool: PgPool) {
     }
@@ -177,38 +179,40 @@ export class PostgresSequencerCommitStore implements SequencerCommitStore {
             return;
         }
 
-        const params = transactions.flatMap((tx) => [
+        const columnsPerRow = buildTransactionInsertRowParams(
             chainId,
             blockNumber,
             blockHash,
-            tx.index,
-            tx.hash,
-            tx.from,
-            tx.to,
-            tx.value,
-            tx.data,
-            tx.raw,
-        ]);
-        const placeholders = buildValuesPlaceholders(transactions.length, 10);
+            transactions[0]
+        ).length;
+        const maxRowsPerBatch = Math.max(1, Math.floor(MAX_SQL_PARAMS_PER_QUERY / columnsPerRow));
 
-        await client.query(
-            `INSERT INTO canonical_transactions
-                (
-                    chain_id,
-                    block_number,
-                    block_hash,
-                    transaction_index,
-                    transaction_hash,
-                    from_address,
-                    to_address,
-                    value,
-                    data,
-                    raw
-                 )
-             VALUES ${placeholders}
-             ON CONFLICT (chain_id, block_number, transaction_index) DO NOTHING`,
-            params
-        );
+        for (let from = 0; from < transactions.length; from += maxRowsPerBatch) {
+            const batch = transactions.slice(from, from + maxRowsPerBatch);
+            const params = batch.flatMap(
+                (tx) => buildTransactionInsertRowParams(chainId, blockNumber, blockHash, tx)
+            );
+            const placeholders = buildValuesPlaceholders(batch.length, columnsPerRow);
+
+            await client.query(
+                `INSERT INTO canonical_transactions
+                    (
+                        chain_id,
+                        block_number,
+                        block_hash,
+                        transaction_index,
+                        transaction_hash,
+                        from_address,
+                        to_address,
+                        value,
+                        data,
+                        raw
+                     )
+                 VALUES ${placeholders}
+                 ON CONFLICT (chain_id, block_number, transaction_index) DO NOTHING`,
+                params
+            );
+        }
     }
 
     private async insertEvents(
@@ -222,39 +226,74 @@ export class PostgresSequencerCommitStore implements SequencerCommitStore {
             return;
         }
 
-        const params = logs.flatMap((log) => [
-                chainId,
-                blockNumber,
-                blockHash,
-                log.transactionIndex,
-                log.transactionHash,
-                log.index,
-                log.address,
-                log.topics,
-                log.data,
-                log.raw
-            ]);
-        const placeholders = buildValuesPlaceholders(logs.length, 10);
+        const columnsPerRow = buildEventInsertRowParams(chainId, blockNumber, blockHash, logs[0]).length;
+        const maxRowsPerBatch = Math.max(1, Math.floor(MAX_SQL_PARAMS_PER_QUERY / columnsPerRow));
 
-        await client.query(
-            `INSERT INTO canonical_events
-             (
-                chain_id,
-                block_number,
-                block_hash,
-                transaction_index,
-                transaction_hash,
-                log_index,
-                address,
-                topics,
-                data,
-                raw
-              )
-             VALUES ${placeholders}
-             ON CONFLICT (chain_id, block_number, transaction_index, log_index) DO NOTHING`,
-            params
-        );
+        for (let from = 0; from < logs.length; from += maxRowsPerBatch) {
+            const batch = logs.slice(from, from + maxRowsPerBatch);
+            const params = batch.flatMap((log) => buildEventInsertRowParams(chainId, blockNumber, blockHash, log));
+            const placeholders = buildValuesPlaceholders(batch.length, columnsPerRow);
+
+            await client.query(
+                `INSERT INTO canonical_events
+                 (
+                    chain_id,
+                    block_number,
+                    block_hash,
+                    transaction_index,
+                    transaction_hash,
+                    log_index,
+                    address,
+                    topics,
+                    data,
+                    raw
+                  )
+                 VALUES ${placeholders}
+                 ON CONFLICT (chain_id, block_number, transaction_index, log_index) DO NOTHING`,
+                params
+            );
+        }
     }
+}
+
+function buildTransactionInsertRowParams(
+    chainId: ChainId,
+    blockNumber: BlockNumber,
+    blockHash: HashHex,
+    tx: ChainTransaction
+): readonly unknown[] {
+    return [
+        chainId,
+        blockNumber,
+        blockHash,
+        tx.index,
+        tx.hash,
+        tx.from,
+        tx.to,
+        tx.value,
+        tx.data,
+        tx.raw,
+    ];
+}
+
+function buildEventInsertRowParams(
+    chainId: ChainId,
+    blockNumber: BlockNumber,
+    blockHash: HashHex,
+    log: ChainLog
+): readonly unknown[] {
+    return [
+        chainId,
+        blockNumber,
+        blockHash,
+        log.transactionIndex,
+        log.transactionHash,
+        log.index,
+        log.address,
+        log.topics,
+        log.data,
+        log.raw,
+    ];
 }
 
 function buildValuesPlaceholders(rowCount: number, columnsPerRow: number): string {
