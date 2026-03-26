@@ -28,17 +28,18 @@ DATABASE_URL="postgres://user:pass@localhost:5432/voryn" voryn init
 
 - `DATABASE_URL` (`required`)
 - `VORYN_CHAIN_ID` (`required`)
-- `VORYN_POLL_INTERVAL_MS` (`optional`, по умолчанию `1000`)
 - `VORYN_LOG_LEVEL` (`optional`, `debug` | `info` | `warn` | `error`, по умолчанию `info`)
 
 Дополнительно для `head`:
 
-- `VORYN_RPC_URL` (`required`)
-- `VORYN_CONFIRMATIONS` (`optional`, по умолчанию `0`)
+- `VORYN_HEAD_RPC_URL` (`required`)
+- `VORYN_HEAD_POLL_INTERVAL_MS` (`optional`, по умолчанию `1_000`)
+- `VORYN_HEAD_CONFIRMATIONS` (`optional`, по умолчанию `0`)
 
 Дополнительно для `fetch`:
 
-- `VORYN_RPC_URL` (`required`)
+- `VORYN_FETCH_RPC_URL` (`required`)
+- `VORYN_FETCH_POLL_INTERVAL_MS` (`optional`, по умолчанию `1_000`)
 - `VORYN_FETCH_WORKER_ID` (`optional`, по умолчанию {hostname}-{pid})
 - `VORYN_FETCH_BATCH_SIZE` (`optional`, по умолчанию `5`)
 - `VORYN_FETCH_RETRY_MAX_ATTEMPTS` (`optional`, по умолчанию `10`)
@@ -47,10 +48,12 @@ DATABASE_URL="postgres://user:pass@localhost:5432/voryn" voryn init
 
 Дополнительно для `sequencer`:
 
-- `VORYN_RPC_URL` (`required`)
+- `VORYN_SEQUENCER_RPC_URL` (`required`)
+- `VORYN_SEQUENCER_POLL_INTERVAL_MS` (`optional`, по умолчанию `500`)
 
 Дополнительно для `retention`:
 
+- `VORYN_RETENTION_POLL_INTERVAL_MS` (`optional`, по умолчанию `60_000`)
 - `VORYN_RETENTION_RAW_BLOCKS_HOURS` (`optional`, по умолчанию `24`)
 - `VORYN_RETENTION_CANONICAL_HOURS` (`optional`, по умолчанию `24`)
 
@@ -59,7 +62,7 @@ DATABASE_URL="postgres://user:pass@localhost:5432/voryn" voryn init
 ```bash
 DATABASE_URL="postgres://user:pass@localhost:5432/voryn" \
 VORYN_CHAIN_ID=1 \
-VORYN_RPC_URL="https://rpc.example.org" \
+VORYN_HEAD_RPC_URL="https://rpc.example.org" \
 voryn head
 ```
 
@@ -123,7 +126,9 @@ const logger = createConsoleLogger({
 
 ## Docker (dev)
 
-Для docker-compose переменные `VORYN_CHAIN_ID` и `VORYN_RPC_URL` обязательны (`is required`)
+Для docker-compose переменная `VORYN_CHAIN_ID` обязательна (`is required`),
+а RPC-переменные обязательны по воркеру:
+`VORYN_HEAD_RPC_URL`, `VORYN_FETCH_RPC_URL`, `VORYN_SEQUENCER_RPC_URL`.
 и берутся из окружения.
 Удобно начать с `.env.example`:
 

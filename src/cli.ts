@@ -52,11 +52,11 @@ function printUsage(): void {
         + "Common env:\n"
         + "  DATABASE_URL                      required\n"
         + "  VORYN_CHAIN_ID                    required\n"
-        + "  VORYN_POLL_INTERVAL_MS            optional, default: 1000\n"
         + "  VORYN_LOG_LEVEL                   optional, default: info\n"
         + "\n"
         + "Fetch env:\n"
-        + "  VORYN_RPC_URL                     required\n"
+        + "  VORYN_FETCH_RPC_URL               required\n"
+        + "  VORYN_FETCH_POLL_INTERVAL_MS      optional, default: 1000\n"
         + "  VORYN_FETCH_WORKER_ID             optional, default: <hostname>-<pid>\n"
         + "  VORYN_FETCH_BATCH_SIZE            optional, default: 5\n"
         + "  VORYN_FETCH_RETRY_MAX_ATTEMPTS    optional, default: 10\n"
@@ -64,13 +64,16 @@ function printUsage(): void {
         + "  VORYN_FETCH_RETRY_MAX_DELAY_MS    optional, default: 10_000\n"
         + "\n"
         + "Head env:\n"
-        + "  VORYN_RPC_URL                     required\n"
-        + "  VORYN_CONFIRMATIONS               optional, default: 0\n"
+        + "  VORYN_HEAD_RPC_URL                required\n"
+        + "  VORYN_HEAD_POLL_INTERVAL_MS       optional, default: 1_000\n"
+        + "  VORYN_HEAD_CONFIRMATIONS          optional, default: 0\n"
         + "\n"
         + "Sequencer env:\n"
-        + "  VORYN_RPC_URL                     required\n"
+        + "  VORYN_SEQUENCER_RPC_URL           required\n"
+        + "  VORYN_SEQUENCER_POLL_INTERVAL_MS  optional, default: 500\n"
         + "\n"
         + "Retention env:\n"
+        + "  VORYN_RETENTION_POLL_INTERVAL_MS  optional, default: 60_000\n"
         + "  VORYN_RETENTION_RAW_BLOCKS_HOURS  optional, default: 24\n"
         + "  VORYN_RETENTION_CANONICAL_HOURS   optional, default: 24"
     );
@@ -213,11 +216,11 @@ async function runInitCommand(): Promise<void> {
 async function runHeadCommand(): Promise<void> {
     const logger = createConsoleLogger({ minLevel: parseLogLevel() });
     const dbUrl = requireEnv("DATABASE_URL");
-    const rpcUrl = requireEnv("VORYN_RPC_URL");
+    const rpcUrl = requireEnv("VORYN_HEAD_RPC_URL");
     const chainId = parseRequiredPositiveIntEnv("VORYN_CHAIN_ID");
-    const pollIntervalMs = parsePositiveIntEnv("VORYN_POLL_INTERVAL_MS", 1000);
+    const pollIntervalMs = parsePositiveIntEnv("VORYN_HEAD_POLL_INTERVAL_MS", 1_000);
 
-    const confirmations = parseNonNegativeIntEnv("VORYN_CONFIRMATIONS", 0);
+    const confirmations = parseNonNegativeIntEnv("VORYN_HEAD_CONFIRMATIONS", 0);
 
     const pool = createPostgresPool({ connectionString: dbUrl });
     const worker = new HeadWorker({
@@ -238,9 +241,9 @@ async function runHeadCommand(): Promise<void> {
 async function runFetchCommand(): Promise<void> {
     const logger = createConsoleLogger({ minLevel: parseLogLevel() });
     const dbUrl = requireEnv("DATABASE_URL");
-    const rpcUrl = requireEnv("VORYN_RPC_URL");
+    const rpcUrl = requireEnv("VORYN_FETCH_RPC_URL");
     const chainId = parseRequiredPositiveIntEnv("VORYN_CHAIN_ID");
-    const pollIntervalMs = parsePositiveIntEnv("VORYN_POLL_INTERVAL_MS", 1000);
+    const pollIntervalMs = parsePositiveIntEnv("VORYN_FETCH_POLL_INTERVAL_MS", 1_000);
 
     const workerId = optionalEnv("VORYN_FETCH_WORKER_ID", `${hostname()}-${String(process.pid)}`);
     const fetchBatchSize = parsePositiveIntEnv("VORYN_FETCH_BATCH_SIZE", 5);
@@ -272,9 +275,9 @@ async function runFetchCommand(): Promise<void> {
 async function runSequencerCommand(): Promise<void> {
     const logger = createConsoleLogger({ minLevel: parseLogLevel() });
     const dbUrl = requireEnv("DATABASE_URL");
-    const rpcUrl = requireEnv("VORYN_RPC_URL");
+    const rpcUrl = requireEnv("VORYN_SEQUENCER_RPC_URL");
     const chainId = parseRequiredPositiveIntEnv("VORYN_CHAIN_ID");
-    const pollIntervalMs = parsePositiveIntEnv("VORYN_POLL_INTERVAL_MS", 1000);
+    const pollIntervalMs = parsePositiveIntEnv("VORYN_SEQUENCER_POLL_INTERVAL_MS", 500);
 
     const pool = createPostgresPool({ connectionString: dbUrl });
     const worker = new SequencerWorker({
@@ -292,7 +295,7 @@ async function runRetentionCommand(): Promise<void> {
     const logger = createConsoleLogger({ minLevel: parseLogLevel() });
     const dbUrl = requireEnv("DATABASE_URL");
     const chainId = parseRequiredPositiveIntEnv("VORYN_CHAIN_ID");
-    const pollIntervalMs = parsePositiveIntEnv("VORYN_POLL_INTERVAL_MS", 1000);
+    const pollIntervalMs = parsePositiveIntEnv("VORYN_RETENTION_POLL_INTERVAL_MS", 60_000);
 
     const rawBlocksHours = parseNonNegativeIntEnv("VORYN_RETENTION_RAW_BLOCKS_HOURS", 24);
     const canonicalHours = parseNonNegativeIntEnv("VORYN_RETENTION_CANONICAL_HOURS", 24);

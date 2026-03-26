@@ -16,7 +16,6 @@ x-worker-base: &worker-base
 x-worker-env: &worker-env
   DATABASE_URL: postgres://voryn:voryn@postgres:5432/voryn
   VORYN_CHAIN_ID: ${VORYN_CHAIN_ID:?VORYN_CHAIN_ID is required}
-  VORYN_POLL_INTERVAL_MS: ${VORYN_POLL_INTERVAL_MS:-}
   VORYN_LOG_LEVEL: ${VORYN_LOG_LEVEL:-}
 
 services:
@@ -46,8 +45,9 @@ services:
     <<: *worker-base
     environment:
       <<: *worker-env
-      VORYN_RPC_URL: ${VORYN_RPC_URL:?VORYN_RPC_URL is required}
-      VORYN_CONFIRMATIONS: ${VORYN_CONFIRMATIONS:-}
+      VORYN_HEAD_RPC_URL: ${VORYN_HEAD_RPC_URL:?VORYN_HEAD_RPC_URL is required}
+      VORYN_HEAD_POLL_INTERVAL_MS: ${VORYN_HEAD_POLL_INTERVAL_MS:-}
+      VORYN_HEAD_CONFIRMATIONS: ${VORYN_HEAD_CONFIRMATIONS:-}
     command: ["node", "dist/cli.js", "head"]
     restart: unless-stopped
 
@@ -55,7 +55,8 @@ services:
     <<: *worker-base
     environment:
       <<: *worker-env
-      VORYN_RPC_URL: ${VORYN_RPC_URL:?VORYN_RPC_URL is required}
+      VORYN_FETCH_RPC_URL: ${VORYN_FETCH_RPC_URL:?VORYN_FETCH_RPC_URL is required}
+      VORYN_FETCH_POLL_INTERVAL_MS: ${VORYN_FETCH_POLL_INTERVAL_MS:-}
       VORYN_FETCH_WORKER_ID: ${VORYN_FETCH_WORKER_ID:-}
       VORYN_FETCH_BATCH_SIZE: ${VORYN_FETCH_BATCH_SIZE:-}
       VORYN_FETCH_RETRY_MAX_ATTEMPTS: ${VORYN_FETCH_RETRY_MAX_ATTEMPTS:-}
@@ -68,8 +69,8 @@ services:
     <<: *worker-base
     environment:
       <<: *worker-env
-      VORYN_RPC_URL: ${VORYN_RPC_URL:?VORYN_RPC_URL is required}
-      VORYN_POLL_INTERVAL_MS: 100
+      VORYN_SEQUENCER_RPC_URL: ${VORYN_SEQUENCER_RPC_URL:?VORYN_SEQUENCER_RPC_URL is required}
+      VORYN_SEQUENCER_POLL_INTERVAL_MS: ${VORYN_SEQUENCER_POLL_INTERVAL_MS:-}
     command: ["node", "dist/cli.js", "sequencer"]
     restart: unless-stopped
 
@@ -77,6 +78,7 @@ services:
     <<: *worker-base
     environment:
       <<: *worker-env
+      VORYN_RETENTION_POLL_INTERVAL_MS: ${VORYN_RETENTION_POLL_INTERVAL_MS:-}
       VORYN_RETENTION_RAW_BLOCKS_HOURS: ${VORYN_RETENTION_RAW_BLOCKS_HOURS:-}
       VORYN_RETENTION_CANONICAL_HOURS: ${VORYN_RETENTION_CANONICAL_HOURS:-}
     command: ["node", "dist/cli.js", "retention"]
