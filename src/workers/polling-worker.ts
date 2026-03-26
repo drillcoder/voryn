@@ -20,7 +20,7 @@ export abstract class PollingWorker implements WorkerLifecycle {
         }
 
         this.active = true;
-        this.logger.info("worker_started", { worker: this.workerName });
+        this.logger.info("worker_started", { worker: this.workerName, pollIntervalMs: this.pollIntervalMs });
         this.runPromise = this.runLoop();
     }
 
