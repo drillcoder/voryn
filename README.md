@@ -11,6 +11,10 @@ TypeScript npm-библиотека для мониторинга EVM-подоб
 
 Команда применяет SQL-схему PostgreSQL из `postgres-schema.sql`.
 
+Параметры:
+
+- `DATABASE_URL` (`required`) — строка подключения к PostgreSQL (например, `postgres://user:pass@host:5432/dbname`).
+
 ```bash
 DATABASE_URL="postgres://user:pass@localhost:5432/voryn" voryn init
 ```
@@ -26,36 +30,35 @@ DATABASE_URL="postgres://user:pass@localhost:5432/voryn" voryn init
 
 Основные переменные окружения:
 
-- `DATABASE_URL` (`required`)
-- `VORYN_CHAIN_ID` (`required`)
-- `VORYN_LOG_LEVEL` (`optional`, `debug` | `info` | `warn` | `error`, по умолчанию `info`)
+- `DATABASE_URL` (`required`) — строка подключения к PostgreSQL.
+- `VORYN_CHAIN_ID` (`required`) — числовой id сети для ingestion.
+- `VORYN_LOG_LEVEL` (`optional`, `debug` | `info` | `warn` | `error`, по умолчанию `info`) — минимальный уровень логов.
 
 Дополнительно для `head`:
 
-- `VORYN_HEAD_RPC_URL` (`required`)
-- `VORYN_HEAD_POLL_INTERVAL_MS` (`optional`, по умолчанию `1_000`)
-- `VORYN_HEAD_CONFIRMATIONS` (`optional`, по умолчанию `0`)
+- `VORYN_HEAD_RPC_URL` (`required`) — RPC URL для чтения текущего хеда сети.
+- `VORYN_HEAD_POLL_INTERVAL_MS` (`optional`, по умолчанию `1_000`) — интервал опроса в миллисекундах.
+- `VORYN_HEAD_CONFIRMATIONS` (`optional`, по умолчанию `0`) — число подтверждений перед постановкой блока в очередь.
 
 Дополнительно для `fetch`:
 
-- `VORYN_FETCH_RPC_URL` (`required`)
-- `VORYN_FETCH_POLL_INTERVAL_MS` (`optional`, по умолчанию `1_000`)
-- `VORYN_FETCH_WORKER_ID` (`optional`, по умолчанию {hostname}-{pid})
-- `VORYN_FETCH_BATCH_SIZE` (`optional`, по умолчанию `5`)
-- `VORYN_FETCH_RETRY_MAX_ATTEMPTS` (`optional`, по умолчанию `10`)
-- `VORYN_FETCH_RETRY_BASE_DELAY_MS` (`optional`, по умолчанию `1_000`)
-- `VORYN_FETCH_RETRY_MAX_DELAY_MS` (`optional`, по умолчанию `10_000`)
+- `VORYN_FETCH_RPC_URL` (`required`) — RPC URL для загрузки данных блоков.
+- `VORYN_FETCH_POLL_INTERVAL_MS` (`optional`, по умолчанию `1_000`) — интервал проверки очереди.
+- `VORYN_FETCH_WORKER_ID` (`optional`, по умолчанию {hostname}-{pid}) — уникальный id fetch-воркера.
+- `VORYN_FETCH_BATCH_SIZE` (`optional`, по умолчанию `5`) — максимум задач за один `tick`.
+- `VORYN_FETCH_RETRY_MAX_ATTEMPTS` (`optional`, по умолчанию `10`) — максимум попыток загрузки.
+- `VORYN_FETCH_RETRY_BASE_DELAY_MS` (`optional`, по умолчанию `1_000`) — базовая задержка между ретраями.
+- `VORYN_FETCH_RETRY_MAX_DELAY_MS` (`optional`, по умолчанию `10_000`) — максимальная задержка между ретраями.
 
 Дополнительно для `sequencer`:
 
-- `VORYN_SEQUENCER_RPC_URL` (`required`)
-- `VORYN_SEQUENCER_POLL_INTERVAL_MS` (`optional`, по умолчанию `500`)
+- `VORYN_SEQUENCER_RPC_URL` (`required`) — RPC URL для чтения блоков перед коммитом.
+- `VORYN_SEQUENCER_POLL_INTERVAL_MS` (`optional`, по умолчанию `500`) — интервал проверки следующего блока к коммиту.
 
 Дополнительно для `retention`:
 
-- `VORYN_RETENTION_POLL_INTERVAL_MS` (`optional`, по умолчанию `60_000`)
-- `VORYN_RETENTION_RAW_BLOCKS_HOURS` (`optional`, по умолчанию `24`)
-- `VORYN_RETENTION_CANONICAL_HOURS` (`optional`, по умолчанию `24`)
+- `VORYN_RETENTION_POLL_INTERVAL_MS` (`optional`, по умолчанию `60_000`) — интервал запуска очистки.
+- `VORYN_RETENTION_DEPTH_BLOCKS` (`optional`, по умолчанию `65_000`) — глубина хранения в committed-блоках.
 
 Пример:
 

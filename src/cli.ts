@@ -74,8 +74,7 @@ function printUsage(): void {
         + "\n"
         + "Retention env:\n"
         + "  VORYN_RETENTION_POLL_INTERVAL_MS  optional, default: 60_000\n"
-        + "  VORYN_RETENTION_RAW_BLOCKS_HOURS  optional, default: 24\n"
-        + "  VORYN_RETENTION_CANONICAL_HOURS   optional, default: 24"
+        + "  VORYN_RETENTION_DEPTH_BLOCKS      optional, default: 65_000"
     );
 }
 
@@ -225,10 +224,7 @@ async function runHeadCommand(): Promise<void> {
     const pool = createPostgresPool({ connectionString: dbUrl });
     const worker = new HeadWorker({
         config: { chainId, pollIntervalMs, confirmations },
-        source: new EthersBlockSource({
-            provider: new JsonRpcProvider(rpcUrl),
-            validateProviderChainId: true,
-        }),
+        source: new EthersBlockSource({ provider: new JsonRpcProvider(rpcUrl), validateProviderChainId: true }),
         cursorStore: new PostgresChainCursorStore(pool, createBootstrapper(rpcUrl, chainId)),
         jobStore: new PostgresBlockJobQueueStore(pool),
         leaderLock: new PostgresLeaderLock(pool, 10_000_000n + BigInt(chainId)),
@@ -254,16 +250,8 @@ async function runFetchCommand(): Promise<void> {
     const pool = createPostgresPool({ connectionString: dbUrl });
     const worker = new FetchWorker({
         workerId: workerId,
-        config: {
-            chainId,
-            pollIntervalMs,
-            fetchBatchSize,
-            retry: { maxAttempts, baseDelayMs, maxDelayMs },
-        },
-        source: new EthersBlockSource({
-            provider: new JsonRpcProvider(rpcUrl),
-            validateProviderChainId: true,
-        }),
+        config: { chainId, pollIntervalMs, fetchBatchSize, retry: { maxAttempts, baseDelayMs, maxDelayMs } },
+        source: new EthersBlockSource({ provider: new JsonRpcProvider(rpcUrl), validateProviderChainId: true }),
         jobStore: new PostgresBlockJobQueueStore(pool),
         rawBlockStore: new PostgresRawBlockStore(pool),
         logger,
@@ -297,18 +285,10 @@ async function runRetentionCommand(): Promise<void> {
     const chainId = parseRequiredPositiveIntEnv("VORYN_CHAIN_ID");
     const pollIntervalMs = parsePositiveIntEnv("VORYN_RETENTION_POLL_INTERVAL_MS", 60_000);
 
-    const rawBlocksHours = parseNonNegativeIntEnv("VORYN_RETENTION_RAW_BLOCKS_HOURS", 24);
-    const canonicalHours = parseNonNegativeIntEnv("VORYN_RETENTION_CANONICAL_HOURS", 24);
+    const depthBlocks = parseNonNegativeIntEnv("VORYN_RETENTION_DEPTH_BLOCKS", 65_000);
     const pool = createPostgresPool({ connectionString: dbUrl });
     const worker = new RetentionWorker({
-        config: {
-            chainId,
-            pollIntervalMs,
-            retention: {
-                rawBlocksHours,
-                canonicalHours,
-            },
-        },
+        config: { chainId, pollIntervalMs, retention: { depthBlocks } },
         store: new PostgresRetentionStore(pool),
         leaderLock: new PostgresLeaderLock(pool, 30_000_000n + BigInt(chainId)),
         logger,

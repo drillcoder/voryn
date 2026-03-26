@@ -79,8 +79,7 @@ services:
     environment:
       <<: *worker-env
       VORYN_RETENTION_POLL_INTERVAL_MS: ${VORYN_RETENTION_POLL_INTERVAL_MS:-}
-      VORYN_RETENTION_RAW_BLOCKS_HOURS: ${VORYN_RETENTION_RAW_BLOCKS_HOURS:-}
-      VORYN_RETENTION_CANONICAL_HOURS: ${VORYN_RETENTION_CANONICAL_HOURS:-}
+      VORYN_RETENTION_DEPTH_BLOCKS: ${VORYN_RETENTION_DEPTH_BLOCKS:-}
     command: ["node", "dist/cli.js", "retention"]
     restart: unless-stopped
 

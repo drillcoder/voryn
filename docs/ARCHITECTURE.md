@@ -84,8 +84,7 @@ Voryn — каркас индексатора для EVM-сетей, где по
 Файл: `workers/retention-worker.ts`
 
 - По `retention`-политике удаляет устаревшие данные:
-  - `purgeRawBlocks`
-  - `purgeCanonical`
+  - `purge` (единая очистка по глубине блоков от `chain_cursor.last_committed_block`)
 
 ## Контур реакций
 

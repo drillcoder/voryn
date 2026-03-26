@@ -7,8 +7,7 @@ export interface RetryPolicy {
 }
 
 export interface RetentionPolicy {
-    rawBlocksHours: number;
-    canonicalHours: number;
+    depthBlocks: number;
 }
 
 export interface IngestionConfig {

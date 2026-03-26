@@ -4,9 +4,6 @@ import type { RetentionStore } from "../interfaces/stores.js";
 import type { RetentionWorkerConfig } from "../types/runtime.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
-const hoursToDate = (hours: number): Date =>
-    new Date(Date.now() - hours * 60 * 60 * 1000);
-
 export interface RetentionWorkerDeps {
     config: RetentionWorkerConfig;
     store: RetentionStore;
@@ -27,12 +24,13 @@ export class RetentionWorker extends SingletonPollingWorker {
     protected async tick(): Promise<void> {
         const { chainId, retention } = this.deps.config;
 
-        if (retention.rawBlocksHours > 0) {
-            await this.deps.store.purgeRawBlocks(chainId, hoursToDate(retention.rawBlocksHours));
-        }
-
-        if (retention.canonicalHours > 0) {
-            await this.deps.store.purgeCanonical(chainId, hoursToDate(retention.canonicalHours));
+        if (retention.depthBlocks > 0) {
+            const result = await this.deps.store.purge(chainId, retention.depthBlocks);
+            this.logger.info("retention_purged", {
+                chainId,
+                depthBlocks: retention.depthBlocks,
+                ...result,
+            });
         }
     }
 }

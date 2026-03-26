@@ -10,30 +10,33 @@ afterEach(() => {
     jest.restoreAllMocks();
 });
 
-test("retention worker purges both streams with calculated cutoff dates", async () => {
-    const now = 10_000_000;
-    jest.spyOn(Date, "now").mockReturnValue(now);
-
-    const rawCalls: Date[] = [];
-    const canonicalCalls: Date[] = [];
+test("retention worker triggers purge with configured depth and logs result", async () => {
+    const purgeCalls: number[] = [];
+    const logger = {
+        debug: jest.fn(),
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+    };
 
     const config: RetentionWorkerConfig = {
         chainId: 1,
         pollIntervalMs: 1000,
         retention: {
-            rawBlocksHours: 2,
-            canonicalHours: 5,
+            depthBlocks: 42,
         },
     };
 
     const store: RetentionStore = {
-        purgeRawBlocks: async (_chainId, olderThan) => {
-            rawCalls.push(olderThan);
-            return 0;
-        },
-        purgeCanonical: async (_chainId, olderThan) => {
-            canonicalCalls.push(olderThan);
-            return 0;
+        purge: async (_chainId, depthBlocks) => {
+            purgeCalls.push(depthBlocks);
+            return {
+                deletedBlockJobs: 0,
+                deletedRawBlocks: 0,
+                deletedCanonicalEvents: 0,
+                deletedCanonicalTransactions: 0,
+                deletedCanonicalBlocks: 0,
+            };
         },
     };
 
@@ -41,35 +44,44 @@ test("retention worker purges both streams with calculated cutoff dates", async 
         config,
         store,
         leaderLock: { tryAcquire: async () => true, release: async () => undefined },
+        logger,
     });
 
     await invokeTick(worker);
 
-    expect(rawCalls[0]?.getTime()).toBe(now - 2 * 60 * 60 * 1000);
-    expect(canonicalCalls[0]?.getTime()).toBe(now - 5 * 60 * 60 * 1000);
+    expect(purgeCalls).toEqual([42]);
+    expect(logger.info).toHaveBeenCalledWith("retention_purged", {
+        chainId: 1,
+        depthBlocks: 42,
+        deletedBlockJobs: 0,
+        deletedRawBlocks: 0,
+        deletedCanonicalEvents: 0,
+        deletedCanonicalTransactions: 0,
+        deletedCanonicalBlocks: 0,
+    });
 });
 
 test("retention worker skips disabled retention windows", async () => {
-    let rawCalled = false;
-    let canonicalCalled = false;
+    let purgeCalled = false;
 
     const config: RetentionWorkerConfig = {
         chainId: 1,
         pollIntervalMs: 1000,
         retention: {
-            rawBlocksHours: 0,
-            canonicalHours: -1,
+            depthBlocks: 0,
         },
     };
 
     const store: RetentionStore = {
-        purgeRawBlocks: async () => {
-            rawCalled = true;
-            return 0;
-        },
-        purgeCanonical: async () => {
-            canonicalCalled = true;
-            return 0;
+        purge: async () => {
+            purgeCalled = true;
+            return {
+                deletedBlockJobs: 0,
+                deletedRawBlocks: 0,
+                deletedCanonicalEvents: 0,
+                deletedCanonicalTransactions: 0,
+                deletedCanonicalBlocks: 0,
+            };
         },
     };
 
@@ -81,6 +93,5 @@ test("retention worker skips disabled retention windows", async () => {
 
     await invokeTick(worker);
 
-    expect(rawCalled).toBe(false);
-    expect(canonicalCalled).toBe(false);
+    expect(purgeCalled).toBe(false);
 });

@@ -56,8 +56,14 @@ export interface WorkerCursorStore {
     advance(workerName: string, chainId: ChainId, streamType: StreamType, seq: bigint): Promise<void>;
 }
 
-export interface RetentionStore {
-    purgeRawBlocks(chainId: ChainId, olderThan: Date): Promise<number>;
+export interface RetentionPurgeResult {
+    deletedBlockJobs: number;
+    deletedRawBlocks: number;
+    deletedCanonicalBlocks: number;
+    deletedCanonicalTransactions: number;
+    deletedCanonicalEvents: number;
+}
 
-    purgeCanonical(chainId: ChainId, olderThan: Date): Promise<number>;
+export interface RetentionStore {
+    purge(chainId: ChainId, depthBlocks: number): Promise<RetentionPurgeResult>;
 }
