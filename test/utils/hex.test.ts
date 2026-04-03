@@ -33,3 +33,9 @@ test("asHexData rejects odd-length hex data", () => {
         "invalid hex data: expected 0x-prefixed byte data"
     );
 });
+
+test("asHexData rejects non-string values", () => {
+    expect(() => asHexData(123)).toThrow(
+        "invalid hex data: expected 0x-prefixed byte data"
+    );
+});

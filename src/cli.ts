@@ -2,22 +2,21 @@
 
 import { hostname } from "node:os";
 import { JsonRpcProvider } from "ethers";
-import type { ChainCursorBootstrapper, PgPool } from "./stores/postgres/index.js";
+import { Pool } from "pg";
+import { PostgresLeaderLock, PostgresTransactionManager } from "./postgres/index.js";
 import {
-    createPostgresPool,
-    PostgresBlockJobQueueStore,
-    PostgresChainCursorStore,
-    PostgresLeaderLock,
-    PostgresRawBlockStore,
-    PostgresRetentionStore,
-    PostgresSequencerCommitStore,
-} from "./stores/postgres/index.js";
+    PostgresBlockJobsRepository,
+    PostgresCanonicalBlocksRepository,
+    PostgresCanonicalEventsRepository,
+    PostgresCanonicalTransactionsRepository,
+    PostgresChainCursorRepository,
+    PostgresRawBlocksRepository,
+} from "./repositories/postgres/index.js";
 import { EthersBlockSource } from "./adapters/ethers-block-source.js";
 import { initPostgresDb } from "./db/init-postgres.js";
 import type { LogLevel } from "./loggers/console-logger.js";
 import { createConsoleLogger } from "./loggers/console-logger.js";
 import { FetchWorker, HeadWorker, RetentionWorker, SequencerWorker } from "./index.js";
-import { asHash32 } from "./utils/hex.js";
 
 type Command = "init" | "head" | "fetch" | "sequencer" | "retention";
 
@@ -59,6 +58,7 @@ function printUsage(): void {
         + "  VORYN_FETCH_POLL_INTERVAL_MS      optional, default: 1000\n"
         + "  VORYN_FETCH_WORKER_ID             optional, default: <hostname>-<pid>\n"
         + "  VORYN_FETCH_BATCH_SIZE            optional, default: 5\n"
+        + "  VORYN_FETCH_CLAIM_TTL_MS          optional, default: 125_000\n"
         + "  VORYN_FETCH_RETRY_MAX_ATTEMPTS    optional, default: 10\n"
         + "  VORYN_FETCH_RETRY_BASE_DELAY_MS   optional, default: 1_000\n"
         + "  VORYN_FETCH_RETRY_MAX_DELAY_MS    optional, default: 10_000\n"
@@ -69,7 +69,6 @@ function printUsage(): void {
         + "  VORYN_HEAD_CONFIRMATIONS          optional, default: 0\n"
         + "\n"
         + "Sequencer env:\n"
-        + "  VORYN_SEQUENCER_RPC_URL           required\n"
         + "  VORYN_SEQUENCER_POLL_INTERVAL_MS  optional, default: 500\n"
         + "\n"
         + "Retention env:\n"
@@ -152,24 +151,6 @@ function parseLogLevel(): LogLevel {
     throw new Error("environment variable VORYN_LOG_LEVEL must be one of: debug, info, warn, error");
 }
 
-const createBootstrapper = (rpcUrl: string, chainId: number): ChainCursorBootstrapper =>
-    async () => {
-        const provider = new JsonRpcProvider(rpcUrl);
-        const blockNumber = await provider.getBlockNumber();
-        const block = await provider.getBlock(blockNumber, false);
-        const blockHash = block?.hash;
-
-        if (blockHash === undefined || blockHash === null) {
-            throw new Error(`failed to read bootstrap block for chain ${String(chainId)}`);
-        }
-
-        return {
-            lastEnqueuedBlock: blockNumber,
-            lastCommittedBlock: blockNumber,
-            lastCommittedHash: asHash32(blockHash),
-        };
-    };
-
 async function waitForShutdownSignal(): Promise<NodeJS.Signals> {
     return await new Promise<NodeJS.Signals>((resolve) => {
         const onSignal = (signal: NodeJS.Signals): void => {
@@ -194,7 +175,7 @@ async function runWorkerLifecycle(
     command: Exclude<Command, "init">,
     worker: HeadWorker | FetchWorker | SequencerWorker | RetentionWorker,
     logger: ReturnType<typeof createConsoleLogger>,
-    pool: PgPool
+    pool: Pool
 ): Promise<void> {
     try {
         await worker.start();
@@ -221,15 +202,18 @@ async function runHeadCommand(): Promise<void> {
 
     const confirmations = parseNonNegativeIntEnv("VORYN_HEAD_CONFIRMATIONS", 0);
 
-    const pool = createPostgresPool({ connectionString: dbUrl });
-    const worker = new HeadWorker({
-        config: { chainId, pollIntervalMs, confirmations },
-        source: new EthersBlockSource({ provider: new JsonRpcProvider(rpcUrl), validateProviderChainId: true }),
-        cursorStore: new PostgresChainCursorStore(pool, createBootstrapper(rpcUrl, chainId)),
-        jobStore: new PostgresBlockJobQueueStore(pool),
-        leaderLock: new PostgresLeaderLock(pool, 10_000_000n + BigInt(chainId)),
+    const pool = new Pool({ connectionString: dbUrl });
+    const cursorRepository = new PostgresChainCursorRepository(pool);
+    const blockJobsRepository = new PostgresBlockJobsRepository(pool);
+    const worker = new HeadWorker(
+        { chainId, pollIntervalMs, confirmations },
+        new EthersBlockSource({ provider: new JsonRpcProvider(rpcUrl), validateProviderChainId: true }),
+        cursorRepository,
+        blockJobsRepository,
+        new PostgresTransactionManager(pool),
+        new PostgresLeaderLock(pool, 10_000_000n + BigInt(chainId)),
         logger,
-    });
+    );
 
     await runWorkerLifecycle("head", worker, logger, pool);
 }
@@ -243,19 +227,29 @@ async function runFetchCommand(): Promise<void> {
 
     const workerId = optionalEnv("VORYN_FETCH_WORKER_ID", `${hostname()}-${String(process.pid)}`);
     const fetchBatchSize = parsePositiveIntEnv("VORYN_FETCH_BATCH_SIZE", 5);
-    const maxAttempts = parsePositiveIntEnv("VORYN_FETCH_RETRY_MAX_ATTEMPTS", 10);
-    const baseDelayMs = parsePositiveIntEnv("VORYN_FETCH_RETRY_BASE_DELAY_MS", 1_000);
-    const maxDelayMs = parsePositiveIntEnv("VORYN_FETCH_RETRY_MAX_DELAY_MS", 10_000);
+    const fetchClaimTtlMs = parsePositiveIntEnv("VORYN_FETCH_CLAIM_TTL_MS", 125_000);
+    const retryMaxAttempts = parsePositiveIntEnv("VORYN_FETCH_RETRY_MAX_ATTEMPTS", 10);
+    const retryBaseDelayMs = parsePositiveIntEnv("VORYN_FETCH_RETRY_BASE_DELAY_MS", 1_000);
+    const retryMaxDelayMs = parsePositiveIntEnv("VORYN_FETCH_RETRY_MAX_DELAY_MS", 10_000);
 
-    const pool = createPostgresPool({ connectionString: dbUrl });
-    const worker = new FetchWorker({
-        workerId: workerId,
-        config: { chainId, pollIntervalMs, fetchBatchSize, retry: { maxAttempts, baseDelayMs, maxDelayMs } },
-        source: new EthersBlockSource({ provider: new JsonRpcProvider(rpcUrl), validateProviderChainId: true }),
-        jobStore: new PostgresBlockJobQueueStore(pool),
-        rawBlockStore: new PostgresRawBlockStore(pool),
+    const pool = new Pool({ connectionString: dbUrl });
+    const worker = new FetchWorker(
+        workerId,
+        {
+            chainId,
+            pollIntervalMs,
+            fetchBatchSize,
+            fetchClaimTtlMs,
+            retryMaxAttempts,
+            retryBaseDelayMs,
+            retryMaxDelayMs,
+        },
+        new EthersBlockSource({ provider: new JsonRpcProvider(rpcUrl), validateProviderChainId: true }),
+        new PostgresBlockJobsRepository(pool),
+        new PostgresRawBlocksRepository(pool),
+        new PostgresTransactionManager(pool),
         logger,
-    });
+    );
 
     await runWorkerLifecycle("fetch", worker, logger, pool);
 }
@@ -263,18 +257,22 @@ async function runFetchCommand(): Promise<void> {
 async function runSequencerCommand(): Promise<void> {
     const logger = createConsoleLogger({ minLevel: parseLogLevel() });
     const dbUrl = requireEnv("DATABASE_URL");
-    const rpcUrl = requireEnv("VORYN_SEQUENCER_RPC_URL");
     const chainId = parseRequiredPositiveIntEnv("VORYN_CHAIN_ID");
     const pollIntervalMs = parsePositiveIntEnv("VORYN_SEQUENCER_POLL_INTERVAL_MS", 500);
 
-    const pool = createPostgresPool({ connectionString: dbUrl });
-    const worker = new SequencerWorker({
-        config: { chainId, pollIntervalMs },
-        cursorStore: new PostgresChainCursorStore(pool, createBootstrapper(rpcUrl, chainId)),
-        commitStore: new PostgresSequencerCommitStore(pool),
-        leaderLock: new PostgresLeaderLock(pool, 20_000_000n + BigInt(chainId)),
+    const pool = new Pool({ connectionString: dbUrl });
+    const worker = new SequencerWorker(
+        { chainId, pollIntervalMs },
+        new PostgresChainCursorRepository(pool),
+        new PostgresRawBlocksRepository(pool),
+        new PostgresCanonicalBlocksRepository(pool),
+        new PostgresCanonicalTransactionsRepository(pool),
+        new PostgresCanonicalEventsRepository(pool),
+        new PostgresBlockJobsRepository(pool),
+        new PostgresTransactionManager(pool),
+        new PostgresLeaderLock(pool, 20_000_000n + BigInt(chainId)),
         logger,
-    });
+    );
 
     await runWorkerLifecycle("sequencer", worker, logger, pool);
 }
@@ -285,14 +283,20 @@ async function runRetentionCommand(): Promise<void> {
     const chainId = parseRequiredPositiveIntEnv("VORYN_CHAIN_ID");
     const pollIntervalMs = parsePositiveIntEnv("VORYN_RETENTION_POLL_INTERVAL_MS", 60_000);
 
-    const depthBlocks = parseNonNegativeIntEnv("VORYN_RETENTION_DEPTH_BLOCKS", 65_000);
-    const pool = createPostgresPool({ connectionString: dbUrl });
-    const worker = new RetentionWorker({
-        config: { chainId, pollIntervalMs, retention: { depthBlocks } },
-        store: new PostgresRetentionStore(pool),
-        leaderLock: new PostgresLeaderLock(pool, 30_000_000n + BigInt(chainId)),
+    const retentionDepthBlocks = parseNonNegativeIntEnv("VORYN_RETENTION_DEPTH_BLOCKS", 65_000);
+    const pool = new Pool({ connectionString: dbUrl });
+    const worker = new RetentionWorker(
+        { chainId, pollIntervalMs, retentionDepthBlocks },
+        new PostgresChainCursorRepository(pool),
+        new PostgresBlockJobsRepository(pool),
+        new PostgresRawBlocksRepository(pool),
+        new PostgresCanonicalBlocksRepository(pool),
+        new PostgresCanonicalTransactionsRepository(pool),
+        new PostgresCanonicalEventsRepository(pool),
+        new PostgresTransactionManager(pool),
+        new PostgresLeaderLock(pool, 30_000_000n + BigInt(chainId)),
         logger,
-    });
+    );
 
     await runWorkerLifecycle("retention", worker, logger, pool);
 }

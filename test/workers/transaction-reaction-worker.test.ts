@@ -1,20 +1,18 @@
 import type {
-    AddressHex,
-    DataHex,
-    HashHex,
-    ReactionConfig,
+    CanonicalTransactionsRepository,
+    LeaderLock,
     TransactionReactionHandler,
-    TransactionStreamStore,
-    WorkerCursorStore,
+    WorkerCursorsRepository,
 } from "../../src/index.js";
+import type { ReactionWorkerConfig } from "../../src/interfaces/runtime.js";
 import { TransactionReactionWorker } from "../../src/index.js";
+import { asAddress, asHash32, asHexData } from "../../src/utils/hex.js";
 
-const BLOCK_HASH = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as HashHex;
-const TX_HASH_A = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as HashHex;
-const TX_HASH_B = "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" as HashHex;
-const FROM = "0x1111111111111111111111111111111111111111" as AddressHex;
-const TO = "0x2222222222222222222222222222222222222222" as AddressHex;
-const DATA = "0x01" as DataHex;
+const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+const HASH_B = asHash32("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+const FROM = asAddress("0x1111111111111111111111111111111111111111");
+const TO = asAddress("0x2222222222222222222222222222222222222222");
+const DATA = asHexData("0x01");
 
 const invokeTick = async (worker: object): Promise<void> => {
     await (worker as { tick: () => Promise<void> }).tick();
@@ -24,12 +22,13 @@ test("transaction reaction worker processes txs and advances cursor", async () =
     const handled: bigint[] = [];
     const advanced: bigint[] = [];
 
-    const config: ReactionConfig = {
+    const config: ReactionWorkerConfig = {
         chainId: 9,
         workerName: "tx-handler",
         pollIntervalMs: 1000,
         batchSize: 10,
     };
+    const leaderLock: LeaderLock = { tryAcquire: async () => true, release: async () => undefined };
 
     const handler: TransactionReactionHandler = {
         handle: async (tx) => {
@@ -37,15 +36,15 @@ test("transaction reaction worker processes txs and advances cursor", async () =
         },
     };
 
-    const txStore: TransactionStreamStore = {
+    const transactionsRepository: CanonicalTransactionsRepository = {
         readFromSeq: async () => [
             {
                 seq: 101n,
                 chainId: 9,
                 blockNumber: 200,
-                blockHash: BLOCK_HASH,
+                blockHash: HASH_A,
                 index: 1,
-                hash: TX_HASH_A,
+                hash: HASH_B,
                 from: FROM,
                 to: TO,
                 value: "1",
@@ -56,9 +55,9 @@ test("transaction reaction worker processes txs and advances cursor", async () =
                 seq: 102n,
                 chainId: 9,
                 blockNumber: 201,
-                blockHash: BLOCK_HASH,
+                blockHash: HASH_A,
                 index: 2,
-                hash: TX_HASH_B,
+                hash: HASH_A,
                 from: FROM,
                 to: null,
                 value: "2",
@@ -66,9 +65,12 @@ test("transaction reaction worker processes txs and advances cursor", async () =
                 raw: { amount: 2 },
             },
         ],
+        maxSeq: async () => 0n,
+        insertMany: async () => undefined,
+        deleteUpToBlock: async () => 0,
     };
 
-    const cursorStore: WorkerCursorStore = {
+    const workerCursorsRepository: WorkerCursorsRepository = {
         get: async () => ({
             workerName: "tx-handler",
             chainId: 9,
@@ -76,21 +78,58 @@ test("transaction reaction worker processes txs and advances cursor", async () =
             lastSeq: 100n,
             updatedAt: new Date(),
         }),
+        insert: async () => undefined,
         advance: async (_workerName, _chainId, _streamType, seq) => {
             advanced.push(seq);
         },
     };
 
-    const worker = new TransactionReactionWorker({
+    const worker = new TransactionReactionWorker(
         config,
         handler,
-        txStore,
-        cursorStore,
-        leaderLock: { tryAcquire: async () => true, release: async () => undefined },
-    });
+        transactionsRepository,
+        workerCursorsRepository,
+        leaderLock,
+    );
 
     await invokeTick(worker);
 
     expect(handled).toEqual([101n, 102n]);
     expect(advanced).toEqual([101n, 102n]);
+});
+
+test("transaction reaction worker creates cursor from max seq when missing", async () => {
+    const inserts: bigint[] = [];
+    const config: ReactionWorkerConfig = {
+        chainId: 9,
+        workerName: "tx-handler",
+        pollIntervalMs: 1000,
+        batchSize: 10,
+    };
+
+    const transactionsRepository: CanonicalTransactionsRepository = {
+        readFromSeq: async () => [],
+        maxSeq: async () => 33n,
+        insertMany: async () => undefined,
+        deleteUpToBlock: async () => 0,
+    };
+    const workerCursorsRepository: WorkerCursorsRepository = {
+        get: async () => null,
+        insert: async (_workerName, _chainId, _streamType, lastSeq) => {
+            inserts.push(lastSeq);
+        },
+        advance: async () => undefined,
+    };
+
+    const worker = new TransactionReactionWorker(
+        config,
+        { handle: async () => undefined },
+        transactionsRepository,
+        workerCursorsRepository,
+        { tryAcquire: async () => true, release: async () => undefined },
+    );
+
+    await invokeTick(worker);
+
+    expect(inserts).toEqual([33n]);
 });

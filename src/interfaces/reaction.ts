@@ -1,4 +1,4 @@
-import type { CanonicalEvent, CanonicalTransaction } from "../types/pipeline.js";
+import type { CanonicalEvent, CanonicalTransaction } from "./pipeline.js";
 
 export interface ReactionContext {
     workerName: string;

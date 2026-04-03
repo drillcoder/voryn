@@ -1,9 +1,10 @@
 import { asHash32 } from "../../utils/hex.js";
-import { parsePgInt, parsePgTimestamp } from "./pg-parsers.js";
-import type { RawBlockStore } from "../../interfaces/stores.js";
-import type { BlockNumber, ChainId, FetchedBlock } from "../../types/chain.js";
-import type { RawBlockEnvelope } from "../../types/pipeline.js";
-import type { PgQueryExecutor } from "./client.js";
+import { parsePgInt, parsePgTimestamp } from "../../postgres/index.js";
+import type { RawBlocksRepository } from "../../interfaces/repositories.js";
+import type { BlockNumber, ChainId } from "../../types/chain.js";
+import type { FetchedBlock } from "../../interfaces/chain.js";
+import type { RawBlock } from "../../interfaces/pipeline.js";
+import type { DbExecutor } from "../../interfaces/db.js";
 
 interface RawBlockRow {
     chain_id: number;
@@ -14,14 +15,15 @@ interface RawBlockRow {
     fetched_at: Date | string;
 }
 
-export class PostgresRawBlockStore implements RawBlockStore {
+export class PostgresRawBlocksRepository implements RawBlocksRepository {
     constructor(
-        private readonly pool: PgQueryExecutor,
+        private readonly pool: DbExecutor,
     ) {
     }
 
-    async save(block: RawBlockEnvelope): Promise<void> {
-        await this.pool.query(
+    async save(block: RawBlock, transaction?: DbExecutor): Promise<void> {
+        const executor = transaction ?? this.pool;
+        await executor.query(
             `INSERT INTO raw_blocks
              (chain_id, block_number, block_hash, parent_hash, payload, fetched_at)
              VALUES ($1, $2, $3, $4, $5, $6)
@@ -41,8 +43,13 @@ export class PostgresRawBlockStore implements RawBlockStore {
         );
     }
 
-    async get(chainId: ChainId, blockNumber: BlockNumber): Promise<RawBlockEnvelope | null> {
-        const result = await this.pool.query<RawBlockRow>(
+    async get(
+        chainId: ChainId,
+        blockNumber: BlockNumber,
+        transaction?: DbExecutor
+    ): Promise<RawBlock | null> {
+        const executor = transaction ?? this.pool;
+        const result = await executor.query<RawBlockRow>(
             `SELECT chain_id, block_number, block_hash, parent_hash, payload, fetched_at
              FROM raw_blocks
              WHERE chain_id = $1
@@ -62,5 +69,19 @@ export class PostgresRawBlockStore implements RawBlockStore {
             payload: result.rows[0].payload as FetchedBlock,
             fetchedAt: parsePgTimestamp(result.rows[0].fetched_at),
         };
+    }
+
+    async deleteUpToBlock(
+        chainId: ChainId,
+        blockNumberInclusive: BlockNumber,
+        transaction?: DbExecutor
+    ): Promise<number> {
+        const executor = transaction ?? this.pool;
+        const deleted = await executor.query(
+            `DELETE FROM raw_blocks WHERE chain_id = $1 AND block_number <= $2`,
+            [chainId, blockNumberInclusive]
+        );
+
+        return deleted.rowCount ?? 0;
     }
 }

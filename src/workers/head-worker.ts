@@ -1,47 +1,61 @@
 import type { BlockSource } from "../interfaces/block-source.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
-import { type Logger, noopLogger } from "../interfaces/logger.js";
-import type { BlockJobQueueStore, ChainCursorStore, } from "../interfaces/stores.js";
-import type { HeadWorkerConfig } from "../types/runtime.js";
+import type { Logger } from "../interfaces/logger.js";
+import type { BlockJobsRepository, ChainCursorRepository } from "../interfaces/repositories.js";
+import type { TransactionManager } from "../interfaces/transaction-manager.js";
+import type { HeadWorkerConfig } from "../interfaces/runtime.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
-
-export interface HeadWorkerDeps {
-    config: HeadWorkerConfig;
-    source: BlockSource;
-    cursorStore: ChainCursorStore;
-    jobStore: BlockJobQueueStore;
-    leaderLock: LeaderLock;
-    logger?: Logger;
-}
+import { noopLogger } from "../interfaces/logger.js";
 
 export class HeadWorker extends SingletonPollingWorker {
-    constructor(private readonly deps: HeadWorkerDeps) {
+    constructor(
+        private readonly config: HeadWorkerConfig,
+        private readonly source: BlockSource,
+        private readonly chainCursorRepository: ChainCursorRepository,
+        private readonly blockJobsRepository: BlockJobsRepository,
+        private readonly transactionManager: TransactionManager,
+        leaderLock: LeaderLock,
+        logger?: Logger,
+        ) {
         super(
-            `head:${String(deps.config.chainId)}`,
-            deps.config.pollIntervalMs,
-            deps.logger ?? noopLogger,
-            deps.leaderLock
+            `head:${String(config.chainId)}`,
+            config.pollIntervalMs,
+            logger ?? noopLogger,
+            leaderLock
         );
     }
 
     protected async tick(): Promise<void> {
-        const { chainId, confirmations } = this.deps.config;
+        const { chainId, confirmations } = this.config;
+        const latestBlock = await this.source.getLatestBlockNumber(chainId);
 
-        const latest = await this.deps.source.getLatestBlockNumber(chainId);
-        const safeHead = latest - confirmations;
-
-        if (safeHead < 0) {
+        if (await this.chainCursorRepository.get(chainId) === null) {
+            const latestBlockData = await this.source.getBlockData(chainId, latestBlock);
+            await this.chainCursorRepository.insert({
+                chainId,
+                lastEnqueuedBlock: latestBlock,
+                lastCommittedBlock: latestBlock,
+                lastCommittedHash: latestBlockData.block.hash,
+            });
             return;
         }
 
-        const cursor = await this.deps.cursorStore.get(chainId);
-        const fromBlock = cursor.lastEnqueuedBlock + 1;
+        await this.transactionManager.run(async (transaction) => {
+            const safeHead = latestBlock - confirmations;
+            const chainCursor = await this.chainCursorRepository.get(chainId, transaction);
 
-        if (fromBlock > safeHead) {
-            return;
-        }
+            if (chainCursor === null) {
+                throw new Error(`Chain cursor not found for chain ${String(chainId)}`);
+            }
 
-        await this.deps.jobStore.enqueueRange(chainId, fromBlock, safeHead);
-        await this.deps.cursorStore.setLastEnqueued(chainId, safeHead);
+            const fromBlock = chainCursor.lastEnqueuedBlock + 1;
+
+            if (fromBlock > safeHead) {
+                return;
+            }
+
+            await this.blockJobsRepository.enqueueRange(chainId, fromBlock, safeHead, transaction);
+            await this.chainCursorRepository.setLastEnqueued(chainId, safeHead, transaction);
+        });
     }
 }

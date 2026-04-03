@@ -1,13 +1,7 @@
 import type { Block, Log, Provider, TransactionResponse } from "ethers";
 import type { BlockSource } from "../interfaces/block-source.js";
-import type {
-    BlockNumber,
-    ChainId,
-    ChainLog,
-    ChainTransaction,
-    FetchedBlock,
-    HashHex,
-} from "../types/chain.js";
+import type { BlockNumber, ChainId, HashHex } from "../types/chain.js";
+import type { ChainLog, ChainTransaction, FetchedBlock } from "../interfaces/chain.js";
 import { asAddress, asHash32, asHexData } from "../utils/hex.js";
 
 export type EthersNetworkLike = Pick<Awaited<ReturnType<Provider["getNetwork"]>>, "chainId">;

@@ -1,8 +1,9 @@
-import { parsePgInt, parsePgTimestamp } from "./pg-parsers.js";
-import type { BlockJobQueueStore } from "../../interfaces/stores.js";
+import { parsePgInt, parsePgTimestamp } from "../../postgres/index.js";
+import type { BlockJobsRepository } from "../../interfaces/repositories.js";
 import type { BlockNumber, ChainId } from "../../types/chain.js";
-import type { BlockJob, BlockJobStatus } from "../../types/pipeline.js";
-import type { PgQueryExecutor } from "./client.js";
+import type { BlockJob } from "../../interfaces/pipeline.js";
+import type { BlockJobStatus } from "../../types/pipeline.js";
+import type { DbExecutor } from "../../interfaces/db.js";
 
 interface BlockJobRow {
     chain_id: number;
@@ -15,18 +16,24 @@ interface BlockJobRow {
     updated_at: Date | string;
 }
 
-export class PostgresBlockJobQueueStore implements BlockJobQueueStore {
+export class PostgresBlockJobsRepository implements BlockJobsRepository {
     constructor(
-        private readonly pool: PgQueryExecutor,
+        private readonly pool: DbExecutor,
     ) {
     }
 
-    async enqueueRange(chainId: ChainId, fromBlock: BlockNumber, toBlock: BlockNumber): Promise<void> {
+    async enqueueRange(
+        chainId: ChainId,
+        fromBlock: BlockNumber,
+        toBlock: BlockNumber,
+        transaction?: DbExecutor
+    ): Promise<void> {
         if (fromBlock > toBlock) {
             return;
         }
 
-        await this.pool.query(
+        const executor = transaction ?? this.pool;
+        await executor.query(
             `INSERT INTO block_jobs (chain_id, block_number, status)
              SELECT $1, gs, 'pending'
              FROM generate_series($2::BIGINT, $3::BIGINT) AS gs
@@ -35,8 +42,14 @@ export class PostgresBlockJobQueueStore implements BlockJobQueueStore {
         );
     }
 
-    async claimForFetch(chainId: ChainId, workerId: string): Promise<BlockJob | null> {
-        const result = await this.pool.query<BlockJobRow>(
+    async claimForFetch(
+        chainId: ChainId,
+        workerId: string,
+        staleClaimedBefore: Date,
+        transaction?: DbExecutor
+    ): Promise<BlockJob | null> {
+        const executor = transaction ?? this.pool;
+        const result = await executor.query<BlockJobRow>(
             `WITH candidate AS (
                  SELECT chain_id, block_number
                  FROM block_jobs
@@ -44,6 +57,7 @@ export class PostgresBlockJobQueueStore implements BlockJobQueueStore {
                    AND (
                        status = 'pending'
                        OR (status = 'failed' AND next_retry_at IS NOT NULL AND next_retry_at <= NOW())
+                       OR (status = 'fetching' AND claimed_at IS NOT NULL AND claimed_at <= $3)
                    )
                  ORDER BY block_number
                  FOR UPDATE SKIP LOCKED
@@ -69,7 +83,7 @@ export class PostgresBlockJobQueueStore implements BlockJobQueueStore {
                  j.error,
                  j.claimed_at,
                  j.updated_at`,
-            [chainId, workerId]
+            [chainId, workerId, staleClaimedBefore]
         );
 
         if (result.rows.length === 0) {
@@ -88,8 +102,14 @@ export class PostgresBlockJobQueueStore implements BlockJobQueueStore {
         };
     }
 
-    async markFetched(chainId: ChainId, blockNumber: BlockNumber): Promise<void> {
-        const result = await this.pool.query(
+    async markFetched(
+        chainId: ChainId,
+        blockNumber: BlockNumber,
+        workerId: string,
+        transaction?: DbExecutor
+    ): Promise<void> {
+        const executor = transaction ?? this.pool;
+        const result = await executor.query(
             `UPDATE block_jobs
              SET status = 'fetched',
                  claimed_by = NULL,
@@ -99,8 +119,9 @@ export class PostgresBlockJobQueueStore implements BlockJobQueueStore {
                  updated_at = NOW()
              WHERE chain_id = $1
                AND block_number = $2
-               AND status = 'fetching'`,
-            [chainId, blockNumber]
+               AND status = 'fetching'
+               AND claimed_by = $3`,
+            [chainId, blockNumber, workerId]
         );
 
         if ((result.rowCount ?? 0) === 0) {
@@ -113,21 +134,25 @@ export class PostgresBlockJobQueueStore implements BlockJobQueueStore {
     async markFetchFailed(
         chainId: ChainId,
         blockNumber: BlockNumber,
+        workerId: string,
         error: string,
-        nextRetryAt: Date | null
+        nextRetryAt: Date | null,
+        transaction?: DbExecutor
     ): Promise<void> {
-        const result = await this.pool.query(
+        const executor = transaction ?? this.pool;
+        const result = await executor.query(
             `UPDATE block_jobs
              SET status = 'failed',
                  claimed_by = NULL,
                  claimed_at = NULL,
-                 error = $3,
-                 next_retry_at = $4,
+                 error = $4,
+                 next_retry_at = $5,
                  updated_at = NOW()
              WHERE chain_id = $1
                AND block_number = $2
-               AND status = 'fetching'`,
-            [chainId, blockNumber, error, nextRetryAt]
+               AND status = 'fetching'
+               AND claimed_by = $3`,
+            [chainId, blockNumber, workerId, error, nextRetryAt]
         );
 
         if ((result.rowCount ?? 0) === 0) {
@@ -135,5 +160,42 @@ export class PostgresBlockJobQueueStore implements BlockJobQueueStore {
                 `Cannot mark block job as failed for chain ${String(chainId)} block ${String(blockNumber)}`
             );
         }
+    }
+
+    async markCommitted(
+        chainId: ChainId,
+        blockNumber: BlockNumber,
+        transaction?: DbExecutor
+    ): Promise<void> {
+        const executor = transaction ?? this.pool;
+        const updated = await executor.query(
+            `UPDATE block_jobs
+             SET status = 'committed',
+                 updated_at = NOW()
+             WHERE chain_id = $1
+               AND block_number = $2
+               AND status <> 'committed'`,
+            [chainId, blockNumber]
+        );
+
+        if ((updated.rowCount ?? 0) !== 1) {
+            throw new Error(
+                `Failed to mark block job as committed for chain ${String(chainId)} block ${String(blockNumber)}`
+            );
+        }
+    }
+
+    async deleteUpToBlock(
+        chainId: ChainId,
+        blockNumberInclusive: BlockNumber,
+        transaction?: DbExecutor
+    ): Promise<number> {
+        const executor = transaction ?? this.pool;
+        const deleted = await executor.query(
+            `DELETE FROM block_jobs WHERE chain_id = $1 AND block_number <= $2`,
+            [chainId, blockNumberInclusive]
+        );
+
+        return deleted.rowCount ?? 0;
     }
 }

@@ -1,4 +1,5 @@
-import type { BlockNumber, ChainId, FetchedBlock } from "../types/chain.js";
+import type { BlockNumber, ChainId } from "../types/chain.js";
+import type { FetchedBlock } from "./chain.js";
 
 export interface BlockSource {
     getLatestBlockNumber(chainId: ChainId): Promise<BlockNumber>;

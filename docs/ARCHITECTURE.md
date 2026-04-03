@@ -2,125 +2,131 @@
 
 ## Назначение
 
-Voryn — каркас индексатора для EVM-сетей, где подтвержденные данные обрабатываются строго по порядку блоков, а бизнес-логика вынесена в независимые воркеры реакций.
+Voryn — каркас индексатора для EVM-сетей.  
+Ingestion-воркеры последовательно собирают и коммитят блоки, а reaction-воркеры читают уже канонические данные и запускают пользовательскую логику.
 
 ## Базовые принципы
 
 - Источник истины: только канонически закоммиченные данные.
-- Порядок блоков: только `N -> N+1` для каждой сети (`chain_id`).
-- Изоляция: падение reaction-воркера не останавливает ingestion-контур.
-- Singleton для критичных воркеров: через абстракцию `LeaderLock`.
-- Срок хранения: очистка по TTL через отдельный retention-воркер.
+- Порядок блоков: коммит только `N -> N+1` для каждой сети (`chain_id`).
+- Разделение ответственности:
+  - репозитории делают только простые операции с БД,
+  - orchestration и транзакционные границы задаются на уровне воркеров.
+- Изоляция реакций: падение reaction-воркера не останавливает ingestion-контур.
+- Singleton для критичных воркеров: через `LeaderLock`.
 
 ## Слои кода
 
-- `src/types` — модели домена и конфиги воркеров.
-- `src/interfaces` — интерфейсы источников данных и хранилищ.
-- `src/workers` — рабочие процессы (`PollingWorker` и `SingletonPollingWorker`).
-- `src/sql/postgres-schema.sql` — базовая схема таблиц.
+- `src/types` — базовые типы (`ChainId`, `HashHex`, статусы и т.д.).
+- `src/interfaces` — контракты доменных сущностей, репозиториев, runtime-конфигов и инфраструктуры.
+- `src/repositories/postgres` — PostgreSQL-репозитории (по таблицам).
+- `src/postgres` — PostgreSQL-инфраструктура (`LeaderLock`, `TransactionManager`, парсеры).
+- `src/workers` — бизнес-процессы (`PollingWorker`, `SingletonPollingWorker`, ingestion/reaction воркеры).
+- `src/sql/postgres-schema.sql` — схема таблиц.
 
-## Типы и конфиги
+## Контракты и модели
 
-Этот слой фиксирует общий язык между источниками, воркерами и хранилищем:
+`src/interfaces/pipeline.ts` описывает доменные сущности пайплайна на уровне приложения: курсор цепочки, задания очереди блоков, сырые и канонические данные, курсоры реакторов и результат retention-очистки. Это основной контракт данных между воркерами и репозиториями.
 
-- `types/chain.ts` — что именно приходит из сети и в каком виде это дальше сохранять:
-  - `ChainBlock`, `ChainTransaction`, `ChainLog` — единый формат данных RPC.
-  - `FetchedBlock` — результат одного запроса блока для fetch-воркера.
-- `types/pipeline.ts` — внутренние записи, которые уже живут в БД и читаются воркерами:
-  - `StreamType` — тип потока реакции (`event` | `tx`).
-  - `BlockJobStatus` — статусы задания в очереди (`pending`, `fetching`, `fetched`, `committed`, `failed`).
-  - `BlockJob` — запись очереди блока.
-  - `RawBlockEnvelope` — структура сырого блока, который сохраняется после fetch-этапа.
-  - `CanonicalEvent` / `CanonicalTransaction` — элементы канонических потоков реакций.
-  - `WorkerCursor` — позиция конкретного реактора в потоке (`streamType`, `lastSeq`).
-- `types/runtime.ts` — настройки, которые управляют поведением воркеров:
-  - `IngestionConfig` — полный набор ingestion-настроек приложения.
-  - `HeadWorkerConfig`, `FetchWorkerConfig`, `SequencerWorkerConfig`, `RetentionWorkerConfig` — узкие типы для конкретных ingestion-воркеров.
-  - `ReactionConfig` — имя реактора, сеть, частота и размер батча.
+`src/types/pipeline.ts` задает базовые ограниченные типы пайплайна: тип потока реакции и статус задания блока. Эти типы используются как единый словарь состояний во всех слоях.
 
-## Интерфейсы
+`src/interfaces/runtime.ts` хранит контракты конфигурации воркеров. Здесь собраны параметры, которые управляют поведением процессов: `chainId`, интервалы опроса, размеры батчей, retry-настройки и параметры retention/reaction-воркеров.
 
-- `interfaces/block-source.ts` — получение head и блока с транзакциями.
-- `interfaces/leader-lock.ts` — абстракция распределенной блокировки (`tryAcquire`, `release`).
-- `interfaces/reaction.ts` — интерфейсы пользовательских обработчиков (`EventReactionHandler`, `TransactionReactionHandler`).
-- `interfaces/stores.ts`:
-  - `ChainCursorStore` — прогресс по сети.
-  - `BlockJobQueueStore` — очередь блоков, claim/fail/retry метаданные.
-  - `RawBlockStore` — сохранение сырых блоков.
-  - `SequencerCommitStore` — последовательный канонический commit.
-  - `EventStreamStore`, `TransactionStreamStore` — чтение подтвержденных/реакционных потоков.
-  - `WorkerCursorStore` — курсоры реакторов.
-  - `RetentionStore` — удаление старых данных по TTL.
+## Репозитории
+
+Репозитории описаны в `src/interfaces/repositories.ts`, реализации — в `src/repositories/postgres/*`.
+
+Ключевое правило:
+- один репозиторий = одна таблица БД,
+- один метод = одно действие с БД.
+
+Методы репозиториев принимают необязательный `transaction?: DbExecutor`, но сами не управляют `BEGIN/COMMIT/ROLLBACK`.
+
+## Транзакции
+
+- Абстракция: `TransactionManager` (`src/interfaces/transaction-manager.ts`).
+- PostgreSQL-реализация: `PostgresTransactionManager` (`src/postgres/transaction-manager.ts`).
+- Транзакционная логика задается в воркерах через `transactionManager.run(...)`.
+
+Это позволяет держать бизнес-сценарии и транзакционные границы в одном месте.
 
 ## Ingestion-контур
 
-### 1) `head-worker`
+### `HeadWorker`
 
-Файл: `workers/head-worker.ts`
+- Получает `latest` из `BlockSource`.
+- При первом запуске инициализирует `chain_cursor` текущим блоком.
+- Для обычного хода считает `safeHead = latest - confirmations`.
+- В одной транзакции:
+  - читает cursor,
+  - добавляет jobs в диапазоне `(lastEnqueuedBlock, safeHead]`,
+  - обновляет `lastEnqueuedBlock`.
 
-- Читает `latest` у RPC.
-- Считает `safeHead = latest - confirmations`.
-- Добавляет диапазон job в `block_jobs` через `enqueueRange`.
+### `FetchWorker`
 
-### 2) `fetch-worker`
+- Забирает задачи из `block_jobs` через `claimForFetch`.
+- Поддерживает recovery stale-fetch задач через `claimed_at` + TTL (`fetchClaimTtlMs`).
+- Для каждой задачи:
+  - тянет блок из `BlockSource`,
+  - в транзакции сохраняет `raw_blocks` и помечает job как `fetched`,
+  - при ошибке ставит `failed` и `next_retry_at` с экспоненциальным backoff.
 
-Файл: `workers/fetch-worker.ts`
+### `SequencerWorker`
 
-- Берет job из `block_jobs` через `claimForFetch`.
-- За один `tick` обрабатывает до `fetchBatchSize` job.
-- Сохраняет сырой блок в `raw_blocks`.
-- На ошибке вычисляет `nextRetryAt` по backoff-политике из `retry` и передает в `markFetchFailed`.
+- В транзакции:
+  - читает `chain_cursor`,
+  - берёт только следующий блок `N+1` из `raw_blocks`,
+  - проверяет `parent_hash` против `last_committed_hash`,
+  - вставляет данные в `canonical_blocks`, `canonical_transactions`, `canonical_events`,
+  - двигает `last_committed_*` в `chain_cursor`,
+  - помечает job как `committed`.
 
-### 3) `sequencer-worker`
+Именно этот воркер обеспечивает строгий порядок канонического потока.
 
-Файл: `workers/sequencer-worker.ts`
+### `RetentionWorker`
 
-- Берет `lastCommittedBlock` из `chain_cursor`.
-- Пытается закоммитить только следующий блок `N+1` через `commitNextBlock`.
-- Именно этот шаг гарантирует строгий порядок подтвержденного потока.
+- В транзакции считает границу purge по `last_committed_block - retentionDepthBlocks`.
+- Удаляет старые данные из:
+  - `block_jobs`
+  - `raw_blocks`
+  - `canonical_blocks`
+  - `canonical_transactions`
+  - `canonical_events`
 
-### 4) `retention-worker`
+## Reaction-контур
 
-Файл: `workers/retention-worker.ts`
+### `EventReactionWorker`
 
-- По `retention`-политике удаляет устаревшие данные:
-  - `purge` (единая очистка по глубине блоков от `chain_cursor.last_committed_block`)
-
-## Контур реакций
-
-### `event-reaction-worker`
-
-Файл: `workers/event-reaction-worker.ts`
-
-- Читает `canonical_events` по `seq`.
-- Обновляет курсор `worker_cursors(stream_type=event)`.
+- Читает события из `canonical_events` по `seq`.
+- Ведет прогресс в `worker_cursors` (`stream_type = event`).
 - Вызывает пользовательский `EventReactionHandler`.
 
-### `transaction-reaction-worker`
+### `TransactionReactionWorker`
 
-Файл: `workers/transaction-reaction-worker.ts`
-
-- Читает `canonical_transactions` по `seq`.
-- Обновляет курсор `worker_cursors(stream_type=tx)`.
+- Читает транзакции из `canonical_transactions` по `seq`.
+- Ведет прогресс в `worker_cursors` (`stream_type = tx`).
 - Вызывает пользовательский `TransactionReactionHandler`.
 
 ## Оркестрация процессов
 
-- Библиотека не содержит общего runtime-оркестратора.
-- Один воркер = один процесс/контейнер.
-- Координация процессов идет только через БД: `block_jobs`, `chain_cursor`, `worker_cursors`.
-- `leaderLock` обязателен для singleton-воркеров:
-  - `head`, `sequencer`, `retention`
-  - `event-reaction`, `transaction-reaction`
-- `fetch-worker` можно запускать в нескольких экземплярах (без singleton-lock).
-- Правило singleton-старта: `tryAcquire() === false` -> `start()` завершается ошибкой; при `stop()` вызывается `release()`.
+- Один воркер = один отдельный процесс/контейнер.
+- Координация процессов только через БД.
+- Singleton-lock (`LeaderLock`) нужен для:
+  - `head`
+  - `sequencer`
+  - `retention`
+  - `event-reaction`
+  - `transaction-reaction`
+- `fetch` можно масштабировать горизонтально (несколько экземпляров).
 
-## Потоки данных и таблицы
+## Таблицы и потоки
 
-- Очередь блоков: `block_jobs`.
-- Сырые данные: `raw_blocks`.
-- Канонические данные: `canonical_blocks`, `canonical_transactions`, `canonical_events`.
-- Прогресс сети: `chain_cursor`.
-- Курсоры реакторов: `worker_cursors`.
+- Очередь блоков: `block_jobs`
+- Сырые блоки: `raw_blocks`
+- Канонические блоки: `canonical_blocks`
+- Канонические транзакции: `canonical_transactions`
+- Канонические события: `canonical_events`
+- Курсор цепочки: `chain_cursor`
+- Курсоры реакторов: `worker_cursors`
 
-Подробная расшифровка полей: [DB_SCHEMA.md](/docs/DB_SCHEMA.md).
+Подробная схема: [DB_SCHEMA.md](/docs/DB_SCHEMA.md)

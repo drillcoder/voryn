@@ -1,5 +1,5 @@
-import type { LeaderLock } from "../../interfaces/leader-lock.js";
-import type { PgPool, PgPoolClient } from "./client.js";
+import type { LeaderLock } from "../interfaces/leader-lock.js";
+import type { Pool, PoolClient } from "pg";
 
 interface AdvisoryLockRow {
     acquired: boolean;
@@ -10,10 +10,10 @@ interface AdvisoryUnlockRow {
 }
 
 export class PostgresLeaderLock implements LeaderLock {
-    private client: PgPoolClient | null = null;
+    private client: PoolClient | null = null;
 
     constructor(
-        private readonly pool: PgPool,
+        private readonly pool: Pool,
         private readonly lockKey: bigint
     ) {
     }

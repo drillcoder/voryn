@@ -1,5 +1,5 @@
 import type { Logger } from "../interfaces/logger.js";
-import type { WorkerLifecycle } from "../types/runtime.js";
+import type { WorkerLifecycle } from "../interfaces/worker-lifecycle.js";
 import { asErrorMessage } from "../utils/errors.js";
 
 export abstract class PollingWorker implements WorkerLifecycle {

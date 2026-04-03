@@ -1,4 +1,4 @@
-import { parsePgBigint, parsePgInt, parsePgTimestamp } from "../../../src/stores/postgres/index.js";
+import { parsePgBigint, parsePgInt, parsePgTimestamp } from "../../src/postgres/index.js";
 
 test("parsePgBigint parses string and number values", () => {
     expect(parsePgBigint("123")).toBe(123n);
