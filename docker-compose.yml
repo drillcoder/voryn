@@ -65,6 +65,7 @@ services:
       VORYN_FETCH_RETRY_MAX_DELAY_MS: ${VORYN_FETCH_RETRY_MAX_DELAY_MS:-}
     command: ["node", "dist/cli.js", "fetch"]
     restart: unless-stopped
+    scale: 2
 
   sequencer:
     <<: *worker-base

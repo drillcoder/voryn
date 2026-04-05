@@ -15,7 +15,7 @@ ingestion-up:
 
 # Рестарт ingestion окружения.
 ingestion-restart:
-	$(COMPOSE) restart head fetch sequencer retention
+	$(COMPOSE) up -d --force-recreate head fetch sequencer retention
 
 # Остановить ingestion окружение.
 ingestion-stop:
@@ -48,6 +48,10 @@ install:
 # Собрать проект.
 build:
 	$(TOOLS_RUN) npm run build
+
+# Собрать тесты.
+build-test:
+	$(TOOLS_RUN) npm run build-test
 
 # Проверить линтер.
 lint:

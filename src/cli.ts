@@ -53,24 +53,24 @@ function printUsage(): void {
         + "  VORYN_CHAIN_ID                    required\n"
         + "  VORYN_LOG_LEVEL                   optional, default: info\n"
         + "\n"
-        + "Fetch env:\n"
-        + "  VORYN_FETCH_RPC_URL               required\n"
-        + "  VORYN_FETCH_POLL_INTERVAL_MS      optional, default: 1000\n"
-        + "  VORYN_FETCH_WORKER_ID             optional, default: <hostname>-<pid>\n"
-        + "  VORYN_FETCH_BATCH_SIZE            optional, default: 5\n"
-        + "  VORYN_FETCH_CLAIM_TTL_MS          optional, default: 125_000\n"
-        + "  VORYN_FETCH_RETRY_MAX_ATTEMPTS    optional, default: 10\n"
-        + "  VORYN_FETCH_RETRY_BASE_DELAY_MS   optional, default: 1_000\n"
-        + "  VORYN_FETCH_RETRY_MAX_DELAY_MS    optional, default: 10_000\n"
-        + "\n"
         + "Head env:\n"
         + "  VORYN_HEAD_RPC_URL                required\n"
         + "  VORYN_HEAD_POLL_INTERVAL_MS       optional, default: 1_000\n"
         + "  VORYN_HEAD_CONFIRMATIONS          optional, default: 0\n"
         + "  VORYN_HEAD_DEPTH_BLOCKS           optional, default: 65_000\n"
         + "\n"
+        + "Fetch env:\n"
+        + "  VORYN_FETCH_RPC_URL               required\n"
+        + "  VORYN_FETCH_POLL_INTERVAL_MS      optional, default: 1_000\n"
+        + "  VORYN_FETCH_WORKER_ID             optional, default: <hostname>-<pid>\n"
+        + "  VORYN_FETCH_BATCH_SIZE            optional, default: 10\n"
+        + "  VORYN_FETCH_CLAIM_TTL_MS          optional, default: 125_000\n"
+        + "  VORYN_FETCH_RETRY_MAX_ATTEMPTS    optional, default: 10\n"
+        + "  VORYN_FETCH_RETRY_BASE_DELAY_MS   optional, default: 1_000\n"
+        + "  VORYN_FETCH_RETRY_MAX_DELAY_MS    optional, default: 10_000\n"
+        + "\n"
         + "Sequencer env:\n"
-        + "  VORYN_SEQUENCER_POLL_INTERVAL_MS  optional, default: 500\n"
+        + "  VORYN_SEQUENCER_POLL_INTERVAL_MS  optional, default: 100\n"
         + "\n"
         + "Retention env:\n"
         + "  VORYN_RETENTION_POLL_INTERVAL_MS  optional, default: 60_000\n"
@@ -229,7 +229,7 @@ async function runFetchCommand(): Promise<void> {
     const pollIntervalMs = parsePositiveIntEnv("VORYN_FETCH_POLL_INTERVAL_MS", 1_000);
 
     const workerId = optionalEnv("VORYN_FETCH_WORKER_ID", `${hostname()}-${String(process.pid)}`);
-    const fetchBatchSize = parsePositiveIntEnv("VORYN_FETCH_BATCH_SIZE", 5);
+    const fetchBatchSize = parsePositiveIntEnv("VORYN_FETCH_BATCH_SIZE", 10);
     const fetchClaimTtlMs = parsePositiveIntEnv("VORYN_FETCH_CLAIM_TTL_MS", 125_000);
     const retryMaxAttempts = parsePositiveIntEnv("VORYN_FETCH_RETRY_MAX_ATTEMPTS", 10);
     const retryBaseDelayMs = parsePositiveIntEnv("VORYN_FETCH_RETRY_BASE_DELAY_MS", 1_000);
@@ -261,7 +261,7 @@ async function runSequencerCommand(): Promise<void> {
     const logger = createConsoleLogger({ minLevel: parseLogLevel() });
     const dbUrl = requireEnv("DATABASE_URL");
     const chainId = parseRequiredPositiveIntEnv("VORYN_CHAIN_ID");
-    const pollIntervalMs = parsePositiveIntEnv("VORYN_SEQUENCER_POLL_INTERVAL_MS", 500);
+    const pollIntervalMs = parsePositiveIntEnv("VORYN_SEQUENCER_POLL_INTERVAL_MS", 100);
 
     const pool = new Pool({ connectionString: dbUrl });
     const worker = new SequencerWorker(

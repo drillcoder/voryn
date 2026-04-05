@@ -13,6 +13,7 @@
 	],
 	"scripts": {
 		"build": "tsc && mkdir -p dist/sql && cp src/sql/postgres-schema.sql dist/sql/postgres-schema.sql",
+		"build-test": "tsc -p tsconfig.test.json",
 		"test": "jest",
 		"test:coverage": "jest --coverage",
 		"test:watch": "jest --watch",

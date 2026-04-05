@@ -46,7 +46,7 @@ DATABASE_URL="postgres://user:pass@localhost:5432/voryn" voryn init
 - `VORYN_FETCH_RPC_URL` (`required`) — RPC URL для загрузки данных блоков.
 - `VORYN_FETCH_POLL_INTERVAL_MS` (`optional`, по умолчанию `1_000`) — интервал проверки очереди.
 - `VORYN_FETCH_WORKER_ID` (`optional`, по умолчанию {hostname}-{pid}) — уникальный id fetch-воркера.
-- `VORYN_FETCH_BATCH_SIZE` (`optional`, по умолчанию `5`) — максимум задач за один `tick`.
+- `VORYN_FETCH_BATCH_SIZE` (`optional`, по умолчанию `10`) — максимум задач за один `tick`.
 - `VORYN_FETCH_CLAIM_TTL_MS` (`optional`, по умолчанию `125_000`) — TTL для `fetching`-задач; после TTL задача может быть пере-захвачена другим fetch-воркером.
 - `VORYN_FETCH_RETRY_MAX_ATTEMPTS` (`optional`, по умолчанию `10`) — максимум попыток загрузки.
 - `VORYN_FETCH_RETRY_BASE_DELAY_MS` (`optional`, по умолчанию `1_000`) — базовая задержка между ретраями.
@@ -54,7 +54,7 @@ DATABASE_URL="postgres://user:pass@localhost:5432/voryn" voryn init
 
 Дополнительно для `sequencer`:
 
-- `VORYN_SEQUENCER_POLL_INTERVAL_MS` (`optional`, по умолчанию `500`) — интервал проверки следующего блока к коммиту.
+- `VORYN_SEQUENCER_POLL_INTERVAL_MS` (`optional`, по умолчанию `100`) — интервал проверки следующего блока к коммиту.
 
 Дополнительно для `retention`:
 
