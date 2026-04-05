@@ -67,6 +67,7 @@ function printUsage(): void {
         + "  VORYN_HEAD_RPC_URL                required\n"
         + "  VORYN_HEAD_POLL_INTERVAL_MS       optional, default: 1_000\n"
         + "  VORYN_HEAD_CONFIRMATIONS          optional, default: 0\n"
+        + "  VORYN_HEAD_DEPTH_BLOCKS           optional, default: 65_000\n"
         + "\n"
         + "Sequencer env:\n"
         + "  VORYN_SEQUENCER_POLL_INTERVAL_MS  optional, default: 500\n"
@@ -201,15 +202,17 @@ async function runHeadCommand(): Promise<void> {
     const pollIntervalMs = parsePositiveIntEnv("VORYN_HEAD_POLL_INTERVAL_MS", 1_000);
 
     const confirmations = parseNonNegativeIntEnv("VORYN_HEAD_CONFIRMATIONS", 0);
+    const depthBlocks = parsePositiveIntEnv("VORYN_HEAD_DEPTH_BLOCKS", 65_000);
 
     const pool = new Pool({ connectionString: dbUrl });
     const cursorRepository = new PostgresChainCursorRepository(pool);
     const blockJobsRepository = new PostgresBlockJobsRepository(pool);
     const worker = new HeadWorker(
-        { chainId, pollIntervalMs, confirmations },
+        { chainId, pollIntervalMs, confirmations, depthBlocks },
         new EthersBlockSource({ provider: new JsonRpcProvider(rpcUrl), validateProviderChainId: true }),
         cursorRepository,
         blockJobsRepository,
+        new PostgresRawBlocksRepository(pool),
         new PostgresTransactionManager(pool),
         new PostgresLeaderLock(pool, 10_000_000n + BigInt(chainId)),
         logger,

@@ -25,6 +25,14 @@ export interface ChainCursorRepository {
         transaction?: DbExecutor
     ): Promise<void>;
 
+    setPositions(
+        chainId: ChainId,
+        lastCommittedBlock: BlockNumber,
+        lastCommittedHash: HashHex,
+        lastEnqueuedBlock: BlockNumber,
+        transaction?: DbExecutor
+    ): Promise<void>;
+
     advanceLastCommitted(
         chainId: ChainId,
         expectedPreviousBlockNumber: BlockNumber,

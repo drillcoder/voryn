@@ -57,9 +57,15 @@ Ingestion-воркеры последовательно собирают и ко
 - Получает `latest` из `BlockSource`.
 - При первом запуске инициализирует `chain_cursor` текущим блоком.
 - Для обычного хода считает `safeHead = latest - confirmations`.
+- Считает нижнюю границу доступной глубины: `floorBlock = max(0, safeHead - depthBlocks + 1)`.
+- Если `last_committed_block < floorBlock - 1`, выполняет rebase:
+  - читает `floorBlock` из RPC и берет `parentHash`,
+  - в транзакции сдвигает `chain_cursor` на `floorBlock - 1`,
+  - удаляет старые записи до этой границы из `block_jobs` и `raw_blocks`,
+  - завершает тик ранним выходом.
 - В одной транзакции:
   - читает cursor,
-  - добавляет jobs в диапазоне `(lastEnqueuedBlock, safeHead]`,
+  - добавляет jobs в диапазоне `[max(lastEnqueuedBlock + 1, floorBlock), safeHead]`,
   - обновляет `lastEnqueuedBlock`.
 
 ### `FetchWorker`

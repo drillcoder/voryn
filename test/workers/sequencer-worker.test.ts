@@ -69,6 +69,7 @@ test("sequencer worker commits next block", async () => {
         insert: async () => undefined,
         setLastEnqueued: async () => undefined,
         setLastCommitted: async () => undefined,
+        setPositions: async () => undefined,
         advanceLastCommitted: async (_cid, _prevN, _prevH, blockN, _hash, tx) => {
             calls.push(`advance:${String(blockN)}:${String(tx === transaction)}`);
         },
@@ -149,6 +150,7 @@ test("sequencer worker exits when cursor is missing", async () => {
             insert: async () => undefined,
             setLastEnqueued: async () => undefined,
             setLastCommitted: async () => undefined,
+            setPositions: async () => undefined,
             advanceLastCommitted: async () => undefined,
         },
         { save: async () => undefined, get: async () => null, deleteUpToBlock: async () => 0 },
@@ -178,6 +180,7 @@ test("sequencer worker exits when raw block is missing", async () => {
             insert: async () => undefined,
             setLastEnqueued: async () => undefined,
             setLastCommitted: async () => undefined,
+            setPositions: async () => undefined,
             advanceLastCommitted: async () => undefined,
         },
         { save: async () => undefined, get: async () => null, deleteUpToBlock: async () => 0 },
@@ -207,6 +210,7 @@ test("sequencer worker throws on parent hash mismatch", async () => {
             insert: async () => undefined,
             setLastEnqueued: async () => undefined,
             setLastCommitted: async () => undefined,
+            setPositions: async () => undefined,
             advanceLastCommitted: async () => undefined,
         },
         {

@@ -50,6 +50,7 @@ const createCursorRepository = (): ChainCursorRepository => ({
     insert: async () => undefined,
     setLastEnqueued: async () => undefined,
     setLastCommitted: async () => undefined,
+    setPositions: async () => undefined,
     advanceLastCommitted: async () => undefined,
 });
 
@@ -126,37 +127,6 @@ test("retention worker triggers purge and logs result", async () => {
     });
 });
 
-test("retention worker skips when depth is non-positive", async () => {
-    const config: RetentionWorkerConfig = {
-        chainId: 1,
-        pollIntervalMs: 1000,
-        retentionDepthBlocks: 0,
-    };
-    let runCalled = false;
-    const manager: TransactionManager = {
-        run: async () => {
-            runCalled = true;
-            throw new Error("must not be called");
-        },
-    };
-
-    const worker = new RetentionWorker(
-        config,
-        createCursorRepository(),
-        createBlockJobsRepository(0),
-        createRawBlocksRepository(0),
-        createCanonicalBlocksRepository(0),
-        createCanonicalTransactionsRepository(0),
-        createCanonicalEventsRepository(0),
-        manager,
-        leaderLock,
-    );
-
-    await invokeTick(worker);
-
-    expect(runCalled).toBe(false);
-});
-
 test("retention worker logs zero deletions when cursor is missing", async () => {
     const logger = {
         debug: jest.fn(),
@@ -174,6 +144,7 @@ test("retention worker logs zero deletions when cursor is missing", async () => 
         insert: async () => undefined,
         setLastEnqueued: async () => undefined,
         setLastCommitted: async () => undefined,
+        setPositions: async () => undefined,
         advanceLastCommitted: async () => undefined,
     };
 
@@ -227,6 +198,7 @@ test("retention worker logs zero deletions when purge block is negative", async 
         insert: async () => undefined,
         setLastEnqueued: async () => undefined,
         setLastCommitted: async () => undefined,
+        setPositions: async () => undefined,
         advanceLastCommitted: async () => undefined,
     };
 

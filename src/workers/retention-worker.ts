@@ -39,10 +39,6 @@ export class RetentionWorker extends SingletonPollingWorker {
         const chainId = this.config.chainId;
         const depthBlocks = this.config.retentionDepthBlocks;
 
-        if (depthBlocks <= 0) {
-            return;
-        }
-
         const result = await this.transactionManager.run(async (transaction): Promise<RetentionPurgeResult> => {
             const cursor = await this.cursorRepository.get(chainId, transaction);
             if (cursor === null) {

@@ -4,6 +4,7 @@ export interface HeadWorkerConfig {
     chainId: ChainId;
     pollIntervalMs: number;
     confirmations: number;
+    depthBlocks: number;
 }
 
 export interface FetchWorkerConfig {

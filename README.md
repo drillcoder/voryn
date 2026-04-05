@@ -39,6 +39,7 @@ DATABASE_URL="postgres://user:pass@localhost:5432/voryn" voryn init
 - `VORYN_HEAD_RPC_URL` (`required`) — RPC URL для чтения текущего хеда сети.
 - `VORYN_HEAD_POLL_INTERVAL_MS` (`optional`, по умолчанию `1_000`) — интервал опроса в миллисекундах.
 - `VORYN_HEAD_CONFIRMATIONS` (`optional`, по умолчанию `0`) — число подтверждений перед постановкой блока в очередь.
+- `VORYN_HEAD_DEPTH_BLOCKS` (`optional`, по умолчанию `65_000`, должен быть `> 0`) — допустимое отставание от `safe head` в блоках. Если `last_committed_block` уходит глубже, `head` делает rebase к границе доступной истории RPC.
 
 Дополнительно для `fetch`:
 
