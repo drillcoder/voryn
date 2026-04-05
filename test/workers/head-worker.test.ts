@@ -22,7 +22,7 @@ const invokeTick = async (worker: object): Promise<void> => {
 const config: HeadWorkerConfig = {
     chainId: 1,
     confirmations: 2,
-    pollIntervalMs: 1000,
+    delayBetweenTicksMs: 1000,
     depthBlocks: 5,
 };
 

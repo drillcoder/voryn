@@ -20,7 +20,7 @@ export class HeadWorker extends SingletonPollingWorker {
     ) {
         super(
             `head:${String(config.chainId)}`,
-            config.pollIntervalMs,
+            config.delayBetweenTicksMs,
             logger ?? noopLogger,
             leaderLock
         );
@@ -121,5 +121,13 @@ export class HeadWorker extends SingletonPollingWorker {
                 toBlock: safeHead,
             });
         });
+    }
+
+    protected override buildStartLogMeta(): Record<string, unknown> {
+        return {
+            chainId: this.config.chainId,
+            confirmations: this.config.confirmations,
+            depthBlocks: this.config.depthBlocks,
+        };
     }
 }

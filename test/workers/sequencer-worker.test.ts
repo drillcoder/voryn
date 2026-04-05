@@ -56,7 +56,7 @@ const noopBlockJobsRepository: BlockJobsRepository = {
 test("sequencer worker commits next block", async () => {
     const calls: string[] = [];
     const { manager, transaction } = createPassThroughManager();
-    const config: SequencerWorkerConfig = { chainId: 10, pollIntervalMs: 1000 };
+    const config: SequencerWorkerConfig = { chainId: 10, delayBetweenTicksMs: 1000 };
 
     const chainCursorRepository: ChainCursorRepository = {
         get: async () => ({
@@ -144,7 +144,7 @@ test("sequencer worker commits next block", async () => {
 test("sequencer worker exits when cursor is missing", async () => {
     const { manager } = createPassThroughManager();
     const worker = new SequencerWorker(
-        { chainId: 10, pollIntervalMs: 1000 },
+        { chainId: 10, delayBetweenTicksMs: 1000 },
         {
             get: async () => null,
             insert: async () => undefined,
@@ -168,7 +168,7 @@ test("sequencer worker exits when cursor is missing", async () => {
 test("sequencer worker exits when raw block is missing", async () => {
     const { manager } = createPassThroughManager();
     const worker = new SequencerWorker(
-        { chainId: 10, pollIntervalMs: 1000 },
+        { chainId: 10, delayBetweenTicksMs: 1000 },
         {
             get: async () => ({
                 chainId: 10,
@@ -198,7 +198,7 @@ test("sequencer worker exits when raw block is missing", async () => {
 test("sequencer worker throws on parent hash mismatch", async () => {
     const { manager } = createPassThroughManager();
     const worker = new SequencerWorker(
-        { chainId: 10, pollIntervalMs: 1000 },
+        { chainId: 10, delayBetweenTicksMs: 1000 },
         {
             get: async () => ({
                 chainId: 10,

@@ -8,11 +8,11 @@ export abstract class SingletonPollingWorker extends PollingWorker {
 
     protected constructor(
         name: string,
-        pollIntervalMs: number,
+        delayBetweenTicksMs: number,
         logger: Logger,
         private readonly leaderLock: LeaderLock
     ) {
-        super(name, pollIntervalMs, logger);
+        super(name, delayBetweenTicksMs, logger);
     }
 
     override async start(): Promise<void> {

@@ -24,7 +24,7 @@ test("event reaction worker processes events and advances cursor", async () => {
     const config: ReactionWorkerConfig = {
         chainId: 5,
         workerName: "ev-handler",
-        pollIntervalMs: 1000,
+        delayBetweenTicksMs: 1000,
         batchSize: 10,
     };
     const leaderLock: LeaderLock = { tryAcquire: async () => true, release: async () => undefined };
@@ -102,7 +102,7 @@ test("event reaction worker creates cursor from max seq when missing", async () 
     const config: ReactionWorkerConfig = {
         chainId: 5,
         workerName: "ev-handler",
-        pollIntervalMs: 1000,
+        delayBetweenTicksMs: 1000,
         batchSize: 10,
     };
 

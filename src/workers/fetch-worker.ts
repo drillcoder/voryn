@@ -19,7 +19,7 @@ export class FetchWorker extends PollingWorker {
     ) {
         super(
             `fetch:${String(config.chainId)}:${workerId}`,
-            config.pollIntervalMs,
+            config.delayBetweenTicksMs,
             logger ?? noopLogger
         );
     }
@@ -28,6 +28,9 @@ export class FetchWorker extends PollingWorker {
         const chainId = this.config.chainId;
         const batchSize = Math.max(1, this.config.fetchBatchSize);
         const staleClaimedBefore = new Date(Date.now() - Math.max(1, this.config.fetchClaimTtlMs));
+        let claimed = 0;
+        let fetched = 0;
+        let failed = 0;
 
         for (let index = 0; index < batchSize; index++) {
             const job = await this.blockJobsRepository.claimForFetch(
@@ -39,6 +42,7 @@ export class FetchWorker extends PollingWorker {
             if (job === null) {
                 break;
             }
+            claimed += 1;
 
             try {
                 const fetchedBlock = await this.source.getBlockData(chainId, job.blockNumber);
@@ -60,6 +64,7 @@ export class FetchWorker extends PollingWorker {
                         transaction
                     );
                 });
+                fetched += 1;
             } catch (error) {
                 if (this.isClaimLostError(error)) {
                     this.logger.warn("fetch_claim_lost_before_mark_fetched", {
@@ -79,6 +84,7 @@ export class FetchWorker extends PollingWorker {
                         asErrorMessage(error),
                         nextRetryAt,
                     );
+                    failed += 1;
                 } catch (markError) {
                     if (this.isClaimLostError(markError)) {
                         this.logger.warn("fetch_claim_lost_before_mark_failed", {
@@ -93,6 +99,28 @@ export class FetchWorker extends PollingWorker {
                 }
             }
         }
+
+        if (claimed > 0) {
+            this.logger.info("fetch_tick_processed", {
+                chainId,
+                workerId: this.workerId,
+                claimed,
+                fetched,
+                failed,
+            });
+        }
+    }
+
+    protected override buildStartLogMeta(): Record<string, unknown> {
+        return {
+            workerId: this.workerId,
+            chainId: this.config.chainId,
+            fetchBatchSize: this.config.fetchBatchSize,
+            fetchClaimTtlMs: this.config.fetchClaimTtlMs,
+            retryMaxAttempts: this.config.retryMaxAttempts,
+            retryBaseDelayMs: this.config.retryBaseDelayMs,
+            retryMaxDelayMs: this.config.retryMaxDelayMs,
+        };
     }
 
     private buildNextRetryAt(attemptNumber: number): Date | null {

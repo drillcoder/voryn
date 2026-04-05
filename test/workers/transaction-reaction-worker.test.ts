@@ -25,7 +25,7 @@ test("transaction reaction worker processes txs and advances cursor", async () =
     const config: ReactionWorkerConfig = {
         chainId: 9,
         workerName: "tx-handler",
-        pollIntervalMs: 1000,
+        delayBetweenTicksMs: 1000,
         batchSize: 10,
     };
     const leaderLock: LeaderLock = { tryAcquire: async () => true, release: async () => undefined };
@@ -103,7 +103,7 @@ test("transaction reaction worker creates cursor from max seq when missing", asy
     const config: ReactionWorkerConfig = {
         chainId: 9,
         workerName: "tx-handler",
-        pollIntervalMs: 1000,
+        delayBetweenTicksMs: 1000,
         batchSize: 10,
     };
 

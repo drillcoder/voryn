@@ -28,25 +28,25 @@ export class SequencerWorker extends SingletonPollingWorker {
     ) {
         super(
             `sequencer:${String(config.chainId)}`,
-            config.pollIntervalMs,
+            config.delayBetweenTicksMs,
             logger ?? noopLogger,
             leaderLock
         );
     }
 
     protected async tick(): Promise<void> {
-        await this.transactionManager.run(async (transaction) => {
+        const committedBlock = await this.transactionManager.run(async (transaction): Promise<number | null> => {
             const chainId = this.config.chainId;
 
             const cursor = await this.chainCursorRepository.get(chainId, transaction);
             if (cursor === null) {
-                return;
+                return null;
             }
             const nextBlock = cursor.lastCommittedBlock + 1;
 
             const raw = await this.rawBlocksRepository.get(chainId, nextBlock, transaction);
             if (!raw) {
-                return;
+                return null;
             }
 
             if (raw.parentHash !== cursor.lastCommittedHash) {
@@ -81,6 +81,22 @@ export class SequencerWorker extends SingletonPollingWorker {
                 transaction
             );
             await this.blockJobsRepository.markCommitted(chainId, nextBlock, transaction);
+            return nextBlock;
         });
+
+        if (committedBlock !== null) {
+            this.logger.info("sequencer_block_committed", {
+                chainId: this.config.chainId,
+                blockNumber: committedBlock,
+            });
+        } else {
+            this.logger.debug("sequencer_no_block_to_commit", {
+                chainId: this.config.chainId,
+            });
+        }
+    }
+
+    protected override buildStartLogMeta(): Record<string, unknown> {
+        return { chainId: this.config.chainId };
     }
 }

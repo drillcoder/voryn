@@ -2,14 +2,14 @@ import type { ChainId } from "../types/chain.js";
 
 export interface HeadWorkerConfig {
     chainId: ChainId;
-    pollIntervalMs: number;
+    delayBetweenTicksMs: number;
     confirmations: number;
     depthBlocks: number;
 }
 
 export interface FetchWorkerConfig {
     chainId: ChainId;
-    pollIntervalMs: number;
+    delayBetweenTicksMs: number;
     fetchBatchSize: number;
     fetchClaimTtlMs: number;
     retryMaxAttempts: number;
@@ -19,18 +19,18 @@ export interface FetchWorkerConfig {
 
 export interface SequencerWorkerConfig {
     chainId: ChainId;
-    pollIntervalMs: number;
+    delayBetweenTicksMs: number;
 }
 
 export interface RetentionWorkerConfig {
     chainId: ChainId;
-    pollIntervalMs: number;
+    delayBetweenTicksMs: number;
     retentionDepthBlocks: number;
 }
 
 export interface ReactionWorkerConfig {
     chainId: ChainId;
-    pollIntervalMs: number;
+    delayBetweenTicksMs: number;
     workerName: string;
     batchSize: number;
 }

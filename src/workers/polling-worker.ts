@@ -8,7 +8,7 @@ export abstract class PollingWorker implements WorkerLifecycle {
 
     protected constructor(
         protected readonly workerName: string,
-        private readonly pollIntervalMs: number,
+        private readonly delayBetweenTicksMs: number,
         protected readonly logger: Logger
     ) {
     }
@@ -20,7 +20,11 @@ export abstract class PollingWorker implements WorkerLifecycle {
         }
 
         this.active = true;
-        this.logger.info("worker_started", { worker: this.workerName, pollIntervalMs: this.pollIntervalMs });
+        this.logger.info("worker_started", {
+            workerName: this.workerName,
+            delayBetweenTicksMs: this.delayBetweenTicksMs,
+            ...this.buildStartLogMeta(),
+        });
         this.runPromise = this.runLoop();
     }
 
@@ -51,8 +55,12 @@ export abstract class PollingWorker implements WorkerLifecycle {
                 break;
             }
 
-            await new Promise((resolve) => setTimeout(resolve, this.pollIntervalMs));
+            await new Promise((resolve) => setTimeout(resolve, this.delayBetweenTicksMs));
         }
+    }
+
+    protected buildStartLogMeta(): Record<string, unknown> {
+        return {};
     }
 
     protected abstract tick(): Promise<void>;

@@ -17,7 +17,7 @@ export class TransactionReactionWorker extends SingletonPollingWorker {
     ) {
         super(
             `reaction-tx:${String(config.chainId)}:${config.workerName}`,
-            config.pollIntervalMs,
+            config.delayBetweenTicksMs,
             logger ?? noopLogger,
             leaderLock
         );
@@ -28,10 +28,26 @@ export class TransactionReactionWorker extends SingletonPollingWorker {
 
         const cursor = await this.getOrCreateCursor(workerName, chainId);
         const transactions = await this.transactionsRepository.readFromSeq(chainId, cursor.lastSeq, batchSize);
+        let lastProcessedSeq: bigint | null = null;
 
         for (const transaction of transactions) {
             await this.handler.handle(transaction, { workerName });
             await this.workerCursorsRepository.advance(workerName, chainId, "tx", transaction.seq);
+            lastProcessedSeq = transaction.seq;
+        }
+
+        if (transactions.length > 0) {
+            this.logger.info("transaction_reaction_tick_processed", {
+                chainId,
+                workerName,
+                processed: transactions.length,
+                lastProcessedSeq,
+            });
+        } else {
+            this.logger.debug("transaction_reaction_tick_no_transactions", {
+                chainId,
+                workerName,
+            });
         }
     }
 
@@ -44,5 +60,13 @@ export class TransactionReactionWorker extends SingletonPollingWorker {
         const initialSeq = await this.transactionsRepository.maxSeq(chainId);
         await this.workerCursorsRepository.insert(workerName, chainId, "tx", initialSeq);
         return { lastSeq: initialSeq };
+    }
+
+    protected override buildStartLogMeta(): Record<string, unknown> {
+        return {
+            chainId: this.config.chainId,
+            workerName: this.config.workerName,
+            batchSize: this.config.batchSize,
+        };
     }
 }

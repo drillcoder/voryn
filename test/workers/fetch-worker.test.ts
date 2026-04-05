@@ -18,7 +18,7 @@ const HASH_B = asHash32("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 
 const config: FetchWorkerConfig = {
     chainId: 7,
-    pollIntervalMs: 1000,
+    delayBetweenTicksMs: 1000,
     fetchBatchSize: 1,
     fetchClaimTtlMs: 10_000,
     retryMaxAttempts: 4,

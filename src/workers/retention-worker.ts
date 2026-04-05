@@ -29,7 +29,7 @@ export class RetentionWorker extends SingletonPollingWorker {
     ) {
         super(
             `retention:${String(config.chainId)}`,
-            config.pollIntervalMs,
+            config.delayBetweenTicksMs,
             logger ?? noopLogger,
             leaderLock
         );
@@ -97,5 +97,12 @@ export class RetentionWorker extends SingletonPollingWorker {
         });
 
         this.logger.info("retention_purged", { chainId, depthBlocks, ...result });
+    }
+
+    protected override buildStartLogMeta(): Record<string, unknown> {
+        return {
+            chainId: this.config.chainId,
+            retentionDepthBlocks: this.config.retentionDepthBlocks,
+        };
     }
 }

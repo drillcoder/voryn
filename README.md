@@ -37,14 +37,14 @@ DATABASE_URL="postgres://user:pass@localhost:5432/voryn" voryn init
 Дополнительно для `head`:
 
 - `VORYN_HEAD_RPC_URL` (`required`) — RPC URL для чтения текущего хеда сети.
-- `VORYN_HEAD_POLL_INTERVAL_MS` (`optional`, по умолчанию `1_000`) — интервал опроса в миллисекундах.
+- `VORYN_HEAD_DELAY_BETWEEN_TICKS_MS` (`optional`, по умолчанию `1_000`) — задержка между тиками в миллисекундах.
 - `VORYN_HEAD_CONFIRMATIONS` (`optional`, по умолчанию `0`) — число подтверждений перед постановкой блока в очередь.
 - `VORYN_HEAD_DEPTH_BLOCKS` (`optional`, по умолчанию `65_000`, должен быть `> 0`) — допустимое отставание от `safe head` в блоках. Если `last_committed_block` уходит глубже, `head` делает rebase к границе доступной истории RPC.
 
 Дополнительно для `fetch`:
 
 - `VORYN_FETCH_RPC_URL` (`required`) — RPC URL для загрузки данных блоков.
-- `VORYN_FETCH_POLL_INTERVAL_MS` (`optional`, по умолчанию `1_000`) — интервал проверки очереди.
+- `VORYN_FETCH_DELAY_BETWEEN_TICKS_MS` (`optional`, по умолчанию `100`) — задержка между тиками в миллисекундах.
 - `VORYN_FETCH_WORKER_ID` (`optional`, по умолчанию {hostname}-{pid}) — уникальный id fetch-воркера.
 - `VORYN_FETCH_BATCH_SIZE` (`optional`, по умолчанию `10`) — максимум задач за один `tick`.
 - `VORYN_FETCH_CLAIM_TTL_MS` (`optional`, по умолчанию `125_000`) — TTL для `fetching`-задач; после TTL задача может быть пере-захвачена другим fetch-воркером.
@@ -54,11 +54,11 @@ DATABASE_URL="postgres://user:pass@localhost:5432/voryn" voryn init
 
 Дополнительно для `sequencer`:
 
-- `VORYN_SEQUENCER_POLL_INTERVAL_MS` (`optional`, по умолчанию `100`) — интервал проверки следующего блока к коммиту.
+- `VORYN_SEQUENCER_DELAY_BETWEEN_TICKS_MS` (`optional`, по умолчанию `100`) — задержка между тиками sequencer.
 
 Дополнительно для `retention`:
 
-- `VORYN_RETENTION_POLL_INTERVAL_MS` (`optional`, по умолчанию `60_000`) — интервал запуска очистки.
+- `VORYN_RETENTION_DELAY_BETWEEN_TICKS_MS` (`optional`, по умолчанию `60_000`) — задержка между тиками в миллисекундах.
 - `VORYN_RETENTION_DEPTH_BLOCKS` (`optional`, по умолчанию `65_000`) — глубина хранения в committed-блоках.
 
 Пример:

@@ -97,7 +97,7 @@ test("retention worker triggers purge and logs result", async () => {
     };
     const config: RetentionWorkerConfig = {
         chainId: 1,
-        pollIntervalMs: 1000,
+        delayBetweenTicksMs: 1000,
         retentionDepthBlocks: 42,
     };
 
@@ -136,7 +136,7 @@ test("retention worker logs zero deletions when cursor is missing", async () => 
     };
     const config: RetentionWorkerConfig = {
         chainId: 1,
-        pollIntervalMs: 1000,
+        delayBetweenTicksMs: 1000,
         retentionDepthBlocks: 10,
     };
     const cursorRepository: ChainCursorRepository = {
@@ -183,7 +183,7 @@ test("retention worker logs zero deletions when purge block is negative", async 
     };
     const config: RetentionWorkerConfig = {
         chainId: 1,
-        pollIntervalMs: 1000,
+        delayBetweenTicksMs: 1000,
         retentionDepthBlocks: 1000,
     };
 
