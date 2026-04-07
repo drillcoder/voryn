@@ -104,35 +104,48 @@ const formatLine = (
     return `${parts.join(" ")}\n`;
 };
 
-export const createConsoleLogger = (options: ConsoleLoggerOptions = {}): Logger => {
-    const minLevel = options.minLevel ?? "debug";
-    const includeTimestamp = options.timestamp ?? true;
-    const stdout = options.stdout ?? process.stdout;
-    const stderr = options.stderr ?? process.stderr;
-    const colorize = shouldColorize(options.colorize, stdout, stderr);
+export class ConsoleLogger implements Logger {
+    private readonly minLevel: LogLevel;
 
-    const log = (level: LogLevel, message: string, meta?: Record<string, unknown>): void => {
-        if (LOG_LEVEL_PRIORITY[level] < LOG_LEVEL_PRIORITY[minLevel]) {
+    private readonly includeTimestamp: boolean;
+
+    private readonly stdout: ConsoleLogWriter;
+
+    private readonly stderr: ConsoleLogWriter;
+
+    private readonly colorize: boolean;
+
+    public constructor(options: ConsoleLoggerOptions = {}) {
+        this.minLevel = options.minLevel ?? "debug";
+        this.includeTimestamp = options.timestamp ?? true;
+        this.stdout = options.stdout ?? process.stdout;
+        this.stderr = options.stderr ?? process.stderr;
+        this.colorize = shouldColorize(options.colorize, this.stdout, this.stderr);
+    }
+
+    public debug(message: string, meta?: Record<string, unknown>): void {
+        this.log("debug", message, meta);
+    }
+
+    public info(message: string, meta?: Record<string, unknown>): void {
+        this.log("info", message, meta);
+    }
+
+    public warn(message: string, meta?: Record<string, unknown>): void {
+        this.log("warn", message, meta);
+    }
+
+    public error(message: string, meta?: Record<string, unknown>): void {
+        this.log("error", message, meta);
+    }
+
+    private log(level: LogLevel, message: string, meta?: Record<string, unknown>): void {
+        if (LOG_LEVEL_PRIORITY[level] < LOG_LEVEL_PRIORITY[this.minLevel]) {
             return;
         }
 
-        const line = formatLine(level, message, meta, includeTimestamp, colorize);
-        const stream = level === "warn" || level === "error" ? stderr : stdout;
+        const line = formatLine(level, message, meta, this.includeTimestamp, this.colorize);
+        const stream = level === "warn" || level === "error" ? this.stderr : this.stdout;
         stream.write(line);
-    };
-
-    return {
-        debug: (message, meta) => {
-            log("debug", message, meta);
-        },
-        info: (message, meta) => {
-            log("info", message, meta);
-        },
-        warn: (message, meta) => {
-            log("warn", message, meta);
-        },
-        error: (message, meta) => {
-            log("error", message, meta);
-        },
-    };
-};
+    }
+}

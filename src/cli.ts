@@ -14,8 +14,9 @@ import {
 } from "./repositories/postgres/index.js";
 import { EthersBlockSource } from "./adapters/ethers-block-source.js";
 import { initPostgresDb } from "./db/init-postgres.js";
+import type { Logger } from "./interfaces/logger.js";
 import type { LogLevel } from "./loggers/console-logger.js";
-import { createConsoleLogger } from "./loggers/console-logger.js";
+import { ConsoleLogger } from "./loggers/console-logger.js";
 import { FetchWorker, HeadWorker, RetentionWorker, SequencerWorker } from "./index.js";
 
 type Command = "init" | "head" | "fetch" | "sequencer" | "retention";
@@ -176,7 +177,7 @@ async function waitForShutdownSignal(): Promise<NodeJS.Signals> {
 async function runWorkerLifecycle(
     command: Exclude<Command, "init">,
     worker: HeadWorker | FetchWorker | SequencerWorker | RetentionWorker,
-    logger: ReturnType<typeof createConsoleLogger>,
+    logger: Logger,
     pool: Pool
 ): Promise<void> {
     try {
@@ -190,13 +191,13 @@ async function runWorkerLifecycle(
 }
 
 async function runInitCommand(): Promise<void> {
-    const logger = createConsoleLogger({ minLevel: parseLogLevel() });
+    const logger = new ConsoleLogger({ minLevel: parseLogLevel() });
     const dbUrl = requireEnv("DATABASE_URL");
     await initPostgresDb({ url: dbUrl, logger });
 }
 
 async function runHeadCommand(): Promise<void> {
-    const logger = createConsoleLogger({ minLevel: parseLogLevel() });
+    const logger = new ConsoleLogger({ minLevel: parseLogLevel() });
     const dbUrl = requireEnv("DATABASE_URL");
     const rpcUrl = requireEnv("VORYN_HEAD_RPC_URL");
     const chainId = parseRequiredPositiveIntEnv("VORYN_CHAIN_ID");
@@ -223,7 +224,7 @@ async function runHeadCommand(): Promise<void> {
 }
 
 async function runFetchCommand(): Promise<void> {
-    const logger = createConsoleLogger({ minLevel: parseLogLevel() });
+    const logger = new ConsoleLogger({ minLevel: parseLogLevel() });
     const dbUrl = requireEnv("DATABASE_URL");
     const rpcUrl = requireEnv("VORYN_FETCH_RPC_URL");
     const chainId = parseRequiredPositiveIntEnv("VORYN_CHAIN_ID");
@@ -259,7 +260,7 @@ async function runFetchCommand(): Promise<void> {
 }
 
 async function runSequencerCommand(): Promise<void> {
-    const logger = createConsoleLogger({ minLevel: parseLogLevel() });
+    const logger = new ConsoleLogger({ minLevel: parseLogLevel() });
     const dbUrl = requireEnv("DATABASE_URL");
     const chainId = parseRequiredPositiveIntEnv("VORYN_CHAIN_ID");
     const delayBetweenTicksMs = parsePositiveIntEnv("VORYN_SEQUENCER_DELAY_BETWEEN_TICKS_MS", 100);
@@ -283,7 +284,7 @@ async function runSequencerCommand(): Promise<void> {
 }
 
 async function runRetentionCommand(): Promise<void> {
-    const logger = createConsoleLogger({ minLevel: parseLogLevel() });
+    const logger = new ConsoleLogger({ minLevel: parseLogLevel() });
     const dbUrl = requireEnv("DATABASE_URL");
     const chainId = parseRequiredPositiveIntEnv("VORYN_CHAIN_ID");
     const delayBetweenTicksMs = parsePositiveIntEnv("VORYN_RETENTION_DELAY_BETWEEN_TICKS_MS", 60_000);

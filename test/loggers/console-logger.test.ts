@@ -1,4 +1,4 @@
-import { createConsoleLogger, type ConsoleLogWriter } from "../../src/index.js";
+import { ConsoleLogger, type ConsoleLogWriter } from "../../src/index.js";
 
 const createWriter = (isTTY = false) => {
     const lines: string[] = [];
@@ -15,7 +15,7 @@ const createWriter = (isTTY = false) => {
 test("console logger writes colored levels and sends warn/error to stderr", () => {
     const stdout = createWriter();
     const stderr = createWriter();
-    const logger = createConsoleLogger({
+    const logger = new ConsoleLogger({
         colorize: true,
         timestamp: false,
         stdout: stdout.writer,
@@ -40,7 +40,7 @@ test("console logger writes colored levels and sends warn/error to stderr", () =
 test("console logger respects minLevel", () => {
     const stdout = createWriter();
     const stderr = createWriter();
-    const logger = createConsoleLogger({
+    const logger = new ConsoleLogger({
         minLevel: "warn",
         colorize: false,
         timestamp: false,
@@ -60,7 +60,7 @@ test("console logger respects minLevel", () => {
 test("console logger includes timestamp when enabled", () => {
     const stdout = createWriter();
     const stderr = createWriter();
-    const logger = createConsoleLogger({
+    const logger = new ConsoleLogger({
         colorize: false,
         timestamp: true,
         stdout: stdout.writer,
@@ -79,7 +79,7 @@ test("console logger includes timestamp when enabled", () => {
 test("console logger serializes error and circular meta safely", () => {
     const stdout = createWriter();
     const stderr = createWriter();
-    const logger = createConsoleLogger({
+    const logger = new ConsoleLogger({
         colorize: false,
         timestamp: false,
         stdout: stdout.writer,
@@ -105,7 +105,7 @@ test("console logger enables colors automatically when output is TTY", () => {
     delete process.env.NO_COLOR;
 
     try {
-        const logger = createConsoleLogger({
+        const logger = new ConsoleLogger({
             timestamp: false,
             stdout: stdout.writer,
             stderr: stderr.writer,
@@ -130,7 +130,7 @@ test("console logger disables colors when NO_COLOR is set", () => {
     process.env.NO_COLOR = "1";
 
     try {
-        const logger = createConsoleLogger({
+        const logger = new ConsoleLogger({
             timestamp: false,
             stdout: stdout.writer,
             stderr: stderr.writer,
@@ -160,7 +160,7 @@ test("console logger uses default options when no options provided", () => {
         .mockImplementation(() => true);
 
     try {
-        const logger = createConsoleLogger();
+        const logger = new ConsoleLogger();
 
         logger.info("defaults");
 
