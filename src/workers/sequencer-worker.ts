@@ -35,68 +35,84 @@ export class SequencerWorker extends SingletonPollingWorker {
     }
 
     protected async tick(): Promise<void> {
-        const committedBlock = await this.transactionManager.run(async (transaction): Promise<number | null> => {
-            const chainId = this.config.chainId;
+        const chainId = this.config.chainId;
+        const maxBlocksPerTick = Math.max(1, this.config.maxBlocksPerTick);
+        const committedBlocks: number[] = [];
 
-            const cursor = await this.chainCursorRepository.get(chainId, transaction);
-            if (cursor === null) {
-                return null;
-            }
-            const nextBlock = cursor.lastCommittedBlock + 1;
+        for (let index = 0; index < maxBlocksPerTick; index++) {
+            const committedBlock = await this.transactionManager.run(async (transaction): Promise<number | null> => {
+                const cursor = await this.chainCursorRepository.get(chainId, transaction);
+                if (cursor === null) {
+                    return null;
+                }
+                const nextBlock = cursor.lastCommittedBlock + 1;
 
-            const raw = await this.rawBlocksRepository.get(chainId, nextBlock, transaction);
-            if (!raw) {
-                return null;
-            }
+                const raw = await this.rawBlocksRepository.get(chainId, nextBlock, transaction);
+                if (!raw) {
+                    return null;
+                }
 
-            if (raw.parentHash !== cursor.lastCommittedHash) {
-                throw new Error(
-                    "Raw block parent hash mismatch for chain "
-                    + `${String(chainId)} block ${String(nextBlock)}: `
-                    + `expected parent ${cursor.lastCommittedHash}, got ${raw.parentHash}`
+                if (raw.parentHash !== cursor.lastCommittedHash) {
+                    throw new Error(
+                        "Raw block parent hash mismatch for chain "
+                        + `${String(chainId)} block ${String(nextBlock)}: `
+                        + `expected parent ${cursor.lastCommittedHash}, got ${raw.parentHash}`
+                    );
+                }
+
+                await this.canonicalBlocksRepository.insert(raw.payload.block, transaction);
+                await this.canonicalTransactionsRepository.insertMany(
+                    raw.payload.block.chainId,
+                    raw.payload.block.number,
+                    raw.blockHash,
+                    raw.payload.transactions,
+                    transaction
                 );
+                await this.canonicalEventsRepository.insertMany(
+                    raw.payload.block.chainId,
+                    raw.payload.block.number,
+                    raw.blockHash,
+                    raw.payload.logs,
+                    transaction
+                );
+                await this.chainCursorRepository.advanceLastCommitted(
+                    cursor.chainId,
+                    cursor.lastCommittedBlock,
+                    cursor.lastCommittedHash,
+                    nextBlock,
+                    raw.blockHash,
+                    transaction
+                );
+                await this.blockJobsRepository.markCommitted(chainId, nextBlock, transaction);
+                return nextBlock;
+            });
+
+            if (committedBlock === null) {
+                break;
             }
 
-            await this.canonicalBlocksRepository.insert(raw.payload.block, transaction);
-            await this.canonicalTransactionsRepository.insertMany(
-                raw.payload.block.chainId,
-                raw.payload.block.number,
-                raw.blockHash,
-                raw.payload.transactions,
-                transaction
-            );
-            await this.canonicalEventsRepository.insertMany(
-                raw.payload.block.chainId,
-                raw.payload.block.number,
-                raw.blockHash,
-                raw.payload.logs,
-                transaction
-            );
-            await this.chainCursorRepository.advanceLastCommitted(
-                cursor.chainId,
-                cursor.lastCommittedBlock,
-                cursor.lastCommittedHash,
-                nextBlock,
-                raw.blockHash,
-                transaction
-            );
-            await this.blockJobsRepository.markCommitted(chainId, nextBlock, transaction);
-            return nextBlock;
-        });
+            committedBlocks.push(committedBlock);
+        }
 
-        if (committedBlock !== null) {
-            this.logger.info("sequencer_block_committed", {
-                chainId: this.config.chainId,
-                blockNumber: committedBlock,
+        if (committedBlocks.length > 0) {
+            const lastCommittedBlock = committedBlocks[committedBlocks.length - 1];
+            this.logger.info("sequencer_blocks_committed", {
+                chainId,
+                committedCount: committedBlocks.length,
+                firstBlockNumber: committedBlocks[0],
+                lastBlockNumber: lastCommittedBlock,
             });
         } else {
             this.logger.debug("sequencer_no_block_to_commit", {
-                chainId: this.config.chainId,
+                chainId,
             });
         }
     }
 
     protected override buildStartLogMeta(): Record<string, unknown> {
-        return { chainId: this.config.chainId };
+        return {
+            chainId: this.config.chainId,
+            maxBlocksPerTick: this.config.maxBlocksPerTick,
+        };
     }
 }

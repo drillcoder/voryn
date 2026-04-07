@@ -55,6 +55,7 @@ DATABASE_URL="postgres://user:pass@localhost:5432/voryn" voryn init
 Дополнительно для `sequencer`:
 
 - `VORYN_SEQUENCER_DELAY_BETWEEN_TICKS_MS` (`optional`, по умолчанию `100`) — задержка между тиками sequencer.
+- `VORYN_SEQUENCER_MAX_BLOCKS_PER_TICK` (`optional`, по умолчанию `10`) — максимальное число блоков, которое sequencer обрабатывает за один `tick`.
 
 Дополнительно для `retention`:
 

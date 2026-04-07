@@ -56,7 +56,7 @@ const noopBlockJobsRepository: BlockJobsRepository = {
 test("sequencer worker commits next block", async () => {
     const calls: string[] = [];
     const { manager, transaction } = createPassThroughManager();
-    const config: SequencerWorkerConfig = { chainId: 10, delayBetweenTicksMs: 1000 };
+    const config: SequencerWorkerConfig = { chainId: 10, delayBetweenTicksMs: 1000, maxBlocksPerTick: 1 };
 
     const chainCursorRepository: ChainCursorRepository = {
         get: async () => ({
@@ -144,7 +144,7 @@ test("sequencer worker commits next block", async () => {
 test("sequencer worker exits when cursor is missing", async () => {
     const { manager } = createPassThroughManager();
     const worker = new SequencerWorker(
-        { chainId: 10, delayBetweenTicksMs: 1000 },
+        { chainId: 10, delayBetweenTicksMs: 1000, maxBlocksPerTick: 1 },
         {
             get: async () => null,
             insert: async () => undefined,
@@ -165,10 +165,132 @@ test("sequencer worker exits when cursor is missing", async () => {
     await expect(invokeTick(worker)).resolves.toBeUndefined();
 });
 
+test("sequencer worker commits multiple blocks in one tick", async () => {
+    const calls: string[] = [];
+    const { manager, transaction } = createPassThroughManager();
+    const chainCursor = {
+        chainId: 10,
+        lastEnqueuedBlock: 50,
+        lastCommittedBlock: 40,
+        lastCommittedHash: HASH_A,
+        updatedAt: new Date(),
+    };
+    const hash41 = asHash32("0x1111111111111111111111111111111111111111111111111111111111111111");
+    const hash42 = asHash32("0x2222222222222222222222222222222222222222222222222222222222222222");
+
+    const worker = new SequencerWorker(
+        { chainId: 10, delayBetweenTicksMs: 1000, maxBlocksPerTick: 2 },
+        {
+            get: async () => chainCursor,
+            insert: async () => undefined,
+            setLastEnqueued: async () => undefined,
+            setLastCommitted: async () => undefined,
+            setPositions: async () => undefined,
+            advanceLastCommitted: async (_cid, _prevN, _prevH, blockN, blockHash, tx) => {
+                chainCursor.lastCommittedBlock = blockN;
+                chainCursor.lastCommittedHash = blockHash;
+                calls.push(`advance:${String(blockN)}:${String(tx === transaction)}`);
+            },
+        },
+        {
+            save: async () => undefined,
+            get: async (_chainId, blockNumber) => {
+                if (blockNumber === 41) {
+                    return {
+                        chainId: 10,
+                        blockNumber: 41,
+                        blockHash: hash41,
+                        parentHash: HASH_A,
+                        payload: {
+                            block: {
+                                chainId: 10,
+                                number: 41,
+                                hash: hash41,
+                                parentHash: HASH_A,
+                                timestamp: 1,
+                                raw: {},
+                            },
+                            transactions: [],
+                            logs: [],
+                        },
+                        fetchedAt: new Date(),
+                    };
+                }
+
+                if (blockNumber === 42) {
+                    return {
+                        chainId: 10,
+                        blockNumber: 42,
+                        blockHash: hash42,
+                        parentHash: hash41,
+                        payload: {
+                            block: {
+                                chainId: 10,
+                                number: 42,
+                                hash: hash42,
+                                parentHash: hash41,
+                                timestamp: 2,
+                                raw: {},
+                            },
+                            transactions: [],
+                            logs: [],
+                        },
+                        fetchedAt: new Date(),
+                    };
+                }
+
+                return null;
+            },
+            deleteUpToBlock: async () => 0,
+        },
+        {
+            insert: async (block) => { calls.push(`insert-block:${String(block.number)}`); },
+            deleteUpToBlock: async () => 0,
+        },
+        {
+            readFromSeq: async () => [],
+            maxSeq: async () => 0n,
+            insertMany: async (_chainId, blockNumber) => { calls.push(`insert-tx:${String(blockNumber)}`); },
+            deleteUpToBlock: async () => 0,
+        },
+        {
+            readFromSeq: async () => [],
+            maxSeq: async () => 0n,
+            insertMany: async (_chainId, blockNumber) => { calls.push(`insert-event:${String(blockNumber)}`); },
+            deleteUpToBlock: async () => 0,
+        },
+        {
+            enqueueRange: async () => undefined,
+            claimForFetch: async () => null,
+            markFetched: async () => undefined,
+            markFetchFailed: async () => undefined,
+            markCommitted: async (_chainId, blockNumber) => { calls.push(`mark-committed:${String(blockNumber)}`); },
+            deleteUpToBlock: async () => 0,
+        },
+        manager,
+        leaderLock,
+    );
+
+    await invokeTick(worker);
+
+    expect(calls).toEqual([
+        "insert-block:41",
+        "insert-tx:41",
+        "insert-event:41",
+        "advance:41:true",
+        "mark-committed:41",
+        "insert-block:42",
+        "insert-tx:42",
+        "insert-event:42",
+        "advance:42:true",
+        "mark-committed:42",
+    ]);
+});
+
 test("sequencer worker exits when raw block is missing", async () => {
     const { manager } = createPassThroughManager();
     const worker = new SequencerWorker(
-        { chainId: 10, delayBetweenTicksMs: 1000 },
+        { chainId: 10, delayBetweenTicksMs: 1000, maxBlocksPerTick: 1 },
         {
             get: async () => ({
                 chainId: 10,
@@ -198,7 +320,7 @@ test("sequencer worker exits when raw block is missing", async () => {
 test("sequencer worker throws on parent hash mismatch", async () => {
     const { manager } = createPassThroughManager();
     const worker = new SequencerWorker(
-        { chainId: 10, delayBetweenTicksMs: 1000 },
+        { chainId: 10, delayBetweenTicksMs: 1000, maxBlocksPerTick: 1 },
         {
             get: async () => ({
                 chainId: 10,

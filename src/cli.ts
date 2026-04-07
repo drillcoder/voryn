@@ -71,6 +71,7 @@ function printUsage(): void {
         + "\n"
         + "Sequencer env:\n"
         + "  VORYN_SEQUENCER_DELAY_BETWEEN_TICKS_MS  optional, default: 100\n"
+        + "  VORYN_SEQUENCER_MAX_BLOCKS_PER_TICK     optional, default: 10\n"
         + "\n"
         + "Retention env:\n"
         + "  VORYN_RETENTION_DELAY_BETWEEN_TICKS_MS  optional, default: 60_000\n"
@@ -262,10 +263,11 @@ async function runSequencerCommand(): Promise<void> {
     const dbUrl = requireEnv("DATABASE_URL");
     const chainId = parseRequiredPositiveIntEnv("VORYN_CHAIN_ID");
     const delayBetweenTicksMs = parsePositiveIntEnv("VORYN_SEQUENCER_DELAY_BETWEEN_TICKS_MS", 100);
+    const maxBlocksPerTick = parsePositiveIntEnv("VORYN_SEQUENCER_MAX_BLOCKS_PER_TICK", 10);
 
     const pool = new Pool({ connectionString: dbUrl });
     const worker = new SequencerWorker(
-        { chainId, delayBetweenTicksMs },
+        { chainId, delayBetweenTicksMs, maxBlocksPerTick },
         new PostgresChainCursorRepository(pool),
         new PostgresRawBlocksRepository(pool),
         new PostgresCanonicalBlocksRepository(pool),

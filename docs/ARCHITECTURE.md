@@ -79,9 +79,10 @@ Ingestion-воркеры последовательно собирают и ко
 
 ### `SequencerWorker`
 
-- В транзакции:
+- За тик коммитит до `maxBlocksPerTick` последовательных блоков (`N+1`, `N+2`, ...).
+- Для каждого блока в транзакции:
   - читает `chain_cursor`,
-  - берёт только следующий блок `N+1` из `raw_blocks`,
+  - берёт следующий блок из `raw_blocks`,
   - проверяет `parent_hash` против `last_committed_hash`,
   - вставляет данные в `canonical_blocks`, `canonical_transactions`, `canonical_events`,
   - двигает `last_committed_*` в `chain_cursor`,

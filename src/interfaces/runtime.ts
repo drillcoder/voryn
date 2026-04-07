@@ -20,6 +20,7 @@ export interface FetchWorkerConfig {
 export interface SequencerWorkerConfig {
     chainId: ChainId;
     delayBetweenTicksMs: number;
+    maxBlocksPerTick: number;
 }
 
 export interface RetentionWorkerConfig {
