@@ -19,7 +19,142 @@ TypeScript npm-библиотека для мониторинга EVM-подоб
 DATABASE_URL="postgres://user:pass@localhost:5432/voryn" voryn init
 ```
 
-## CLI: запуск ingestion-воркеров
+## Адаптер ethers v6
+
+В пакете есть готовый `EthersBlockSource`, который реализует интерфейс `BlockSource`
+и подходит для `HeadWorker` / `FetchWorker`.
+
+Пример:
+
+```ts
+import { JsonRpcProvider } from "ethers";
+import { EthersBlockSource } from "voryn";
+
+const rpcUrl = "https://rpc.example.org";
+const provider = new JsonRpcProvider(rpcUrl);
+
+const source = new EthersBlockSource({ provider, validateProviderChainId: true });
+```
+
+Опции:
+
+- `provider` (обязательно): `ethers`-провайдер для нужной сети.
+- `validateProviderChainId` (опционально): проверяет, что `provider.getNetwork().chainId`
+  совпадает с запрошенным `chainId` (проверка кэшируется после первого успешного вызова).
+
+`EthersBlockSource` валидирует хеши, адреса и `data`-поля, а также индексы и соответствие
+номера блока. При некорректном ответе RPC бросает ошибку, чтобы воркеры могли повторить задачу.
+
+## Логгер
+
+Библиотека использует интерфейс `Logger` (`debug`, `info`, `warn`, `error`).
+
+- `noopLogger` ничего не выводит и подходит как безопасный дефолт.
+- `ConsoleLogger` дает простую реализацию для локальной разработки и CLI.
+
+Пример:
+
+```ts
+import { ConsoleLogger } from "voryn";
+
+const logger = new ConsoleLogger({ minLevel: "debug", colorize: true, timestamp: true });
+```
+
+Опции `ConsoleLogger`:
+
+- `minLevel`: минимальный уровень (`debug` | `info` | `warn` | `error`).
+- `colorize`: цветные уровни в консоли (`DEBUG`, `INFO`, `WARN`, `ERROR`).
+- `timestamp`: добавляет ISO-время в начало строки.
+- `stdout` / `stderr`: можно передать свои потоки вывода.
+
+## Пример запуска воркера из кода
+
+Ниже пример программного запуска воркера `HeadWorker`.
+Это универсальный шаблон, по той же схеме можно запускать и другие воркеры.
+
+```ts
+import { JsonRpcProvider } from "ethers";
+import { Pool } from "pg";
+import {
+    ConsoleLogger,
+    EthersBlockSource,
+    HeadWorker,
+    PostgresBlockJobsRepository,
+    PostgresChainCursorRepository,
+    PostgresLeaderLock,
+    PostgresRawBlocksRepository,
+    PostgresTransactionManager,
+} from "voryn";
+
+const dbUrl = "postgres://user:pass@localhost:5432/voryn";
+const rpcUrl = "https://rpc.example.org";
+const chainId = 1;
+const delayBetweenTicksMs = 1_000;
+const confirmations = 0;
+const depthBlocks = 65_000;
+
+const pool = new Pool({ connectionString: dbUrl });
+const provider = new JsonRpcProvider(rpcUrl);
+
+const ethersBlockSource = new EthersBlockSource({ provider, validateProviderChainId: true });
+const postgresChainCursorRepository = new PostgresChainCursorRepository(pool);
+const blockJobsRepository = new PostgresBlockJobsRepository(pool);
+const rawBlocksRepository = new PostgresRawBlocksRepository(pool);
+const transactionManager = new PostgresTransactionManager(pool);
+const leaderLock = new PostgresLeaderLock(pool, 10_000_000n + BigInt(chainId));
+const logger = new ConsoleLogger({ minLevel: "info" });
+
+const worker = new HeadWorker(
+    { chainId, delayBetweenTicksMs, confirmations, depthBlocks },
+    ethersBlockSource,
+    postgresChainCursorRepository,
+    blockJobsRepository,
+    rawBlocksRepository,
+    transactionManager,
+    leaderLock,
+    logger,
+);
+
+const shutdown = async (): Promise<void> => {
+    await worker.stop();
+    await pool.end();
+};
+
+process.once("SIGINT", shutdown);
+process.once("SIGTERM", shutdown);
+
+await worker.start();
+```
+
+## Разработка
+
+Команды для разработки собраны в `Makefile`
+
+## Docker (dev)
+
+Для docker-compose переменная `VORYN_CHAIN_ID` обязательна (`is required`),
+а RPC-переменные обязательны по воркеру:
+`VORYN_HEAD_RPC_URL`, `VORYN_FETCH_RPC_URL`.
+и берутся из окружения.
+Удобно начать с `.env.example`:
+
+```bash
+cp .env.example .env
+```
+
+Запуск воркеров:
+
+```bash
+docker compose up -d postgres head fetch sequencer retention
+```
+
+Логи:
+
+```bash
+docker compose logs -f head fetch sequencer retention
+```
+
+## CLI для разработки: запуск ingestion-воркеров
 
 Доступны команды:
 
@@ -70,88 +205,3 @@ VORYN_CHAIN_ID=1 \
 VORYN_HEAD_RPC_URL="https://rpc.example.org" \
 voryn head
 ```
-
-## Адаптер ethers v6
-
-В пакете есть готовый `EthersBlockSource`, который реализует интерфейс `BlockSource`
-и подходит для `HeadWorker` / `FetchWorker`.
-
-Пример:
-
-```ts
-import { JsonRpcProvider } from "ethers";
-import { EthersBlockSource } from "voryn";
-
-const provider = new JsonRpcProvider(process.env.MAINNET_RPC_URL);
-
-const source = new EthersBlockSource({
-    provider,
-    validateProviderChainId: true,
-});
-```
-
-Опции:
-
-- `provider` (обязательно): `ethers`-провайдер для нужной сети.
-- `validateProviderChainId` (опционально): проверяет, что `provider.getNetwork().chainId`
-  совпадает с запрошенным `chainId` (проверка кэшируется после первого успешного вызова).
-
-`EthersBlockSource` валидирует хеши, адреса и `data`-поля, а также индексы и соответствие
-номера блока. При некорректном ответе RPC бросает ошибку, чтобы воркеры могли повторить задачу.
-
-## Логгер
-
-Библиотека использует интерфейс `Logger` (`debug`, `info`, `warn`, `error`).
-
-- `noopLogger` ничего не выводит и подходит как безопасный дефолт.
-- `createConsoleLogger` дает простую реализацию для локальной разработки и CLI.
-
-Пример:
-
-```ts
-import { createConsoleLogger } from "voryn";
-
-const logger = createConsoleLogger({
-    minLevel: "debug",
-    colorize: true,
-    timestamp: true,
-});
-```
-
-Опции `createConsoleLogger`:
-
-- `minLevel`: минимальный уровень (`debug` | `info` | `warn` | `error`).
-- `colorize`: цветные уровни в консоли (`DEBUG`, `INFO`, `WARN`, `ERROR`).
-- `timestamp`: добавляет ISO-время в начало строки.
-- `stdout` / `stderr`: можно передать свои потоки вывода.
-
-## Разработка
-
-Команды для разработки собраны в `Makefile`
-
-## Docker (dev)
-
-Для docker-compose переменная `VORYN_CHAIN_ID` обязательна (`is required`),
-а RPC-переменные обязательны по воркеру:
-`VORYN_HEAD_RPC_URL`, `VORYN_FETCH_RPC_URL`.
-и берутся из окружения.
-Удобно начать с `.env.example`:
-
-```bash
-cp .env.example .env
-```
-
-Запуск воркеров:
-
-```bash
-docker compose up -d postgres head fetch sequencer retention
-```
-
-Логи:
-
-```bash
-docker compose logs -f head fetch sequencer retention
-```
-
-Для одноразовых команд (install/build/lint/test/db-init) используется сервис `tools`
-через `docker compose run --rm tools ...` (смотрите `Makefile`).
