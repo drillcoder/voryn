@@ -71,7 +71,6 @@ services:
     <<: *worker-base
     environment:
       <<: *worker-env
-      VORYN_SEQUENCER_RPC_URL: ${VORYN_SEQUENCER_RPC_URL:?VORYN_SEQUENCER_RPC_URL is required}
       VORYN_SEQUENCER_DELAY_BETWEEN_TICKS_MS: ${VORYN_SEQUENCER_DELAY_BETWEEN_TICKS_MS:-}
       VORYN_SEQUENCER_MAX_BLOCKS_PER_TICK: ${VORYN_SEQUENCER_MAX_BLOCKS_PER_TICK:-}
     command: ["node", "dist/cli.js", "sequencer"]
