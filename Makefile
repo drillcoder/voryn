@@ -4,7 +4,7 @@ TOOLS_RUN := $(COMPOSE) run --rm tools
 .PHONY: \
 	init ingestion-up ingestion-restart ingestion-stop \
 	db-up db-restart db-stop down \
-	install build lint test db-init lint-fix test-coverage test-watch
+	install build lint test db-init lint-fix test-coverage test-watch test-e2e
 
 # Инициализация.
 init: install build db-init
