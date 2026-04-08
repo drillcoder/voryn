@@ -1,6 +1,6 @@
-import { PostgresChainCursorRepository } from "../../../src/repositories/postgres/index.js";
-import type { DbExecutor } from "../../../src/interfaces/db.js";
-import { asHash32 } from "../../../src/utils/hex.js";
+import { PostgresChainCursorRepository } from "../../../../src/repositories/postgres/index.js";
+import type { DbExecutor } from "../../../../src/interfaces/db.js";
+import { asHash32 } from "../../../../src/utils/hex.js";
 
 const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 

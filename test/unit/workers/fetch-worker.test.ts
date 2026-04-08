@@ -4,10 +4,10 @@ import type {
     DbExecutor,
     RawBlocksRepository,
     TransactionManager,
-} from "../../src/index.js";
-import type { FetchWorkerConfig } from "../../src/interfaces/runtime.js";
-import { FetchWorker } from "../../src/index.js";
-import { asHash32 } from "../../src/utils/hex.js";
+} from "../../../src/index.js";
+import type { FetchWorkerConfig } from "../../../src/interfaces/runtime.js";
+import { FetchWorker } from "../../../src/index.js";
+import { asHash32 } from "../../../src/utils/hex.js";
 
 const invokeTick = async (worker: object): Promise<void> => {
     await (worker as { tick: () => Promise<void> }).tick();

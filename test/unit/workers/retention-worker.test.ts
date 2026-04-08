@@ -8,10 +8,10 @@ import type {
     LeaderLock,
     RawBlocksRepository,
     TransactionManager,
-} from "../../src/index.js";
-import type { RetentionWorkerConfig } from "../../src/interfaces/runtime.js";
-import { RetentionWorker } from "../../src/index.js";
-import { asHash32 } from "../../src/utils/hex.js";
+} from "../../../src/index.js";
+import type { RetentionWorkerConfig } from "../../../src/interfaces/runtime.js";
+import { RetentionWorker } from "../../../src/index.js";
+import { asHash32 } from "../../../src/utils/hex.js";
 
 const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 

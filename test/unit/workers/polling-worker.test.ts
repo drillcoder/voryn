@@ -1,5 +1,5 @@
-import type { Logger } from "../../src/index.js";
-import { PollingWorker } from "../../src/index.js";
+import type { Logger } from "../../../src/index.js";
+import { PollingWorker } from "../../../src/index.js";
 
 interface Deferred {
     promise: Promise<void>;

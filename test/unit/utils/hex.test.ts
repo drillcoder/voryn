@@ -1,4 +1,4 @@
-import { asAddress, asHash32, asHexData, } from "../../src/utils/hex.js";
+import { asAddress, asHash32, asHexData, } from "../../../src/utils/hex.js";
 
 const hash = (char: string): string => `0x${char.repeat(64)}`;
 const address = (char: string): string => `0x${char.repeat(40)}`;

@@ -6,10 +6,10 @@ import type {
     LeaderLock,
     RawBlocksRepository,
     TransactionManager,
-} from "../../src/index.js";
-import type { HeadWorkerConfig } from "../../src/interfaces/runtime.js";
-import { HeadWorker } from "../../src/index.js";
-import { asHash32 } from "../../src/utils/hex.js";
+} from "../../../src/index.js";
+import type { HeadWorkerConfig } from "../../../src/interfaces/runtime.js";
+import { HeadWorker } from "../../../src/index.js";
+import { asHash32 } from "../../../src/utils/hex.js";
 
 const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 const HASH_B = asHash32("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");

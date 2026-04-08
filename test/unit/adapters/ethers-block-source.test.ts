@@ -4,7 +4,7 @@ import {
     type EthersLogLike,
     type EthersProviderLike,
     type EthersTransactionLike,
-} from "../../src/index.js";
+} from "../../../src/index.js";
 
 const hash = (char: string): string => `0x${char.repeat(64)}`;
 const address = (char: string): string => `0x${char.repeat(40)}`;

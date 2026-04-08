@@ -1,6 +1,6 @@
-import { PostgresCanonicalTransactionsRepository } from "../../../src/repositories/postgres/index.js";
-import type { DbExecutor } from "../../../src/interfaces/db.js";
-import { asAddress, asHash32, asHexData } from "../../../src/utils/hex.js";
+import { PostgresCanonicalTransactionsRepository } from "../../../../src/repositories/postgres/index.js";
+import type { DbExecutor } from "../../../../src/interfaces/db.js";
+import { asAddress, asHash32, asHexData } from "../../../../src/utils/hex.js";
 
 const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 const TX_HASH = asHash32("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");

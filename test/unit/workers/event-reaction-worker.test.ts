@@ -3,10 +3,10 @@ import type {
     EventReactionHandler,
     LeaderLock,
     WorkerCursorsRepository,
-} from "../../src/index.js";
-import type { ReactionWorkerConfig } from "../../src/interfaces/runtime.js";
-import { EventReactionWorker } from "../../src/index.js";
-import { asAddress, asHash32, asHexData } from "../../src/utils/hex.js";
+} from "../../../src/index.js";
+import type { ReactionWorkerConfig } from "../../../src/interfaces/runtime.js";
+import { EventReactionWorker } from "../../../src/index.js";
+import { asAddress, asHash32, asHexData } from "../../../src/utils/hex.js";
 
 const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 const HASH_B = asHash32("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");

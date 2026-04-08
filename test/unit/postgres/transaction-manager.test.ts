@@ -1,4 +1,4 @@
-import { PostgresTransactionManager } from "../../src/postgres/index.js";
+import { PostgresTransactionManager } from "../../../src/postgres/index.js";
 
 interface MockClient {
     query: jest.Mock;
