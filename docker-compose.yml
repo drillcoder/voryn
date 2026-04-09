@@ -40,6 +40,9 @@ services:
     <<: *node-base
     environment:
       DATABASE_URL: postgres://voryn:voryn@postgres:5432/voryn
+      VORYN_CHAIN_ID: ${VORYN_CHAIN_ID:-}
+      VORYN_HEAD_RPC_URL: ${VORYN_HEAD_RPC_URL:-}
+      VORYN_FETCH_RPC_URL: ${VORYN_FETCH_RPC_URL:-}
 
   head:
     <<: *worker-base
