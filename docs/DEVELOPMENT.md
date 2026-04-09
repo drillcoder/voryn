@@ -27,14 +27,14 @@ docker compose --env-file dev/.env -f dev/docker-compose.yml up -d postgres head
 docker compose --env-file dev/.env -f dev/docker-compose.yml logs -f head fetch sequencer retention
 ```
 
-## CLI для разработки: запуск ingestion-воркеров
+## Запуск ingestion воркеров
 
-Доступны команды:
+Для запуска используйте dev-скрипты:
 
-- `voryn head`
-- `voryn fetch`
-- `voryn sequencer`
-- `voryn retention`
+- `npm exec -- tsx --tsconfig dev/tsconfig.json dev/head.ts`
+- `npm exec -- tsx --tsconfig dev/tsconfig.json dev/fetch.ts`
+- `npm exec -- tsx --tsconfig dev/tsconfig.json dev/sequencer.ts`
+- `npm exec -- tsx --tsconfig dev/tsconfig.json dev/retention.ts`
 
 Основные переменные окружения:
 
@@ -76,5 +76,5 @@ docker compose --env-file dev/.env -f dev/docker-compose.yml logs -f head fetch 
 DATABASE_URL="postgres://user:pass@localhost:5432/voryn" \
 VORYN_CHAIN_ID=1 \
 VORYN_HEAD_RPC_URL="https://rpc.example.org" \
-voryn head
+npm exec -- tsx --tsconfig dev/tsconfig.json dev/head.ts
 ```

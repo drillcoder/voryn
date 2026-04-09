@@ -52,7 +52,7 @@ services:
       VORYN_HEAD_DELAY_BETWEEN_TICKS_MS: ${VORYN_HEAD_DELAY_BETWEEN_TICKS_MS:-}
       VORYN_HEAD_CONFIRMATIONS: ${VORYN_HEAD_CONFIRMATIONS:-}
       VORYN_HEAD_DEPTH_BLOCKS: ${VORYN_HEAD_DEPTH_BLOCKS:-}
-    command: ["node", "dist/cli.js", "head"]
+    command: ["npm", "exec", "--", "tsx", "--tsconfig", "dev/tsconfig.json", "dev/head.ts"]
     restart: unless-stopped
 
   fetch:
@@ -66,9 +66,9 @@ services:
       VORYN_FETCH_RETRY_MAX_ATTEMPTS: ${VORYN_FETCH_RETRY_MAX_ATTEMPTS:-}
       VORYN_FETCH_RETRY_BASE_DELAY_MS: ${VORYN_FETCH_RETRY_BASE_DELAY_MS:-}
       VORYN_FETCH_RETRY_MAX_DELAY_MS: ${VORYN_FETCH_RETRY_MAX_DELAY_MS:-}
-    command: ["node", "dist/cli.js", "fetch"]
+    command: ["npm", "exec", "--", "tsx", "--tsconfig", "dev/tsconfig.json", "dev/fetch.ts"]
     restart: unless-stopped
-    scale: 2
+    scale: 10
 
   sequencer:
     <<: *worker-base
@@ -76,7 +76,7 @@ services:
       <<: *worker-env
       VORYN_SEQUENCER_DELAY_BETWEEN_TICKS_MS: ${VORYN_SEQUENCER_DELAY_BETWEEN_TICKS_MS:-}
       VORYN_SEQUENCER_MAX_BLOCKS_PER_TICK: ${VORYN_SEQUENCER_MAX_BLOCKS_PER_TICK:-}
-    command: ["node", "dist/cli.js", "sequencer"]
+    command: ["npm", "exec", "--", "tsx", "--tsconfig", "dev/tsconfig.json", "dev/sequencer.ts"]
     restart: unless-stopped
 
   retention:
@@ -85,7 +85,7 @@ services:
       <<: *worker-env
       VORYN_RETENTION_DELAY_BETWEEN_TICKS_MS: ${VORYN_RETENTION_DELAY_BETWEEN_TICKS_MS:-}
       VORYN_RETENTION_DEPTH_BLOCKS: ${VORYN_RETENTION_DEPTH_BLOCKS:-}
-    command: ["node", "dist/cli.js", "retention"]
+    command: ["npm", "exec", "--", "tsx", "--tsconfig", "dev/tsconfig.json", "dev/retention.ts"]
     restart: unless-stopped
 
 volumes:

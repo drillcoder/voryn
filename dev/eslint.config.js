@@ -22,7 +22,7 @@ export default tseslint.config(
     },
     nPlugin.configs["flat/recommended-module"],
     {
-        files: ["src/**/*.ts", "test/**/*.ts"],
+        files: ["src/**/*.ts", "test/**/*.ts", "dev/**/*.ts"],
         plugins: {
             import: importPlugin,
             "import-newlines": importNewlinesPlugin,
