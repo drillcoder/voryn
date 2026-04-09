@@ -1,11 +1,8 @@
-import type {
-    CanonicalEventsRepository,
-    EventReactionHandler,
-    LeaderLock,
-    WorkerCursorsRepository,
-} from "../../../src/index.js";
+import type { CanonicalEventsRepository, WorkerCursorsRepository } from "../../../src/interfaces/repositories.js";
+import type { EventReactionHandler } from "../../../src/interfaces/reaction.js";
+import type { LeaderLock } from "../../../src/interfaces/leader-lock.js";
 import type { ReactionWorkerConfig } from "../../../src/interfaces/runtime.js";
-import { EventReactionWorker } from "../../../src/index.js";
+import { EventReactionWorker } from "../../../src/workers/event-reaction-worker.js";
 import { asAddress, asHash32, asHexData } from "../../../src/utils/hex.js";
 
 const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");

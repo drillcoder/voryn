@@ -1,12 +1,10 @@
 import type { EventReactionHandler } from "../../src/interfaces/reaction.js";
-import {
-    PostgresCanonicalEventsRepository,
-    PostgresWorkerCursorsRepository,
-} from "../../src/repositories/postgres/index.js";
+import { PostgresCanonicalEventsRepository } from "../../src/repositories/postgres/canonical-events-repository.js";
+import { PostgresWorkerCursorsRepository } from "../../src/repositories/postgres/worker-cursors-repository.js";
 import { EventReactionWorker } from "../../src/workers/event-reaction-worker.js";
 import { buildFetchedBlock, CHAIN_ID, createLeaderLock, hashFromNumber } from "../integration/helpers/fixtures.js";
-import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../integration/helpers/test-db.js";
 import type { IsolatedDbContext } from "../integration/helpers/test-db.js";
+import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../integration/helpers/test-db.js";
 import { stopWorkers, waitFor } from "./helpers/async.js";
 
 const DATABASE_URL = getRequiredDatabaseUrl();

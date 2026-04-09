@@ -1,11 +1,8 @@
-import type {
-    CanonicalTransactionsRepository,
-    LeaderLock,
-    TransactionReactionHandler,
-    WorkerCursorsRepository,
-} from "../../../src/index.js";
+import type { CanonicalTransactionsRepository, WorkerCursorsRepository } from "../../../src/interfaces/repositories.js";
+import type { LeaderLock } from "../../../src/interfaces/leader-lock.js";
+import type { TransactionReactionHandler } from "../../../src/interfaces/reaction.js";
 import type { ReactionWorkerConfig } from "../../../src/interfaces/runtime.js";
-import { TransactionReactionWorker } from "../../../src/index.js";
+import { TransactionReactionWorker } from "../../../src/workers/transaction-reaction-worker.js";
 import { asAddress, asHash32, asHexData } from "../../../src/utils/hex.js";
 
 const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");

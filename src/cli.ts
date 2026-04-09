@@ -3,15 +3,14 @@
 import { hostname } from "node:os";
 import { JsonRpcProvider } from "ethers";
 import { Pool } from "pg";
-import { PostgresLeaderLock, PostgresTransactionManager } from "./postgres/index.js";
-import {
-    PostgresBlockJobsRepository,
-    PostgresCanonicalBlocksRepository,
-    PostgresCanonicalEventsRepository,
-    PostgresCanonicalTransactionsRepository,
-    PostgresChainCursorRepository,
-    PostgresRawBlocksRepository,
-} from "./repositories/postgres/index.js";
+import { PostgresLeaderLock } from "./postgres/leader-lock.js";
+import { PostgresTransactionManager } from "./postgres/transaction-manager.js";
+import { PostgresBlockJobsRepository } from "./repositories/postgres/block-jobs-repository.js";
+import { PostgresCanonicalBlocksRepository } from "./repositories/postgres/canonical-blocks-repository.js";
+import { PostgresCanonicalEventsRepository } from "./repositories/postgres/canonical-events-repository.js";
+import { PostgresCanonicalTransactionsRepository } from "./repositories/postgres/canonical-transactions-repository.js";
+import { PostgresChainCursorRepository } from "./repositories/postgres/chain-cursor-repository.js";
+import { PostgresRawBlocksRepository } from "./repositories/postgres/raw-blocks-repository.js";
 import { EthersBlockSource } from "./adapters/ethers-block-source.js";
 import { initPostgresDb } from "./db/init-postgres.js";
 import type { Logger } from "./interfaces/logger.js";

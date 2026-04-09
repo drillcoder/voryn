@@ -1,19 +1,20 @@
 import type { EventReactionHandler, TransactionReactionHandler } from "../../src/interfaces/reaction.js";
-import { PostgresLeaderLock, PostgresTransactionManager } from "../../src/postgres/index.js";
+import { PostgresLeaderLock } from "../../src/postgres/leader-lock.js";
+import { PostgresTransactionManager } from "../../src/postgres/transaction-manager.js";
+import { PostgresBlockJobsRepository } from "../../src/repositories/postgres/block-jobs-repository.js";
+import { PostgresCanonicalEventsRepository } from "../../src/repositories/postgres/canonical-events-repository.js";
 import {
-    PostgresBlockJobsRepository,
-    PostgresCanonicalEventsRepository,
-    PostgresCanonicalTransactionsRepository,
-    PostgresChainCursorRepository,
-    PostgresRawBlocksRepository,
-    PostgresWorkerCursorsRepository,
-} from "../../src/repositories/postgres/index.js";
+    PostgresCanonicalTransactionsRepository
+} from "../../src/repositories/postgres/canonical-transactions-repository.js";
+import { PostgresChainCursorRepository } from "../../src/repositories/postgres/chain-cursor-repository.js";
+import { PostgresRawBlocksRepository } from "../../src/repositories/postgres/raw-blocks-repository.js";
+import { PostgresWorkerCursorsRepository } from "../../src/repositories/postgres/worker-cursors-repository.js";
 import { EventReactionWorker } from "../../src/workers/event-reaction-worker.js";
 import { HeadWorker } from "../../src/workers/head-worker.js";
 import { TransactionReactionWorker } from "../../src/workers/transaction-reaction-worker.js";
 import { buildFetchedBlock, CHAIN_ID, createMapBlockSource, hashFromNumber } from "../integration/helpers/fixtures.js";
-import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../integration/helpers/test-db.js";
 import type { IsolatedDbContext } from "../integration/helpers/test-db.js";
+import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../integration/helpers/test-db.js";
 import { stopWorkers, waitFor } from "./helpers/async.js";
 
 const DATABASE_URL = getRequiredDatabaseUrl();

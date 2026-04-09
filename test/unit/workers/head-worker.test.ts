@@ -1,14 +1,14 @@
 import type {
     BlockJobsRepository,
-    BlockSource,
     ChainCursorRepository,
-    DbExecutor,
-    LeaderLock,
-    RawBlocksRepository,
-    TransactionManager,
-} from "../../../src/index.js";
+    RawBlocksRepository
+} from "../../../src/interfaces/repositories.js";
+import type { BlockSource } from "../../../src/interfaces/block-source.js";
+import type { DbExecutor } from "../../../src/interfaces/db.js";
+import type { LeaderLock } from "../../../src/interfaces/leader-lock.js";
+import type { TransactionManager } from "../../../src/interfaces/transaction-manager.js";
 import type { HeadWorkerConfig } from "../../../src/interfaces/runtime.js";
-import { HeadWorker } from "../../../src/index.js";
+import { HeadWorker } from "../../../src/workers/head-worker.js";
 import { asHash32 } from "../../../src/utils/hex.js";
 
 const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");

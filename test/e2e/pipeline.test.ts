@@ -1,14 +1,15 @@
-import { PostgresLeaderLock, PostgresTransactionManager } from "../../src/postgres/index.js";
+import { PostgresLeaderLock } from "../../src/postgres/leader-lock.js";
+import { PostgresTransactionManager } from "../../src/postgres/transaction-manager.js";
 import type { EventReactionHandler, TransactionReactionHandler } from "../../src/interfaces/reaction.js";
+import { PostgresBlockJobsRepository } from "../../src/repositories/postgres/block-jobs-repository.js";
+import { PostgresCanonicalBlocksRepository } from "../../src/repositories/postgres/canonical-blocks-repository.js";
+import { PostgresCanonicalEventsRepository } from "../../src/repositories/postgres/canonical-events-repository.js";
 import {
-    PostgresBlockJobsRepository,
-    PostgresCanonicalBlocksRepository,
-    PostgresCanonicalEventsRepository,
-    PostgresCanonicalTransactionsRepository,
-    PostgresChainCursorRepository,
-    PostgresRawBlocksRepository,
-    PostgresWorkerCursorsRepository,
-} from "../../src/repositories/postgres/index.js";
+    PostgresCanonicalTransactionsRepository
+} from "../../src/repositories/postgres/canonical-transactions-repository.js";
+import { PostgresChainCursorRepository } from "../../src/repositories/postgres/chain-cursor-repository.js";
+import { PostgresRawBlocksRepository } from "../../src/repositories/postgres/raw-blocks-repository.js";
+import { PostgresWorkerCursorsRepository } from "../../src/repositories/postgres/worker-cursors-repository.js";
 import { EventReactionWorker } from "../../src/workers/event-reaction-worker.js";
 import { FetchWorker } from "../../src/workers/fetch-worker.js";
 import { HeadWorker } from "../../src/workers/head-worker.js";
@@ -16,8 +17,8 @@ import { RetentionWorker } from "../../src/workers/retention-worker.js";
 import { SequencerWorker } from "../../src/workers/sequencer-worker.js";
 import { TransactionReactionWorker } from "../../src/workers/transaction-reaction-worker.js";
 import { buildFetchedBlock, CHAIN_ID, createMapBlockSource, hashFromNumber } from "../integration/helpers/fixtures.js";
-import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../integration/helpers/test-db.js";
 import type { IsolatedDbContext } from "../integration/helpers/test-db.js";
+import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../integration/helpers/test-db.js";
 
 const DATABASE_URL = getRequiredDatabaseUrl();
 const REACTION_WORKER_EVENT = "reaction-event-e2e";

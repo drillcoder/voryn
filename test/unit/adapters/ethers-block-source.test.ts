@@ -1,10 +1,10 @@
-import {
-    EthersBlockSource,
-    type EthersBlockLike,
-    type EthersLogLike,
-    type EthersProviderLike,
-    type EthersTransactionLike,
-} from "../../../src/index.js";
+import type {
+    EthersBlockLike,
+    EthersLogLike,
+    EthersProviderLike,
+    EthersTransactionLike
+} from "../../../src/adapters/ethers-block-source.js";
+import { EthersBlockSource } from "../../../src/adapters/ethers-block-source.js";
 
 const hash = (char: string): string => `0x${char.repeat(64)}`;
 const address = (char: string): string => `0x${char.repeat(40)}`;
@@ -234,14 +234,14 @@ test("throws on log block hash mismatch", async () => {
         prefetchedTransactions: [],
     };
     const log: EthersLogLike = {
-            blockNumber: 9,
-            blockHash: hash("c"),
-            transactionHash: hash("d"),
-            transactionIndex: 0,
-            index: 0,
-            address: address("f"),
-            topics: [],
-            data: "0x",
+        blockNumber: 9,
+        blockHash: hash("c"),
+        transactionHash: hash("d"),
+        transactionIndex: 0,
+        index: 0,
+        address: address("f"),
+        topics: [],
+        data: "0x",
     };
     provider.getBlock.mockResolvedValue(block);
     provider.getLogs.mockResolvedValue([log]);

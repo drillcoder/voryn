@@ -1,5 +1,5 @@
 import { asHash32 } from "../../utils/hex.js";
-import { parsePgInt, parsePgTimestamp } from "../../postgres/index.js";
+import { parsePgInt, parsePgTimestamp } from "../../postgres/pg-parsers.js";
 import type { BlockNumber, ChainId, HashHex } from "../../types/chain.js";
 import type { ChainCursor } from "../../interfaces/pipeline.js";
 import type { ChainCursorRepository } from "../../interfaces/repositories.js";

@@ -1,4 +1,4 @@
-import { PostgresLeaderLock } from "../../../src/postgres/index.js";
+import { PostgresLeaderLock } from "../../../src/postgres/leader-lock.js";
 
 interface MockClient {
     query: jest.Mock;

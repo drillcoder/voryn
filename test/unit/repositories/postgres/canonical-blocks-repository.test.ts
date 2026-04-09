@@ -1,4 +1,6 @@
-import { PostgresCanonicalBlocksRepository } from "../../../../src/repositories/postgres/index.js";
+import {
+    PostgresCanonicalBlocksRepository
+} from "../../../../src/repositories/postgres/canonical-blocks-repository.js";
 import type { DbExecutor } from "../../../../src/interfaces/db.js";
 import { asHash32 } from "../../../../src/utils/hex.js";
 

@@ -1,4 +1,4 @@
-import { parsePgInt, parsePgTimestamp } from "../../postgres/index.js";
+import { parsePgInt, parsePgTimestamp } from "../../postgres/pg-parsers.js";
 import type { BlockJobsRepository } from "../../interfaces/repositories.js";
 import type { BlockNumber, ChainId } from "../../types/chain.js";
 import type { BlockJob } from "../../interfaces/pipeline.js";

@@ -1,4 +1,4 @@
-import { parsePgBigint, parsePgTimestamp } from "../../postgres/index.js";
+import { parsePgBigint, parsePgTimestamp } from "../../postgres/pg-parsers.js";
 import type { WorkerCursorsRepository } from "../../interfaces/repositories.js";
 import type { ChainId } from "../../types/chain.js";
 import type { StreamType } from "../../types/pipeline.js";

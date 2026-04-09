@@ -24,5 +24,12 @@ export * from "./workers/transaction-reaction-worker.js";
 
 export * from "./loggers/console-logger.js";
 export * from "./adapters/ethers-block-source.js";
-export * from "./postgres/index.js";
-export * from "./repositories/postgres/index.js";
+export * from "./postgres/leader-lock.js";
+export * from "./postgres/transaction-manager.js";
+export * from "./repositories/postgres/block-jobs-repository.js";
+export * from "./repositories/postgres/chain-cursor-repository.js";
+export * from "./repositories/postgres/canonical-blocks-repository.js";
+export * from "./repositories/postgres/canonical-events-repository.js";
+export * from "./repositories/postgres/raw-blocks-repository.js";
+export * from "./repositories/postgres/canonical-transactions-repository.js";
+export * from "./repositories/postgres/worker-cursors-repository.js";

@@ -4,13 +4,13 @@ import type {
     CanonicalEventsRepository,
     CanonicalTransactionsRepository,
     ChainCursorRepository,
-    DbExecutor,
-    LeaderLock,
-    RawBlocksRepository,
-    TransactionManager,
-} from "../../../src/index.js";
+    RawBlocksRepository
+} from "../../../src/interfaces/repositories.js";
+import type { DbExecutor } from "../../../src/interfaces/db.js";
+import type { LeaderLock } from "../../../src/interfaces/leader-lock.js";
+import type { TransactionManager } from "../../../src/interfaces/transaction-manager.js";
 import type { SequencerWorkerConfig } from "../../../src/interfaces/runtime.js";
-import { SequencerWorker } from "../../../src/index.js";
+import { SequencerWorker } from "../../../src/workers/sequencer-worker.js";
 import { asHash32 } from "../../../src/utils/hex.js";
 
 const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
@@ -100,19 +100,25 @@ test("sequencer worker commits next block", async () => {
     };
 
     const canonicalBlocksRepository: CanonicalBlocksRepository = {
-        insert: async () => { calls.push("insert-block"); },
+        insert: async () => {
+            calls.push("insert-block");
+        },
         deleteUpToBlock: async () => 0,
     };
     const canonicalTransactionsRepository: CanonicalTransactionsRepository = {
         readFromSeq: async () => [],
         maxSeq: async () => 0n,
-        insertMany: async () => { calls.push("insert-tx"); },
+        insertMany: async () => {
+            calls.push("insert-tx");
+        },
         deleteUpToBlock: async () => 0,
     };
     const canonicalEventsRepository: CanonicalEventsRepository = {
         readFromSeq: async () => [],
         maxSeq: async () => 0n,
-        insertMany: async () => { calls.push("insert-event"); },
+        insertMany: async () => {
+            calls.push("insert-event");
+        },
         deleteUpToBlock: async () => 0,
     };
     const blockJobsRepository: BlockJobsRepository = {
@@ -120,7 +126,9 @@ test("sequencer worker commits next block", async () => {
         claimForFetch: async () => null,
         markFetched: async () => undefined,
         markFetchFailed: async () => undefined,
-        markCommitted: async () => { calls.push("mark-committed"); },
+        markCommitted: async () => {
+            calls.push("mark-committed");
+        },
         deleteUpToBlock: async () => 0,
     };
 
@@ -244,19 +252,25 @@ test("sequencer worker commits multiple blocks in one tick", async () => {
             deleteUpToBlock: async () => 0,
         },
         {
-            insert: async (block) => { calls.push(`insert-block:${String(block.number)}`); },
+            insert: async (block) => {
+                calls.push(`insert-block:${String(block.number)}`);
+            },
             deleteUpToBlock: async () => 0,
         },
         {
             readFromSeq: async () => [],
             maxSeq: async () => 0n,
-            insertMany: async (_chainId, blockNumber) => { calls.push(`insert-tx:${String(blockNumber)}`); },
+            insertMany: async (_chainId, blockNumber) => {
+                calls.push(`insert-tx:${String(blockNumber)}`);
+            },
             deleteUpToBlock: async () => 0,
         },
         {
             readFromSeq: async () => [],
             maxSeq: async () => 0n,
-            insertMany: async (_chainId, blockNumber) => { calls.push(`insert-event:${String(blockNumber)}`); },
+            insertMany: async (_chainId, blockNumber) => {
+                calls.push(`insert-event:${String(blockNumber)}`);
+            },
             deleteUpToBlock: async () => 0,
         },
         {
@@ -264,7 +278,9 @@ test("sequencer worker commits multiple blocks in one tick", async () => {
             claimForFetch: async () => null,
             markFetched: async () => undefined,
             markFetchFailed: async () => undefined,
-            markCommitted: async (_chainId, blockNumber) => { calls.push(`mark-committed:${String(blockNumber)}`); },
+            markCommitted: async (_chainId, blockNumber) => {
+                calls.push(`mark-committed:${String(blockNumber)}`);
+            },
             deleteUpToBlock: async () => 0,
         },
         manager,

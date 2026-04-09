@@ -1,12 +1,9 @@
-import type {
-    BlockJobsRepository,
-    BlockSource,
-    DbExecutor,
-    RawBlocksRepository,
-    TransactionManager,
-} from "../../../src/index.js";
+import type { BlockJobsRepository, RawBlocksRepository } from "../../../src/interfaces/repositories.js";
+import type { BlockSource } from "../../../src/interfaces/block-source.js";
+import type { DbExecutor } from "../../../src/interfaces/db.js";
+import type { TransactionManager } from "../../../src/interfaces/transaction-manager.js";
 import type { FetchWorkerConfig } from "../../../src/interfaces/runtime.js";
-import { FetchWorker } from "../../../src/index.js";
+import { FetchWorker } from "../../../src/workers/fetch-worker.js";
 import { asHash32 } from "../../../src/utils/hex.js";
 
 const invokeTick = async (worker: object): Promise<void> => {

@@ -1,13 +1,11 @@
-import { PostgresTransactionManager } from "../../../src/postgres/index.js";
-import {
-    PostgresBlockJobsRepository,
-    PostgresCanonicalBlocksRepository,
-    PostgresChainCursorRepository,
-    PostgresRawBlocksRepository,
-} from "../../../src/repositories/postgres/index.js";
+import { PostgresTransactionManager } from "../../../src/postgres/transaction-manager.js";
+import { PostgresBlockJobsRepository } from "../../../src/repositories/postgres/block-jobs-repository.js";
+import { PostgresCanonicalBlocksRepository } from "../../../src/repositories/postgres/canonical-blocks-repository.js";
+import { PostgresChainCursorRepository } from "../../../src/repositories/postgres/chain-cursor-repository.js";
+import { PostgresRawBlocksRepository } from "../../../src/repositories/postgres/raw-blocks-repository.js";
 import { buildFetchedBlock, CHAIN_ID, hashFromNumber } from "../helpers/fixtures.js";
-import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../helpers/test-db.js";
 import type { IsolatedDbContext } from "../helpers/test-db.js";
+import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../helpers/test-db.js";
 
 const DATABASE_URL = getRequiredDatabaseUrl();
 

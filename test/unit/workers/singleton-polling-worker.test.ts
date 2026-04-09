@@ -1,6 +1,6 @@
-import type { LeaderLock } from "../../../src/index.js";
-import type { Logger } from "../../../src/index.js";
-import { SingletonPollingWorker } from "../../../src/index.js";
+import type { LeaderLock } from "../../../src/interfaces/leader-lock.js";
+import type { Logger } from "../../../src/interfaces/logger.js";
+import { SingletonPollingWorker } from "../../../src/workers/singleton-polling-worker.js";
 
 interface Deferred {
     promise: Promise<void>;

@@ -1,16 +1,16 @@
 import { JsonRpcProvider } from "ethers";
-import { PostgresTransactionManager } from "../../src/postgres/index.js";
+import { PostgresTransactionManager } from "../../src/postgres/transaction-manager.js";
+import { PostgresBlockJobsRepository } from "../../src/repositories/postgres/block-jobs-repository.js";
+import { PostgresCanonicalBlocksRepository } from "../../src/repositories/postgres/canonical-blocks-repository.js";
+import { PostgresCanonicalEventsRepository } from "../../src/repositories/postgres/canonical-events-repository.js";
 import {
-    PostgresBlockJobsRepository,
-    PostgresCanonicalBlocksRepository,
-    PostgresCanonicalEventsRepository,
-    PostgresCanonicalTransactionsRepository,
-    PostgresChainCursorRepository,
-    PostgresRawBlocksRepository,
-} from "../../src/repositories/postgres/index.js";
+    PostgresCanonicalTransactionsRepository
+} from "../../src/repositories/postgres/canonical-transactions-repository.js";
+import { PostgresChainCursorRepository } from "../../src/repositories/postgres/chain-cursor-repository.js";
+import { PostgresRawBlocksRepository } from "../../src/repositories/postgres/raw-blocks-repository.js";
 import { EthersBlockSource } from "../../src/adapters/ethers-block-source.js";
-import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../integration/helpers/test-db.js";
 import type { IsolatedDbContext } from "../integration/helpers/test-db.js";
+import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../integration/helpers/test-db.js";
 import { TestFetchWorker, TestSequencerWorker } from "../integration/helpers/test-workers.js";
 
 const LIVE_RPC_URL = process.env.VORYN_LIVE_RPC_URL

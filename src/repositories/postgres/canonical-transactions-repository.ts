@@ -1,5 +1,5 @@
 import { asAddress, asHash32, asHexData } from "../../utils/hex.js";
-import { parsePgBigint, parsePgInt } from "../../postgres/index.js";
+import { parsePgBigint, parsePgInt } from "../../postgres/pg-parsers.js";
 import type { CanonicalTransactionsRepository } from "../../interfaces/repositories.js";
 import type { BlockNumber, ChainId, HashHex } from "../../types/chain.js";
 import type { ChainTransaction } from "../../interfaces/chain.js";

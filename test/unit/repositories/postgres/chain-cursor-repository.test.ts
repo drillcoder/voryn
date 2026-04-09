@@ -1,4 +1,4 @@
-import { PostgresChainCursorRepository } from "../../../../src/repositories/postgres/index.js";
+import { PostgresChainCursorRepository } from "../../../../src/repositories/postgres/chain-cursor-repository.js";
 import type { DbExecutor } from "../../../../src/interfaces/db.js";
 import { asHash32 } from "../../../../src/utils/hex.js";
 

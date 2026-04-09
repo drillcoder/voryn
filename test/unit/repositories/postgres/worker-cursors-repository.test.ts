@@ -1,4 +1,4 @@
-import { PostgresWorkerCursorsRepository } from "../../../../src/repositories/postgres/index.js";
+import { PostgresWorkerCursorsRepository } from "../../../../src/repositories/postgres/worker-cursors-repository.js";
 import type { DbExecutor } from "../../../../src/interfaces/db.js";
 
 const createExecutor = (query: jest.Mock): DbExecutor => ({ query: query as never });

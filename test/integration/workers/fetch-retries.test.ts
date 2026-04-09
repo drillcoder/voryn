@@ -1,10 +1,11 @@
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import type { FetchedBlock } from "../../../src/interfaces/chain.js";
-import { PostgresTransactionManager } from "../../../src/postgres/index.js";
-import { PostgresBlockJobsRepository, PostgresRawBlocksRepository } from "../../../src/repositories/postgres/index.js";
+import { PostgresTransactionManager } from "../../../src/postgres/transaction-manager.js";
+import { PostgresBlockJobsRepository } from "../../../src/repositories/postgres/block-jobs-repository.js";
+import { PostgresRawBlocksRepository } from "../../../src/repositories/postgres/raw-blocks-repository.js";
 import { buildFetchedBlock, CHAIN_ID, hashFromNumber, WORKER_ID } from "../helpers/fixtures.js";
-import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../helpers/test-db.js";
 import type { IsolatedDbContext } from "../helpers/test-db.js";
+import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../helpers/test-db.js";
 import { TestFetchWorker } from "../helpers/test-workers.js";
 
 const DATABASE_URL = getRequiredDatabaseUrl();
@@ -72,7 +73,8 @@ describe("integration workers: fetch retries", () => {
         await db.pool.query(
             `UPDATE block_jobs
              SET next_retry_at = NOW() - INTERVAL '1 second'
-             WHERE chain_id = $1 AND block_number = $2`,
+             WHERE chain_id = $1
+               AND block_number = $2`,
             [CHAIN_ID, targetBlock]
         );
 
@@ -86,7 +88,8 @@ describe("integration workers: fetch retries", () => {
         }>(
             `SELECT status, attempts, next_retry_at, error
              FROM block_jobs
-             WHERE chain_id = $1 AND block_number = $2`,
+             WHERE chain_id = $1
+               AND block_number = $2`,
             [CHAIN_ID, targetBlock]
         );
 
@@ -147,7 +150,8 @@ describe("integration workers: fetch retries", () => {
         }>(
             `SELECT status, attempts, claimed_by, claimed_at
              FROM block_jobs
-             WHERE chain_id = $1 AND block_number = $2`,
+             WHERE chain_id = $1
+               AND block_number = $2`,
             [CHAIN_ID, targetBlock]
         );
 

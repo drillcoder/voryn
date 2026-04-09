@@ -4,13 +4,13 @@ import type {
     CanonicalEventsRepository,
     CanonicalTransactionsRepository,
     ChainCursorRepository,
-    DbExecutor,
-    LeaderLock,
-    RawBlocksRepository,
-    TransactionManager,
-} from "../../../src/index.js";
+    RawBlocksRepository
+} from "../../../src/interfaces/repositories.js";
+import type { DbExecutor } from "../../../src/interfaces/db.js";
+import type { LeaderLock } from "../../../src/interfaces/leader-lock.js";
+import type { TransactionManager } from "../../../src/interfaces/transaction-manager.js";
 import type { RetentionWorkerConfig } from "../../../src/interfaces/runtime.js";
-import { RetentionWorker } from "../../../src/index.js";
+import { RetentionWorker } from "../../../src/workers/retention-worker.js";
 import { asHash32 } from "../../../src/utils/hex.js";
 
 const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");

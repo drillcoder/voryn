@@ -1,4 +1,4 @@
-import { PostgresRawBlocksRepository } from "../../../../src/repositories/postgres/index.js";
+import { PostgresRawBlocksRepository } from "../../../../src/repositories/postgres/raw-blocks-repository.js";
 import type { DbExecutor } from "../../../../src/interfaces/db.js";
 import { asHash32 } from "../../../../src/utils/hex.js";
 

@@ -1,5 +1,5 @@
 import { asHash32 } from "../../utils/hex.js";
-import { parsePgInt, parsePgTimestamp } from "../../postgres/index.js";
+import { parsePgInt, parsePgTimestamp } from "../../postgres/pg-parsers.js";
 import type { RawBlocksRepository } from "../../interfaces/repositories.js";
 import type { BlockNumber, ChainId } from "../../types/chain.js";
 import type { FetchedBlock } from "../../interfaces/chain.js";

@@ -1,16 +1,15 @@
 import type { BlockSource } from "../../src/interfaces/block-source.js";
 import type { FetchedBlock } from "../../src/interfaces/chain.js";
-import { PostgresLeaderLock, PostgresTransactionManager } from "../../src/postgres/index.js";
-import {
-    PostgresBlockJobsRepository,
-    PostgresChainCursorRepository,
-    PostgresRawBlocksRepository,
-} from "../../src/repositories/postgres/index.js";
+import { PostgresLeaderLock } from "../../src/postgres/leader-lock.js";
+import { PostgresTransactionManager } from "../../src/postgres/transaction-manager.js";
+import { PostgresBlockJobsRepository } from "../../src/repositories/postgres/block-jobs-repository.js";
+import { PostgresChainCursorRepository } from "../../src/repositories/postgres/chain-cursor-repository.js";
+import { PostgresRawBlocksRepository } from "../../src/repositories/postgres/raw-blocks-repository.js";
 import { FetchWorker } from "../../src/workers/fetch-worker.js";
 import { HeadWorker } from "../../src/workers/head-worker.js";
 import { buildFetchedBlock, CHAIN_ID, hashFromNumber } from "../integration/helpers/fixtures.js";
-import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../integration/helpers/test-db.js";
 import type { IsolatedDbContext } from "../integration/helpers/test-db.js";
+import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../integration/helpers/test-db.js";
 import { stopWorkers, waitFor } from "./helpers/async.js";
 import { getBlockJob } from "./helpers/db.js";
 

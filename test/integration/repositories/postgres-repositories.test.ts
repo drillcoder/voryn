@@ -1,12 +1,12 @@
+import { PostgresCanonicalBlocksRepository } from "../../../src/repositories/postgres/canonical-blocks-repository.js";
+import { PostgresCanonicalEventsRepository } from "../../../src/repositories/postgres/canonical-events-repository.js";
 import {
-    PostgresCanonicalBlocksRepository,
-    PostgresCanonicalEventsRepository,
-    PostgresCanonicalTransactionsRepository,
-    PostgresRawBlocksRepository,
-} from "../../../src/repositories/postgres/index.js";
+    PostgresCanonicalTransactionsRepository
+} from "../../../src/repositories/postgres/canonical-transactions-repository.js";
+import { PostgresRawBlocksRepository } from "../../../src/repositories/postgres/raw-blocks-repository.js";
 import { buildFetchedBlock, CHAIN_ID, hashFromNumber } from "../helpers/fixtures.js";
-import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../helpers/test-db.js";
 import type { IsolatedDbContext } from "../helpers/test-db.js";
+import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../helpers/test-db.js";
 
 const DATABASE_URL = getRequiredDatabaseUrl();
 
