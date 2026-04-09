@@ -21,9 +21,9 @@ coverage/
 *.tsbuildinfo
 
 # Env files
-.env
-.env.*
-!.env.example
+dev/.env
+dev/.env.*
+!dev/.env.example
 
 # IDE
 .idea/

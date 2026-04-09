@@ -1,11 +1,11 @@
 {
-  "extends": "./tsconfig.json",
+  "extends": "../tsconfig.json",
   "compilerOptions": {
     "noEmit": true,
     "isolatedModules": true,
     "module": "CommonJS",
     "moduleResolution": "Node",
-    "rootDir": "."
+    "rootDir": ".."
   },
-  "include": ["test/**/*.ts"]
+  "include": ["./**/*.ts"]
 }

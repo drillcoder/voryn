@@ -1,6 +1,7 @@
 # Разработка
 
-Команды для разработки собраны в `Makefile`
+Команды для разработки собраны в `dev/Makefile`.
+Для удобства в корне есть прокси-`Makefile`, поэтому можно запускать: `make lint`, `make test`, `make init`.
 
 ## Docker (dev)
 
@@ -8,22 +9,22 @@
 а RPC-переменные обязательны по воркеру:
 `VORYN_HEAD_RPC_URL`, `VORYN_FETCH_RPC_URL`.
 и берутся из окружения.
-Удобно начать с `.env.example`:
+Удобно начать с `dev/.env.example`:
 
 ```bash
-cp .env.example .env
+cp dev/.env.example dev/.env
 ```
 
 Запуск воркеров:
 
 ```bash
-docker compose up -d postgres head fetch sequencer retention
+docker compose --env-file dev/.env -f dev/docker-compose.yml up -d postgres head fetch sequencer retention
 ```
 
 Логи:
 
 ```bash
-docker compose logs -f head fetch sequencer retention
+docker compose --env-file dev/.env -f dev/docker-compose.yml logs -f head fetch sequencer retention
 ```
 
 ## CLI для разработки: запуск ingestion-воркеров
