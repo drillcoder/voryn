@@ -16,6 +16,7 @@ const HASH_B = asHash32("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 const config: FetchWorkerConfig = {
     chainId: 7,
     delayBetweenTicksMs: 1000,
+    workerId: "w1",
     fetchBatchSize: 1,
     fetchClaimTtlMs: 10_000,
     retryMaxAttempts: 4,
@@ -94,7 +95,6 @@ test("fetch worker stores fetched block and marks job fetched", async () => {
     });
 
     const worker = new FetchWorker(
-        "w1",
         config,
         source,
         blockJobsRepository,
@@ -136,7 +136,6 @@ test("fetch worker marks failure with retry date", async () => {
     });
 
     const worker = new FetchWorker(
-        "w1",
         config,
         source,
         blockJobsRepository,
@@ -180,7 +179,6 @@ test("fetch worker swallows claim-lost race without failing tick", async () => {
     });
 
     const worker = new FetchWorker(
-        "w1",
         config,
         source,
         blockJobsRepository,
@@ -196,7 +194,6 @@ test("fetch worker swallows claim-lost race without failing tick", async () => {
 test("fetch worker tries at least one claim when batch size is zero", async () => {
     let claims = 0;
     const worker = new FetchWorker(
-        "w1",
         { ...config, fetchBatchSize: 0 },
         {
             getLatestBlockNumber: async () => 0,
@@ -220,7 +217,6 @@ test("fetch worker tries at least one claim when batch size is zero", async () =
 test("fetch worker sets nextRetryAt=null when max attempts reached", async () => {
     let nextRetryAt: Date | null | undefined;
     const worker = new FetchWorker(
-        "w1",
         config,
         {
             getLatestBlockNumber: async () => 0,
@@ -255,7 +251,6 @@ test("fetch worker sets nextRetryAt=null when max attempts reached", async () =>
 test("fetch worker swallows claim-lost during markFetchFailed", async () => {
     const logger = { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
     const worker = new FetchWorker(
-        "w1",
         config,
         {
             getLatestBlockNumber: async () => 0,
@@ -289,7 +284,6 @@ test("fetch worker swallows claim-lost during markFetchFailed", async () => {
 
 test("fetch worker rethrows non-claim-lost error from markFetchFailed", async () => {
     const worker = new FetchWorker(
-        "w1",
         config,
         {
             getLatestBlockNumber: async () => 0,

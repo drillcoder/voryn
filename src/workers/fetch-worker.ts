@@ -9,7 +9,6 @@ import { noopLogger } from "../interfaces/logger.js";
 
 export class FetchWorker extends PollingWorker {
     constructor(
-        private readonly workerId: string,
         private readonly config: FetchWorkerConfig,
         private readonly source: BlockSource,
         private readonly blockJobsRepository: BlockJobsRepository,
@@ -18,7 +17,7 @@ export class FetchWorker extends PollingWorker {
         logger?: Logger,
     ) {
         super(
-            `fetch:${String(config.chainId)}:${workerId}`,
+            `fetch:${String(config.chainId)}:${config.workerId}`,
             config.delayBetweenTicksMs,
             logger ?? noopLogger
         );
@@ -35,7 +34,7 @@ export class FetchWorker extends PollingWorker {
         for (let index = 0; index < batchSize; index++) {
             const job = await this.blockJobsRepository.claimForFetch(
                 chainId,
-                this.workerId,
+                this.config.workerId,
                 staleClaimedBefore
             );
 
@@ -60,7 +59,7 @@ export class FetchWorker extends PollingWorker {
                     await this.blockJobsRepository.markFetched(
                         chainId,
                         job.blockNumber,
-                        this.workerId,
+                        this.config.workerId,
                         transaction
                     );
                 });
@@ -70,7 +69,7 @@ export class FetchWorker extends PollingWorker {
                     this.logger.warn("fetch_claim_lost_before_mark_fetched", {
                         chainId,
                         blockNumber: job.blockNumber,
-                        workerId: this.workerId,
+                        workerId: this.config.workerId,
                     });
                     continue;
                 }
@@ -80,7 +79,7 @@ export class FetchWorker extends PollingWorker {
                     await this.blockJobsRepository.markFetchFailed(
                         chainId,
                         job.blockNumber,
-                        this.workerId,
+                        this.config.workerId,
                         asErrorMessage(error),
                         nextRetryAt,
                     );
@@ -90,7 +89,7 @@ export class FetchWorker extends PollingWorker {
                         this.logger.warn("fetch_claim_lost_before_mark_failed", {
                             chainId,
                             blockNumber: job.blockNumber,
-                            workerId: this.workerId,
+                            workerId: this.config.workerId,
                         });
                         continue;
                     }
@@ -103,7 +102,7 @@ export class FetchWorker extends PollingWorker {
         if (claimed > 0) {
             this.logger.info("fetch_tick_processed", {
                 chainId,
-                workerId: this.workerId,
+                workerId: this.config.workerId,
                 claimed,
                 fetched,
                 failed,
@@ -113,7 +112,7 @@ export class FetchWorker extends PollingWorker {
 
     protected override buildStartLogMeta(): Record<string, unknown> {
         return {
-            workerId: this.workerId,
+            workerId: this.config.workerId,
             chainId: this.config.chainId,
             fetchBatchSize: this.config.fetchBatchSize,
             fetchClaimTtlMs: this.config.fetchClaimTtlMs,

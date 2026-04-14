@@ -10,6 +10,7 @@ export interface HeadWorkerConfig {
 export interface FetchWorkerConfig {
     chainId: ChainId;
     delayBetweenTicksMs: number;
+    workerId: string;
     fetchBatchSize: number;
     fetchClaimTtlMs: number;
     retryMaxAttempts: number;

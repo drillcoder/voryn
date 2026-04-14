@@ -24,10 +24,10 @@ async function run(): Promise<void> {
 
     const pool = new Pool({ connectionString: dbUrl });
     const worker = new FetchWorker(
-        workerId,
         {
             chainId,
             delayBetweenTicksMs,
+            workerId,
             fetchBatchSize,
             fetchClaimTtlMs,
             retryMaxAttempts,

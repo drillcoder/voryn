@@ -65,10 +65,10 @@ describe("e2e sequencer mismatch", () => {
             new PostgresLeaderLock(db.pool, 31_000_001n),
         );
         const fetchWorker = new FetchWorker(
-            "fetch-worker-e2e-mismatch",
             {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
+                workerId: "fetch-worker-e2e-mismatch",
                 fetchBatchSize: 1,
                 fetchClaimTtlMs: 60_000,
                 retryMaxAttempts: 3,

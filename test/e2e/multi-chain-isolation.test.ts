@@ -81,10 +81,10 @@ describe("e2e multi-chain isolation", () => {
                 createLeaderLock(),
             ),
             new FetchWorker(
-                "fetch-worker-chain-a",
                 {
                     chainId: CHAIN_A,
                     delayBetweenTicksMs: 5,
+                    workerId: "fetch-worker-chain-a",
                     fetchBatchSize: 2,
                     fetchClaimTtlMs: 60_000,
                     retryMaxAttempts: 3,
@@ -117,10 +117,10 @@ describe("e2e multi-chain isolation", () => {
                 createLeaderLock(),
             ),
             new FetchWorker(
-                "fetch-worker-chain-b",
                 {
                     chainId: CHAIN_B,
                     delayBetweenTicksMs: 5,
+                    workerId: "fetch-worker-chain-b",
                     fetchBatchSize: 2,
                     fetchClaimTtlMs: 60_000,
                     retryMaxAttempts: 3,

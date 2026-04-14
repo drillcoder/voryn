@@ -50,10 +50,10 @@ describe("integration workers: fetch retries", () => {
         };
 
         const worker = new TestFetchWorker(
-            WORKER_ID,
             {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 1,
+                workerId: WORKER_ID,
                 fetchBatchSize: 1,
                 fetchClaimTtlMs: 60_000,
                 retryMaxAttempts: 3,
@@ -124,10 +124,10 @@ describe("integration workers: fetch retries", () => {
         };
 
         const worker = new TestFetchWorker(
-            "fresh-worker",
             {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 1,
+                workerId: "fresh-worker",
                 fetchBatchSize: 1,
                 fetchClaimTtlMs: 1_000,
                 retryMaxAttempts: 3,

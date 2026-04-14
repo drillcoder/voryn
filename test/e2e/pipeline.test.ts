@@ -121,10 +121,10 @@ describe("e2e pipeline", () => {
         );
 
         const fetchWorker = new FetchWorker(
-            FETCH_WORKER_ID,
             {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
+                workerId: FETCH_WORKER_ID,
                 fetchBatchSize: 2,
                 fetchClaimTtlMs: 60_000,
                 retryMaxAttempts: 3,

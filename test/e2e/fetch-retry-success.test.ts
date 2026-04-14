@@ -67,10 +67,10 @@ describe("e2e fetch retry success", () => {
             new PostgresLeaderLock(db.pool, 31_100_001n),
         );
         const fetchWorker = new FetchWorker(
-            "fetch-worker-e2e-retry-success",
             {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
+                workerId: "fetch-worker-e2e-retry-success",
                 fetchBatchSize: 1,
                 fetchClaimTtlMs: 60_000,
                 retryMaxAttempts: 3,

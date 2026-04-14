@@ -93,10 +93,10 @@ describeLive("live rpc pipeline", () => {
         await blockJobsRepository.enqueueRange(chainId, targetBlock, targetBlock);
 
         const fetchWorker = new TestFetchWorker(
-            "fetch-worker-live-rpc",
             {
                 chainId,
                 delayBetweenTicksMs: 1,
+                workerId: "fetch-worker-live-rpc",
                 fetchBatchSize: 1,
                 fetchClaimTtlMs: 60_000,
                 retryMaxAttempts: 3,

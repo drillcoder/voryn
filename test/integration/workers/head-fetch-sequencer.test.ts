@@ -74,10 +74,10 @@ describe("integration workers: head/fetch/sequencer", () => {
         );
 
         const fetchWorker = new TestFetchWorker(
-            WORKER_ID,
             {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 1,
+                workerId: WORKER_ID,
                 fetchBatchSize: 10,
                 fetchClaimTtlMs: 60_000,
                 retryMaxAttempts: 3,

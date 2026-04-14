@@ -30,10 +30,10 @@ const transactionManager = new PostgresTransactionManager(pool);
 const logger = new ConsoleLogger({ minLevel: "info" });
 
 const worker = new FetchWorker(
-    workerId,
     {
         chainId,
         delayBetweenTicksMs,
+        workerId,
         fetchBatchSize,
         fetchClaimTtlMs,
         retryMaxAttempts,

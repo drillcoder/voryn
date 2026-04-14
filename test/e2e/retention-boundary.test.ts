@@ -67,10 +67,10 @@ describe("e2e retention boundary", () => {
             new PostgresLeaderLock(db.pool, 31_400_001n),
         );
         const fetchWorker = new FetchWorker(
-            "fetch-worker-e2e-retention",
             {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
+                workerId: "fetch-worker-e2e-retention",
                 fetchBatchSize: 2,
                 fetchClaimTtlMs: 60_000,
                 retryMaxAttempts: 3,
