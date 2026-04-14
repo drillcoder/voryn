@@ -26,7 +26,7 @@ ingestion-stop:
 
 # Инициализировать схему БД.
 db-init: db-up
-	$(TOOLS_RUN) npm exec -- voryn init
+	$(TOOLS_RUN) npm run db:apply-sql -- src/sql/postgres-schema.sql
 
 # Поднять контейнер с базой данных.
 db-up:

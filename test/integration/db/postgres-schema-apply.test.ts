@@ -7,18 +7,22 @@ import { getRequiredDatabaseUrl } from "../helpers/test-db.js";
 const execFileAsync = promisify(execFile);
 const BASE_DATABASE_URL = getRequiredDatabaseUrl();
 
-describe("integration cli: init command", () => {
-    test("voryn init applies postgres schema to empty database", async () => {
+describe("integration postgres schema apply script", () => {
+    test("db:apply-sql applies postgres schema to empty database", async () => {
         const db = await createEmptyDatabase(BASE_DATABASE_URL);
 
         try {
-            await execFileAsync("node", ["dist/cli.js", "init"], {
-                cwd: process.cwd(),
-                env: {
-                    ...process.env,
-                    DATABASE_URL: db.databaseUrl,
+            await execFileAsync(
+                "npm",
+                ["run", "db:apply-sql", "--", "src/sql/postgres-schema.sql"],
+                {
+                    cwd: process.cwd(),
+                    env: {
+                        ...process.env,
+                        DATABASE_URL: db.databaseUrl,
+                    },
                 },
-            });
+            );
 
             const checkPool = new Pool({ connectionString: db.databaseUrl });
             try {
@@ -54,7 +58,7 @@ async function createEmptyDatabase(baseDatabaseUrlRaw: string): Promise<{
     const adminDatabaseUrl = new URL(baseDatabaseUrlRaw);
     adminDatabaseUrl.pathname = "/postgres";
 
-    const databaseName = `voryn_test_cli_${String(Date.now())}_${randomBytes(4).toString("hex")}`;
+    const databaseName = `voryn_test_db_schema_${String(Date.now())}_${randomBytes(4).toString("hex")}`;
     const adminPool = new Pool({ connectionString: adminDatabaseUrl.toString() });
     await adminPool.query(`CREATE DATABASE ${quoteIdentifier(databaseName)}`);
 

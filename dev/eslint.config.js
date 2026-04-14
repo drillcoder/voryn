@@ -86,11 +86,5 @@ export default tseslint.config(
             "@typescript-eslint/array-type": "off",
             "@typescript-eslint/no-unused-vars": "off",
         },
-    },
-    {
-        files: ["src/cli.ts"],
-        rules: {
-            "n/hashbang": "off",
-        },
     }
 );

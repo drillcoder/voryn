@@ -23,6 +23,7 @@ export * from "./workers/event-reaction-worker.js";
 export * from "./workers/transaction-reaction-worker.js";
 
 export * from "./loggers/console-logger.js";
+export * from "./postgres/schema.js";
 export * from "./adapters/ethers-block-source.js";
 export * from "./postgres/leader-lock.js";
 export * from "./postgres/transaction-manager.js";

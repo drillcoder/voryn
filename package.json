@@ -5,15 +5,13 @@
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
-	"bin": {
-		"voryn": "./dist/cli.js"
-	},
 	"files": [
 		"dist"
 	],
 	"scripts": {
 		"build": "tsc && mkdir -p dist/sql && cp src/sql/postgres-schema.sql dist/sql/postgres-schema.sql",
 		"build-test": "tsc -p test/tsconfig.json",
+		"db:apply-sql": "tsx --tsconfig dev/tsconfig.json dev/apply-sql.ts",
 		"test": "jest --config dev/jest.config.js",
 		"test:unit": "jest --config dev/jest.config.js test/unit",
 		"test:integration": "jest --config dev/jest.config.js test/integration",

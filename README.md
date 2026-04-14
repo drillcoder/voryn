@@ -7,17 +7,16 @@ TypeScript npm-библиотека для мониторинга EVM-подоб
 - Архитектура: [ARCHITECTURE.md](/docs/ARCHITECTURE.md)
 - Схема БД: [DB_SCHEMA.md](/docs/DB_SCHEMA.md)
 
-## CLI: инициализация БД
+## Инициализация БД
 
-Команда применяет SQL-схему PostgreSQL из `postgres-schema.sql`.
+Раздел про применение базовой схемы из файла `src/sql/postgres-schema.sql`.
 
-Параметры:
+Есть 2 варианта:
 
-- `DATABASE_URL` (`required`) — строка подключения к PostgreSQL (например, `postgres://user:pass@host:5432/dbname`).
+1. Применить SQL любым своим способом (psql, миграции, CI/CD и т.д.).
+2. Использовать встроенный helper `applySqlFileToPostgresDb`.
 
-```bash
-DATABASE_URL="postgres://user:pass@localhost:5432/voryn" voryn init
-```
+Пример вызова helper-функции: [examples/db-apply-sql.ts](/examples/db-apply-sql.ts)
 
 ## Адаптер ethers v6
 
@@ -50,7 +49,7 @@ const source = new EthersBlockSource({ provider, validateProviderChainId: true }
 Библиотека использует интерфейс `Logger` (`debug`, `info`, `warn`, `error`).
 
 - `noopLogger` ничего не выводит и подходит как безопасный дефолт.
-- `ConsoleLogger` дает простую реализацию для локальной разработки и CLI.
+- `ConsoleLogger` дает простую реализацию для локальной разработки и dev-скриптов.
 
 Пример:
 
