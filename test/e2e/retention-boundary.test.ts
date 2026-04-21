@@ -57,17 +57,19 @@ describe("e2e retention boundary", () => {
         const block13 = buildFetchedBlock(13, block12.block.hash, 1);
         const source = createMapBlockSource(13, [block10, block11, block12, block13]);
 
-        const headWorker = new HeadWorker(
-            { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
+        const headWorker = HeadWorker.create({
+            config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
             source,
-            chainCursorRepository,
-            blockJobsRepository,
-            rawBlocksRepository,
-            transactionManager,
-            new PostgresLeaderLock(db.pool, 31_400_001n),
-        );
-        const fetchWorker = new FetchWorker(
-            {
+            overrides: {
+                chainCursorRepository,
+                blockJobsRepository,
+                rawBlocksRepository,
+                transactionManager,
+                leaderLock: new PostgresLeaderLock(db.pool, 31_400_001n),
+            },
+        });
+        const fetchWorker = FetchWorker.create({
+            config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
                 workerId: "fetch-worker-e2e-retention",
@@ -78,32 +80,38 @@ describe("e2e retention boundary", () => {
                 retryMaxDelayMs: 100,
             },
             source,
-            blockJobsRepository,
-            rawBlocksRepository,
-            transactionManager,
-        );
-        const sequencerWorker = new SequencerWorker(
-            { chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 2 },
-            chainCursorRepository,
-            rawBlocksRepository,
-            canonicalBlocksRepository,
-            canonicalTransactionsRepository,
-            canonicalEventsRepository,
-            blockJobsRepository,
-            transactionManager,
-            new PostgresLeaderLock(db.pool, 31_400_002n),
-        );
-        const retentionWorker = new RetentionWorker(
-            { chainId: CHAIN_ID, delayBetweenTicksMs: 5, retentionDepthBlocks: 2 },
-            chainCursorRepository,
-            blockJobsRepository,
-            rawBlocksRepository,
-            canonicalBlocksRepository,
-            canonicalTransactionsRepository,
-            canonicalEventsRepository,
-            transactionManager,
-            new PostgresLeaderLock(db.pool, 31_400_003n),
-        );
+            overrides: {
+                blockJobsRepository,
+                rawBlocksRepository,
+                transactionManager,
+            },
+        });
+        const sequencerWorker = SequencerWorker.create({
+            config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 2 },
+            overrides: {
+                chainCursorRepository,
+                rawBlocksRepository,
+                canonicalBlocksRepository,
+                canonicalTransactionsRepository,
+                canonicalEventsRepository,
+                blockJobsRepository,
+                transactionManager,
+                leaderLock: new PostgresLeaderLock(db.pool, 31_400_002n),
+            },
+        });
+        const retentionWorker = RetentionWorker.create({
+            config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, retentionDepthBlocks: 2 },
+            overrides: {
+                chainCursorRepository,
+                blockJobsRepository,
+                rawBlocksRepository,
+                canonicalBlocksRepository,
+                canonicalTransactionsRepository,
+                canonicalEventsRepository,
+                transactionManager,
+                leaderLock: new PostgresLeaderLock(db.pool, 31_400_003n),
+            },
+        });
 
         try {
             await headWorker.start();

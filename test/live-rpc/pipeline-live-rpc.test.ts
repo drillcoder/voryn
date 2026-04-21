@@ -9,9 +9,10 @@ import {
 import { PostgresChainCursorRepository } from "../../src/repositories/postgres/chain-cursor-repository.js";
 import { PostgresRawBlocksRepository } from "../../src/repositories/postgres/raw-blocks-repository.js";
 import { EthersBlockSource } from "../../src/adapters/ethers-block-source.js";
+import { FetchService } from "../../src/services/fetch-service.js";
+import { SequencerService } from "../../src/services/sequencer-service.js";
 import type { IsolatedDbContext } from "../integration/helpers/test-db.js";
 import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../integration/helpers/test-db.js";
-import { TestFetchWorker, TestSequencerWorker } from "../integration/helpers/test-workers.js";
 
 const LIVE_RPC_URL = process.env.VORYN_LIVE_RPC_URL
     ?? process.env.VORYN_FETCH_RPC_URL
@@ -92,7 +93,7 @@ describeLive("live rpc pipeline", () => {
         });
         await blockJobsRepository.enqueueRange(chainId, targetBlock, targetBlock);
 
-        const fetchWorker = new TestFetchWorker(
+        const fetchService = new FetchService(
             {
                 chainId,
                 delayBetweenTicksMs: 1,
@@ -108,7 +109,7 @@ describeLive("live rpc pipeline", () => {
             rawBlocksRepository,
             transactionManager,
         );
-        const sequencerWorker = new TestSequencerWorker(
+        const sequencerService = new SequencerService(
             {
                 chainId,
                 delayBetweenTicksMs: 1,
@@ -121,14 +122,10 @@ describeLive("live rpc pipeline", () => {
             canonicalEventsRepository,
             blockJobsRepository,
             transactionManager,
-            {
-                tryAcquire: async () => true,
-                release: async () => undefined,
-            },
         );
 
-        await fetchWorker.runTick();
-        await sequencerWorker.runTick();
+        await fetchService.execute();
+        await sequencerService.execute();
 
         const cursor = await chainCursorRepository.get(chainId);
         expect(cursor?.lastCommittedBlock).toBe(targetBlock);

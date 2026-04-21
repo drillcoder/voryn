@@ -1,12 +1,4 @@
-import { JsonRpcProvider } from "ethers";
-import { Pool } from "pg";
-import {
-    EthersBlockSource,
-    FetchWorker,
-    PostgresBlockJobsRepository,
-    PostgresRawBlocksRepository,
-    PostgresTransactionManager
-} from "../src/index.js";
+import { FetchWorker } from "../src/index.js";
 import { createDevLogger, envNumber, envValue, runWithErrorHandling, runWorkerLifecycle } from "./runtime.js";
 
 async function run(): Promise<void> {
@@ -22,26 +14,18 @@ async function run(): Promise<void> {
     const retryBaseDelayMs = envNumber("VORYN_FETCH_RETRY_BASE_DELAY_MS", "1000");
     const retryMaxDelayMs = envNumber("VORYN_FETCH_RETRY_MAX_DELAY_MS", "10000");
 
-    const pool = new Pool({ connectionString: dbUrl });
-    const worker = new FetchWorker(
-        {
-            chainId,
-            delayBetweenTicksMs,
-            workerId,
-            fetchBatchSize,
-            fetchClaimTtlMs,
-            retryMaxAttempts,
-            retryBaseDelayMs,
-            retryMaxDelayMs,
-        },
-        new EthersBlockSource({ provider: new JsonRpcProvider(rpcUrl), validateProviderChainId: true }),
-        new PostgresBlockJobsRepository(pool),
-        new PostgresRawBlocksRepository(pool),
-        new PostgresTransactionManager(pool),
-        logger,
-    );
+    const config = {
+        chainId,
+        delayBetweenTicksMs,
+        workerId,
+        fetchBatchSize,
+        fetchClaimTtlMs,
+        retryMaxAttempts,
+        retryBaseDelayMs,
+        retryMaxDelayMs,
+    };
 
-    await runWorkerLifecycle("fetch", worker, logger, pool);
+    await runWorkerLifecycle("fetch", FetchWorker.create({ config, logger, dbUrl, rpcUrl }), logger);
 }
 
 runWithErrorHandling("fetch", run);

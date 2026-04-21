@@ -174,17 +174,19 @@ function createWorkerSet(
     tx: TransactionReactionWorker;
     all: readonly [HeadWorker, FetchWorker, SequencerWorker, EventReactionWorker, TransactionReactionWorker];
 } {
-    const head = new HeadWorker(
-        { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
+    const head = HeadWorker.create({
+        config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
         source,
-        chainCursorRepository,
-        blockJobsRepository,
-        rawBlocksRepository,
-        transactionManager,
-        createLeaderLock(),
-    );
-    const fetch = new FetchWorker(
-        {
+        overrides: {
+            chainCursorRepository,
+            blockJobsRepository,
+            rawBlocksRepository,
+            transactionManager,
+            leaderLock: createLeaderLock(),
+        },
+    });
+    const fetch = FetchWorker.create({
+        config: {
             chainId: CHAIN_ID,
             delayBetweenTicksMs: 5,
             workerId: `fetch-worker-${workerSuffix}`,
@@ -195,35 +197,53 @@ function createWorkerSet(
             retryMaxDelayMs: 100,
         },
         source,
-        blockJobsRepository,
-        rawBlocksRepository,
-        transactionManager,
-    );
-    const sequencer = new SequencerWorker(
-        { chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 2 },
-        chainCursorRepository,
-        rawBlocksRepository,
-        canonicalBlocksRepository,
-        canonicalTransactionsRepository,
-        canonicalEventsRepository,
-        blockJobsRepository,
-        transactionManager,
-        createLeaderLock(),
-    );
-    const event = new EventReactionWorker(
-        { chainId: CHAIN_ID, delayBetweenTicksMs: 5, workerName: `reaction-event-${workerSuffix}`, batchSize: 2 },
-        eventHandler,
-        canonicalEventsRepository,
-        workerCursorsRepository,
-        createLeaderLock(),
-    );
-    const tx = new TransactionReactionWorker(
-        { chainId: CHAIN_ID, delayBetweenTicksMs: 5, workerName: `reaction-tx-${workerSuffix}`, batchSize: 2 },
-        txHandler,
-        canonicalTransactionsRepository,
-        workerCursorsRepository,
-        createLeaderLock(),
-    );
+        overrides: {
+            blockJobsRepository,
+            rawBlocksRepository,
+            transactionManager,
+        },
+    });
+    const sequencer = SequencerWorker.create({
+        config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 2 },
+        overrides: {
+            chainCursorRepository,
+            rawBlocksRepository,
+            canonicalBlocksRepository,
+            canonicalTransactionsRepository,
+            canonicalEventsRepository,
+            blockJobsRepository,
+            transactionManager,
+            leaderLock: createLeaderLock(),
+        },
+    });
+    const event = EventReactionWorker.create({
+        config: {
+            chainId: CHAIN_ID,
+            delayBetweenTicksMs: 5,
+            workerName: `reaction-event-${workerSuffix}`,
+            batchSize: 2,
+        },
+        handler: eventHandler,
+        overrides: {
+            canonicalEventsRepository,
+            workerCursorsRepository,
+            leaderLock: createLeaderLock(),
+        },
+    });
+    const tx = TransactionReactionWorker.create({
+        config: {
+            chainId: CHAIN_ID,
+            delayBetweenTicksMs: 5,
+            workerName: `reaction-tx-${workerSuffix}`,
+            batchSize: 2,
+        },
+        handler: txHandler,
+        overrides: {
+            transactionsRepository: canonicalTransactionsRepository,
+            workerCursorsRepository,
+            leaderLock: createLeaderLock(),
+        },
+    });
 
     return {
         head,

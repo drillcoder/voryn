@@ -1,8 +1,7 @@
 import type { CanonicalEventsRepository, WorkerCursorsRepository } from "../../../src/interfaces/repositories.js";
 import type { EventReactionHandler } from "../../../src/interfaces/reaction.js";
-import type { LeaderLock } from "../../../src/interfaces/leader-lock.js";
 import type { ReactionWorkerConfig } from "../../../src/interfaces/runtime.js";
-import { EventReactionWorker } from "../../../src/workers/event-reaction-worker.js";
+import { EventReactionService } from "../../../src/services/event-reaction-service.js";
 import { asAddress, asHash32, asHexData } from "../../../src/utils/hex.js";
 
 const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
@@ -10,11 +9,7 @@ const HASH_B = asHash32("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 const ADDRESS = asAddress("0x1111111111111111111111111111111111111111");
 const DATA = asHexData("0x01");
 
-const invokeTick = async (worker: object): Promise<void> => {
-    await (worker as { tick: () => Promise<void> }).tick();
-};
-
-test("event reaction worker processes events and advances cursor", async () => {
+test("event reaction service processes events and advances cursor", async () => {
     const handled: bigint[] = [];
     const advanced: bigint[] = [];
 
@@ -24,7 +19,6 @@ test("event reaction worker processes events and advances cursor", async () => {
         delayBetweenTicksMs: 1000,
         batchSize: 10,
     };
-    const leaderLock: LeaderLock = { tryAcquire: async () => true, release: async () => undefined };
 
     const handler: EventReactionHandler = {
         handle: async (event) => {
@@ -80,21 +74,20 @@ test("event reaction worker processes events and advances cursor", async () => {
         },
     };
 
-    const worker = new EventReactionWorker(
+    const worker = new EventReactionService(
         config,
         handler,
         eventsRepository,
         workerCursorsRepository,
-        leaderLock,
     );
 
-    await invokeTick(worker);
+    await worker.execute();
 
     expect(handled).toEqual([11n, 12n]);
     expect(advanced).toEqual([11n, 12n]);
 });
 
-test("event reaction worker creates cursor from max seq when missing", async () => {
+test("event reaction service creates cursor from max seq when missing", async () => {
     const inserts: bigint[] = [];
     const config: ReactionWorkerConfig = {
         chainId: 5,
@@ -117,15 +110,14 @@ test("event reaction worker creates cursor from max seq when missing", async () 
         advance: async () => undefined,
     };
 
-    const worker = new EventReactionWorker(
+    const worker = new EventReactionService(
         config,
         { handle: async () => undefined },
         eventsRepository,
         workerCursorsRepository,
-        { tryAcquire: async () => true, release: async () => undefined },
     );
 
-    await invokeTick(worker);
+    await worker.execute();
 
     expect(inserts).toEqual([22n]);
 });

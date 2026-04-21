@@ -7,21 +7,22 @@ import {
 } from "../../../src/repositories/postgres/canonical-transactions-repository.js";
 import { PostgresChainCursorRepository } from "../../../src/repositories/postgres/chain-cursor-repository.js";
 import { PostgresRawBlocksRepository } from "../../../src/repositories/postgres/raw-blocks-repository.js";
+import { FetchService } from "../../../src/services/fetch-service.js";
+import { HeadService } from "../../../src/services/head-service.js";
+import { SequencerService } from "../../../src/services/sequencer-service.js";
 import {
     buildFetchedBlock,
     CHAIN_ID,
-    createLeaderLock,
     createMapBlockSource,
     hashFromNumber,
     WORKER_ID,
 } from "../helpers/fixtures.js";
 import type { IsolatedDbContext } from "../helpers/test-db.js";
 import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../helpers/test-db.js";
-import { TestFetchWorker, TestHeadWorker, TestSequencerWorker } from "../helpers/test-workers.js";
 
 const DATABASE_URL = getRequiredDatabaseUrl();
 
-describe("integration workers: head/fetch/sequencer", () => {
+describe("integration services: head/fetch/sequencer", () => {
     let db: IsolatedDbContext;
 
     beforeAll(async () => {
@@ -58,7 +59,7 @@ describe("integration workers: head/fetch/sequencer", () => {
         const block12 = buildFetchedBlock(12, block11.block.hash);
         const source = createMapBlockSource(12, [block10, block11, block12]);
 
-        const headWorker = new TestHeadWorker(
+        const headService = new HeadService(
             {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 1,
@@ -70,10 +71,9 @@ describe("integration workers: head/fetch/sequencer", () => {
             blockJobsRepository,
             rawBlocksRepository,
             transactionManager,
-            createLeaderLock(),
         );
 
-        const fetchWorker = new TestFetchWorker(
+        const fetchService = new FetchService(
             {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 1,
@@ -90,7 +90,7 @@ describe("integration workers: head/fetch/sequencer", () => {
             transactionManager,
         );
 
-        const sequencerWorker = new TestSequencerWorker(
+        const sequencerService = new SequencerService(
             {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 1,
@@ -103,12 +103,11 @@ describe("integration workers: head/fetch/sequencer", () => {
             canonicalEventsRepository,
             blockJobsRepository,
             transactionManager,
-            createLeaderLock(),
         );
 
-        await headWorker.runTick();
-        await fetchWorker.runTick();
-        await sequencerWorker.runTick();
+        await headService.execute();
+        await fetchService.execute();
+        await sequencerService.execute();
 
         const cursor = await chainCursorRepository.get(CHAIN_ID);
         expect(cursor?.lastCommittedBlock).toBe(12);
@@ -149,7 +148,7 @@ describe("integration workers: head/fetch/sequencer", () => {
             fetchedAt: new Date(),
         });
 
-        const sequencerWorker = new TestSequencerWorker(
+        const sequencerService = new SequencerService(
             {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 1,
@@ -162,10 +161,9 @@ describe("integration workers: head/fetch/sequencer", () => {
             canonicalEventsRepository,
             blockJobsRepository,
             transactionManager,
-            createLeaderLock(),
         );
 
-        await expect(sequencerWorker.runTick()).rejects.toThrow("Raw block parent hash mismatch");
+        await expect(sequencerService.execute()).rejects.toThrow("Raw block parent hash mismatch");
 
         const cursor = await chainCursorRepository.get(CHAIN_ID);
         expect(cursor?.lastCommittedBlock).toBe(399);

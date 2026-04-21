@@ -68,7 +68,7 @@ Ingestion-воркеры последовательно собирают и ко
   - добавляет jobs в диапазоне `[max(lastEnqueuedBlock + 1, floorBlock), safeHead]`,
   - обновляет `lastEnqueuedBlock`.
 
-### `FetchWorker`
+### `FetchService`
 
 - Забирает задачи из `block_jobs` через `claimForFetch`.
 - Поддерживает recovery stale-fetch задач через `claimed_at` + TTL (`fetchClaimTtlMs`).
@@ -90,7 +90,7 @@ Ingestion-воркеры последовательно собирают и ко
 
 Именно этот воркер обеспечивает строгий порядок канонического потока.
 
-### `RetentionWorker`
+### `RetentionService`
 
 - В транзакции считает границу purge по `last_committed_block - retentionDepthBlocks`.
 - Удаляет старые данные из:
@@ -102,7 +102,7 @@ Ingestion-воркеры последовательно собирают и ко
 
 ## Reaction-контур
 
-### `EventReactionWorker`
+### `EventReactionService`
 
 - Читает события из `canonical_events` по `seq`.
 - Ведет прогресс в `worker_cursors` (`stream_type = event`).

@@ -3,12 +3,8 @@ import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import type { DbExecutor } from "../../../src/interfaces/db.js";
 import type { TransactionManager } from "../../../src/interfaces/transaction-manager.js";
 import type { FetchWorkerConfig } from "../../../src/interfaces/runtime.js";
-import { FetchWorker } from "../../../src/workers/fetch-worker.js";
+import { FetchService } from "../../../src/services/fetch-service.js";
 import { asHash32 } from "../../../src/utils/hex.js";
-
-const invokeTick = async (worker: object): Promise<void> => {
-    await (worker as { tick: () => Promise<void> }).tick();
-};
 
 const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 const HASH_B = asHash32("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
@@ -57,7 +53,7 @@ const createBlockJobsRepository = (overrides?: Partial<BlockJobsRepository>): Bl
     ...overrides,
 });
 
-test("fetch worker stores fetched block and marks job fetched", async () => {
+test("fetch service stores fetched block and marks job fetched", async () => {
     const saved: number[] = [];
     const fetched: number[] = [];
 
@@ -94,7 +90,7 @@ test("fetch worker stores fetched block and marks job fetched", async () => {
         },
     });
 
-    const worker = new FetchWorker(
+    const worker = new FetchService(
         config,
         source,
         blockJobsRepository,
@@ -102,14 +98,14 @@ test("fetch worker stores fetched block and marks job fetched", async () => {
         createPassThroughManager(),
     );
 
-    await invokeTick(worker);
+    await worker.execute();
 
     expect(saved).toEqual([12]);
     expect(fetched).toEqual([12]);
     expect(staleThresholds[0]).toBeInstanceOf(Date);
 });
 
-test("fetch worker marks failure with retry date", async () => {
+test("fetch service marks failure with retry date", async () => {
     const failed: Array<{ blockNumber: number; workerId: string; nextRetryAt: Date | null }> = [];
 
     const source: BlockSource = {
@@ -135,7 +131,7 @@ test("fetch worker marks failure with retry date", async () => {
         },
     });
 
-    const worker = new FetchWorker(
+    const worker = new FetchService(
         config,
         source,
         blockJobsRepository,
@@ -143,7 +139,7 @@ test("fetch worker marks failure with retry date", async () => {
         createPassThroughManager(),
     );
 
-    await invokeTick(worker);
+    await worker.execute();
 
     expect(failed).toHaveLength(1);
     expect(failed[0]?.blockNumber).toBe(33);
@@ -151,7 +147,7 @@ test("fetch worker marks failure with retry date", async () => {
     expect(failed[0]?.nextRetryAt).toBeInstanceOf(Date);
 });
 
-test("fetch worker swallows claim-lost race without failing tick", async () => {
+test("fetch service swallows claim-lost race without failing tick", async () => {
     const logger = { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
 
     const source: BlockSource = {
@@ -178,7 +174,7 @@ test("fetch worker swallows claim-lost race without failing tick", async () => {
         },
     });
 
-    const worker = new FetchWorker(
+    const worker = new FetchService(
         config,
         source,
         blockJobsRepository,
@@ -187,13 +183,13 @@ test("fetch worker swallows claim-lost race without failing tick", async () => {
         logger,
     );
 
-    await expect(invokeTick(worker)).resolves.toBeUndefined();
+    await expect(worker.execute()).resolves.toBeUndefined();
     expect(logger.warn).toHaveBeenCalled();
 });
 
-test("fetch worker tries at least one claim when batch size is zero", async () => {
+test("fetch service tries at least one claim when batch size is zero", async () => {
     let claims = 0;
-    const worker = new FetchWorker(
+    const worker = new FetchService(
         { ...config, fetchBatchSize: 0 },
         {
             getLatestBlockNumber: async () => 0,
@@ -209,14 +205,14 @@ test("fetch worker tries at least one claim when batch size is zero", async () =
         createPassThroughManager(),
     );
 
-    await invokeTick(worker);
+    await worker.execute();
 
     expect(claims).toBe(1);
 });
 
-test("fetch worker sets nextRetryAt=null when max attempts reached", async () => {
+test("fetch service sets nextRetryAt=null when max attempts reached", async () => {
     let nextRetryAt: Date | null | undefined;
-    const worker = new FetchWorker(
+    const worker = new FetchService(
         config,
         {
             getLatestBlockNumber: async () => 0,
@@ -243,14 +239,14 @@ test("fetch worker sets nextRetryAt=null when max attempts reached", async () =>
         createPassThroughManager(),
     );
 
-    await invokeTick(worker);
+    await worker.execute();
 
     expect(nextRetryAt).toBeNull();
 });
 
-test("fetch worker swallows claim-lost during markFetchFailed", async () => {
+test("fetch service swallows claim-lost during markFetchFailed", async () => {
     const logger = { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
-    const worker = new FetchWorker(
+    const worker = new FetchService(
         config,
         {
             getLatestBlockNumber: async () => 0,
@@ -278,12 +274,12 @@ test("fetch worker swallows claim-lost during markFetchFailed", async () => {
         logger,
     );
 
-    await expect(invokeTick(worker)).resolves.toBeUndefined();
+    await expect(worker.execute()).resolves.toBeUndefined();
     expect(logger.warn).toHaveBeenCalled();
 });
 
-test("fetch worker rethrows non-claim-lost error from markFetchFailed", async () => {
-    const worker = new FetchWorker(
+test("fetch service rethrows non-claim-lost error from markFetchFailed", async () => {
+    const worker = new FetchService(
         config,
         {
             getLatestBlockNumber: async () => 0,
@@ -310,5 +306,5 @@ test("fetch worker rethrows non-claim-lost error from markFetchFailed", async ()
         createPassThroughManager(),
     );
 
-    await expect(invokeTick(worker)).rejects.toThrow("db write failed");
+    await expect(worker.execute()).rejects.toThrow("db write failed");
 });

@@ -1,65 +1,50 @@
-import type { LeaderLock } from "../interfaces/leader-lock.js";
 import type { Logger } from "../interfaces/logger.js";
+import { noopLogger } from "../interfaces/logger.js";
+import type { LeaderLock } from "../interfaces/leader-lock.js";
 import type { TransactionReactionHandler } from "../interfaces/reaction.js";
 import type { CanonicalTransactionsRepository, WorkerCursorsRepository } from "../interfaces/repositories.js";
 import type { ReactionWorkerConfig } from "../interfaces/runtime.js";
+import { buildTransactionReactionWorker } from "./worker-builder.js";
+import type { ReactionWorkerOptions } from "./worker-types.js";
+import type { TransactionReactionService } from "../services/transaction-reaction-service.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
-import { noopLogger } from "../interfaces/logger.js";
+
+export interface TransactionReactionWorkerDatabaseDependencies {
+    transactionsRepository: CanonicalTransactionsRepository;
+    workerCursorsRepository: WorkerCursorsRepository;
+    leaderLock: LeaderLock;
+}
+
+export type CreateTransactionReactionWorkerOptions = ReactionWorkerOptions<
+    ReactionWorkerConfig,
+    TransactionReactionHandler,
+    TransactionReactionWorkerDatabaseDependencies
+>;
 
 export class TransactionReactionWorker extends SingletonPollingWorker {
-    constructor(
+    static create(options: CreateTransactionReactionWorkerOptions): TransactionReactionWorker {
+        const { service, leaderLock, dispose } = buildTransactionReactionWorker(options);
+        return new TransactionReactionWorker(options.config, service, leaderLock, dispose, options.logger);
+    }
+
+    private constructor(
         private readonly config: ReactionWorkerConfig,
-        private readonly handler: TransactionReactionHandler,
-        private readonly transactionsRepository: CanonicalTransactionsRepository,
-        private readonly workerCursorsRepository: WorkerCursorsRepository,
+        private readonly service: TransactionReactionService,
         leaderLock: LeaderLock,
+        dispose?: () => Promise<void>,
         logger?: Logger,
     ) {
         super(
             `reaction-tx:${String(config.chainId)}:${config.workerName}`,
             config.delayBetweenTicksMs,
             logger ?? noopLogger,
-            leaderLock
+            leaderLock,
+            dispose
         );
     }
 
     protected async tick(): Promise<void> {
-        const { workerName, chainId, batchSize } = this.config;
-
-        const cursor = await this.getOrCreateCursor(workerName, chainId);
-        const transactions = await this.transactionsRepository.readFromSeq(chainId, cursor.lastSeq, batchSize);
-        let lastProcessedSeq: bigint | null = null;
-
-        for (const transaction of transactions) {
-            await this.handler.handle(transaction, { workerName });
-            await this.workerCursorsRepository.advance(workerName, chainId, "tx", transaction.seq);
-            lastProcessedSeq = transaction.seq;
-        }
-
-        if (transactions.length > 0) {
-            this.logger.info("transaction_reaction_tick_processed", {
-                chainId,
-                workerName,
-                processed: transactions.length,
-                lastProcessedSeq,
-            });
-        } else {
-            this.logger.debug("transaction_reaction_tick_no_transactions", {
-                chainId,
-                workerName,
-            });
-        }
-    }
-
-    private async getOrCreateCursor(workerName: string, chainId: number): Promise<{ lastSeq: bigint }> {
-        const current = await this.workerCursorsRepository.get(workerName, chainId, "tx");
-        if (current !== null) {
-            return { lastSeq: current.lastSeq };
-        }
-
-        const initialSeq = await this.transactionsRepository.maxSeq(chainId);
-        await this.workerCursorsRepository.insert(workerName, chainId, "tx", initialSeq);
-        return { lastSeq: initialSeq };
+        await this.service.execute();
     }
 
     protected override buildStartLogMeta(): Record<string, unknown> {

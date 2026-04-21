@@ -7,14 +7,14 @@ import {
 } from "../../../src/repositories/postgres/canonical-transactions-repository.js";
 import { PostgresChainCursorRepository } from "../../../src/repositories/postgres/chain-cursor-repository.js";
 import { PostgresRawBlocksRepository } from "../../../src/repositories/postgres/raw-blocks-repository.js";
-import { buildFetchedBlock, CHAIN_ID, createLeaderLock, hashFromNumber } from "../helpers/fixtures.js";
+import { RetentionService } from "../../../src/services/retention-service.js";
+import { buildFetchedBlock, CHAIN_ID, hashFromNumber } from "../helpers/fixtures.js";
 import type { IsolatedDbContext } from "../helpers/test-db.js";
 import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../helpers/test-db.js";
-import { TestRetentionWorker } from "../helpers/test-workers.js";
 
 const DATABASE_URL = getRequiredDatabaseUrl();
 
-describe("integration workers: retention", () => {
+describe("integration services: retention", () => {
     let db: IsolatedDbContext;
 
     beforeAll(async () => {
@@ -66,7 +66,7 @@ describe("integration workers: retention", () => {
             await canonicalEventsRepository.insertMany(CHAIN_ID, blockNumber, payload.block.hash, payload.logs);
         }
 
-        const worker = new TestRetentionWorker(
+        const service = new RetentionService(
             {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 1,
@@ -79,10 +79,9 @@ describe("integration workers: retention", () => {
             canonicalTransactionsRepository,
             canonicalEventsRepository,
             transactionManager,
-            createLeaderLock(),
         );
 
-        await worker.runTick();
+        await service.execute();
 
         await expect(db.countRows("block_jobs", "block_number <= 7")).resolves.toBe(0);
         await expect(db.countRows("raw_blocks", "block_number <= 7")).resolves.toBe(0);

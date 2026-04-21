@@ -71,17 +71,19 @@ describe("e2e multi-chain isolation", () => {
         ]);
 
         const workers = [
-            new HeadWorker(
-                { chainId: CHAIN_A, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
+            HeadWorker.create({
+                config: { chainId: CHAIN_A, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
                 source,
-                chainCursorRepository,
-                blockJobsRepository,
-                rawBlocksRepository,
-                transactionManager,
-                createLeaderLock(),
-            ),
-            new FetchWorker(
-                {
+                overrides: {
+                    chainCursorRepository,
+                    blockJobsRepository,
+                    rawBlocksRepository,
+                    transactionManager,
+                    leaderLock: createLeaderLock(),
+                },
+            }),
+            FetchWorker.create({
+                config: {
                     chainId: CHAIN_A,
                     delayBetweenTicksMs: 5,
                     workerId: "fetch-worker-chain-a",
@@ -92,32 +94,38 @@ describe("e2e multi-chain isolation", () => {
                     retryMaxDelayMs: 100,
                 },
                 source,
-                blockJobsRepository,
-                rawBlocksRepository,
-                transactionManager,
-            ),
-            new SequencerWorker(
-                { chainId: CHAIN_A, delayBetweenTicksMs: 5, maxBlocksPerTick: 2 },
-                chainCursorRepository,
-                rawBlocksRepository,
-                canonicalBlocksRepository,
-                canonicalTransactionsRepository,
-                canonicalEventsRepository,
-                blockJobsRepository,
-                transactionManager,
-                createLeaderLock(),
-            ),
-            new HeadWorker(
-                { chainId: CHAIN_B, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
+                overrides: {
+                    blockJobsRepository,
+                    rawBlocksRepository,
+                    transactionManager,
+                },
+            }),
+            SequencerWorker.create({
+                config: { chainId: CHAIN_A, delayBetweenTicksMs: 5, maxBlocksPerTick: 2 },
+                overrides: {
+                    chainCursorRepository,
+                    rawBlocksRepository,
+                    canonicalBlocksRepository,
+                    canonicalTransactionsRepository,
+                    canonicalEventsRepository,
+                    blockJobsRepository,
+                    transactionManager,
+                    leaderLock: createLeaderLock(),
+                },
+            }),
+            HeadWorker.create({
+                config: { chainId: CHAIN_B, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
                 source,
-                chainCursorRepository,
-                blockJobsRepository,
-                rawBlocksRepository,
-                transactionManager,
-                createLeaderLock(),
-            ),
-            new FetchWorker(
-                {
+                overrides: {
+                    chainCursorRepository,
+                    blockJobsRepository,
+                    rawBlocksRepository,
+                    transactionManager,
+                    leaderLock: createLeaderLock(),
+                },
+            }),
+            FetchWorker.create({
+                config: {
                     chainId: CHAIN_B,
                     delayBetweenTicksMs: 5,
                     workerId: "fetch-worker-chain-b",
@@ -128,21 +136,25 @@ describe("e2e multi-chain isolation", () => {
                     retryMaxDelayMs: 100,
                 },
                 source,
-                blockJobsRepository,
-                rawBlocksRepository,
-                transactionManager,
-            ),
-            new SequencerWorker(
-                { chainId: CHAIN_B, delayBetweenTicksMs: 5, maxBlocksPerTick: 2 },
-                chainCursorRepository,
-                rawBlocksRepository,
-                canonicalBlocksRepository,
-                canonicalTransactionsRepository,
-                canonicalEventsRepository,
-                blockJobsRepository,
-                transactionManager,
-                createLeaderLock(),
-            ),
+                overrides: {
+                    blockJobsRepository,
+                    rawBlocksRepository,
+                    transactionManager,
+                },
+            }),
+            SequencerWorker.create({
+                config: { chainId: CHAIN_B, delayBetweenTicksMs: 5, maxBlocksPerTick: 2 },
+                overrides: {
+                    chainCursorRepository,
+                    rawBlocksRepository,
+                    canonicalBlocksRepository,
+                    canonicalTransactionsRepository,
+                    canonicalEventsRepository,
+                    blockJobsRepository,
+                    transactionManager,
+                    leaderLock: createLeaderLock(),
+                },
+            }),
         ] as const;
 
         try {

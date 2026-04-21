@@ -46,18 +46,20 @@ describe("e2e reaction handler failure", () => {
             },
         };
 
-        const worker = new EventReactionWorker(
-            {
+        const worker = EventReactionWorker.create({
+            config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
                 workerName: "reaction-event-failure",
                 batchSize: 2,
             },
             handler,
-            canonicalEventsRepository,
-            workerCursorsRepository,
-            createLeaderLock(),
-        );
+            overrides: {
+                canonicalEventsRepository,
+                workerCursorsRepository,
+                leaderLock: createLeaderLock(),
+            },
+        });
 
         try {
             await worker.start();

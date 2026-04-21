@@ -45,6 +45,23 @@ class TestPollingWorker extends PollingWorker {
     }
 }
 
+class TestPollingWorkerWithCleanup extends PollingWorker {
+    constructor(
+        logger: Logger,
+        onTick: () => Promise<void>,
+        cleanup: () => Promise<void>
+    ) {
+        super("test-worker", 1000, logger, cleanup);
+        this.onTick = onTick;
+    }
+
+    private readonly onTick: () => Promise<void>;
+
+    protected async tick(): Promise<void> {
+        await this.onTick();
+    }
+}
+
 test("polling worker start/stop logs lifecycle once", async () => {
     const deferred = createDeferred();
     const { logger, infoCalls } = createLogger();
@@ -89,4 +106,30 @@ test("polling worker logs tick failures and continues", async () => {
     expect(errorCalls).toHaveLength(1);
     expect(errorCalls[0]?.message).toBe("worker_tick_failed");
     expect(errorCalls[0]?.meta).toMatchObject({ worker: "test-worker", error: "boom" });
+});
+
+test("polling worker calls cleanup on stop", async () => {
+    const deferred = createDeferred();
+    const { logger } = createLogger();
+    const cleanup = jest.fn(async () => undefined);
+    const worker = new TestPollingWorkerWithCleanup(logger, async () => deferred.promise, cleanup);
+
+    await worker.start();
+
+    const stopPromise = worker.stop();
+    deferred.resolve();
+    await stopPromise;
+
+    expect(cleanup).toHaveBeenCalledTimes(1);
+});
+
+test("polling worker cannot start after lifecycle is finalized", async () => {
+    const { logger } = createLogger();
+    const worker = new TestPollingWorker(logger, async () => undefined);
+
+    await worker.stop();
+
+    await expect(worker.start()).rejects.toThrow(
+        'Worker "test-worker" cannot be started because its lifecycle is finalized'
+    );
 });

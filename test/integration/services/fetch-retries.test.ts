@@ -3,14 +3,14 @@ import type { FetchedBlock } from "../../../src/interfaces/chain.js";
 import { PostgresTransactionManager } from "../../../src/postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../../../src/repositories/postgres/block-jobs-repository.js";
 import { PostgresRawBlocksRepository } from "../../../src/repositories/postgres/raw-blocks-repository.js";
+import { FetchService } from "../../../src/services/fetch-service.js";
 import { buildFetchedBlock, CHAIN_ID, hashFromNumber, WORKER_ID } from "../helpers/fixtures.js";
 import type { IsolatedDbContext } from "../helpers/test-db.js";
 import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../helpers/test-db.js";
-import { TestFetchWorker } from "../helpers/test-workers.js";
 
 const DATABASE_URL = getRequiredDatabaseUrl();
 
-describe("integration workers: fetch retries", () => {
+describe("integration services: fetch retries", () => {
     let db: IsolatedDbContext;
 
     beforeAll(async () => {
@@ -49,7 +49,7 @@ describe("integration workers: fetch retries", () => {
             },
         };
 
-        const worker = new TestFetchWorker(
+        const service = new FetchService(
             {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 1,
@@ -66,7 +66,7 @@ describe("integration workers: fetch retries", () => {
             transactionManager,
         );
 
-        await worker.runTick();
+        await service.execute();
         await expect(db.countRows("block_jobs", "status = 'failed'")).resolves.toBe(1);
         await expect(db.countRows("raw_blocks")).resolves.toBe(0);
 
@@ -78,7 +78,7 @@ describe("integration workers: fetch retries", () => {
             [CHAIN_ID, targetBlock]
         );
 
-        await worker.runTick();
+        await service.execute();
 
         const result = await db.pool.query<{
             status: string;
@@ -123,7 +123,7 @@ describe("integration workers: fetch retries", () => {
             },
         };
 
-        const worker = new TestFetchWorker(
+        const service = new FetchService(
             {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 1,
@@ -140,7 +140,7 @@ describe("integration workers: fetch retries", () => {
             transactionManager,
         );
 
-        await worker.runTick();
+        await service.execute();
 
         const result = await db.pool.query<{
             status: string;

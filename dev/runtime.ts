@@ -1,6 +1,5 @@
-import type { Pool } from "pg";
 import type { Logger, LogLevel, WorkerLifecycle } from "../src/index.js";
-import { ConsoleLogger, validatePostgresSchema } from "../src/index.js";
+import { ConsoleLogger } from "../src/index.js";
 
 export function envValue(name: string, defaultValue: string): string {
     const value = process.env[name];
@@ -34,17 +33,11 @@ export async function runWorkerLifecycle(
     command: "head" | "fetch" | "sequencer" | "retention",
     worker: WorkerLifecycle,
     logger: Logger,
-    pool: Pool
 ): Promise<void> {
-    try {
-        await validatePostgresSchema({ pool, logger });
-        await worker.start();
-        const signal = await waitForShutdownSignal();
-        logger.info("worker_shutdown_signal_received", { command, signal });
-        await worker.stop();
-    } finally {
-        await pool.end();
-    }
+    await worker.start();
+    const signal = await waitForShutdownSignal();
+    logger.info("worker_shutdown_signal_received", { command, signal });
+    await worker.stop();
 }
 
 export function runWithErrorHandling(command: string, run: () => Promise<void>): void {

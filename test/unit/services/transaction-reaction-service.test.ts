@@ -1,8 +1,7 @@
 import type { CanonicalTransactionsRepository, WorkerCursorsRepository } from "../../../src/interfaces/repositories.js";
-import type { LeaderLock } from "../../../src/interfaces/leader-lock.js";
 import type { TransactionReactionHandler } from "../../../src/interfaces/reaction.js";
 import type { ReactionWorkerConfig } from "../../../src/interfaces/runtime.js";
-import { TransactionReactionWorker } from "../../../src/workers/transaction-reaction-worker.js";
+import { TransactionReactionService } from "../../../src/services/transaction-reaction-service.js";
 import { asAddress, asHash32, asHexData } from "../../../src/utils/hex.js";
 
 const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
@@ -11,11 +10,7 @@ const FROM = asAddress("0x1111111111111111111111111111111111111111");
 const TO = asAddress("0x2222222222222222222222222222222222222222");
 const DATA = asHexData("0x01");
 
-const invokeTick = async (worker: object): Promise<void> => {
-    await (worker as { tick: () => Promise<void> }).tick();
-};
-
-test("transaction reaction worker processes txs and advances cursor", async () => {
+test("transaction reaction service processes txs and advances cursor", async () => {
     const handled: bigint[] = [];
     const advanced: bigint[] = [];
 
@@ -25,7 +20,6 @@ test("transaction reaction worker processes txs and advances cursor", async () =
         delayBetweenTicksMs: 1000,
         batchSize: 10,
     };
-    const leaderLock: LeaderLock = { tryAcquire: async () => true, release: async () => undefined };
 
     const handler: TransactionReactionHandler = {
         handle: async (tx) => {
@@ -81,21 +75,20 @@ test("transaction reaction worker processes txs and advances cursor", async () =
         },
     };
 
-    const worker = new TransactionReactionWorker(
+    const worker = new TransactionReactionService(
         config,
         handler,
         transactionsRepository,
         workerCursorsRepository,
-        leaderLock,
     );
 
-    await invokeTick(worker);
+    await worker.execute();
 
     expect(handled).toEqual([101n, 102n]);
     expect(advanced).toEqual([101n, 102n]);
 });
 
-test("transaction reaction worker creates cursor from max seq when missing", async () => {
+test("transaction reaction service creates cursor from max seq when missing", async () => {
     const inserts: bigint[] = [];
     const config: ReactionWorkerConfig = {
         chainId: 9,
@@ -118,15 +111,14 @@ test("transaction reaction worker creates cursor from max seq when missing", asy
         advance: async () => undefined,
     };
 
-    const worker = new TransactionReactionWorker(
+    const worker = new TransactionReactionService(
         config,
         { handle: async () => undefined },
         transactionsRepository,
         workerCursorsRepository,
-        { tryAcquire: async () => true, release: async () => undefined },
     );
 
-    await invokeTick(worker);
+    await worker.execute();
 
     expect(inserts).toEqual([33n]);
 });

@@ -10,12 +10,17 @@ export abstract class SingletonPollingWorker extends PollingWorker {
         name: string,
         delayBetweenTicksMs: number,
         logger: Logger,
-        private readonly leaderLock: LeaderLock
+        private readonly leaderLock: LeaderLock,
+        cleanup?: () => Promise<void>,
     ) {
-        super(name, delayBetweenTicksMs, logger);
+        super(name, delayBetweenTicksMs, logger, cleanup);
     }
 
     override async start(): Promise<void> {
+        if (this.lifecycleFinalized) {
+            throw new Error(`Worker "${this.workerName}" cannot be started because its lifecycle is finalized`);
+        }
+
         if (!this.lockAcquired) {
             const acquired = await this.leaderLock.tryAcquire();
             if (!acquired) {

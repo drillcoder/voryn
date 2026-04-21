@@ -139,11 +139,9 @@ test("singleton worker logs release errors and clears lock state", async () => {
     const { logger, errorCalls } = createLogger();
 
     const firstTick = createDeferred();
-    const secondTick = createDeferred();
 
     let acquireCount = 0;
     let releaseCount = 0;
-    let tickNumber = 0;
 
     const lock: LeaderLock = {
         tryAcquire: async () => {
@@ -156,30 +154,21 @@ test("singleton worker logs release errors and clears lock state", async () => {
         },
     };
 
-    const worker = new TestSingletonWorker(logger, lock, async () => {
-        tickNumber += 1;
-        if (tickNumber === 1) {
-            await firstTick.promise;
-            return;
-        }
-
-        await secondTick.promise;
-    });
+    const worker = new TestSingletonWorker(logger, lock, async () => firstTick.promise);
 
     await worker.start();
     const firstStop = worker.stop();
     firstTick.resolve();
     await firstStop;
 
-    await worker.start();
-    const secondStop = worker.stop();
-    secondTick.resolve();
-    await secondStop;
+    await worker.stop();
+    await expect(worker.start()).rejects.toThrow(
+        'Worker "singleton-worker" cannot be started because its lifecycle is finalized'
+    );
 
-    expect(acquireCount).toBe(2);
-    expect(releaseCount).toBe(2);
+    expect(acquireCount).toBe(1);
+    expect(releaseCount).toBe(1);
     expect(errorCalls.map((x) => x.message)).toEqual([
-        "worker_lock_release_failed",
         "worker_lock_release_failed",
     ]);
 });

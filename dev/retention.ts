@@ -1,15 +1,4 @@
-import { Pool } from "pg";
-import {
-    PostgresBlockJobsRepository,
-    PostgresCanonicalBlocksRepository,
-    PostgresCanonicalEventsRepository,
-    PostgresCanonicalTransactionsRepository,
-    PostgresChainCursorRepository,
-    PostgresLeaderLock,
-    PostgresRawBlocksRepository,
-    PostgresTransactionManager,
-    RetentionWorker
-} from "../src/index.js";
+import { RetentionWorker } from "../src/index.js";
 import { createDevLogger, envNumber, envValue, runWithErrorHandling, runWorkerLifecycle } from "./runtime.js";
 
 async function run(): Promise<void> {
@@ -19,21 +8,9 @@ async function run(): Promise<void> {
     const delayBetweenTicksMs = envNumber("VORYN_RETENTION_DELAY_BETWEEN_TICKS_MS", "60000");
     const retentionDepthBlocks = envNumber("VORYN_RETENTION_DEPTH_BLOCKS", "65000");
 
-    const pool = new Pool({ connectionString: dbUrl });
-    const worker = new RetentionWorker(
-        { chainId, delayBetweenTicksMs, retentionDepthBlocks },
-        new PostgresChainCursorRepository(pool),
-        new PostgresBlockJobsRepository(pool),
-        new PostgresRawBlocksRepository(pool),
-        new PostgresCanonicalBlocksRepository(pool),
-        new PostgresCanonicalTransactionsRepository(pool),
-        new PostgresCanonicalEventsRepository(pool),
-        new PostgresTransactionManager(pool),
-        new PostgresLeaderLock(pool, 30_000_000n + BigInt(chainId)),
-        logger,
-    );
+    const config = { chainId, delayBetweenTicksMs, retentionDepthBlocks };
 
-    await runWorkerLifecycle("retention", worker, logger, pool);
+    await runWorkerLifecycle("retention", RetentionWorker.create({ config, logger, dbUrl }), logger);
 }
 
 runWithErrorHandling("retention", run);

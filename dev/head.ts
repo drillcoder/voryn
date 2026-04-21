@@ -1,14 +1,4 @@
-import { JsonRpcProvider } from "ethers";
-import { Pool } from "pg";
-import {
-    EthersBlockSource,
-    HeadWorker,
-    PostgresBlockJobsRepository,
-    PostgresChainCursorRepository,
-    PostgresLeaderLock,
-    PostgresRawBlocksRepository,
-    PostgresTransactionManager
-} from "../src/index.js";
+import { HeadWorker } from "../src/index.js";
 import { createDevLogger, envNumber, envValue, runWithErrorHandling, runWorkerLifecycle } from "./runtime.js";
 
 async function run(): Promise<void> {
@@ -20,19 +10,9 @@ async function run(): Promise<void> {
     const confirmations = envNumber("VORYN_HEAD_CONFIRMATIONS", "0");
     const depthBlocks = envNumber("VORYN_HEAD_DEPTH_BLOCKS", "65000");
 
-    const pool = new Pool({ connectionString: dbUrl });
-    const worker = new HeadWorker(
-        { chainId, delayBetweenTicksMs, confirmations, depthBlocks },
-        new EthersBlockSource({ provider: new JsonRpcProvider(rpcUrl), validateProviderChainId: true }),
-        new PostgresChainCursorRepository(pool),
-        new PostgresBlockJobsRepository(pool),
-        new PostgresRawBlocksRepository(pool),
-        new PostgresTransactionManager(pool),
-        new PostgresLeaderLock(pool, 10_000_000n + BigInt(chainId)),
-        logger,
-    );
+    const config = { chainId, delayBetweenTicksMs, confirmations, depthBlocks };
 
-    await runWorkerLifecycle("head", worker, logger, pool);
+    await runWorkerLifecycle("head", HeadWorker.create({ config, logger, dbUrl, rpcUrl }), logger);
 }
 
 runWithErrorHandling("head", run);

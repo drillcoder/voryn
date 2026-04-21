@@ -79,49 +79,55 @@ describe("e2e pipeline", () => {
             },
         };
 
-        const eventWorker = new EventReactionWorker(
-            {
+        const eventWorker = EventReactionWorker.create({
+            config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
                 workerName: REACTION_WORKER_EVENT,
                 batchSize: 2,
             },
-            eventHandler,
-            canonicalEventsRepository,
-            workerCursorsRepository,
-            new PostgresLeaderLock(db.pool, 30_000_001n),
-        );
+            handler: eventHandler,
+            overrides: {
+                canonicalEventsRepository,
+                workerCursorsRepository,
+                leaderLock: new PostgresLeaderLock(db.pool, 30_000_001n),
+            },
+        });
 
-        const txWorker = new TransactionReactionWorker(
-            {
+        const txWorker = TransactionReactionWorker.create({
+            config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
                 workerName: REACTION_WORKER_TX,
                 batchSize: 2,
             },
-            txHandler,
-            canonicalTransactionsRepository,
-            workerCursorsRepository,
-            new PostgresLeaderLock(db.pool, 30_000_002n),
-        );
+            handler: txHandler,
+            overrides: {
+                transactionsRepository: canonicalTransactionsRepository,
+                workerCursorsRepository,
+                leaderLock: new PostgresLeaderLock(db.pool, 30_000_002n),
+            },
+        });
 
-        const headWorker = new HeadWorker(
-            {
+        const headWorker = HeadWorker.create({
+            config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
                 confirmations: 0,
                 depthBlocks: 64,
             },
             source,
-            chainCursorRepository,
-            blockJobsRepository,
-            rawBlocksRepository,
-            transactionManager,
-            new PostgresLeaderLock(db.pool, 30_000_003n),
-        );
+            overrides: {
+                chainCursorRepository,
+                blockJobsRepository,
+                rawBlocksRepository,
+                transactionManager,
+                leaderLock: new PostgresLeaderLock(db.pool, 30_000_003n),
+            },
+        });
 
-        const fetchWorker = new FetchWorker(
-            {
+        const fetchWorker = FetchWorker.create({
+            config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
                 workerId: FETCH_WORKER_ID,
@@ -132,42 +138,48 @@ describe("e2e pipeline", () => {
                 retryMaxDelayMs: 100,
             },
             source,
-            blockJobsRepository,
-            rawBlocksRepository,
-            transactionManager,
-        );
+            overrides: {
+                blockJobsRepository,
+                rawBlocksRepository,
+                transactionManager,
+            },
+        });
 
-        const sequencerWorker = new SequencerWorker(
-            {
+        const sequencerWorker = SequencerWorker.create({
+            config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
                 maxBlocksPerTick: 2,
             },
-            chainCursorRepository,
-            rawBlocksRepository,
-            canonicalBlocksRepository,
-            canonicalTransactionsRepository,
-            canonicalEventsRepository,
-            blockJobsRepository,
-            transactionManager,
-            new PostgresLeaderLock(db.pool, 30_000_004n),
-        );
+            overrides: {
+                chainCursorRepository,
+                rawBlocksRepository,
+                canonicalBlocksRepository,
+                canonicalTransactionsRepository,
+                canonicalEventsRepository,
+                blockJobsRepository,
+                transactionManager,
+                leaderLock: new PostgresLeaderLock(db.pool, 30_000_004n),
+            },
+        });
 
-        const retentionWorker = new RetentionWorker(
-            {
+        const retentionWorker = RetentionWorker.create({
+            config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
                 retentionDepthBlocks: 2,
             },
-            chainCursorRepository,
-            blockJobsRepository,
-            rawBlocksRepository,
-            canonicalBlocksRepository,
-            canonicalTransactionsRepository,
-            canonicalEventsRepository,
-            transactionManager,
-            new PostgresLeaderLock(db.pool, 30_000_005n),
-        );
+            overrides: {
+                chainCursorRepository,
+                blockJobsRepository,
+                rawBlocksRepository,
+                canonicalBlocksRepository,
+                canonicalTransactionsRepository,
+                canonicalEventsRepository,
+                transactionManager,
+                leaderLock: new PostgresLeaderLock(db.pool, 30_000_005n),
+            },
+        });
 
         try {
             await eventWorker.start();

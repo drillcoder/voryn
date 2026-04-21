@@ -55,17 +55,19 @@ describe("e2e sequencer mismatch", () => {
 
         const source = createMapBlockSource(10, [badBlock]);
 
-        const headWorker = new HeadWorker(
-            { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
+        const headWorker = HeadWorker.create({
+            config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
             source,
-            chainCursorRepository,
-            blockJobsRepository,
-            rawBlocksRepository,
-            transactionManager,
-            new PostgresLeaderLock(db.pool, 31_000_001n),
-        );
-        const fetchWorker = new FetchWorker(
-            {
+            overrides: {
+                chainCursorRepository,
+                blockJobsRepository,
+                rawBlocksRepository,
+                transactionManager,
+                leaderLock: new PostgresLeaderLock(db.pool, 31_000_001n),
+            },
+        });
+        const fetchWorker = FetchWorker.create({
+            config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
                 workerId: "fetch-worker-e2e-mismatch",
@@ -76,21 +78,25 @@ describe("e2e sequencer mismatch", () => {
                 retryMaxDelayMs: 100,
             },
             source,
-            blockJobsRepository,
-            rawBlocksRepository,
-            transactionManager,
-        );
-        const sequencerWorker = new SequencerWorker(
-            { chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 1 },
-            chainCursorRepository,
-            rawBlocksRepository,
-            canonicalBlocksRepository,
-            canonicalTransactionsRepository,
-            canonicalEventsRepository,
-            blockJobsRepository,
-            transactionManager,
-            new PostgresLeaderLock(db.pool, 31_000_002n),
-        );
+            overrides: {
+                blockJobsRepository,
+                rawBlocksRepository,
+                transactionManager,
+            },
+        });
+        const sequencerWorker = SequencerWorker.create({
+            config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 1 },
+            overrides: {
+                chainCursorRepository,
+                rawBlocksRepository,
+                canonicalBlocksRepository,
+                canonicalTransactionsRepository,
+                canonicalEventsRepository,
+                blockJobsRepository,
+                transactionManager,
+                leaderLock: new PostgresLeaderLock(db.pool, 31_000_002n),
+            },
+        });
 
         try {
             await headWorker.start();

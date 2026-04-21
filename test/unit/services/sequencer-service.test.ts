@@ -7,20 +7,13 @@ import type {
     RawBlocksRepository
 } from "../../../src/interfaces/repositories.js";
 import type { DbExecutor } from "../../../src/interfaces/db.js";
-import type { LeaderLock } from "../../../src/interfaces/leader-lock.js";
 import type { TransactionManager } from "../../../src/interfaces/transaction-manager.js";
 import type { SequencerWorkerConfig } from "../../../src/interfaces/runtime.js";
-import { SequencerWorker } from "../../../src/workers/sequencer-worker.js";
+import { SequencerService } from "../../../src/services/sequencer-service.js";
 import { asHash32 } from "../../../src/utils/hex.js";
 
 const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 const HASH_B = asHash32("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
-
-const invokeTick = async (worker: object): Promise<void> => {
-    await (worker as { tick: () => Promise<void> }).tick();
-};
-
-const leaderLock: LeaderLock = { tryAcquire: async () => true, release: async () => undefined };
 
 const createPassThroughManager = (): { manager: TransactionManager; transaction: DbExecutor } => {
     const transaction: DbExecutor = { query: async () => ({ rows: [], rowCount: 0 }) };
@@ -53,7 +46,7 @@ const noopBlockJobsRepository: BlockJobsRepository = {
     deleteUpToBlock: async () => 0,
 };
 
-test("sequencer worker commits next block", async () => {
+test("sequencer service commits next block", async () => {
     const calls: string[] = [];
     const { manager, transaction } = createPassThroughManager();
     const config: SequencerWorkerConfig = { chainId: 10, delayBetweenTicksMs: 1000, maxBlocksPerTick: 1 };
@@ -132,7 +125,7 @@ test("sequencer worker commits next block", async () => {
         deleteUpToBlock: async () => 0,
     };
 
-    const worker = new SequencerWorker(
+    const worker = new SequencerService(
         config,
         chainCursorRepository,
         rawBlocksRepository,
@@ -141,17 +134,16 @@ test("sequencer worker commits next block", async () => {
         canonicalEventsRepository,
         blockJobsRepository,
         manager,
-        leaderLock,
     );
 
-    await invokeTick(worker);
+    await worker.execute();
 
     expect(calls).toEqual(["insert-block", "insert-tx", "insert-event", "advance:41:true", "mark-committed"]);
 });
 
-test("sequencer worker exits when cursor is missing", async () => {
+test("sequencer service exits when cursor is missing", async () => {
     const { manager } = createPassThroughManager();
-    const worker = new SequencerWorker(
+    const worker = new SequencerService(
         { chainId: 10, delayBetweenTicksMs: 1000, maxBlocksPerTick: 1 },
         {
             get: async () => null,
@@ -167,13 +159,12 @@ test("sequencer worker exits when cursor is missing", async () => {
         emptyCanonicalEventsRepository,
         noopBlockJobsRepository,
         manager,
-        leaderLock,
     );
 
-    await expect(invokeTick(worker)).resolves.toBeUndefined();
+    await expect(worker.execute()).resolves.toBeUndefined();
 });
 
-test("sequencer worker commits multiple blocks in one tick", async () => {
+test("sequencer service commits multiple blocks in one tick", async () => {
     const calls: string[] = [];
     const { manager, transaction } = createPassThroughManager();
     const chainCursor = {
@@ -186,7 +177,7 @@ test("sequencer worker commits multiple blocks in one tick", async () => {
     const hash41 = asHash32("0x1111111111111111111111111111111111111111111111111111111111111111");
     const hash42 = asHash32("0x2222222222222222222222222222222222222222222222222222222222222222");
 
-    const worker = new SequencerWorker(
+    const worker = new SequencerService(
         { chainId: 10, delayBetweenTicksMs: 1000, maxBlocksPerTick: 2 },
         {
             get: async () => chainCursor,
@@ -284,10 +275,9 @@ test("sequencer worker commits multiple blocks in one tick", async () => {
             deleteUpToBlock: async () => 0,
         },
         manager,
-        leaderLock,
     );
 
-    await invokeTick(worker);
+    await worker.execute();
 
     expect(calls).toEqual([
         "insert-block:41",
@@ -303,9 +293,9 @@ test("sequencer worker commits multiple blocks in one tick", async () => {
     ]);
 });
 
-test("sequencer worker exits when raw block is missing", async () => {
+test("sequencer service exits when raw block is missing", async () => {
     const { manager } = createPassThroughManager();
-    const worker = new SequencerWorker(
+    const worker = new SequencerService(
         { chainId: 10, delayBetweenTicksMs: 1000, maxBlocksPerTick: 1 },
         {
             get: async () => ({
@@ -327,15 +317,14 @@ test("sequencer worker exits when raw block is missing", async () => {
         emptyCanonicalEventsRepository,
         noopBlockJobsRepository,
         manager,
-        leaderLock,
     );
 
-    await expect(invokeTick(worker)).resolves.toBeUndefined();
+    await expect(worker.execute()).resolves.toBeUndefined();
 });
 
-test("sequencer worker throws on parent hash mismatch", async () => {
+test("sequencer service throws on parent hash mismatch", async () => {
     const { manager } = createPassThroughManager();
-    const worker = new SequencerWorker(
+    const worker = new SequencerService(
         { chainId: 10, delayBetweenTicksMs: 1000, maxBlocksPerTick: 1 },
         {
             get: async () => ({
@@ -379,8 +368,7 @@ test("sequencer worker throws on parent hash mismatch", async () => {
         emptyCanonicalEventsRepository,
         noopBlockJobsRepository,
         manager,
-        leaderLock,
     );
 
-    await expect(invokeTick(worker)).rejects.toThrow("Raw block parent hash mismatch");
+    await expect(worker.execute()).rejects.toThrow("Raw block parent hash mismatch");
 });

@@ -5,19 +5,14 @@ import type {
 } from "../../../src/interfaces/repositories.js";
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import type { DbExecutor } from "../../../src/interfaces/db.js";
-import type { LeaderLock } from "../../../src/interfaces/leader-lock.js";
 import type { TransactionManager } from "../../../src/interfaces/transaction-manager.js";
 import type { HeadWorkerConfig } from "../../../src/interfaces/runtime.js";
-import { HeadWorker } from "../../../src/workers/head-worker.js";
+import { HeadService } from "../../../src/services/head-service.js";
 import { asHash32 } from "../../../src/utils/hex.js";
 
 const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 const HASH_B = asHash32("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
 const HASH_C = asHash32("0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc");
-
-const invokeTick = async (worker: object): Promise<void> => {
-    await (worker as { tick: () => Promise<void> }).tick();
-};
 
 const config: HeadWorkerConfig = {
     chainId: 1,
@@ -25,8 +20,6 @@ const config: HeadWorkerConfig = {
     delayBetweenTicksMs: 1000,
     depthBlocks: 5,
 };
-
-const leaderLock: LeaderLock = { tryAcquire: async () => true, release: async () => undefined };
 
 const createPassThroughManager = (): { manager: TransactionManager; transaction: DbExecutor } => {
     const transaction: DbExecutor = {
@@ -50,7 +43,7 @@ const createRawBlocksRepository = (calls?: unknown[]): RawBlocksRepository => ({
     },
 });
 
-test("head worker enqueues and updates cursor in transaction", async () => {
+test("head service enqueues and updates cursor in transaction", async () => {
     const calls: unknown[] = [];
     const { manager, transaction } = createPassThroughManager();
 
@@ -89,17 +82,16 @@ test("head worker enqueues and updates cursor in transaction", async () => {
         deleteUpToBlock: async () => 0,
     };
 
-    const worker = new HeadWorker(
+    const worker = new HeadService(
         config,
         source,
         chainCursorRepository,
         blockJobsRepository,
         createRawBlocksRepository(),
         manager,
-        leaderLock,
     );
 
-    await invokeTick(worker);
+    await worker.execute();
 
     expect(calls).toEqual([
         ["enqueueRange", 11, 13, transaction],
@@ -107,7 +99,7 @@ test("head worker enqueues and updates cursor in transaction", async () => {
     ]);
 });
 
-test("head worker bootstraps missing cursor", async () => {
+test("head service bootstraps missing cursor", async () => {
     const inserted: unknown[] = [];
 
     const source: BlockSource = {
@@ -141,17 +133,16 @@ test("head worker bootstraps missing cursor", async () => {
         deleteUpToBlock: async () => 0,
     };
 
-    const worker = new HeadWorker(
+    const worker = new HeadService(
         config,
         source,
         chainCursorRepository,
         blockJobsRepository,
         createRawBlocksRepository(),
         createPassThroughManager().manager,
-        leaderLock,
     );
 
-    await invokeTick(worker);
+    await worker.execute();
 
     expect(inserted).toEqual([
         {
@@ -163,9 +154,9 @@ test("head worker bootstraps missing cursor", async () => {
     ]);
 });
 
-test("head worker skips when cursor is already ahead of safe head", async () => {
+test("head service skips when cursor is already ahead of safe head", async () => {
     let enqueued = false;
-    const worker = new HeadWorker(
+    const worker = new HeadService(
         config,
         {
             getLatestBlockNumber: async () => 12,
@@ -199,15 +190,14 @@ test("head worker skips when cursor is already ahead of safe head", async () => 
         },
         createRawBlocksRepository(),
         createPassThroughManager().manager,
-        leaderLock,
     );
 
-    await invokeTick(worker);
+    await worker.execute();
 
     expect(enqueued).toBe(false);
 });
 
-test("head worker rebases and trims old jobs when committed block is below floor", async () => {
+test("head service rebases and trims old jobs when committed block is below floor", async () => {
     const calls: unknown[] = [];
     const { manager, transaction } = createPassThroughManager();
 
@@ -270,17 +260,16 @@ test("head worker rebases and trims old jobs when committed block is below floor
         },
     };
 
-    const worker = new HeadWorker(
+    const worker = new HeadService(
         config,
         source,
         chainCursorRepository,
         blockJobsRepository,
         createRawBlocksRepository(calls),
         manager,
-        leaderLock,
     );
 
-    await invokeTick(worker);
+    await worker.execute();
 
     expect(getCalls).toBe(2);
     expect(calls).toEqual([
@@ -290,7 +279,7 @@ test("head worker rebases and trims old jobs when committed block is below floor
     ]);
 });
 
-test("head worker does not rebase when cursor catches up before transactional check", async () => {
+test("head service does not rebase when cursor catches up before transactional check", async () => {
     const calls: unknown[] = [];
     const { manager } = createPassThroughManager();
 
@@ -348,23 +337,22 @@ test("head worker does not rebase when cursor catches up before transactional ch
         },
     };
 
-    const worker = new HeadWorker(
+    const worker = new HeadService(
         config,
         source,
         chainCursorRepository,
         blockJobsRepository,
         createRawBlocksRepository(calls),
         manager,
-        leaderLock,
     );
 
-    await invokeTick(worker);
+    await worker.execute();
 
     expect(getCalls).toBe(2);
     expect(calls).toEqual([]);
 });
 
-test("head worker throws when cursor disappears inside enqueue transaction", async () => {
+test("head service throws when cursor disappears inside enqueue transaction", async () => {
     const source: BlockSource = {
         getLatestBlockNumber: async () => 12,
         getBlockData: async () => {
@@ -392,7 +380,7 @@ test("head worker throws when cursor disappears inside enqueue transaction", asy
         advanceLastCommitted: async () => undefined,
     };
 
-    const worker = new HeadWorker(
+    const worker = new HeadService(
         config,
         source,
         chainCursorRepository,
@@ -406,8 +394,57 @@ test("head worker throws when cursor disappears inside enqueue transaction", asy
         },
         createRawBlocksRepository(),
         createPassThroughManager().manager,
-        leaderLock,
     );
 
-    await expect(invokeTick(worker)).rejects.toThrow("Chain cursor not found for chain 1");
+    await expect(worker.execute()).rejects.toThrow("Chain cursor not found for chain 1");
+});
+
+test("head service throws when cursor disappears inside rebase transaction", async () => {
+    const source: BlockSource = {
+        getLatestBlockNumber: async () => 120,
+        getBlockData: async () => ({
+            block: { chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1, raw: {} },
+            transactions: [],
+            logs: [],
+        }),
+    };
+
+    const chainCursorRepository: ChainCursorRepository = {
+        get: async (_chainId, transaction) => {
+            if (transaction) {
+                return null;
+            }
+
+            return {
+                chainId: 1,
+                lastEnqueuedBlock: 200,
+                lastCommittedBlock: 90,
+                lastCommittedHash: HASH_A,
+                updatedAt: new Date(),
+            };
+        },
+        insert: async () => undefined,
+        setLastEnqueued: async () => undefined,
+        setLastCommitted: async () => undefined,
+        setPositions: async () => undefined,
+        advanceLastCommitted: async () => undefined,
+    };
+
+    const worker = new HeadService(
+        config,
+        source,
+        chainCursorRepository,
+        {
+            enqueueRange: async () => undefined,
+            claimForFetch: async () => null,
+            markFetched: async () => undefined,
+            markFetchFailed: async () => undefined,
+            markCommitted: async () => undefined,
+            deleteUpToBlock: async () => 0,
+        },
+        createRawBlocksRepository(),
+        createPassThroughManager().manager,
+    );
+
+    await expect(worker.execute()).rejects.toThrow("Chain cursor not found for chain 1");
 });

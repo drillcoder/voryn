@@ -66,17 +66,19 @@ describe("e2e concurrent fetch workers", () => {
         ];
         const source = createMapBlockSource(16, blocks);
 
-        const headWorker = new HeadWorker(
-            { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
+        const headWorker = HeadWorker.create({
+            config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
             source,
-            chainCursorRepository,
-            blockJobsRepository,
-            rawBlocksRepository,
-            transactionManager,
-            createLeaderLock(),
-        );
-        const fetchWorkerA = new FetchWorker(
-            {
+            overrides: {
+                chainCursorRepository,
+                blockJobsRepository,
+                rawBlocksRepository,
+                transactionManager,
+                leaderLock: createLeaderLock(),
+            },
+        });
+        const fetchWorkerA = FetchWorker.create({
+            config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
                 workerId: "fetch-worker-e2e-a",
@@ -87,12 +89,14 @@ describe("e2e concurrent fetch workers", () => {
                 retryMaxDelayMs: 100,
             },
             source,
-            blockJobsRepository,
-            rawBlocksRepository,
-            transactionManager,
-        );
-        const fetchWorkerB = new FetchWorker(
-            {
+            overrides: {
+                blockJobsRepository,
+                rawBlocksRepository,
+                transactionManager,
+            },
+        });
+        const fetchWorkerB = FetchWorker.create({
+            config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
                 workerId: "fetch-worker-e2e-b",
@@ -103,21 +107,25 @@ describe("e2e concurrent fetch workers", () => {
                 retryMaxDelayMs: 100,
             },
             source,
-            blockJobsRepository,
-            rawBlocksRepository,
-            transactionManager,
-        );
-        const sequencerWorker = new SequencerWorker(
-            { chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 3 },
-            chainCursorRepository,
-            rawBlocksRepository,
-            canonicalBlocksRepository,
-            canonicalTransactionsRepository,
-            canonicalEventsRepository,
-            blockJobsRepository,
-            transactionManager,
-            createLeaderLock(),
-        );
+            overrides: {
+                blockJobsRepository,
+                rawBlocksRepository,
+                transactionManager,
+            },
+        });
+        const sequencerWorker = SequencerWorker.create({
+            config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 3 },
+            overrides: {
+                chainCursorRepository,
+                rawBlocksRepository,
+                canonicalBlocksRepository,
+                canonicalTransactionsRepository,
+                canonicalEventsRepository,
+                blockJobsRepository,
+                transactionManager,
+                leaderLock: createLeaderLock(),
+            },
+        });
 
         try {
             await headWorker.start();

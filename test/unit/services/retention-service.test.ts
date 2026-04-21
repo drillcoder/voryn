@@ -7,19 +7,12 @@ import type {
     RawBlocksRepository
 } from "../../../src/interfaces/repositories.js";
 import type { DbExecutor } from "../../../src/interfaces/db.js";
-import type { LeaderLock } from "../../../src/interfaces/leader-lock.js";
 import type { TransactionManager } from "../../../src/interfaces/transaction-manager.js";
 import type { RetentionWorkerConfig } from "../../../src/interfaces/runtime.js";
-import { RetentionWorker } from "../../../src/workers/retention-worker.js";
+import { RetentionService } from "../../../src/services/retention-service.js";
 import { asHash32 } from "../../../src/utils/hex.js";
 
 const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-
-const invokeTick = async (worker: object): Promise<void> => {
-    await (worker as { tick: () => Promise<void> }).tick();
-};
-
-const leaderLock: LeaderLock = { tryAcquire: async () => true, release: async () => undefined };
 
 const createPassThroughManager = (): TransactionManager => {
     const transaction: DbExecutor = { query: async () => ({ rows: [], rowCount: 0 }) };
@@ -88,7 +81,7 @@ const createCanonicalEventsRepository = (deleted: number): CanonicalEventsReposi
     insertMany: async () => undefined,
 });
 
-test("retention worker triggers purge and logs result", async () => {
+test("retention service triggers purge and logs result", async () => {
     const logger = {
         debug: jest.fn(),
         info: jest.fn(),
@@ -101,7 +94,7 @@ test("retention worker triggers purge and logs result", async () => {
         retentionDepthBlocks: 42,
     };
 
-    const worker = new RetentionWorker(
+    const worker = new RetentionService(
         config,
         createCursorRepository(),
         createBlockJobsRepository(1),
@@ -110,11 +103,10 @@ test("retention worker triggers purge and logs result", async () => {
         createCanonicalTransactionsRepository(4),
         createCanonicalEventsRepository(5),
         createPassThroughManager(),
-        leaderLock,
         logger,
     );
 
-    await invokeTick(worker);
+    await worker.execute();
 
     expect(logger.info).toHaveBeenCalledWith("retention_purged", {
         chainId: 1,
@@ -127,7 +119,7 @@ test("retention worker triggers purge and logs result", async () => {
     });
 });
 
-test("retention worker logs zero deletions when cursor is missing", async () => {
+test("retention service logs zero deletions when cursor is missing", async () => {
     const logger = {
         debug: jest.fn(),
         info: jest.fn(),
@@ -148,7 +140,7 @@ test("retention worker logs zero deletions when cursor is missing", async () => 
         advanceLastCommitted: async () => undefined,
     };
 
-    const worker = new RetentionWorker(
+    const worker = new RetentionService(
         config,
         cursorRepository,
         createBlockJobsRepository(99),
@@ -157,11 +149,10 @@ test("retention worker logs zero deletions when cursor is missing", async () => 
         createCanonicalTransactionsRepository(99),
         createCanonicalEventsRepository(99),
         createPassThroughManager(),
-        leaderLock,
         logger,
     );
 
-    await invokeTick(worker);
+    await worker.execute();
 
     expect(logger.info).toHaveBeenCalledWith("retention_purged", {
         chainId: 1,
@@ -174,7 +165,7 @@ test("retention worker logs zero deletions when cursor is missing", async () => 
     });
 });
 
-test("retention worker logs zero deletions when purge block is negative", async () => {
+test("retention service logs zero deletions when purge block is negative", async () => {
     const logger = {
         debug: jest.fn(),
         info: jest.fn(),
@@ -202,7 +193,7 @@ test("retention worker logs zero deletions when purge block is negative", async 
         advanceLastCommitted: async () => undefined,
     };
 
-    const worker = new RetentionWorker(
+    const worker = new RetentionService(
         config,
         cursorRepository,
         createBlockJobsRepository(99),
@@ -211,11 +202,10 @@ test("retention worker logs zero deletions when purge block is negative", async 
         createCanonicalTransactionsRepository(99),
         createCanonicalEventsRepository(99),
         createPassThroughManager(),
-        leaderLock,
         logger,
     );
 
-    await invokeTick(worker);
+    await worker.execute();
 
     expect(logger.info).toHaveBeenCalledWith("retention_purged", {
         chainId: 1,

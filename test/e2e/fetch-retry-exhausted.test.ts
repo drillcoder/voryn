@@ -48,17 +48,19 @@ describe("e2e fetch retry exhausted", () => {
 
         const source = createAlwaysFailingBlockSource(10, block10);
 
-        const headWorker = new HeadWorker(
-            { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
+        const headWorker = HeadWorker.create({
+            config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
             source,
-            chainCursorRepository,
-            blockJobsRepository,
-            rawBlocksRepository,
-            transactionManager,
-            new PostgresLeaderLock(db.pool, 31_200_001n),
-        );
-        const fetchWorker = new FetchWorker(
-            {
+            overrides: {
+                chainCursorRepository,
+                blockJobsRepository,
+                rawBlocksRepository,
+                transactionManager,
+                leaderLock: new PostgresLeaderLock(db.pool, 31_200_001n),
+            },
+        });
+        const fetchWorker = FetchWorker.create({
+            config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
                 workerId: "fetch-worker-e2e-retry-exhausted",
@@ -69,10 +71,12 @@ describe("e2e fetch retry exhausted", () => {
                 retryMaxDelayMs: 1,
             },
             source,
-            blockJobsRepository,
-            rawBlocksRepository,
-            transactionManager,
-        );
+            overrides: {
+                blockJobsRepository,
+                rawBlocksRepository,
+                transactionManager,
+            },
+        });
 
         try {
             await headWorker.start();

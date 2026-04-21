@@ -57,29 +57,35 @@ describe("e2e startup from empty state", () => {
             },
         };
 
-        const headWorker = new HeadWorker(
-            { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
+        const headWorker = HeadWorker.create({
+            config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
             source,
-            chainCursorRepository,
-            blockJobsRepository,
-            rawBlocksRepository,
-            transactionManager,
-            new PostgresLeaderLock(db.pool, 31_300_001n),
-        );
-        const eventWorker = new EventReactionWorker(
-            { chainId: CHAIN_ID, delayBetweenTicksMs: 5, workerName: "reaction-event-startup", batchSize: 5 },
-            eventHandler,
-            canonicalEventsRepository,
-            workerCursorsRepository,
-            new PostgresLeaderLock(db.pool, 31_300_002n),
-        );
-        const txWorker = new TransactionReactionWorker(
-            { chainId: CHAIN_ID, delayBetweenTicksMs: 5, workerName: "reaction-tx-startup", batchSize: 5 },
-            txHandler,
-            canonicalTransactionsRepository,
-            workerCursorsRepository,
-            new PostgresLeaderLock(db.pool, 31_300_003n),
-        );
+            overrides: {
+                chainCursorRepository,
+                blockJobsRepository,
+                rawBlocksRepository,
+                transactionManager,
+                leaderLock: new PostgresLeaderLock(db.pool, 31_300_001n),
+            },
+        });
+        const eventWorker = EventReactionWorker.create({
+            config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, workerName: "reaction-event-startup", batchSize: 5 },
+            handler: eventHandler,
+            overrides: {
+                canonicalEventsRepository,
+                workerCursorsRepository,
+                leaderLock: new PostgresLeaderLock(db.pool, 31_300_002n),
+            },
+        });
+        const txWorker = TransactionReactionWorker.create({
+            config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, workerName: "reaction-tx-startup", batchSize: 5 },
+            handler: txHandler,
+            overrides: {
+                transactionsRepository: canonicalTransactionsRepository,
+                workerCursorsRepository,
+                leaderLock: new PostgresLeaderLock(db.pool, 31_300_003n),
+            },
+        });
 
         try {
             await headWorker.start();

@@ -4,21 +4,21 @@ import {
     PostgresCanonicalTransactionsRepository
 } from "../../../src/repositories/postgres/canonical-transactions-repository.js";
 import { PostgresWorkerCursorsRepository } from "../../../src/repositories/postgres/worker-cursors-repository.js";
+import { EventReactionService } from "../../../src/services/event-reaction-service.js";
+import { TransactionReactionService } from "../../../src/services/transaction-reaction-service.js";
 import {
     buildFetchedBlock,
     CHAIN_ID,
-    createLeaderLock,
     hashFromNumber,
     REACTION_WORKER_EVENT,
     REACTION_WORKER_TX,
 } from "../helpers/fixtures.js";
 import type { IsolatedDbContext } from "../helpers/test-db.js";
 import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../helpers/test-db.js";
-import { TestEventReactionWorker, TestTransactionReactionWorker } from "../helpers/test-workers.js";
 
 const DATABASE_URL = getRequiredDatabaseUrl();
 
-describe("integration workers: reaction", () => {
+describe("integration services: reaction", () => {
     let db: IsolatedDbContext;
 
     beforeAll(async () => {
@@ -33,7 +33,7 @@ describe("integration workers: reaction", () => {
         await db.close();
     });
 
-    test("event and transaction reaction workers process batches and advance cursors", async () => {
+    test("event and transaction reaction services process batches and advance cursors", async () => {
         const canonicalTransactionsRepository = new PostgresCanonicalTransactionsRepository(db.pool);
         const canonicalEventsRepository = new PostgresCanonicalEventsRepository(db.pool);
         const workerCursorsRepository = new PostgresWorkerCursorsRepository(db.pool);
@@ -62,7 +62,7 @@ describe("integration workers: reaction", () => {
             },
         };
 
-        const eventWorker = new TestEventReactionWorker(
+        const eventService = new EventReactionService(
             {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 1,
@@ -72,9 +72,8 @@ describe("integration workers: reaction", () => {
             eventHandler,
             canonicalEventsRepository,
             workerCursorsRepository,
-            createLeaderLock(),
         );
-        const txWorker = new TestTransactionReactionWorker(
+        const txService = new TransactionReactionService(
             {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 1,
@@ -84,13 +83,12 @@ describe("integration workers: reaction", () => {
             txHandler,
             canonicalTransactionsRepository,
             workerCursorsRepository,
-            createLeaderLock(),
         );
 
-        await eventWorker.runTick();
-        await eventWorker.runTick();
-        await txWorker.runTick();
-        await txWorker.runTick();
+        await eventService.execute();
+        await eventService.execute();
+        await txService.execute();
+        await txService.execute();
 
         expect(handledEventSeqs).toEqual([1n, 2n, 3n]);
         expect(handledTxSeqs).toEqual([1n, 2n, 3n]);
