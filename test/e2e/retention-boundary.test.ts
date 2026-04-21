@@ -57,7 +57,7 @@ describe("e2e retention boundary", () => {
         const block13 = buildFetchedBlock(13, block12.block.hash, 1);
         const source = createMapBlockSource(13, [block10, block11, block12, block13]);
 
-        const headWorker = HeadWorker.create({
+        const headWorker = await HeadWorker.create({
             config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
             source,
             overrides: {
@@ -68,7 +68,7 @@ describe("e2e retention boundary", () => {
                 leaderLock: new PostgresLeaderLock(db.pool, 31_400_001n),
             },
         });
-        const fetchWorker = FetchWorker.create({
+        const fetchWorker = await FetchWorker.create({
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
@@ -86,7 +86,7 @@ describe("e2e retention boundary", () => {
                 transactionManager,
             },
         });
-        const sequencerWorker = SequencerWorker.create({
+        const sequencerWorker = await SequencerWorker.create({
             config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 2 },
             overrides: {
                 chainCursorRepository,
@@ -99,7 +99,7 @@ describe("e2e retention boundary", () => {
                 leaderLock: new PostgresLeaderLock(db.pool, 31_400_002n),
             },
         });
-        const retentionWorker = RetentionWorker.create({
+        const retentionWorker = await RetentionWorker.create({
             config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, retentionDepthBlocks: 2 },
             overrides: {
                 chainCursorRepository,

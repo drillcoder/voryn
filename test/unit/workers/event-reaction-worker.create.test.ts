@@ -55,7 +55,7 @@ test("event reaction worker create wires service execution", async () => {
         ],
     };
 
-    const worker = EventReactionWorker.create({
+    const worker = await EventReactionWorker.create({
         config,
         handler,
         overrides: {

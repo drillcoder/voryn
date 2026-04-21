@@ -22,8 +22,8 @@ export type CreateTransactionReactionWorkerOptions = ReactionWorkerOptions<
 >;
 
 export class TransactionReactionWorker extends SingletonPollingWorker {
-    static create(options: CreateTransactionReactionWorkerOptions): TransactionReactionWorker {
-        const { service, leaderLock, dispose } = buildTransactionReactionWorker(options);
+    static async create(options: CreateTransactionReactionWorkerOptions): Promise<TransactionReactionWorker> {
+        const { service, leaderLock, dispose } = await buildTransactionReactionWorker(options);
         return new TransactionReactionWorker(options.config, service, leaderLock, dispose, options.logger);
     }
 

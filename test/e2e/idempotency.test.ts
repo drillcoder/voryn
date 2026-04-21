@@ -78,7 +78,7 @@ describe("e2e idempotency", () => {
             },
         };
 
-        const firstRunWorkers = createWorkerSet(
+        const firstRunWorkers = await createWorkerSet(
             source,
             transactionManager,
             chainCursorRepository,
@@ -121,7 +121,7 @@ describe("e2e idempotency", () => {
                 },
             };
 
-            const secondRunWorkers = createWorkerSet(
+            const secondRunWorkers = await createWorkerSet(
                 source,
                 transactionManager,
                 chainCursorRepository,
@@ -153,7 +153,7 @@ describe("e2e idempotency", () => {
     });
 });
 
-function createWorkerSet(
+async function createWorkerSet(
     source: ReturnType<typeof createMapBlockSource>,
     transactionManager: PostgresTransactionManager,
     chainCursorRepository: PostgresChainCursorRepository,
@@ -166,15 +166,15 @@ function createWorkerSet(
     eventHandler: EventReactionHandler,
     txHandler: TransactionReactionHandler,
     workerSuffix: string,
-): {
+): Promise<{
     head: HeadWorker;
     fetch: FetchWorker;
     sequencer: SequencerWorker;
     event: EventReactionWorker;
     tx: TransactionReactionWorker;
     all: readonly [HeadWorker, FetchWorker, SequencerWorker, EventReactionWorker, TransactionReactionWorker];
-} {
-    const head = HeadWorker.create({
+}> {
+    const head = await HeadWorker.create({
         config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
         source,
         overrides: {
@@ -185,7 +185,7 @@ function createWorkerSet(
             leaderLock: createLeaderLock(),
         },
     });
-    const fetch = FetchWorker.create({
+    const fetch = await FetchWorker.create({
         config: {
             chainId: CHAIN_ID,
             delayBetweenTicksMs: 5,
@@ -203,7 +203,7 @@ function createWorkerSet(
             transactionManager,
         },
     });
-    const sequencer = SequencerWorker.create({
+    const sequencer = await SequencerWorker.create({
         config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 2 },
         overrides: {
             chainCursorRepository,
@@ -216,7 +216,7 @@ function createWorkerSet(
             leaderLock: createLeaderLock(),
         },
     });
-    const event = EventReactionWorker.create({
+    const event = await EventReactionWorker.create({
         config: {
             chainId: CHAIN_ID,
             delayBetweenTicksMs: 5,
@@ -230,7 +230,7 @@ function createWorkerSet(
             leaderLock: createLeaderLock(),
         },
     });
-    const tx = TransactionReactionWorker.create({
+    const tx = await TransactionReactionWorker.create({
         config: {
             chainId: CHAIN_ID,
             delayBetweenTicksMs: 5,

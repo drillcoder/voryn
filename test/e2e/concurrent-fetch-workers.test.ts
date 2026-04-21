@@ -66,7 +66,7 @@ describe("e2e concurrent fetch workers", () => {
         ];
         const source = createMapBlockSource(16, blocks);
 
-        const headWorker = HeadWorker.create({
+        const headWorker = await HeadWorker.create({
             config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
             source,
             overrides: {
@@ -77,7 +77,7 @@ describe("e2e concurrent fetch workers", () => {
                 leaderLock: createLeaderLock(),
             },
         });
-        const fetchWorkerA = FetchWorker.create({
+        const fetchWorkerA = await FetchWorker.create({
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
@@ -95,7 +95,7 @@ describe("e2e concurrent fetch workers", () => {
                 transactionManager,
             },
         });
-        const fetchWorkerB = FetchWorker.create({
+        const fetchWorkerB = await FetchWorker.create({
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
@@ -113,7 +113,7 @@ describe("e2e concurrent fetch workers", () => {
                 transactionManager,
             },
         });
-        const sequencerWorker = SequencerWorker.create({
+        const sequencerWorker = await SequencerWorker.create({
             config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 3 },
             overrides: {
                 chainCursorRepository,

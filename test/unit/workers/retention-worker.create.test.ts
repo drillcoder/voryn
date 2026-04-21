@@ -20,7 +20,7 @@ test("retention worker create wires service execution", async () => {
         retentionDepthBlocks: 100,
     };
 
-    const worker = RetentionWorker.create({
+    const worker = await RetentionWorker.create({
         config,
         overrides: {
             chainCursorRepository: { ...createNoopChainCursorRepository(), get: getCursor },

@@ -48,7 +48,7 @@ describe("e2e fetch retry exhausted", () => {
 
         const source = createAlwaysFailingBlockSource(10, block10);
 
-        const headWorker = HeadWorker.create({
+        const headWorker = await HeadWorker.create({
             config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
             source,
             overrides: {
@@ -59,7 +59,7 @@ describe("e2e fetch retry exhausted", () => {
                 leaderLock: new PostgresLeaderLock(db.pool, 31_200_001n),
             },
         });
-        const fetchWorker = FetchWorker.create({
+        const fetchWorker = await FetchWorker.create({
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,

@@ -9,8 +9,9 @@ async function run(): Promise<void> {
     const maxBlocksPerTick = envNumber("VORYN_SEQUENCER_MAX_BLOCKS_PER_TICK", "10");
 
     const config = { chainId, delayBetweenTicksMs, maxBlocksPerTick };
+    const worker = await SequencerWorker.create({ config, logger, dbUrl });
 
-    await runWorkerLifecycle("sequencer", SequencerWorker.create({ config, logger, dbUrl }), logger);
+    await runWorkerLifecycle("sequencer", worker, logger);
 }
 
 runWithErrorHandling("sequencer", run);

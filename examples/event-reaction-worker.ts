@@ -1,5 +1,5 @@
 import type { EventReactionHandler } from "voryn";
-import { ConsoleLogger, EventReactionWorker, } from "voryn";
+import { ConsoleLogger, EventReactionWorker } from "voryn";
 
 const dbUrl = "postgres://user:pass@localhost:5432/voryn";
 const chainId = 1;
@@ -22,7 +22,7 @@ const handler: EventReactionHandler = {
     },
 };
 
-const worker = EventReactionWorker.create({ config, logger, dbUrl, lockKey, handler });
+const worker = await EventReactionWorker.create({ config, logger, dbUrl, lockKey, handler });
 
 const shutdown = async (): Promise<void> => {
     await worker.stop();

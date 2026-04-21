@@ -1,4 +1,4 @@
-import { ConsoleLogger, HeadWorker, } from "voryn";
+import { ConsoleLogger, HeadWorker } from "voryn";
 
 const dbUrl = "postgres://user:pass@localhost:5432/voryn";
 const rpcUrl = "https://rpc.example.org";
@@ -10,7 +10,7 @@ const depthBlocks = 65_000;
 const logger = new ConsoleLogger({ minLevel: "info" });
 const config = { chainId, delayBetweenTicksMs, confirmations, depthBlocks };
 
-const worker = HeadWorker.create({ config, logger, dbUrl, rpcUrl })
+const worker = await HeadWorker.create({ config, logger, dbUrl, rpcUrl });
 
 const shutdown = async (): Promise<void> => {
     await worker.stop();

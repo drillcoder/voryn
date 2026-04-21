@@ -1,4 +1,4 @@
-import { ConsoleLogger, FetchWorker, } from "voryn";
+import { ConsoleLogger, FetchWorker } from "voryn";
 
 const dbUrl = "postgres://user:pass@localhost:5432/voryn";
 const rpcUrl = "https://rpc.example.org";
@@ -23,7 +23,7 @@ const config = {
     retryMaxDelayMs,
 };
 
-const worker = FetchWorker.create({ config, logger, dbUrl, rpcUrl });
+const worker = await FetchWorker.create({ config, logger, dbUrl, rpcUrl });
 
 const shutdown = async (): Promise<void> => {
     await worker.stop();

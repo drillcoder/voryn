@@ -20,7 +20,7 @@ test("sequencer worker create wires service execution", async () => {
         maxBlocksPerTick: 1,
     };
 
-    const worker = SequencerWorker.create({
+    const worker = await SequencerWorker.create({
         config,
         overrides: {
             chainCursorRepository: { ...createNoopChainCursorRepository(), get: getCursor },

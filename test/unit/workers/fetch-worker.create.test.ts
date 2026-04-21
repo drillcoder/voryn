@@ -27,7 +27,7 @@ test("fetch worker create wires service execution", async () => {
         },
     };
 
-    const worker = FetchWorker.create({
+    const worker = await FetchWorker.create({
         config,
         source,
         overrides: {

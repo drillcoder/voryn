@@ -3,6 +3,7 @@ import { Pool as PostgresPool } from "pg";
 import { JsonRpcProvider } from "ethers";
 import { EthersBlockSource } from "../adapters/ethers-block-source.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
+import { validatePostgresSchema } from "../postgres/schema.js";
 import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../repositories/postgres/block-jobs-repository.js";
 import { PostgresCanonicalBlocksRepository } from "../repositories/postgres/canonical-blocks-repository.js";
@@ -19,6 +20,8 @@ import { SequencerService } from "../services/sequencer-service.js";
 import { TransactionReactionService } from "../services/transaction-reaction-service.js";
 import type { BlockSource } from "../interfaces/block-source.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
+import type { Logger } from "../interfaces/logger.js";
+import { noopLogger } from "../interfaces/logger.js";
 import type {
     CreateEventReactionWorkerOptions,
     EventReactionWorkerDatabaseDependencies,
@@ -43,11 +46,11 @@ const HEAD_WORKER_LOCK_KEY_BASE = 10_000_000n;
 const SEQUENCER_WORKER_LOCK_KEY_BASE = 20_000_000n;
 const RETENTION_WORKER_LOCK_KEY_BASE = 30_000_000n;
 
-export function buildHeadWorker(
+export async function buildHeadWorker(
     options: CreateHeadWorkerOptions
-): BuildSingletonWorkerResult<HeadService> {
+): Promise<BuildSingletonWorkerResult<HeadService>> {
     const source = resolveEthersSource(options);
-    const { dependencies, dispose } = resolveDbDependencies<HeadWorkerDatabaseDependencies>(
+    const { dependencies, dispose } = await resolveDbDependencies<HeadWorkerDatabaseDependencies>(
         options,
         (pool: Pool): HeadWorkerDatabaseDependencies => ({
             chainCursorRepository: new PostgresChainCursorRepository(pool),
@@ -73,11 +76,11 @@ export function buildHeadWorker(
     };
 }
 
-export function buildFetchWorker(
+export async function buildFetchWorker(
     options: CreateFetchWorkerOptions
-): BuildWorkerResult<FetchService> {
+): Promise<BuildWorkerResult<FetchService>> {
     const source = resolveEthersSource(options);
-    const { dependencies, dispose } = resolveDbDependencies<FetchWorkerDatabaseDependencies>(
+    const { dependencies, dispose } = await resolveDbDependencies<FetchWorkerDatabaseDependencies>(
         options,
         (pool: Pool): FetchWorkerDatabaseDependencies => ({
             blockJobsRepository: new PostgresBlockJobsRepository(pool),
@@ -99,10 +102,10 @@ export function buildFetchWorker(
     };
 }
 
-export function buildSequencerWorker(
+export async function buildSequencerWorker(
     options: CreateSequencerWorkerOptions
-): BuildSingletonWorkerResult<SequencerService> {
-    const { dependencies, dispose } = resolveDbDependencies<SequencerWorkerDatabaseDependencies>(
+): Promise<BuildSingletonWorkerResult<SequencerService>> {
+    const { dependencies, dispose } = await resolveDbDependencies<SequencerWorkerDatabaseDependencies>(
         options,
         (pool: Pool): SequencerWorkerDatabaseDependencies => ({
             chainCursorRepository: new PostgresChainCursorRepository(pool),
@@ -133,10 +136,10 @@ export function buildSequencerWorker(
     };
 }
 
-export function buildRetentionWorker(
+export async function buildRetentionWorker(
     options: CreateRetentionWorkerOptions
-): BuildSingletonWorkerResult<RetentionService> {
-    const { dependencies, dispose } = resolveDbDependencies<RetentionWorkerDatabaseDependencies>(
+): Promise<BuildSingletonWorkerResult<RetentionService>> {
+    const { dependencies, dispose } = await resolveDbDependencies<RetentionWorkerDatabaseDependencies>(
         options,
         (pool: Pool): RetentionWorkerDatabaseDependencies => ({
             chainCursorRepository: new PostgresChainCursorRepository(pool),
@@ -167,10 +170,10 @@ export function buildRetentionWorker(
     };
 }
 
-export function buildEventReactionWorker(
+export async function buildEventReactionWorker(
     options: CreateEventReactionWorkerOptions
-): BuildSingletonWorkerResult<EventReactionService> {
-    const { dependencies, dispose } = resolveDbDependencies<EventReactionWorkerDatabaseDependencies>(
+): Promise<BuildSingletonWorkerResult<EventReactionService>> {
+    const { dependencies, dispose } = await resolveDbDependencies<EventReactionWorkerDatabaseDependencies>(
         options,
         (pool: Pool): EventReactionWorkerDatabaseDependencies => ({
             canonicalEventsRepository: new PostgresCanonicalEventsRepository(pool),
@@ -197,10 +200,10 @@ export function buildEventReactionWorker(
     };
 }
 
-export function buildTransactionReactionWorker(
+export async function buildTransactionReactionWorker(
     options: CreateTransactionReactionWorkerOptions
-): BuildSingletonWorkerResult<TransactionReactionService> {
-    const { dependencies, dispose } = resolveDbDependencies<TransactionReactionWorkerDatabaseDependencies>(
+): Promise<BuildSingletonWorkerResult<TransactionReactionService>> {
+    const { dependencies, dispose } = await resolveDbDependencies<TransactionReactionWorkerDatabaseDependencies>(
         options,
         (pool: Pool): TransactionReactionWorkerDatabaseDependencies => ({
             transactionsRepository: new PostgresCanonicalTransactionsRepository(pool),
@@ -238,23 +241,31 @@ function resolveEthersSource(options: WorkerSourceOptions<BlockSource>): BlockSo
     });
 }
 
-function resolveDbDependencies<TDependencies extends object>(
-    options: WorkerDbOptions<TDependencies>,
+async function resolveDbDependencies<TDependencies extends object>(
+    options: WorkerDbOptions<TDependencies> & { logger?: Logger },
     buildDefaults: (pool: Pool) => TDependencies
-): ResolveDbDependenciesResult<TDependencies> {
+): Promise<ResolveDbDependenciesResult<TDependencies>> {
     if (options.dbUrl !== undefined) {
         const pool = new PostgresPool({ connectionString: options.dbUrl });
-        const defaults = buildDefaults(pool);
 
-        return {
-            dependencies: {
-                ...defaults,
-                ...options.overrides,
-            },
-            dispose: async () => {
-                await pool.end();
-            },
-        };
+        try {
+            await validatePostgresSchema({ pool, logger: options.logger ?? noopLogger });
+
+            const defaults = buildDefaults(pool);
+
+            return {
+                dependencies: {
+                    ...defaults,
+                    ...options.overrides,
+                },
+                dispose: async () => {
+                    await pool.end();
+                },
+            };
+        } catch (error) {
+            await pool.end();
+            throw error;
+        }
     }
 
     return {

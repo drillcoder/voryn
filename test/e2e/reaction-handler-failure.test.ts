@@ -46,7 +46,7 @@ describe("e2e reaction handler failure", () => {
             },
         };
 
-        const worker = EventReactionWorker.create({
+        const worker = await EventReactionWorker.create({
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,

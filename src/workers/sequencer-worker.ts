@@ -32,8 +32,8 @@ export type CreateSequencerWorkerOptions =
     & WorkerDbOptions<SequencerWorkerDatabaseDependencies>;
 
 export class SequencerWorker extends SingletonPollingWorker {
-    static create(options: CreateSequencerWorkerOptions): SequencerWorker {
-        const { service, leaderLock, dispose } = buildSequencerWorker(options);
+    static async create(options: CreateSequencerWorkerOptions): Promise<SequencerWorker> {
+        const { service, leaderLock, dispose } = await buildSequencerWorker(options);
         return new SequencerWorker(options.config, service, leaderLock, dispose, options.logger);
     }
 

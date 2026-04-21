@@ -24,8 +24,8 @@ export type CreateHeadWorkerOptions =
     & WorkerDbOptions<HeadWorkerDatabaseDependencies>;
 
 export class HeadWorker extends SingletonPollingWorker {
-    static create(options: CreateHeadWorkerOptions): HeadWorker {
-        const { service, leaderLock, dispose } = buildHeadWorker(options);
+    static async create(options: CreateHeadWorkerOptions): Promise<HeadWorker> {
+        const { service, leaderLock, dispose } = await buildHeadWorker(options);
         return new HeadWorker(options.config, service, leaderLock, dispose, options.logger);
     }
 

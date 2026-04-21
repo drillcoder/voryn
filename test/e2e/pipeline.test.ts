@@ -79,7 +79,7 @@ describe("e2e pipeline", () => {
             },
         };
 
-        const eventWorker = EventReactionWorker.create({
+        const eventWorker = await EventReactionWorker.create({
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
@@ -94,7 +94,7 @@ describe("e2e pipeline", () => {
             },
         });
 
-        const txWorker = TransactionReactionWorker.create({
+        const txWorker = await TransactionReactionWorker.create({
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
@@ -109,7 +109,7 @@ describe("e2e pipeline", () => {
             },
         });
 
-        const headWorker = HeadWorker.create({
+        const headWorker = await HeadWorker.create({
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
@@ -126,7 +126,7 @@ describe("e2e pipeline", () => {
             },
         });
 
-        const fetchWorker = FetchWorker.create({
+        const fetchWorker = await FetchWorker.create({
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
@@ -145,7 +145,7 @@ describe("e2e pipeline", () => {
             },
         });
 
-        const sequencerWorker = SequencerWorker.create({
+        const sequencerWorker = await SequencerWorker.create({
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
@@ -163,7 +163,7 @@ describe("e2e pipeline", () => {
             },
         });
 
-        const retentionWorker = RetentionWorker.create({
+        const retentionWorker = await RetentionWorker.create({
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,

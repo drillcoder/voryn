@@ -8,7 +8,7 @@ const maxBlocksPerTick = 10;
 const logger = new ConsoleLogger({ minLevel: "info" });
 const config = { chainId, delayBetweenTicksMs, maxBlocksPerTick };
 
-const worker = SequencerWorker.create({ config, logger, dbUrl });
+const worker = await SequencerWorker.create({ config, logger, dbUrl });
 
 const shutdown = async (): Promise<void> => {
     await worker.stop();

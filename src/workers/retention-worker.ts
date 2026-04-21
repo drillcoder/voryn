@@ -32,8 +32,8 @@ export type CreateRetentionWorkerOptions =
     & WorkerDbOptions<RetentionWorkerDatabaseDependencies>;
 
 export class RetentionWorker extends SingletonPollingWorker {
-    static create(options: CreateRetentionWorkerOptions): RetentionWorker {
-        const { service, leaderLock, dispose } = buildRetentionWorker(options);
+    static async create(options: CreateRetentionWorkerOptions): Promise<RetentionWorker> {
+        const { service, leaderLock, dispose } = await buildRetentionWorker(options);
         return new RetentionWorker(options.config, service, leaderLock, dispose, options.logger);
     }
 

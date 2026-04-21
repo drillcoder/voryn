@@ -22,7 +22,7 @@ const handler: TransactionReactionHandler = {
     },
 };
 
-const worker = TransactionReactionWorker.create({ config, logger, dbUrl, lockKey, handler });
+const worker = await TransactionReactionWorker.create({ config, logger, dbUrl, lockKey, handler });
 
 const shutdown = async (): Promise<void> => {
     await worker.stop();

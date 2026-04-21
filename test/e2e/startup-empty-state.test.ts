@@ -57,7 +57,7 @@ describe("e2e startup from empty state", () => {
             },
         };
 
-        const headWorker = HeadWorker.create({
+        const headWorker = await HeadWorker.create({
             config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
             source,
             overrides: {
@@ -68,7 +68,7 @@ describe("e2e startup from empty state", () => {
                 leaderLock: new PostgresLeaderLock(db.pool, 31_300_001n),
             },
         });
-        const eventWorker = EventReactionWorker.create({
+        const eventWorker = await EventReactionWorker.create({
             config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, workerName: "reaction-event-startup", batchSize: 5 },
             handler: eventHandler,
             overrides: {
@@ -77,7 +77,7 @@ describe("e2e startup from empty state", () => {
                 leaderLock: new PostgresLeaderLock(db.pool, 31_300_002n),
             },
         });
-        const txWorker = TransactionReactionWorker.create({
+        const txWorker = await TransactionReactionWorker.create({
             config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, workerName: "reaction-tx-startup", batchSize: 5 },
             handler: txHandler,
             overrides: {

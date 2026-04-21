@@ -71,7 +71,7 @@ describe("e2e multi-chain isolation", () => {
         ]);
 
         const workers = [
-            HeadWorker.create({
+            await HeadWorker.create({
                 config: { chainId: CHAIN_A, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
                 source,
                 overrides: {
@@ -82,7 +82,7 @@ describe("e2e multi-chain isolation", () => {
                     leaderLock: createLeaderLock(),
                 },
             }),
-            FetchWorker.create({
+            await FetchWorker.create({
                 config: {
                     chainId: CHAIN_A,
                     delayBetweenTicksMs: 5,
@@ -100,7 +100,7 @@ describe("e2e multi-chain isolation", () => {
                     transactionManager,
                 },
             }),
-            SequencerWorker.create({
+            await SequencerWorker.create({
                 config: { chainId: CHAIN_A, delayBetweenTicksMs: 5, maxBlocksPerTick: 2 },
                 overrides: {
                     chainCursorRepository,
@@ -113,7 +113,7 @@ describe("e2e multi-chain isolation", () => {
                     leaderLock: createLeaderLock(),
                 },
             }),
-            HeadWorker.create({
+            await HeadWorker.create({
                 config: { chainId: CHAIN_B, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
                 source,
                 overrides: {
@@ -124,7 +124,7 @@ describe("e2e multi-chain isolation", () => {
                     leaderLock: createLeaderLock(),
                 },
             }),
-            FetchWorker.create({
+            await FetchWorker.create({
                 config: {
                     chainId: CHAIN_B,
                     delayBetweenTicksMs: 5,
@@ -142,7 +142,7 @@ describe("e2e multi-chain isolation", () => {
                     transactionManager,
                 },
             }),
-            SequencerWorker.create({
+            await SequencerWorker.create({
                 config: { chainId: CHAIN_B, delayBetweenTicksMs: 5, maxBlocksPerTick: 2 },
                 overrides: {
                     chainCursorRepository,

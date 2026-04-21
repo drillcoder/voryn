@@ -8,7 +8,7 @@ const retentionDepthBlocks = 65_000;
 const logger = new ConsoleLogger({ minLevel: "info" });
 const config = { chainId, delayBetweenTicksMs, retentionDepthBlocks };
 
-const worker = RetentionWorker.create({ config, logger, dbUrl });
+const worker = await RetentionWorker.create({ config, logger, dbUrl });
 
 const shutdown = async (): Promise<void> => {
     await worker.stop();

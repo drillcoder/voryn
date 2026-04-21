@@ -25,7 +25,7 @@ test("head worker create wires service execution", async () => {
         },
     };
 
-    const worker = HeadWorker.create({
+    const worker = await HeadWorker.create({
         config,
         source,
         overrides: {

@@ -55,7 +55,7 @@ describe("e2e sequencer mismatch", () => {
 
         const source = createMapBlockSource(10, [badBlock]);
 
-        const headWorker = HeadWorker.create({
+        const headWorker = await HeadWorker.create({
             config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
             source,
             overrides: {
@@ -66,7 +66,7 @@ describe("e2e sequencer mismatch", () => {
                 leaderLock: new PostgresLeaderLock(db.pool, 31_000_001n),
             },
         });
-        const fetchWorker = FetchWorker.create({
+        const fetchWorker = await FetchWorker.create({
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
@@ -84,7 +84,7 @@ describe("e2e sequencer mismatch", () => {
                 transactionManager,
             },
         });
-        const sequencerWorker = SequencerWorker.create({
+        const sequencerWorker = await SequencerWorker.create({
             config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 1 },
             overrides: {
                 chainCursorRepository,

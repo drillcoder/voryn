@@ -55,7 +55,7 @@ test("transaction reaction worker create wires service execution", async () => {
         ],
     };
 
-    const worker = TransactionReactionWorker.create({
+    const worker = await TransactionReactionWorker.create({
         config,
         handler,
         overrides: {

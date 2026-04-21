@@ -21,8 +21,8 @@ export type CreateFetchWorkerOptions =
     & WorkerDbOptions<FetchWorkerDatabaseDependencies>;
 
 export class FetchWorker extends PollingWorker {
-    static create(options: CreateFetchWorkerOptions): FetchWorker {
-        const { service, dispose } = buildFetchWorker(options);
+    static async create(options: CreateFetchWorkerOptions): Promise<FetchWorker> {
+        const { service, dispose } = await buildFetchWorker(options);
         return new FetchWorker(options.config, service, dispose, options.logger);
     }
 
