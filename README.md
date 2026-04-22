@@ -2,21 +2,27 @@
 
 TypeScript npm-библиотека для мониторинга EVM-подобных сетей.
 
-## Документация
-
-- Архитектура: [ARCHITECTURE.md](/docs/ARCHITECTURE.md)
-- Схема БД: [DB_SCHEMA.md](/docs/DB_SCHEMA.md)
-
 ## Инициализация БД
 
-Раздел про применение базовой схемы из файла `src/sql/postgres-schema.sql`.
+Применение базовой схемы из файла `src/sql/postgres-schema.sql`.
 
 Есть 2 варианта:
 
 1. Применить SQL любым своим способом (psql, миграции, CI/CD и т.д.).
 2. Использовать встроенный helper `applySqlFileToPostgresDb`.
 
-Пример вызова helper-функции: [examples/db-apply-sql.ts](/examples/db-apply-sql.ts)
+Пример вызова helper-функции: [examples/db-apply-sql.ts](./examples/db-apply-sql.ts)
+
+## Примеры запуска воркеров из кода
+
+Готовые примеры вынесены в отдельные файлы:
+
+- `HeadWorker`: [examples/workers/head-worker.ts](./examples/head-worker.ts)
+- `FetchWorker`: [examples/workers/fetch-worker.ts](./examples/fetch-worker.ts)
+- `SequencerWorker`: [examples/workers/sequencer-worker.ts](./examples/sequencer-worker.ts)
+- `RetentionWorker`: [examples/workers/retention-worker.ts](./examples/retention-worker.ts)
+- `EventReactionWorker`: [examples/workers/event-reaction-worker.ts](./examples/event-reaction-worker.ts)
+- `TransactionReactionWorker`: [examples/workers/transaction-reaction-worker.ts](./examples/transaction-reaction-worker.ts)
 
 ## Адаптер ethers v6
 
@@ -27,7 +33,7 @@ TypeScript npm-библиотека для мониторинга EVM-подоб
 
 ```ts
 import { JsonRpcProvider } from "ethers";
-import { EthersBlockSource } from "voryn";
+import { EthersBlockSource } from "@drillcoder/voryn";
 
 const rpcUrl = "https://rpc.example.org";
 const provider = new JsonRpcProvider(rpcUrl);
@@ -54,7 +60,7 @@ const source = new EthersBlockSource({ provider, validateProviderChainId: true }
 Пример:
 
 ```ts
-import { ConsoleLogger } from "voryn";
+import { ConsoleLogger } from "@drillcoder/voryn";
 
 const logger = new ConsoleLogger({ minLevel: "debug", colorize: true, timestamp: true });
 ```
@@ -66,17 +72,11 @@ const logger = new ConsoleLogger({ minLevel: "debug", colorize: true, timestamp:
 - `timestamp`: добавляет ISO-время в начало строки.
 - `stdout` / `stderr`: можно передать свои потоки вывода.
 
-## Примеры запуска воркеров из кода
+## Документация
 
-Готовые примеры вынесены в отдельные файлы:
-
-- `HeadWorker`: [examples/workers/head-worker.ts](/examples/head-worker.ts)
-- `FetchWorker`: [examples/workers/fetch-worker.ts](/examples/fetch-worker.ts)
-- `SequencerWorker`: [examples/workers/sequencer-worker.ts](/examples/sequencer-worker.ts)
-- `RetentionWorker`: [examples/workers/retention-worker.ts](/examples/retention-worker.ts)
-- `EventReactionWorker`: [examples/workers/event-reaction-worker.ts](/examples/event-reaction-worker.ts)
-- `TransactionReactionWorker`: [examples/workers/transaction-reaction-worker.ts](/examples/transaction-reaction-worker.ts)
+- Архитектура: [ARCHITECTURE.md](./docs/ARCHITECTURE.md)
+- Схема БД: [DB_SCHEMA.md](./docs/DB_SCHEMA.md)
 
 ## Разработка
 
-Подробно: [DEVELOPMENT.md](/docs/DEVELOPMENT.md)
+Подробно: [DEVELOPMENT.md](./docs/DEVELOPMENT.md)
