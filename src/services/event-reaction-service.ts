@@ -32,7 +32,7 @@ export class EventReactionService {
                 chainId,
                 workerName,
                 processed: events.length,
-                lastProcessedSeq,
+                lastProcessedSeq: lastProcessedSeq?.toString(),
             });
         } else {
             this.logger.debug("event_reaction_tick_no_events", {
@@ -50,6 +50,13 @@ export class EventReactionService {
 
         const initialSeq = await this.eventsRepository.maxSeq(chainId);
         await this.workerCursorsRepository.insert(workerName, chainId, "event", initialSeq);
+
+        this.logger.info("worker_cursor_initialized", {
+            workerName,
+            chainId,
+            initialSeq: initialSeq.toString(),
+        });
+
         return { lastSeq: initialSeq };
     }
 }

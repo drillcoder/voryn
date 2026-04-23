@@ -32,7 +32,7 @@ export class TransactionReactionService {
                 chainId,
                 workerName,
                 processed: transactions.length,
-                lastProcessedSeq,
+                lastProcessedSeq: lastProcessedSeq?.toString(),
             });
         } else {
             this.logger.debug("transaction_reaction_tick_no_transactions", {
@@ -50,7 +50,13 @@ export class TransactionReactionService {
 
         const initialSeq = await this.transactionsRepository.maxSeq(chainId);
         await this.workerCursorsRepository.insert(workerName, chainId, "tx", initialSeq);
+
+        this.logger.info("worker_cursor_initialized", {
+            workerName,
+            chainId,
+            initialSeq: initialSeq.toString(),
+        });
+
         return { lastSeq: initialSeq };
     }
 }
-
