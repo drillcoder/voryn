@@ -115,6 +115,7 @@ describeLive("live rpc pipeline", () => {
                 delayBetweenTicksMs: 1,
                 maxBlocksPerTick: 1,
             },
+            source,
             chainCursorRepository,
             rawBlocksRepository,
             canonicalBlocksRepository,

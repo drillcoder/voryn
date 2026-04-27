@@ -86,6 +86,7 @@ describe("e2e sequencer mismatch", () => {
         });
         const sequencerWorker = await SequencerWorker.create({
             config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 1 },
+            source,
             overrides: {
                 chainCursorRepository,
                 rawBlocksRepository,

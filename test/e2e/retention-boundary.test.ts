@@ -88,6 +88,7 @@ describe("e2e retention boundary", () => {
         });
         const sequencerWorker = await SequencerWorker.create({
             config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 2 },
+            source,
             overrides: {
                 chainCursorRepository,
                 rawBlocksRepository,

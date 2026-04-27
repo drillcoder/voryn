@@ -62,6 +62,7 @@ docker compose --env-file dev/.env -f dev/docker-compose.yml logs -f head fetch 
 
 Дополнительно для `sequencer`:
 
+- `VORYN_SEQUENCER_RPC_URL` (`optional`) — RPC URL для проверки актуальной ветки при реорганизации цепи.
 - `VORYN_SEQUENCER_DELAY_BETWEEN_TICKS_MS` (`optional`, по умолчанию `100`) — задержка между тиками sequencer.
 - `VORYN_SEQUENCER_MAX_BLOCKS_PER_TICK` (`optional`, по умолчанию `10`) — максимальное число блоков, которое sequencer обрабатывает за один `tick`.
 

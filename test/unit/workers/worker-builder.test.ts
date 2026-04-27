@@ -139,6 +139,7 @@ test("build sequencer worker with dbUrl returns singleton lock and disposer", as
             delayBetweenTicksMs: 1000,
             maxBlocksPerTick: 1,
         },
+        rpcUrl: "http://127.0.0.1:8545",
         dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
         overrides: {
             leaderLock,

@@ -43,6 +43,7 @@ services:
       VORYN_CHAIN_ID: ${VORYN_CHAIN_ID:-}
       VORYN_HEAD_RPC_URL: ${VORYN_HEAD_RPC_URL:-}
       VORYN_FETCH_RPC_URL: ${VORYN_FETCH_RPC_URL:-}
+      VORYN_SEQUENCER_RPC_URL: ${VORYN_SEQUENCER_RPC_URL:-}
 
   head:
     <<: *worker-base
@@ -74,6 +75,7 @@ services:
     <<: *worker-base
     environment:
       <<: *worker-env
+      VORYN_SEQUENCER_RPC_URL: ${VORYN_SEQUENCER_RPC_URL:-}
       VORYN_SEQUENCER_DELAY_BETWEEN_TICKS_MS: ${VORYN_SEQUENCER_DELAY_BETWEEN_TICKS_MS:-}
       VORYN_SEQUENCER_MAX_BLOCKS_PER_TICK: ${VORYN_SEQUENCER_MAX_BLOCKS_PER_TICK:-}
     command: ["npm", "exec", "--", "tsx", "--tsconfig", "dev/tsconfig.json", "dev/sequencer.ts"]

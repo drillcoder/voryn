@@ -102,6 +102,7 @@ describe("e2e multi-chain isolation", () => {
             }),
             await SequencerWorker.create({
                 config: { chainId: CHAIN_A, delayBetweenTicksMs: 5, maxBlocksPerTick: 2 },
+                source,
                 overrides: {
                     chainCursorRepository,
                     rawBlocksRepository,
@@ -144,6 +145,7 @@ describe("e2e multi-chain isolation", () => {
             }),
             await SequencerWorker.create({
                 config: { chainId: CHAIN_B, delayBetweenTicksMs: 5, maxBlocksPerTick: 2 },
+                source,
                 overrides: {
                     chainCursorRepository,
                     rawBlocksRepository,

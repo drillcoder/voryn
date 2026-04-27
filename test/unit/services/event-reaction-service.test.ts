@@ -58,6 +58,7 @@ test("event reaction service processes events and advances cursor", async () => 
         maxSeq: async () => 0n,
         insertMany: async () => undefined,
         deleteUpToBlock: async () => 0,
+    deleteAfterBlock: async () => 0,
     };
 
     const workerCursorsRepository: WorkerCursorsRepository = {
@@ -101,6 +102,7 @@ test("event reaction service creates cursor from max seq when missing", async ()
         maxSeq: async () => 22n,
         insertMany: async () => undefined,
         deleteUpToBlock: async () => 0,
+    deleteAfterBlock: async () => 0,
     };
     const workerCursorsRepository: WorkerCursorsRepository = {
         get: async () => null,

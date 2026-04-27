@@ -34,6 +34,39 @@ test("get maps chain cursor row", async () => {
     });
 });
 
+test("getForUpdate maps chain cursor row and locks it", async () => {
+    const query = jest.fn(async () => ({
+        rows: [{
+            chain_id: 10,
+            last_enqueued_block: "12",
+            last_committed_block: "11",
+            last_committed_hash: HASH_A,
+            updated_at: "2026-03-30T10:00:00.000Z",
+        }],
+        rowCount: 1,
+    }));
+    const repository = new PostgresChainCursorRepository(createExecutor(query));
+
+    await expect(repository.getForUpdate(10, createExecutor(query))).resolves.toMatchObject({
+        chainId: 10,
+        lastEnqueuedBlock: 12,
+        lastCommittedBlock: 11,
+        lastCommittedHash: HASH_A,
+    });
+
+    const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
+    expect(calls[0]?.[0]).toContain("FOR UPDATE");
+    expect(calls[0]?.[1]).toEqual([10]);
+});
+
+test("getForUpdate returns null when cursor is missing", async () => {
+    const query = jest.fn(async () => ({ rows: [], rowCount: 0 }));
+    const executor = createExecutor(query);
+    const repository = new PostgresChainCursorRepository(executor);
+
+    await expect(repository.getForUpdate(10, executor)).resolves.toBeNull();
+});
+
 test("advanceLastCommitted throws when optimistic update fails", async () => {
     const query = jest.fn(async () => ({ rows: [], rowCount: 0 }));
     const repository = new PostgresChainCursorRepository(createExecutor(query));
@@ -79,7 +112,7 @@ test("setPositions updates committed and enqueued values", async () => {
     const firstParams = calls[0]?.[1] ?? [];
     expect(firstQuery).toContain("last_committed_block = $2");
     expect(firstQuery).toContain("last_committed_hash = $3");
-    expect(firstQuery).toContain("last_enqueued_block = GREATEST(last_enqueued_block, $4)");
+    expect(firstQuery).toContain("last_enqueued_block = $4");
     expect(firstParams).toEqual([10, 12, HASH_A, 12]);
 });
 

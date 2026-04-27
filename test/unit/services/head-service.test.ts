@@ -41,6 +41,7 @@ const createRawBlocksRepository = (calls?: unknown[]): RawBlocksRepository => ({
         calls?.push(["deleteRawUpToBlock", toBlock, tx]);
         return 0;
     },
+    deleteAfterBlock: async () => 0,
 });
 
 test("head service enqueues and updates cursor in transaction", async () => {
@@ -62,6 +63,7 @@ test("head service enqueues and updates cursor in transaction", async () => {
             lastCommittedHash: HASH_A,
             updatedAt: new Date(),
         }),
+        getForUpdate: async () => { throw new Error("not used"); },
         insert: async () => undefined,
         setLastEnqueued: async (_chainId, block, tx) => {
             calls.push(["setLastEnqueued", block, tx]);
@@ -80,6 +82,7 @@ test("head service enqueues and updates cursor in transaction", async () => {
         markFetchFailed: async () => undefined,
         markCommitted: async () => undefined,
         deleteUpToBlock: async () => 0,
+    deleteAfterBlock: async () => 0,
     };
 
     const worker = new HeadService(
@@ -113,6 +116,7 @@ test("head service bootstraps missing cursor", async () => {
 
     const chainCursorRepository: ChainCursorRepository = {
         get: async () => null,
+        getForUpdate: async () => { throw new Error("not used"); },
         insert: async (cursor) => {
             inserted.push(cursor);
         },
@@ -131,6 +135,7 @@ test("head service bootstraps missing cursor", async () => {
         markFetchFailed: async () => undefined,
         markCommitted: async () => undefined,
         deleteUpToBlock: async () => 0,
+    deleteAfterBlock: async () => 0,
     };
 
     const worker = new HeadService(
@@ -172,6 +177,7 @@ test("head service skips when cursor is already ahead of safe head", async () =>
                 lastCommittedHash: HASH_A,
                 updatedAt: new Date(),
             }),
+            getForUpdate: async () => { throw new Error("not used"); },
             insert: async () => undefined,
             setLastEnqueued: async () => undefined,
             setLastCommitted: async () => undefined,
@@ -187,6 +193,7 @@ test("head service skips when cursor is already ahead of safe head", async () =>
             markFetchFailed: async () => undefined,
             markCommitted: async () => undefined,
             deleteUpToBlock: async () => 0,
+    deleteAfterBlock: async () => 0,
         },
         createRawBlocksRepository(),
         createPassThroughManager().manager,
@@ -223,6 +230,7 @@ test("head service rebases and trims old jobs when committed block is below floo
                 updatedAt: new Date(),
             };
         },
+        getForUpdate: async () => { throw new Error("not used"); },
         insert: async () => undefined,
         setLastEnqueued: async () => {
             throw new Error("must not set enqueued in rebase branch");
@@ -258,6 +266,7 @@ test("head service rebases and trims old jobs when committed block is below floo
             calls.push(["deleteJobsUpToBlock", toBlock, tx]);
             return 0;
         },
+        deleteAfterBlock: async () => 0,
     };
 
     const worker = new HeadService(
@@ -305,6 +314,7 @@ test("head service does not rebase when cursor catches up before transactional c
                 updatedAt: new Date(),
             };
         },
+        getForUpdate: async () => { throw new Error("not used"); },
         insert: async () => undefined,
         setLastEnqueued: async () => undefined,
         setLastCommitted: async () => undefined,
@@ -335,6 +345,7 @@ test("head service does not rebase when cursor catches up before transactional c
             calls.push("deleteJobs");
             return 0;
         },
+            deleteAfterBlock: async () => 0,
     };
 
     const worker = new HeadService(
@@ -373,6 +384,7 @@ test("head service throws when cursor disappears inside enqueue transaction", as
                 updatedAt: new Date(),
             };
         },
+        getForUpdate: async () => { throw new Error("not used"); },
         insert: async () => undefined,
         setLastEnqueued: async () => undefined,
         setLastCommitted: async () => undefined,
@@ -391,6 +403,7 @@ test("head service throws when cursor disappears inside enqueue transaction", as
             markFetchFailed: async () => undefined,
             markCommitted: async () => undefined,
             deleteUpToBlock: async () => 0,
+    deleteAfterBlock: async () => 0,
         },
         createRawBlocksRepository(),
         createPassThroughManager().manager,
@@ -423,6 +436,7 @@ test("head service throws when cursor disappears inside rebase transaction", asy
                 updatedAt: new Date(),
             };
         },
+        getForUpdate: async () => { throw new Error("not used"); },
         insert: async () => undefined,
         setLastEnqueued: async () => undefined,
         setLastCommitted: async () => undefined,
@@ -441,6 +455,7 @@ test("head service throws when cursor disappears inside rebase transaction", asy
             markFetchFailed: async () => undefined,
             markCommitted: async () => undefined,
             deleteUpToBlock: async () => 0,
+    deleteAfterBlock: async () => 0,
         },
         createRawBlocksRepository(),
         createPassThroughManager().manager,

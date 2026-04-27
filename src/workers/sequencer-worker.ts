@@ -11,10 +11,11 @@ import type {
 } from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import type { SequencerWorkerConfig } from "../interfaces/runtime.js";
-import { buildSequencerWorker } from "./worker-builder.js";
-import type { WorkerBaseOptions, WorkerDbOptions } from "./worker-types.js";
+import type { WorkerBaseOptions, WorkerDbOptions, WorkerSourceOptions } from "./worker-types.js";
 import type { SequencerService } from "../services/sequencer-service.js";
+import type { BlockSource } from "../interfaces/block-source.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
+import { buildSequencerWorker } from "./worker-builder.js";
 
 export interface SequencerWorkerDatabaseDependencies {
     chainCursorRepository: ChainCursorRepository;
@@ -29,6 +30,7 @@ export interface SequencerWorkerDatabaseDependencies {
 
 export type CreateSequencerWorkerOptions =
     WorkerBaseOptions<SequencerWorkerConfig>
+    & WorkerSourceOptions<BlockSource>
     & WorkerDbOptions<SequencerWorkerDatabaseDependencies>;
 
 export class SequencerWorker extends SingletonPollingWorker {

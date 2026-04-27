@@ -96,6 +96,7 @@ describe("integration services: head/fetch/sequencer", () => {
                 delayBetweenTicksMs: 1,
                 maxBlocksPerTick: 10,
             },
+            source,
             chainCursorRepository,
             rawBlocksRepository,
             canonicalBlocksRepository,
@@ -120,7 +121,7 @@ describe("integration services: head/fetch/sequencer", () => {
         await expect(db.countRows("canonical_events")).resolves.toBe(3);
     });
 
-    test("sequencer rejects parent hash mismatch and keeps state unchanged", async () => {
+    test("sequencer rolls back fetched data on parent hash mismatch", async () => {
         const transactionManager = new PostgresTransactionManager(db.pool);
         const chainCursorRepository = new PostgresChainCursorRepository(db.pool);
         const rawBlocksRepository = new PostgresRawBlocksRepository(db.pool);
@@ -130,7 +131,9 @@ describe("integration services: head/fetch/sequencer", () => {
         const canonicalEventsRepository = new PostgresCanonicalEventsRepository(db.pool);
         const committedHash = hashFromNumber(399);
         const wrongParentHash = hashFromNumber(12345);
+        const committedBlock = buildFetchedBlock(399, hashFromNumber(398));
         const block = buildFetchedBlock(400, wrongParentHash);
+        const source = createMapBlockSource(400, [committedBlock, block]);
 
         await chainCursorRepository.insert({
             chainId: CHAIN_ID,
@@ -139,6 +142,7 @@ describe("integration services: head/fetch/sequencer", () => {
             lastCommittedHash: committedHash,
         });
         await blockJobsRepository.enqueueRange(CHAIN_ID, 400, 400);
+        await canonicalBlocksRepository.insert(committedBlock.block);
         await rawBlocksRepository.save({
             chainId: CHAIN_ID,
             blockNumber: 400,
@@ -154,6 +158,7 @@ describe("integration services: head/fetch/sequencer", () => {
                 delayBetweenTicksMs: 1,
                 maxBlocksPerTick: 1,
             },
+            source,
             chainCursorRepository,
             rawBlocksRepository,
             canonicalBlocksRepository,
@@ -163,14 +168,15 @@ describe("integration services: head/fetch/sequencer", () => {
             transactionManager,
         );
 
-        await expect(sequencerService.execute()).rejects.toThrow("Raw block parent hash mismatch");
+        await expect(sequencerService.execute()).resolves.toBeUndefined();
 
         const cursor = await chainCursorRepository.get(CHAIN_ID);
         expect(cursor?.lastCommittedBlock).toBe(399);
         expect(cursor?.lastCommittedHash).toBe(committedHash);
-        await expect(db.countRows("canonical_blocks")).resolves.toBe(0);
+        await expect(db.countRows("canonical_blocks")).resolves.toBe(1);
         await expect(db.countRows("canonical_transactions")).resolves.toBe(0);
         await expect(db.countRows("canonical_events")).resolves.toBe(0);
-        await expect(db.countRows("block_jobs", "status = 'pending'")).resolves.toBe(1);
+        await expect(db.countRows("raw_blocks")).resolves.toBe(0);
+        await expect(db.countRows("block_jobs", "status = 'pending'")).resolves.toBe(0);
     });
 });

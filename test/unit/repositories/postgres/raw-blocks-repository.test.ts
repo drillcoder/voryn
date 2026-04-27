@@ -76,3 +76,21 @@ test("deleteUpToBlock returns deleted rows", async () => {
 
     await expect(repository.deleteUpToBlock(1, 100)).resolves.toBe(7);
 });
+
+test("deleteAfterBlock deletes rows after block number", async () => {
+    const query = jest.fn(async () => ({ rows: [], rowCount: 3 }));
+    const repository = new PostgresRawBlocksRepository(createExecutor(query));
+
+    await expect(repository.deleteAfterBlock(1, 100)).resolves.toBe(3);
+
+    const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
+    expect(calls[0]?.[0]).toContain("block_number > $2");
+    expect(calls[0]?.[1]).toEqual([1, 100]);
+});
+
+test("deleteAfterBlock returns zero when rowCount is null", async () => {
+    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const repository = new PostgresRawBlocksRepository(createExecutor(query));
+
+    await expect(repository.deleteAfterBlock(1, 100)).resolves.toBe(0);
+});

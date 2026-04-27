@@ -88,6 +88,7 @@ describe("e2e fetch retry success", () => {
         });
         const sequencerWorker = await SequencerWorker.create({
             config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 1 },
+            source,
             overrides: {
                 chainCursorRepository,
                 rawBlocksRepository,

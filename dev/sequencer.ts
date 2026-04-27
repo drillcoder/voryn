@@ -4,12 +4,13 @@ import { createDevLogger, envNumber, envValue, runWithErrorHandling, runWorkerLi
 async function run(): Promise<void> {
     const logger = createDevLogger();
     const dbUrl = envValue("DATABASE_URL", "");
+    const rpcUrl = envValue("VORYN_SEQUENCER_RPC_URL", "");
     const chainId = envNumber("VORYN_CHAIN_ID", "0");
     const delayBetweenTicksMs = envNumber("VORYN_SEQUENCER_DELAY_BETWEEN_TICKS_MS", "100");
     const maxBlocksPerTick = envNumber("VORYN_SEQUENCER_MAX_BLOCKS_PER_TICK", "10");
 
     const config = { chainId, delayBetweenTicksMs, maxBlocksPerTick };
-    const worker = await SequencerWorker.create({ config, logger, dbUrl });
+    const worker = await SequencerWorker.create({ config, logger, dbUrl, rpcUrl });
 
     await runWorkerLifecycle("sequencer", worker, logger);
 }

@@ -39,16 +39,19 @@ export const createNoopBlockJobsRepository = (): BlockJobsRepository => ({
     markFetchFailed: async () => undefined,
     markCommitted: async () => undefined,
     deleteUpToBlock: async () => 0,
+    deleteAfterBlock: async () => 0,
 });
 
 export const createNoopRawBlocksRepository = (): RawBlocksRepository => ({
     save: async () => undefined,
     get: async () => null,
     deleteUpToBlock: async () => 0,
+    deleteAfterBlock: async () => 0,
 });
 
 export const createNoopChainCursorRepository = (): ChainCursorRepository => ({
     get: async () => null,
+    getForUpdate: async () => null,
     insert: async () => undefined,
     setLastEnqueued: async () => undefined,
     setLastCommitted: async () => undefined,
@@ -58,7 +61,9 @@ export const createNoopChainCursorRepository = (): ChainCursorRepository => ({
 
 export const createNoopCanonicalBlocksRepository = (): CanonicalBlocksRepository => ({
     insert: async () => undefined,
+    get: async () => null,
     deleteUpToBlock: async () => 0,
+    deleteAfterBlock: async () => 0,
 });
 
 export const createNoopCanonicalTransactionsRepository = (): CanonicalTransactionsRepository => ({
@@ -66,6 +71,7 @@ export const createNoopCanonicalTransactionsRepository = (): CanonicalTransactio
     maxSeq: async () => 0n,
     insertMany: async () => undefined,
     deleteUpToBlock: async () => 0,
+    deleteAfterBlock: async () => 0,
 });
 
 export const createNoopCanonicalEventsRepository = (): CanonicalEventsRepository => ({
@@ -73,4 +79,5 @@ export const createNoopCanonicalEventsRepository = (): CanonicalEventsRepository
     maxSeq: async () => 0n,
     insertMany: async () => undefined,
     deleteUpToBlock: async () => 0,
+    deleteAfterBlock: async () => 0,
 });

@@ -115,6 +115,7 @@ describe("e2e concurrent fetch workers", () => {
         });
         const sequencerWorker = await SequencerWorker.create({
             config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 3 },
+            source,
             overrides: {
                 chainCursorRepository,
                 rawBlocksRepository,

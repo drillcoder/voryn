@@ -50,6 +50,7 @@ const createBlockJobsRepository = (overrides?: Partial<BlockJobsRepository>): Bl
     markFetchFailed: async () => undefined,
     markCommitted: async () => undefined,
     deleteUpToBlock: async () => 0,
+    deleteAfterBlock: async () => 0,
     ...overrides,
 });
 
@@ -68,6 +69,7 @@ test("fetch service stores fetched block and marks job fetched", async () => {
         },
         get: async () => null,
         deleteUpToBlock: async () => 0,
+    deleteAfterBlock: async () => 0,
     };
 
     const staleThresholds: Date[] = [];
@@ -135,7 +137,12 @@ test("fetch service marks failure with retry date", async () => {
         config,
         source,
         blockJobsRepository,
-        { save: async () => undefined, get: async () => null, deleteUpToBlock: async () => 0 },
+        {
+            save: async () => undefined,
+            get: async () => null,
+            deleteUpToBlock: async () => 0,
+            deleteAfterBlock: async () => 0,
+        },
         createPassThroughManager(),
     );
 
@@ -178,7 +185,12 @@ test("fetch service swallows claim-lost race without failing tick", async () => 
         config,
         source,
         blockJobsRepository,
-        { save: async () => undefined, get: async () => null, deleteUpToBlock: async () => 0 },
+        {
+            save: async () => undefined,
+            get: async () => null,
+            deleteUpToBlock: async () => 0,
+            deleteAfterBlock: async () => 0,
+        },
         createPassThroughManager(),
         logger,
     );
@@ -201,7 +213,12 @@ test("fetch service tries at least one claim when batch size is zero", async () 
                 return null;
             },
         }),
-        { save: async () => undefined, get: async () => null, deleteUpToBlock: async () => 0 },
+        {
+            save: async () => undefined,
+            get: async () => null,
+            deleteUpToBlock: async () => 0,
+            deleteAfterBlock: async () => 0,
+        },
         createPassThroughManager(),
     );
 
@@ -235,7 +252,12 @@ test("fetch service sets nextRetryAt=null when max attempts reached", async () =
                 nextRetryAt = value;
             },
         }),
-        { save: async () => undefined, get: async () => null, deleteUpToBlock: async () => 0 },
+        {
+            save: async () => undefined,
+            get: async () => null,
+            deleteUpToBlock: async () => 0,
+            deleteAfterBlock: async () => 0,
+        },
         createPassThroughManager(),
     );
 
@@ -269,7 +291,12 @@ test("fetch service swallows claim-lost during markFetchFailed", async () => {
                 throw new Error("Cannot mark block job as failed for chain 7 block 88");
             },
         }),
-        { save: async () => undefined, get: async () => null, deleteUpToBlock: async () => 0 },
+        {
+            save: async () => undefined,
+            get: async () => null,
+            deleteUpToBlock: async () => 0,
+            deleteAfterBlock: async () => 0,
+        },
         createPassThroughManager(),
         logger,
     );
@@ -302,7 +329,12 @@ test("fetch service rethrows non-claim-lost error from markFetchFailed", async (
                 throw new Error("db write failed");
             },
         }),
-        { save: async () => undefined, get: async () => null, deleteUpToBlock: async () => 0 },
+        {
+            save: async () => undefined,
+            get: async () => null,
+            deleteUpToBlock: async () => 0,
+            deleteAfterBlock: async () => 0,
+        },
         createPassThroughManager(),
     );
 

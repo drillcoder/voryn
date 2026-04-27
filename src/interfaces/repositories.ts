@@ -14,6 +14,8 @@ import type {
 export interface ChainCursorRepository {
     get(chainId: ChainId, transaction?: DbExecutor): Promise<ChainCursor | null>;
 
+    getForUpdate(chainId: ChainId, transaction: DbExecutor): Promise<ChainCursor | null>;
+
     insert(cursor: Omit<ChainCursor, "updatedAt">, transaction?: DbExecutor): Promise<void>;
 
     setLastEnqueued(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<void>;
@@ -77,6 +79,8 @@ export interface BlockJobsRepository {
     markCommitted(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<void>;
 
     deleteUpToBlock(chainId: ChainId, blockNumberInclusive: BlockNumber, transaction?: DbExecutor): Promise<number>;
+
+    deleteAfterBlock(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 }
 
 export interface RawBlocksRepository {
@@ -85,16 +89,22 @@ export interface RawBlocksRepository {
     get(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<RawBlock | null>;
 
     deleteUpToBlock(chainId: ChainId, blockNumberInclusive: BlockNumber, transaction?: DbExecutor): Promise<number>;
+
+    deleteAfterBlock(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 }
 
 export interface CanonicalBlocksRepository {
     insert(block: ChainBlock, transaction?: DbExecutor): Promise<void>;
+
+    get(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<ChainBlock | null>;
 
     deleteUpToBlock(
         chainId: ChainId,
         blockNumberInclusive: BlockNumber,
         transaction?: DbExecutor
     ): Promise<number>;
+
+    deleteAfterBlock(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 }
 
 export interface CanonicalTransactionsRepository {
@@ -116,6 +126,8 @@ export interface CanonicalTransactionsRepository {
     ): Promise<void>;
 
     deleteUpToBlock(chainId: ChainId, blockNumberInclusive: BlockNumber, transaction?: DbExecutor): Promise<number>;
+
+    deleteAfterBlock(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 }
 
 export interface CanonicalEventsRepository {
@@ -137,6 +149,8 @@ export interface CanonicalEventsRepository {
     ): Promise<void>;
 
     deleteUpToBlock(chainId: ChainId, blockNumberInclusive: BlockNumber, transaction?: DbExecutor): Promise<number>;
+
+    deleteAfterBlock(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 }
 
 export interface WorkerCursorsRepository {

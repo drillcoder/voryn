@@ -151,6 +151,7 @@ describe("e2e pipeline", () => {
                 delayBetweenTicksMs: 5,
                 maxBlocksPerTick: 2,
             },
+            source,
             overrides: {
                 chainCursorRepository,
                 rawBlocksRepository,

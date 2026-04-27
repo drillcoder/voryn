@@ -59,6 +59,7 @@ test("transaction reaction service processes txs and advances cursor", async () 
         maxSeq: async () => 0n,
         insertMany: async () => undefined,
         deleteUpToBlock: async () => 0,
+    deleteAfterBlock: async () => 0,
     };
 
     const workerCursorsRepository: WorkerCursorsRepository = {
@@ -102,6 +103,7 @@ test("transaction reaction service creates cursor from max seq when missing", as
         maxSeq: async () => 33n,
         insertMany: async () => undefined,
         deleteUpToBlock: async () => 0,
+    deleteAfterBlock: async () => 0,
     };
     const workerCursorsRepository: WorkerCursorsRepository = {
         get: async () => null,

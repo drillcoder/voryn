@@ -25,11 +25,12 @@ type DeleteRepo = Pick<
     & CanonicalBlocksRepository
     & CanonicalTransactionsRepository
     & CanonicalEventsRepository,
-    "deleteUpToBlock"
+    "deleteUpToBlock" | "deleteAfterBlock"
 >;
 
 const createDeleteRepo = (deleted: number): DeleteRepo => ({
     deleteUpToBlock: async () => deleted,
+    deleteAfterBlock: async () => 0,
 });
 
 const createCursorRepository = (): ChainCursorRepository => ({
@@ -40,6 +41,7 @@ const createCursorRepository = (): ChainCursorRepository => ({
         lastCommittedHash: HASH_A,
         updatedAt: new Date(),
     }),
+    getForUpdate: async () => null,
     insert: async () => undefined,
     setLastEnqueued: async () => undefined,
     setLastCommitted: async () => undefined,
@@ -65,6 +67,7 @@ const createRawBlocksRepository = (deleted: number): RawBlocksRepository => ({
 const createCanonicalBlocksRepository = (deleted: number): CanonicalBlocksRepository => ({
     ...createDeleteRepo(deleted),
     insert: async () => undefined,
+    get: async () => null,
 });
 
 const createCanonicalTransactionsRepository = (deleted: number): CanonicalTransactionsRepository => ({
@@ -133,6 +136,7 @@ test("retention service logs zero deletions when cursor is missing", async () =>
     };
     const cursorRepository: ChainCursorRepository = {
         get: async () => null,
+        getForUpdate: async () => null,
         insert: async () => undefined,
         setLastEnqueued: async () => undefined,
         setLastCommitted: async () => undefined,
@@ -186,6 +190,7 @@ test("retention service logs zero deletions when purge block is negative", async
             lastCommittedHash: HASH_A,
             updatedAt: new Date(),
         }),
+        getForUpdate: async () => null,
         insert: async () => undefined,
         setLastEnqueued: async () => undefined,
         setLastCommitted: async () => undefined,

@@ -117,15 +117,21 @@ export class PostgresCanonicalEventsRepository implements CanonicalEventsReposit
         }
     }
 
-    async deleteUpToBlock(
-        chainId: ChainId,
-        blockNumberInclusive: BlockNumber,
-        transaction?: DbExecutor
-    ): Promise<number> {
+    async deleteUpToBlock(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number> {
         const executor = transaction ?? this.pool;
         const deleted = await executor.query(
             `DELETE FROM canonical_events WHERE chain_id = $1 AND block_number <= $2`,
-            [chainId, blockNumberInclusive]
+            [chainId, blockNumber]
+        );
+
+        return deleted.rowCount ?? 0;
+    }
+
+    async deleteAfterBlock(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number> {
+        const executor = transaction ?? this.pool;
+        const deleted = await executor.query(
+            `DELETE FROM canonical_events WHERE chain_id = $1 AND block_number > $2`,
+            [chainId, blockNumber]
         );
 
         return deleted.rowCount ?? 0;

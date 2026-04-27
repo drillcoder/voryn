@@ -105,6 +105,7 @@ export async function buildFetchWorker(
 export async function buildSequencerWorker(
     options: CreateSequencerWorkerOptions
 ): Promise<BuildSingletonWorkerResult<SequencerService>> {
+    const source = resolveEthersSource(options);
     const { dependencies, dispose } = await resolveDbDependencies<SequencerWorkerDatabaseDependencies>(
         options,
         (pool: Pool): SequencerWorkerDatabaseDependencies => ({
@@ -122,6 +123,7 @@ export async function buildSequencerWorker(
     return {
         service: new SequencerService(
             options.config,
+            source,
             dependencies.chainCursorRepository,
             dependencies.rawBlocksRepository,
             dependencies.canonicalBlocksRepository,
