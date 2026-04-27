@@ -2,6 +2,7 @@ import { ConsoleLogger, SequencerWorker } from "@drillcoder/voryn";
 
 (async () => {
     const dbUrl = "postgres://user:pass@localhost:5432/voryn";
+    const rpcUrl = "https://rpc.example.org";
     const chainId = 1;
     const delayBetweenTicksMs = 100;
     const maxBlocksPerTick = 10;
@@ -9,7 +10,7 @@ import { ConsoleLogger, SequencerWorker } from "@drillcoder/voryn";
     const logger = new ConsoleLogger({ minLevel: "info" });
     const config = { chainId, delayBetweenTicksMs, maxBlocksPerTick };
 
-    const worker = await SequencerWorker.create({ config, logger, dbUrl });
+    const worker = await SequencerWorker.create({ config, logger, dbUrl, rpcUrl });
 
     const shutdown = async (): Promise<void> => {
         await worker.stop();
