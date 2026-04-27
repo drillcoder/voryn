@@ -91,12 +91,11 @@ export class SequencerService {
         }
 
         if (committedBlocks.length > 0) {
-            const lastCommittedBlock = committedBlocks[committedBlocks.length - 1];
             this.logger.info("sequencer_blocks_committed", {
                 chainId,
                 committedCount: committedBlocks.length,
                 firstBlockNumber: committedBlocks[0],
-                lastBlockNumber: lastCommittedBlock,
+                lastBlockNumber: committedBlocks[committedBlocks.length - 1],
             });
         } else {
             this.logger.debug("sequencer_no_block_to_commit", { chainId });
