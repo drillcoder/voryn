@@ -206,19 +206,10 @@ test("head service rebases and trims old jobs when committed block is below floo
     const { manager, transaction } = createPassThroughManager();
 
     let getCalls = 0;
+    let getForUpdateCalls = 0;
     const chainCursorRepository: ChainCursorRepository = {
-        get: async (_chainId, tx) => {
+        get: async () => {
             getCalls += 1;
-            if (tx === undefined) {
-                return {
-                    chainId: 1,
-                    lastEnqueuedBlock: 200,
-                    lastCommittedBlock: 90,
-                    lastCommittedHash: HASH_A,
-                    updatedAt: new Date(),
-                };
-            }
-
             return {
                 chainId: 1,
                 lastEnqueuedBlock: 200,
@@ -227,7 +218,17 @@ test("head service rebases and trims old jobs when committed block is below floo
                 updatedAt: new Date(),
             };
         },
-        getForUpdate: async () => { throw new Error("not used"); },
+        getForUpdate: async (_chainId, tx) => {
+            getForUpdateCalls += 1;
+            expect(tx).toBe(transaction);
+            return {
+                chainId: 1,
+                lastEnqueuedBlock: 200,
+                lastCommittedBlock: 90,
+                lastCommittedHash: HASH_A,
+                updatedAt: new Date(),
+            };
+        },
         insert: async () => undefined,
         setLastEnqueued: async () => {
             throw new Error("must not set enqueued in rebase branch");
@@ -276,7 +277,8 @@ test("head service rebases and trims old jobs when committed block is below floo
 
     await worker.execute();
 
-    expect(getCalls).toBe(2);
+    expect(getCalls).toBe(1);
+    expect(getForUpdateCalls).toBe(1);
     expect(calls).toEqual([
         ["setPositions", 113, HASH_C, 113, transaction],
         ["deleteJobsUpToBlock", 113, transaction],
@@ -286,22 +288,24 @@ test("head service rebases and trims old jobs when committed block is below floo
 
 test("head service does not rebase when cursor catches up before transactional check", async () => {
     const calls: unknown[] = [];
-    const { manager } = createPassThroughManager();
+    const { manager, transaction } = createPassThroughManager();
 
     let getCalls = 0;
+    let getForUpdateCalls = 0;
     const chainCursorRepository: ChainCursorRepository = {
-        get: async (_chainId, tx) => {
+        get: async () => {
             getCalls += 1;
-            if (tx === undefined) {
-                return {
-                    chainId: 1,
-                    lastEnqueuedBlock: 200,
-                    lastCommittedBlock: 90,
-                    lastCommittedHash: HASH_A,
-                    updatedAt: new Date(),
-                };
-            }
-
+            return {
+                chainId: 1,
+                lastEnqueuedBlock: 200,
+                lastCommittedBlock: 90,
+                lastCommittedHash: HASH_A,
+                updatedAt: new Date(),
+            };
+        },
+        getForUpdate: async (_chainId, tx) => {
+            getForUpdateCalls += 1;
+            expect(tx).toBe(transaction);
             return {
                 chainId: 1,
                 lastEnqueuedBlock: 200,
@@ -310,7 +314,6 @@ test("head service does not rebase when cursor catches up before transactional c
                 updatedAt: new Date(),
             };
         },
-        getForUpdate: async () => { throw new Error("not used"); },
         insert: async () => undefined,
         setLastEnqueued: async () => undefined,
         setPositions: async () => {
@@ -340,7 +343,7 @@ test("head service does not rebase when cursor catches up before transactional c
             calls.push("deleteJobs");
             return 0;
         },
-            deleteAfterBlock: async () => 0,
+        deleteAfterBlock: async () => 0,
     };
 
     const worker = new HeadService(
@@ -354,7 +357,8 @@ test("head service does not rebase when cursor catches up before transactional c
 
     await worker.execute();
 
-    expect(getCalls).toBe(2);
+    expect(getCalls).toBe(1);
+    expect(getForUpdateCalls).toBe(1);
     expect(calls).toEqual([]);
 });
 
@@ -417,20 +421,14 @@ test("head service throws when cursor disappears inside rebase transaction", asy
     };
 
     const chainCursorRepository: ChainCursorRepository = {
-        get: async (_chainId, transaction) => {
-            if (transaction) {
-                return null;
-            }
-
-            return {
-                chainId: 1,
-                lastEnqueuedBlock: 200,
-                lastCommittedBlock: 90,
-                lastCommittedHash: HASH_A,
-                updatedAt: new Date(),
-            };
-        },
-        getForUpdate: async () => { throw new Error("not used"); },
+        get: async () => ({
+            chainId: 1,
+            lastEnqueuedBlock: 200,
+            lastCommittedBlock: 90,
+            lastCommittedHash: HASH_A,
+            updatedAt: new Date(),
+        }),
+        getForUpdate: async () => null,
         insert: async () => undefined,
         setLastEnqueued: async () => undefined,
         setPositions: async () => undefined,
@@ -448,7 +446,7 @@ test("head service throws when cursor disappears inside rebase transaction", asy
             markFetchFailed: async () => undefined,
             markCommitted: async () => undefined,
             deleteUpToBlock: async () => 0,
-    deleteAfterBlock: async () => 0,
+            deleteAfterBlock: async () => 0,
         },
         createRawBlocksRepository(),
         createPassThroughManager().manager,

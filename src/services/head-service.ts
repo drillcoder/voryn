@@ -58,7 +58,7 @@ export class HeadService {
             const floorData = await this.source.getBlockData(chainId, floorBlock);
             const floorParentHash = floorData.block.parentHash;
             await this.transactionManager.run(async (transaction) => {
-                const chainCursor = await this.chainCursorRepository.get(chainId, transaction);
+                const chainCursor = await this.chainCursorRepository.getForUpdate(chainId, transaction);
 
                 if (chainCursor === null) {
                     throw new Error(`Chain cursor not found for chain ${String(chainId)}`);
