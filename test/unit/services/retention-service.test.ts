@@ -44,7 +44,6 @@ const createCursorRepository = (): ChainCursorRepository => ({
     getForUpdate: async () => null,
     insert: async () => undefined,
     setLastEnqueued: async () => undefined,
-    setLastCommitted: async () => undefined,
     setPositions: async () => undefined,
     advanceLastCommitted: async () => undefined,
 });
@@ -139,7 +138,6 @@ test("retention service logs zero deletions when cursor is missing", async () =>
         getForUpdate: async () => null,
         insert: async () => undefined,
         setLastEnqueued: async () => undefined,
-        setLastCommitted: async () => undefined,
         setPositions: async () => undefined,
         advanceLastCommitted: async () => undefined,
     };
@@ -193,7 +191,6 @@ test("retention service logs zero deletions when purge block is negative", async
         getForUpdate: async () => null,
         insert: async () => undefined,
         setLastEnqueued: async () => undefined,
-        setLastCommitted: async () => undefined,
         setPositions: async () => undefined,
         advanceLastCommitted: async () => undefined,
     };

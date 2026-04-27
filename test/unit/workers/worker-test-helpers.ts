@@ -54,7 +54,6 @@ export const createNoopChainCursorRepository = (): ChainCursorRepository => ({
     getForUpdate: async () => null,
     insert: async () => undefined,
     setLastEnqueued: async () => undefined,
-    setLastCommitted: async () => undefined,
     setPositions: async () => undefined,
     advanceLastCommitted: async () => undefined,
 });

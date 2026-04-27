@@ -83,15 +83,6 @@ test("setLastEnqueued throws when cursor is missing", async () => {
     await expect(repository.setLastEnqueued(10, 12)).rejects.toThrow("Chain cursor for chain 10 not found");
 });
 
-test("setLastCommitted throws when cursor is missing", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 0 }));
-    const repository = new PostgresChainCursorRepository(createExecutor(query));
-
-    await expect(repository.setLastCommitted(10, 12, HASH_A)).rejects.toThrow(
-        "Chain cursor for chain 10 not found"
-    );
-});
-
 test("setPositions throws when cursor is missing", async () => {
     const query = jest.fn(async () => ({ rows: [], rowCount: 0 }));
     const repository = new PostgresChainCursorRepository(createExecutor(query));

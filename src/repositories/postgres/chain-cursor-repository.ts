@@ -100,27 +100,6 @@ export class PostgresChainCursorRepository implements ChainCursorRepository {
         }
     }
 
-    async setLastCommitted(
-        chainId: ChainId,
-        blockNumber: BlockNumber,
-        blockHash: HashHex,
-        transaction?: DbExecutor
-    ): Promise<void> {
-        const executor = transaction ?? this.pool;
-        const updated = await executor.query(
-            `UPDATE chain_cursor
-             SET last_committed_block = $2,
-                 last_committed_hash = $3,
-                 updated_at = NOW()
-             WHERE chain_id = $1`,
-            [chainId, blockNumber, blockHash]
-        );
-
-        if ((updated.rowCount ?? 0) === 0) {
-            throw new Error(`Chain cursor for chain ${String(chainId)} not found`);
-        }
-    }
-
     async setPositions(
         chainId: ChainId,
         lastCommittedBlock: BlockNumber,

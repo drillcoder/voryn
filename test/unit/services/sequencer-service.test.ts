@@ -98,7 +98,6 @@ const createChainCursorRepository = (
     getForUpdate: async () => getCursor(),
     insert: async () => undefined,
     setLastEnqueued: async () => undefined,
-    setLastCommitted: async () => undefined,
     setPositions: async () => undefined,
     advanceLastCommitted: async () => undefined,
     ...overrides,

@@ -68,7 +68,6 @@ test("head service enqueues and updates cursor in transaction", async () => {
         setLastEnqueued: async (_chainId, block, tx) => {
             calls.push(["setLastEnqueued", block, tx]);
         },
-        setLastCommitted: async () => undefined,
         setPositions: async () => undefined,
         advanceLastCommitted: async () => undefined,
     };
@@ -121,7 +120,6 @@ test("head service bootstraps missing cursor", async () => {
             inserted.push(cursor);
         },
         setLastEnqueued: async () => undefined,
-        setLastCommitted: async () => undefined,
         setPositions: async () => undefined,
         advanceLastCommitted: async () => undefined,
     };
@@ -180,7 +178,6 @@ test("head service skips when cursor is already ahead of safe head", async () =>
             getForUpdate: async () => { throw new Error("not used"); },
             insert: async () => undefined,
             setLastEnqueued: async () => undefined,
-            setLastCommitted: async () => undefined,
             setPositions: async () => undefined,
             advanceLastCommitted: async () => undefined,
         },
@@ -235,7 +232,6 @@ test("head service rebases and trims old jobs when committed block is below floo
         setLastEnqueued: async () => {
             throw new Error("must not set enqueued in rebase branch");
         },
-        setLastCommitted: async () => undefined,
         setPositions: async (_chainId, committed, committedHash, enqueued, tx) => {
             calls.push(["setPositions", committed, committedHash, enqueued, tx]);
         },
@@ -317,7 +313,6 @@ test("head service does not rebase when cursor catches up before transactional c
         getForUpdate: async () => { throw new Error("not used"); },
         insert: async () => undefined,
         setLastEnqueued: async () => undefined,
-        setLastCommitted: async () => undefined,
         setPositions: async () => {
             calls.push("setPositions");
         },
@@ -387,7 +382,6 @@ test("head service throws when cursor disappears inside enqueue transaction", as
         getForUpdate: async () => { throw new Error("not used"); },
         insert: async () => undefined,
         setLastEnqueued: async () => undefined,
-        setLastCommitted: async () => undefined,
         setPositions: async () => undefined,
         advanceLastCommitted: async () => undefined,
     };
@@ -439,7 +433,6 @@ test("head service throws when cursor disappears inside rebase transaction", asy
         getForUpdate: async () => { throw new Error("not used"); },
         insert: async () => undefined,
         setLastEnqueued: async () => undefined,
-        setLastCommitted: async () => undefined,
         setPositions: async () => undefined,
         advanceLastCommitted: async () => undefined,
     };
