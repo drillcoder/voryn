@@ -1,3 +1,4 @@
+import type { Pool } from "pg";
 import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
@@ -11,9 +12,18 @@ import type {
 } from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import type { RetentionWorkerConfig } from "../interfaces/runtime.js";
-import { buildRetentionWorker } from "./worker-builder.js";
+import { PostgresLeaderLock } from "../postgres/leader-lock.js";
+import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
+import { PostgresBlockJobsRepository } from "../repositories/postgres/block-jobs-repository.js";
+import { PostgresCanonicalBlocksRepository } from "../repositories/postgres/canonical-blocks-repository.js";
+import { PostgresCanonicalEventsRepository } from "../repositories/postgres/canonical-events-repository.js";
+import { PostgresCanonicalTransactionsRepository } from "../repositories/postgres/canonical-transactions-repository.js";
+import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cursor-repository.js";
+import { PostgresRawBlocksRepository } from "../repositories/postgres/raw-blocks-repository.js";
+import { RetentionService } from "../services/retention-service.js";
+import { RETENTION_WORKER_LOCK_KEY_BASE } from "./worker-lock-keys.js";
+import { resolveDbDependencies } from "./worker-resolvers.js";
 import type { WorkerBaseOptions, WorkerDbOptions } from "./worker-types.js";
-import type { RetentionService } from "../services/retention-service.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
 export interface RetentionWorkerDatabaseDependencies {
@@ -33,8 +43,35 @@ export type CreateRetentionWorkerOptions =
 
 export class RetentionWorker extends SingletonPollingWorker {
     static async create(options: CreateRetentionWorkerOptions): Promise<RetentionWorker> {
-        const { service, leaderLock, dispose } = await buildRetentionWorker(options);
-        return new RetentionWorker(options.config, service, leaderLock, dispose, options.logger);
+        const { dependencies, dispose } = await resolveDbDependencies<RetentionWorkerDatabaseDependencies>(
+            options,
+            (pool: Pool): RetentionWorkerDatabaseDependencies => ({
+                chainCursorRepository: new PostgresChainCursorRepository(pool),
+                blockJobsRepository: new PostgresBlockJobsRepository(pool),
+                rawBlocksRepository: new PostgresRawBlocksRepository(pool),
+                canonicalBlocksRepository: new PostgresCanonicalBlocksRepository(pool),
+                canonicalTransactionsRepository: new PostgresCanonicalTransactionsRepository(pool),
+                canonicalEventsRepository: new PostgresCanonicalEventsRepository(pool),
+                transactionManager: new PostgresTransactionManager(pool),
+                leaderLock: new PostgresLeaderLock(
+                    pool,
+                    RETENTION_WORKER_LOCK_KEY_BASE + BigInt(options.config.chainId)
+                ),
+            })
+        );
+        const service = new RetentionService(
+            options.config,
+            dependencies.chainCursorRepository,
+            dependencies.blockJobsRepository,
+            dependencies.rawBlocksRepository,
+            dependencies.canonicalBlocksRepository,
+            dependencies.canonicalTransactionsRepository,
+            dependencies.canonicalEventsRepository,
+            dependencies.transactionManager,
+            options.logger,
+        );
+
+        return new RetentionWorker(options.config, service, dependencies.leaderLock, dispose, options.logger);
     }
 
     private constructor(

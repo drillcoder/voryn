@@ -1,12 +1,15 @@
+import type { Pool } from "pg";
 import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
 import type { EventReactionHandler } from "../interfaces/reaction.js";
 import type { CanonicalEventsRepository, WorkerCursorsRepository } from "../interfaces/repositories.js";
 import type { ReactionWorkerConfig } from "../interfaces/runtime.js";
-import { buildEventReactionWorker } from "./worker-builder.js";
+import { PostgresCanonicalEventsRepository } from "../repositories/postgres/canonical-events-repository.js";
+import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker-cursors-repository.js";
+import { EventReactionService } from "../services/event-reaction-service.js";
+import { resolveDbDependencies, resolveReactionLeaderLock } from "./worker-resolvers.js";
 import type { ReactionWorkerOptions } from "./worker-types.js";
-import type { EventReactionService } from "../services/event-reaction-service.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
 export interface EventReactionWorkerDatabaseDependencies {
@@ -23,8 +26,28 @@ export type CreateEventReactionWorkerOptions = ReactionWorkerOptions<
 
 export class EventReactionWorker extends SingletonPollingWorker {
     static async create(options: CreateEventReactionWorkerOptions): Promise<EventReactionWorker> {
-        const { service, leaderLock, dispose } = await buildEventReactionWorker(options);
-        return new EventReactionWorker(options.config, service, leaderLock, dispose, options.logger);
+        const { dependencies, dispose } = await resolveDbDependencies<EventReactionWorkerDatabaseDependencies>(
+            options,
+            (pool: Pool): EventReactionWorkerDatabaseDependencies => ({
+                canonicalEventsRepository: new PostgresCanonicalEventsRepository(pool),
+                workerCursorsRepository: new PostgresWorkerCursorsRepository(pool),
+                leaderLock: resolveReactionLeaderLock(
+                    options.overrides?.leaderLock,
+                    options.lockKey,
+                    pool,
+                    "Event reaction worker lock is not configured: pass lockKey or overrides.leaderLock."
+                ),
+            })
+        );
+        const service = new EventReactionService(
+            options.config,
+            options.handler,
+            dependencies.canonicalEventsRepository,
+            dependencies.workerCursorsRepository,
+            options.logger
+        );
+
+        return new EventReactionWorker(options.config, service, dependencies.leaderLock, dispose, options.logger);
     }
 
     private constructor(

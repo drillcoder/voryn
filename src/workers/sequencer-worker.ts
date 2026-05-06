@@ -1,3 +1,4 @@
+import type { Pool } from "pg";
 import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
@@ -11,11 +12,20 @@ import type {
 } from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import type { SequencerWorkerConfig } from "../interfaces/runtime.js";
+import { PostgresLeaderLock } from "../postgres/leader-lock.js";
+import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
+import { PostgresBlockJobsRepository } from "../repositories/postgres/block-jobs-repository.js";
+import { PostgresCanonicalBlocksRepository } from "../repositories/postgres/canonical-blocks-repository.js";
+import { PostgresCanonicalEventsRepository } from "../repositories/postgres/canonical-events-repository.js";
+import { PostgresCanonicalTransactionsRepository } from "../repositories/postgres/canonical-transactions-repository.js";
+import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cursor-repository.js";
+import { PostgresRawBlocksRepository } from "../repositories/postgres/raw-blocks-repository.js";
+import { SequencerService } from "../services/sequencer-service.js";
+import { SEQUENCER_WORKER_LOCK_KEY_BASE } from "./worker-lock-keys.js";
+import { resolveDbDependencies, resolveEthersSource } from "./worker-resolvers.js";
 import type { WorkerBaseOptions, WorkerDbOptions, WorkerSourceOptions } from "./worker-types.js";
-import type { SequencerService } from "../services/sequencer-service.js";
 import type { BlockSource } from "../interfaces/block-source.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
-import { buildSequencerWorker } from "./worker-builder.js";
 
 export interface SequencerWorkerDatabaseDependencies {
     chainCursorRepository: ChainCursorRepository;
@@ -35,8 +45,37 @@ export type CreateSequencerWorkerOptions =
 
 export class SequencerWorker extends SingletonPollingWorker {
     static async create(options: CreateSequencerWorkerOptions): Promise<SequencerWorker> {
-        const { service, leaderLock, dispose } = await buildSequencerWorker(options);
-        return new SequencerWorker(options.config, service, leaderLock, dispose, options.logger);
+        const source = resolveEthersSource(options);
+        const { dependencies, dispose } = await resolveDbDependencies<SequencerWorkerDatabaseDependencies>(
+            options,
+            (pool: Pool): SequencerWorkerDatabaseDependencies => ({
+                chainCursorRepository: new PostgresChainCursorRepository(pool),
+                rawBlocksRepository: new PostgresRawBlocksRepository(pool),
+                canonicalBlocksRepository: new PostgresCanonicalBlocksRepository(pool),
+                canonicalTransactionsRepository: new PostgresCanonicalTransactionsRepository(pool),
+                canonicalEventsRepository: new PostgresCanonicalEventsRepository(pool),
+                blockJobsRepository: new PostgresBlockJobsRepository(pool),
+                transactionManager: new PostgresTransactionManager(pool),
+                leaderLock: new PostgresLeaderLock(
+                    pool,
+                    SEQUENCER_WORKER_LOCK_KEY_BASE + BigInt(options.config.chainId)
+                ),
+            })
+        );
+        const service = new SequencerService(
+            options.config,
+            source,
+            dependencies.chainCursorRepository,
+            dependencies.rawBlocksRepository,
+            dependencies.canonicalBlocksRepository,
+            dependencies.canonicalTransactionsRepository,
+            dependencies.canonicalEventsRepository,
+            dependencies.blockJobsRepository,
+            dependencies.transactionManager,
+            options.logger,
+        );
+
+        return new SequencerWorker(options.config, service, dependencies.leaderLock, dispose, options.logger);
     }
 
     private constructor(

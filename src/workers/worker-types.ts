@@ -29,15 +29,6 @@ export type WorkerDbOptions<TDependencies extends object> =
         overrides: TDependencies;
     };
 
-export interface BuildWorkerResult<TService> {
-    service: TService;
-    dispose?: () => Promise<void>;
-}
-
-export interface BuildSingletonWorkerResult<TService> extends BuildWorkerResult<TService> {
-    leaderLock: LeaderLock;
-}
-
 type DbOptionsWithUrl<TDependencies extends { leaderLock: LeaderLock }> =
     | {
         dbUrl: string;

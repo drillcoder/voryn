@@ -1,9 +1,13 @@
+import type { Pool } from "pg";
 import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
 import type { FetchWorkerConfig } from "../interfaces/runtime.js";
-import { buildFetchWorker } from "./worker-builder.js";
+import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
+import { PostgresBlockJobsRepository } from "../repositories/postgres/block-jobs-repository.js";
+import { PostgresRawBlocksRepository } from "../repositories/postgres/raw-blocks-repository.js";
+import { FetchService } from "../services/fetch-service.js";
+import { resolveDbDependencies, resolveEthersSource } from "./worker-resolvers.js";
 import { PollingWorker } from "./polling-worker.js";
-import type { FetchService } from "../services/fetch-service.js";
 import type { WorkerBaseOptions, WorkerDbOptions, WorkerSourceOptions } from "./worker-types.js";
 import type { BlockJobsRepository, RawBlocksRepository } from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
@@ -22,7 +26,24 @@ export type CreateFetchWorkerOptions =
 
 export class FetchWorker extends PollingWorker {
     static async create(options: CreateFetchWorkerOptions): Promise<FetchWorker> {
-        const { service, dispose } = await buildFetchWorker(options);
+        const source = resolveEthersSource(options);
+        const { dependencies, dispose } = await resolveDbDependencies<FetchWorkerDatabaseDependencies>(
+            options,
+            (pool: Pool): FetchWorkerDatabaseDependencies => ({
+                blockJobsRepository: new PostgresBlockJobsRepository(pool),
+                rawBlocksRepository: new PostgresRawBlocksRepository(pool),
+                transactionManager: new PostgresTransactionManager(pool),
+            })
+        );
+        const service = new FetchService(
+            options.config,
+            source,
+            dependencies.blockJobsRepository,
+            dependencies.rawBlocksRepository,
+            dependencies.transactionManager,
+            options.logger
+        );
+
         return new FetchWorker(options.config, service, dispose, options.logger);
     }
 

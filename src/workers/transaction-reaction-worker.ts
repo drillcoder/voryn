@@ -1,12 +1,15 @@
+import type { Pool } from "pg";
 import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
 import type { TransactionReactionHandler } from "../interfaces/reaction.js";
 import type { CanonicalTransactionsRepository, WorkerCursorsRepository } from "../interfaces/repositories.js";
 import type { ReactionWorkerConfig } from "../interfaces/runtime.js";
-import { buildTransactionReactionWorker } from "./worker-builder.js";
+import { PostgresCanonicalTransactionsRepository } from "../repositories/postgres/canonical-transactions-repository.js";
+import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker-cursors-repository.js";
+import { TransactionReactionService } from "../services/transaction-reaction-service.js";
+import { resolveDbDependencies, resolveReactionLeaderLock } from "./worker-resolvers.js";
 import type { ReactionWorkerOptions } from "./worker-types.js";
-import type { TransactionReactionService } from "../services/transaction-reaction-service.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
 export interface TransactionReactionWorkerDatabaseDependencies {
@@ -23,8 +26,28 @@ export type CreateTransactionReactionWorkerOptions = ReactionWorkerOptions<
 
 export class TransactionReactionWorker extends SingletonPollingWorker {
     static async create(options: CreateTransactionReactionWorkerOptions): Promise<TransactionReactionWorker> {
-        const { service, leaderLock, dispose } = await buildTransactionReactionWorker(options);
-        return new TransactionReactionWorker(options.config, service, leaderLock, dispose, options.logger);
+        const { dependencies, dispose } = await resolveDbDependencies<TransactionReactionWorkerDatabaseDependencies>(
+            options,
+            (pool: Pool): TransactionReactionWorkerDatabaseDependencies => ({
+                transactionsRepository: new PostgresCanonicalTransactionsRepository(pool),
+                workerCursorsRepository: new PostgresWorkerCursorsRepository(pool),
+                leaderLock: resolveReactionLeaderLock(
+                    options.overrides?.leaderLock,
+                    options.lockKey,
+                    pool,
+                    "Transaction reaction worker lock is not configured: pass lockKey or overrides.leaderLock."
+                ),
+            })
+        );
+        const service = new TransactionReactionService(
+            options.config,
+            options.handler,
+            dependencies.transactionsRepository,
+            dependencies.workerCursorsRepository,
+            options.logger,
+        );
+
+        return new TransactionReactionWorker(options.config, service, dependencies.leaderLock, dispose, options.logger);
     }
 
     private constructor(
