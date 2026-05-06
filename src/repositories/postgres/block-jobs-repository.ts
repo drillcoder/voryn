@@ -1,6 +1,7 @@
 import { parsePgInt, parsePgTimestamp } from "../../postgres/pg-parsers.js";
 import type { BlockJobsRepository } from "../../interfaces/repositories.js";
 import type { BlockNumber, ChainId } from "../../types/chain.js";
+import type { BlockJobMetrics, BlockJobStatusCounts } from "../../interfaces/metrics.js";
 import type { BlockJob } from "../../interfaces/pipeline.js";
 import type { BlockJobStatus } from "../../types/pipeline.js";
 import type { DbExecutor } from "../../interfaces/db.js";
@@ -14,6 +15,19 @@ interface BlockJobRow {
     error: string | null;
     claimed_at: Date | string | null;
     updated_at: Date | string;
+}
+
+interface BlockJobMetricsRow {
+    pending_count: bigint | number | string;
+    fetching_count: bigint | number | string;
+    fetched_count: bigint | number | string;
+    committed_count: bigint | number | string;
+    failed_count: bigint | number | string;
+    oldest_pending_block: bigint | number | string | null;
+    oldest_fetching_block: bigint | number | string | null;
+    oldest_fetched_block: bigint | number | string | null;
+    oldest_failed_block: bigint | number | string | null;
+    oldest_fetching_claimed_at: Date | string | null;
 }
 
 export class PostgresBlockJobsRepository implements BlockJobsRepository {
@@ -185,6 +199,45 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
         }
     }
 
+    async getMetrics(chainId: ChainId, transaction?: DbExecutor): Promise<BlockJobMetrics> {
+        const executor = transaction ?? this.pool;
+        const result = await executor.query<BlockJobMetricsRow>(
+            `SELECT
+                 COUNT(*) FILTER (WHERE status = 'pending') AS pending_count,
+                 COUNT(*) FILTER (WHERE status = 'fetching') AS fetching_count,
+                 COUNT(*) FILTER (WHERE status = 'fetched') AS fetched_count,
+                 COUNT(*) FILTER (WHERE status = 'committed') AS committed_count,
+                 COUNT(*) FILTER (WHERE status = 'failed') AS failed_count,
+                 MIN(block_number) FILTER (WHERE status = 'pending') AS oldest_pending_block,
+                 MIN(block_number) FILTER (WHERE status = 'fetching') AS oldest_fetching_block,
+                 MIN(block_number) FILTER (WHERE status = 'fetched') AS oldest_fetched_block,
+                 MIN(block_number) FILTER (WHERE status = 'failed') AS oldest_failed_block,
+                 MIN(claimed_at) FILTER (WHERE status = 'fetching') AS oldest_fetching_claimed_at
+             FROM block_jobs
+             WHERE chain_id = $1`,
+            [chainId]
+        );
+        const row = result.rows[0];
+        const counts: BlockJobStatusCounts = {
+            pending: parsePgInt(row.pending_count),
+            fetching: parsePgInt(row.fetching_count),
+            fetched: parsePgInt(row.fetched_count),
+            committed: parsePgInt(row.committed_count),
+            failed: parsePgInt(row.failed_count),
+        };
+
+        return {
+            counts,
+            oldestPendingBlock: parseNullablePgInt(row.oldest_pending_block),
+            oldestFetchingBlock: parseNullablePgInt(row.oldest_fetching_block),
+            oldestFetchedBlock: parseNullablePgInt(row.oldest_fetched_block),
+            oldestFailedBlock: parseNullablePgInt(row.oldest_failed_block),
+            oldestFetchingClaimedAt: row.oldest_fetching_claimed_at === null
+                ? null
+                : parsePgTimestamp(row.oldest_fetching_claimed_at),
+        };
+    }
+
     async deleteUpToBlock(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number> {
         const executor = transaction ?? this.pool;
         const deleted = await executor.query(
@@ -204,4 +257,8 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
 
         return deleted.rowCount ?? 0;
     }
+}
+
+function parseNullablePgInt(value: bigint | number | string | null): number | null {
+    return value === null ? null : parsePgInt(value);
 }

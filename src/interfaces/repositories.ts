@@ -2,6 +2,7 @@ import type { DbExecutor } from "./db.js";
 import type { BlockNumber, ChainId, HashHex } from "../types/chain.js";
 import type { StreamType } from "../types/pipeline.js";
 import type { ChainBlock, ChainLog, ChainTransaction } from "./chain.js";
+import type { BlockJobMetrics, RawBlockMetrics } from "./metrics.js";
 import type {
     BlockJob,
     CanonicalEvent,
@@ -71,6 +72,8 @@ export interface BlockJobsRepository {
 
     markCommitted(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<void>;
 
+    getMetrics(chainId: ChainId, transaction?: DbExecutor): Promise<BlockJobMetrics>;
+
     deleteUpToBlock(chainId: ChainId, blockNumberInclusive: BlockNumber, transaction?: DbExecutor): Promise<number>;
 
     deleteAfterBlock(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
@@ -80,6 +83,15 @@ export interface RawBlocksRepository {
     save(block: RawBlock, transaction?: DbExecutor): Promise<void>;
 
     get(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<RawBlock | null>;
+
+    getMetrics(chainId: ChainId, transaction?: DbExecutor): Promise<RawBlockMetrics>;
+
+    findFirstMissingInRange(
+        chainId: ChainId,
+        fromBlock: BlockNumber,
+        toBlock: BlockNumber,
+        transaction?: DbExecutor
+    ): Promise<BlockNumber | null>;
 
     deleteUpToBlock(chainId: ChainId, blockNumberInclusive: BlockNumber, transaction?: DbExecutor): Promise<number>;
 
@@ -153,6 +165,8 @@ export interface WorkerCursorsRepository {
         streamType: StreamType,
         transaction?: DbExecutor
     ): Promise<WorkerCursor | null>;
+
+    listByChain(chainId: ChainId, transaction?: DbExecutor): Promise<WorkerCursor[]>;
 
     insert(
         workerName: string,

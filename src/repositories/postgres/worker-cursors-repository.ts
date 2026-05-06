@@ -48,6 +48,25 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
         };
     }
 
+    async listByChain(chainId: ChainId, transaction?: DbExecutor): Promise<WorkerCursor[]> {
+        const executor = transaction ?? this.pool;
+        const result = await executor.query<WorkerCursorRow>(
+            `SELECT worker_name, chain_id, stream_type, last_seq, updated_at
+             FROM worker_cursors
+             WHERE chain_id = $1
+             ORDER BY worker_name, stream_type`,
+            [chainId]
+        );
+
+        return result.rows.map((row) => ({
+            workerName: row.worker_name,
+            chainId: row.chain_id,
+            streamType: row.stream_type,
+            lastSeq: parsePgBigint(row.last_seq),
+            updatedAt: parsePgTimestamp(row.updated_at),
+        }));
+    }
+
     async insert(
         workerName: string,
         chainId: ChainId,

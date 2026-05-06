@@ -6,6 +6,7 @@ export * from "./interfaces/chain.js";
 export * from "./interfaces/db.js";
 export * from "./interfaces/leader-lock.js";
 export * from "./interfaces/logger.js";
+export * from "./interfaces/metrics.js";
 export * from "./interfaces/pipeline.js";
 export * from "./interfaces/reaction.js";
 export * from "./interfaces/repositories.js";
@@ -19,6 +20,8 @@ export * from "./workers/sequencer-worker.js";
 export * from "./workers/retention-worker.js";
 export * from "./workers/transaction-reaction-worker.js";
 export * from "./workers/event-reaction-worker.js";
+
+export * from "./services/pipeline-metrics-service.js";
 
 export * from "./loggers/console-logger.js";
 
