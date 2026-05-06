@@ -40,6 +40,50 @@ test("get maps cursor row", async () => {
     });
 });
 
+test("listByChain maps cursor rows", async () => {
+    const query = jest.fn(async () => ({
+        rows: [
+            {
+                worker_name: "event-worker",
+                chain_id: 1,
+                stream_type: "event",
+                last_seq: "7",
+                updated_at: "2026-03-30T10:00:00.000Z",
+            },
+            {
+                worker_name: "tx-worker",
+                chain_id: 1,
+                stream_type: "tx",
+                last_seq: "12",
+                updated_at: "2026-03-30T10:01:00.000Z",
+            },
+        ],
+        rowCount: 2,
+    }));
+    const repository = new PostgresWorkerCursorsRepository(createExecutor(query));
+
+    await expect(repository.listByChain(1)).resolves.toEqual([
+        {
+            workerName: "event-worker",
+            chainId: 1,
+            streamType: "event",
+            lastSeq: 7n,
+            updatedAt: new Date("2026-03-30T10:00:00.000Z"),
+        },
+        {
+            workerName: "tx-worker",
+            chainId: 1,
+            streamType: "tx",
+            lastSeq: 12n,
+            updatedAt: new Date("2026-03-30T10:01:00.000Z"),
+        },
+    ]);
+
+    const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
+    expect(calls[0]?.[0]).toContain("ORDER BY worker_name, stream_type");
+    expect(calls[0]?.[1]).toEqual([1]);
+});
+
 test("insert and advance succeed when rows are present", async () => {
     const query = jest
         .fn()

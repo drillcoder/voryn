@@ -1,17 +1,4 @@
-import { JsonRpcProvider } from "ethers";
-import { Pool } from "pg";
-import {
-    ConsoleLogger,
-    EthersBlockSource,
-    PipelineMetricsService,
-    PostgresBlockJobsRepository,
-    PostgresCanonicalEventsRepository,
-    PostgresCanonicalTransactionsRepository,
-    PostgresChainCursorRepository,
-    PostgresRawBlocksRepository,
-    PostgresWorkerCursorsRepository,
-    validatePostgresSchema,
-} from "@drillcoder/voryn";
+import { ConsoleLogger, PipelineMetrics } from "@drillcoder/voryn";
 
 (async () => {
     const dbUrl = "postgres://user:pass@localhost:5432/voryn";
@@ -20,29 +7,16 @@ import {
     const confirmations = 0;
 
     const logger = new ConsoleLogger({ minLevel: "info" });
-    const pool = new Pool({ connectionString: dbUrl });
+    const config = { chainId, confirmations };
+
+    const metrics = await PipelineMetrics.create({ config, logger, dbUrl, rpcUrl });
 
     try {
-        await validatePostgresSchema({ pool, logger });
+        const snapshot = await metrics.get();
 
-        const service = new PipelineMetricsService(
-            { chainId, confirmations },
-            new EthersBlockSource({
-                provider: new JsonRpcProvider(rpcUrl),
-                validateProviderChainId: true,
-            }),
-            new PostgresChainCursorRepository(pool),
-            new PostgresBlockJobsRepository(pool),
-            new PostgresRawBlocksRepository(pool),
-            new PostgresCanonicalTransactionsRepository(pool),
-            new PostgresCanonicalEventsRepository(pool),
-            new PostgresWorkerCursorsRepository(pool),
-        );
-        const metrics = await service.get();
-
-        console.log(JSON.stringify(metrics, stringifyBigint, 2));
+        console.log(JSON.stringify(snapshot, stringifyBigint, 2));
     } finally {
-        await pool.end();
+        await metrics.close();
     }
 })().catch((error: unknown) => {
     console.error(error);

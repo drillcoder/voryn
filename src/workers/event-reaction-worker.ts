@@ -8,8 +8,8 @@ import type { ReactionWorkerConfig } from "../interfaces/runtime.js";
 import { PostgresCanonicalEventsRepository } from "../repositories/postgres/canonical-events-repository.js";
 import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker-cursors-repository.js";
 import { EventReactionService } from "../services/event-reaction-service.js";
-import { resolveDbDependencies, resolveReactionLeaderLock } from "./worker-resolvers.js";
-import type { ReactionWorkerOptions } from "./worker-types.js";
+import { resolveDbDependencies, resolveReactionLeaderLock } from "../runtime/resolvers.js";
+import type { ReactionWorkerOptions } from "../runtime/types.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
 export interface EventReactionWorkerDatabaseDependencies {

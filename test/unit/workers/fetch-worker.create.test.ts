@@ -6,7 +6,7 @@ import {
     createNoopRawBlocksRepository,
     invokeTick,
     transactionManager,
-} from "./worker-test-helpers.js";
+} from "../helpers/pipeline-test-helpers.js";
 
 test("fetch worker create wires service execution", async () => {
     const claimForFetch = jest.fn(async () => null);

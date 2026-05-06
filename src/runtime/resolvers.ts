@@ -8,7 +8,7 @@ import type { BlockSource } from "../interfaces/block-source.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
 import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
-import type { ResolveDbDependenciesResult, WorkerDbOptions, WorkerSourceOptions } from "./worker-types.js";
+import type { ResolveDbDependenciesResult, WorkerDbOptions, WorkerSourceOptions } from "./types.js";
 
 export function resolveEthersSource(options: WorkerSourceOptions<BlockSource>): BlockSource {
     if (options.source !== undefined) {

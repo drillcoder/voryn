@@ -10,7 +10,7 @@ import {
     invokeTick,
     leaderLock,
     transactionManager,
-} from "./worker-test-helpers.js";
+} from "../helpers/pipeline-test-helpers.js";
 
 test("retention worker create wires service execution", async () => {
     const getCursor = jest.fn(async () => null);

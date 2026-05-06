@@ -1,7 +1,7 @@
 import type {
     BlockJobsRepository,
     ChainCursorRepository,
-    RawBlocksRepository
+    RawBlocksRepository,
 } from "../../../src/interfaces/repositories.js";
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import type { DbExecutor } from "../../../src/interfaces/db.js";
@@ -37,11 +37,41 @@ const createPassThroughManager = (): { manager: TransactionManager; transaction:
 const createRawBlocksRepository = (calls?: unknown[]): RawBlocksRepository => ({
     save: async () => undefined,
     get: async () => null,
+    getMetrics: async () => ({
+        maxFetchedBlock: null,
+        lastFetchedAt: null,
+    }),
+    findFirstMissingInRange: async () => null,
     deleteUpToBlock: async (_chainId, toBlock, tx) => {
         calls?.push(["deleteRawUpToBlock", toBlock, tx]);
         return 0;
     },
     deleteAfterBlock: async () => 0,
+});
+
+const createBlockJobsRepository = (overrides?: Partial<BlockJobsRepository>): BlockJobsRepository => ({
+    enqueueRange: async () => undefined,
+    claimForFetch: async () => null,
+    markFetched: async () => undefined,
+    markFetchFailed: async () => undefined,
+    markCommitted: async () => undefined,
+    getMetrics: async () => ({
+        counts: {
+            pending: 0,
+            fetching: 0,
+            fetched: 0,
+            committed: 0,
+            failed: 0,
+        },
+        oldestPendingBlock: null,
+        oldestFetchingBlock: null,
+        oldestFetchedBlock: null,
+        oldestFailedBlock: null,
+        oldestFetchingClaimedAt: null,
+    }),
+    deleteUpToBlock: async () => 0,
+    deleteAfterBlock: async () => 0,
+    ...overrides,
 });
 
 test("head service enqueues and updates cursor in transaction", async () => {
@@ -72,17 +102,11 @@ test("head service enqueues and updates cursor in transaction", async () => {
         advanceLastCommitted: async () => undefined,
     };
 
-    const blockJobsRepository: BlockJobsRepository = {
+    const blockJobsRepository = createBlockJobsRepository({
         enqueueRange: async (_chainId, from, to, tx) => {
             calls.push(["enqueueRange", from, to, tx]);
         },
-        claimForFetch: async () => null,
-        markFetched: async () => undefined,
-        markFetchFailed: async () => undefined,
-        markCommitted: async () => undefined,
-        deleteUpToBlock: async () => 0,
-    deleteAfterBlock: async () => 0,
-    };
+    });
 
     const worker = new HeadService(
         config,
@@ -124,17 +148,11 @@ test("head service bootstraps missing cursor", async () => {
         advanceLastCommitted: async () => undefined,
     };
 
-    const blockJobsRepository: BlockJobsRepository = {
+    const blockJobsRepository = createBlockJobsRepository({
         enqueueRange: async () => {
             throw new Error("must not enqueue during bootstrap");
         },
-        claimForFetch: async () => null,
-        markFetched: async () => undefined,
-        markFetchFailed: async () => undefined,
-        markCommitted: async () => undefined,
-        deleteUpToBlock: async () => 0,
-    deleteAfterBlock: async () => 0,
-    };
+    });
 
     const worker = new HeadService(
         config,
@@ -181,17 +199,11 @@ test("head service skips when cursor is already ahead of safe head", async () =>
             setPositions: async () => undefined,
             advanceLastCommitted: async () => undefined,
         },
-        {
+        createBlockJobsRepository({
             enqueueRange: async () => {
                 enqueued = true;
             },
-            claimForFetch: async () => null,
-            markFetched: async () => undefined,
-            markFetchFailed: async () => undefined,
-            markCommitted: async () => undefined,
-            deleteUpToBlock: async () => 0,
-    deleteAfterBlock: async () => 0,
-        },
+        }),
         createRawBlocksRepository(),
         createPassThroughManager().manager,
     );
@@ -251,20 +263,15 @@ test("head service rebases and trims old jobs when committed block is below floo
         },
     };
 
-    const blockJobsRepository: BlockJobsRepository = {
+    const blockJobsRepository = createBlockJobsRepository({
         enqueueRange: async () => {
             throw new Error("must not enqueue during rebase tick");
         },
-        claimForFetch: async () => null,
-        markFetched: async () => undefined,
-        markFetchFailed: async () => undefined,
-        markCommitted: async () => undefined,
         deleteUpToBlock: async (_chainId, toBlock, tx) => {
             calls.push(["deleteJobsUpToBlock", toBlock, tx]);
             return 0;
         },
-        deleteAfterBlock: async () => 0,
-    };
+    });
 
     const worker = new HeadService(
         config,
@@ -331,20 +338,15 @@ test("head service does not rebase when cursor catches up before transactional c
         }),
     };
 
-    const blockJobsRepository: BlockJobsRepository = {
+    const blockJobsRepository = createBlockJobsRepository({
         enqueueRange: async () => {
             throw new Error("must not enqueue in this tick");
         },
-        claimForFetch: async () => null,
-        markFetched: async () => undefined,
-        markFetchFailed: async () => undefined,
-        markCommitted: async () => undefined,
         deleteUpToBlock: async () => {
             calls.push("deleteJobs");
             return 0;
         },
-        deleteAfterBlock: async () => 0,
-    };
+    });
 
     const worker = new HeadService(
         config,
@@ -394,15 +396,7 @@ test("head service throws when cursor disappears inside enqueue transaction", as
         config,
         source,
         chainCursorRepository,
-        {
-            enqueueRange: async () => undefined,
-            claimForFetch: async () => null,
-            markFetched: async () => undefined,
-            markFetchFailed: async () => undefined,
-            markCommitted: async () => undefined,
-            deleteUpToBlock: async () => 0,
-    deleteAfterBlock: async () => 0,
-        },
+        createBlockJobsRepository(),
         createRawBlocksRepository(),
         createPassThroughManager().manager,
     );
@@ -439,15 +433,7 @@ test("head service throws when cursor disappears inside rebase transaction", asy
         config,
         source,
         chainCursorRepository,
-        {
-            enqueueRange: async () => undefined,
-            claimForFetch: async () => null,
-            markFetched: async () => undefined,
-            markFetchFailed: async () => undefined,
-            markCommitted: async () => undefined,
-            deleteUpToBlock: async () => 0,
-            deleteAfterBlock: async () => 0,
-        },
+        createBlockJobsRepository(),
         createRawBlocksRepository(),
         createPassThroughManager().manager,
     );

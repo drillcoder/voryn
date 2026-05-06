@@ -7,6 +7,7 @@ import type {
     CanonicalTransactionsRepository,
     ChainCursorRepository,
     RawBlocksRepository,
+    WorkerCursorsRepository,
 } from "../../../src/interfaces/repositories.js";
 import type { TransactionManager } from "../../../src/interfaces/transaction-manager.js";
 import { asAddress, asHash32, asHexData } from "../../../src/utils/hex.js";
@@ -38,6 +39,20 @@ export const createNoopBlockJobsRepository = (): BlockJobsRepository => ({
     markFetched: async () => undefined,
     markFetchFailed: async () => undefined,
     markCommitted: async () => undefined,
+    getMetrics: async () => ({
+        counts: {
+            pending: 0,
+            fetching: 0,
+            fetched: 0,
+            committed: 0,
+            failed: 0,
+        },
+        oldestPendingBlock: null,
+        oldestFetchingBlock: null,
+        oldestFetchedBlock: null,
+        oldestFailedBlock: null,
+        oldestFetchingClaimedAt: null,
+    }),
     deleteUpToBlock: async () => 0,
     deleteAfterBlock: async () => 0,
 });
@@ -45,6 +60,11 @@ export const createNoopBlockJobsRepository = (): BlockJobsRepository => ({
 export const createNoopRawBlocksRepository = (): RawBlocksRepository => ({
     save: async () => undefined,
     get: async () => null,
+    getMetrics: async () => ({
+        maxFetchedBlock: null,
+        lastFetchedAt: null,
+    }),
+    findFirstMissingInRange: async () => null,
     deleteUpToBlock: async () => 0,
     deleteAfterBlock: async () => 0,
 });
@@ -79,4 +99,11 @@ export const createNoopCanonicalEventsRepository = (): CanonicalEventsRepository
     insertMany: async () => undefined,
     deleteUpToBlock: async () => 0,
     deleteAfterBlock: async () => 0,
+});
+
+export const createNoopWorkerCursorsRepository = (): WorkerCursorsRepository => ({
+    get: async () => null,
+    listByChain: async () => [],
+    insert: async () => undefined,
+    advance: async () => undefined,
 });

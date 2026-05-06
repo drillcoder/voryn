@@ -10,7 +10,7 @@ import {
     HASH_B,
     invokeTick,
     leaderLock,
-} from "./worker-test-helpers.js";
+} from "../helpers/pipeline-test-helpers.js";
 
 test("event reaction worker create wires service execution", async () => {
     const handled: bigint[] = [];
@@ -33,6 +33,7 @@ test("event reaction worker create wires service execution", async () => {
             lastSeq: 0n,
             updatedAt: new Date(),
         }),
+        listByChain: async () => [],
         insert: async () => undefined,
         advance: async () => undefined,
     };

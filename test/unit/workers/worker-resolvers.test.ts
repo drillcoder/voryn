@@ -17,7 +17,7 @@ import {
     invokeTick,
     leaderLock,
     transactionManager,
-} from "./worker-test-helpers.js";
+} from "../helpers/pipeline-test-helpers.js";
 import type { EventReactionHandler, TransactionReactionHandler } from "../../../src/interfaces/reaction.js";
 import type { FetchWorkerConfig, ReactionWorkerConfig } from "../../../src/interfaces/runtime.js";
 import type { WorkerCursorsRepository } from "../../../src/interfaces/repositories.js";

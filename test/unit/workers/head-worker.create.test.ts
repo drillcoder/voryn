@@ -8,7 +8,7 @@ import {
     invokeTick,
     leaderLock,
     transactionManager,
-} from "./worker-test-helpers.js";
+} from "../helpers/pipeline-test-helpers.js";
 
 test("head worker create wires service execution", async () => {
     const getLatestBlockNumber = jest.fn(async () => 0);

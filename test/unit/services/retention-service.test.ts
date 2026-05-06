@@ -4,7 +4,7 @@ import type {
     CanonicalEventsRepository,
     CanonicalTransactionsRepository,
     ChainCursorRepository,
-    RawBlocksRepository
+    RawBlocksRepository,
 } from "../../../src/interfaces/repositories.js";
 import type { DbExecutor } from "../../../src/interfaces/db.js";
 import type { TransactionManager } from "../../../src/interfaces/transaction-manager.js";
@@ -55,12 +55,31 @@ const createBlockJobsRepository = (deleted: number): BlockJobsRepository => ({
     markFetched: async () => undefined,
     markFetchFailed: async () => undefined,
     markCommitted: async () => undefined,
+    getMetrics: async () => ({
+        counts: {
+            pending: 0,
+            fetching: 0,
+            fetched: 0,
+            committed: 0,
+            failed: 0,
+        },
+        oldestPendingBlock: null,
+        oldestFetchingBlock: null,
+        oldestFetchedBlock: null,
+        oldestFailedBlock: null,
+        oldestFetchingClaimedAt: null,
+    }),
 });
 
 const createRawBlocksRepository = (deleted: number): RawBlocksRepository => ({
     ...createDeleteRepo(deleted),
     save: async () => undefined,
     get: async () => null,
+    getMetrics: async () => ({
+        maxFetchedBlock: null,
+        lastFetchedAt: null,
+    }),
+    findFirstMissingInRange: async () => null,
 });
 
 const createCanonicalBlocksRepository = (deleted: number): CanonicalBlocksRepository => ({

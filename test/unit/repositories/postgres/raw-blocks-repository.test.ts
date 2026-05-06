@@ -70,6 +70,71 @@ test("save stores raw block payload", async () => {
     expect(query).toHaveBeenCalledTimes(1);
 });
 
+test("getMetrics maps fetched block boundary and fetch time", async () => {
+    const query = jest.fn(async () => ({
+        rows: [{
+            max_fetched_block: "123",
+            last_fetched_at: "2026-03-30T10:00:00.000Z",
+        }],
+        rowCount: 1,
+    }));
+    const repository = new PostgresRawBlocksRepository(createExecutor(query));
+
+    await expect(repository.getMetrics(1)).resolves.toEqual({
+        maxFetchedBlock: 123,
+        lastFetchedAt: new Date("2026-03-30T10:00:00.000Z"),
+    });
+
+    const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
+    expect(calls[0]?.[0]).toContain("MAX(block_number)");
+    expect(calls[0]?.[1]).toEqual([1]);
+});
+
+test("getMetrics maps empty raw block table", async () => {
+    const query = jest.fn(async () => ({
+        rows: [{
+            max_fetched_block: null,
+            last_fetched_at: null,
+        }],
+        rowCount: 1,
+    }));
+    const repository = new PostgresRawBlocksRepository(createExecutor(query));
+
+    await expect(repository.getMetrics(1)).resolves.toEqual({
+        maxFetchedBlock: null,
+        lastFetchedAt: null,
+    });
+});
+
+test("findFirstMissingInRange skips query when range is empty", async () => {
+    const query = jest.fn();
+    const repository = new PostgresRawBlocksRepository(createExecutor(query));
+
+    await expect(repository.findFirstMissingInRange(1, 10, 9)).resolves.toBeNull();
+    expect(query).not.toHaveBeenCalled();
+});
+
+test("findFirstMissingInRange returns first gap", async () => {
+    const query = jest.fn(async () => ({
+        rows: [{ block_number: "42" }],
+        rowCount: 1,
+    }));
+    const repository = new PostgresRawBlocksRepository(createExecutor(query));
+
+    await expect(repository.findFirstMissingInRange(1, 40, 45)).resolves.toBe(42);
+
+    const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
+    expect(calls[0]?.[0]).toContain("generate_series");
+    expect(calls[0]?.[1]).toEqual([1, 40, 45]);
+});
+
+test("findFirstMissingInRange returns null when range is contiguous", async () => {
+    const query = jest.fn(async () => ({ rows: [], rowCount: 0 }));
+    const repository = new PostgresRawBlocksRepository(createExecutor(query));
+
+    await expect(repository.findFirstMissingInRange(1, 40, 45)).resolves.toBeNull();
+});
+
 test("deleteUpToBlock returns deleted rows", async () => {
     const query = jest.fn(async () => ({ rows: [], rowCount: 7 }));
     const repository = new PostgresRawBlocksRepository(createExecutor(query));

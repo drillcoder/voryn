@@ -21,7 +21,7 @@ export * from "./workers/retention-worker.js";
 export * from "./workers/transaction-reaction-worker.js";
 export * from "./workers/event-reaction-worker.js";
 
-export * from "./services/pipeline-metrics-service.js";
+export * from "./metrics/pipeline-metrics.js";
 
 export * from "./loggers/console-logger.js";
 

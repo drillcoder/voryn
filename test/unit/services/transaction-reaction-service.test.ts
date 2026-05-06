@@ -70,6 +70,7 @@ test("transaction reaction service processes txs and advances cursor", async () 
             lastSeq: 100n,
             updatedAt: new Date(),
         }),
+        listByChain: async () => [],
         insert: async () => undefined,
         advance: async (_workerName, _chainId, _streamType, seq) => {
             advanced.push(seq);
@@ -107,6 +108,7 @@ test("transaction reaction service creates cursor from max seq when missing", as
     };
     const workerCursorsRepository: WorkerCursorsRepository = {
         get: async () => null,
+        listByChain: async () => [],
         insert: async (_workerName, _chainId, _streamType, lastSeq) => {
             inserts.push(lastSeq);
         },

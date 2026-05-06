@@ -22,8 +22,8 @@ import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cu
 import { PostgresRawBlocksRepository } from "../repositories/postgres/raw-blocks-repository.js";
 import { RetentionService } from "../services/retention-service.js";
 import { RETENTION_WORKER_LOCK_KEY_BASE } from "./worker-lock-keys.js";
-import { resolveDbDependencies } from "./worker-resolvers.js";
-import type { WorkerBaseOptions, WorkerDbOptions } from "./worker-types.js";
+import { resolveDbDependencies } from "../runtime/resolvers.js";
+import type { WorkerBaseOptions, WorkerDbOptions } from "../runtime/types.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
 export interface RetentionWorkerDatabaseDependencies {

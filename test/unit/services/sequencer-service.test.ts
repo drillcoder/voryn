@@ -109,6 +109,11 @@ const createRawBlocksRepository = (
 ): RawBlocksRepository => ({
     save: async () => undefined,
     get: async (chainId, blockNumber, transaction) => getRaw(chainId, blockNumber, transaction),
+    getMetrics: async () => ({
+        maxFetchedBlock: null,
+        lastFetchedAt: null,
+    }),
+    findFirstMissingInRange: async () => null,
     deleteUpToBlock: async () => 0,
     deleteAfterBlock: async () => 0,
     ...overrides,
@@ -152,6 +157,20 @@ const createBlockJobsRepository = (overrides: Partial<BlockJobsRepository> = {})
     markFetched: async () => undefined,
     markFetchFailed: async () => undefined,
     markCommitted: async () => undefined,
+    getMetrics: async () => ({
+        counts: {
+            pending: 0,
+            fetching: 0,
+            fetched: 0,
+            committed: 0,
+            failed: 0,
+        },
+        oldestPendingBlock: null,
+        oldestFetchingBlock: null,
+        oldestFetchedBlock: null,
+        oldestFailedBlock: null,
+        oldestFetchingClaimedAt: null,
+    }),
     deleteUpToBlock: async () => 0,
     deleteAfterBlock: async () => 0,
     ...overrides,

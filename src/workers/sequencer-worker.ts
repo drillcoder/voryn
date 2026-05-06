@@ -22,8 +22,8 @@ import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cu
 import { PostgresRawBlocksRepository } from "../repositories/postgres/raw-blocks-repository.js";
 import { SequencerService } from "../services/sequencer-service.js";
 import { SEQUENCER_WORKER_LOCK_KEY_BASE } from "./worker-lock-keys.js";
-import { resolveDbDependencies, resolveEthersSource } from "./worker-resolvers.js";
-import type { WorkerBaseOptions, WorkerDbOptions, WorkerSourceOptions } from "./worker-types.js";
+import { resolveDbDependencies, resolveEthersSource } from "../runtime/resolvers.js";
+import type { WorkerBaseOptions, WorkerDbOptions, WorkerSourceOptions } from "../runtime/types.js";
 import type { BlockSource } from "../interfaces/block-source.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
