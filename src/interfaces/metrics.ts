@@ -3,6 +3,14 @@ import type { BlockJobStatus, StreamType } from "../types/pipeline.js";
 
 export type BlockJobStatusCounts = Record<BlockJobStatus, number>;
 
+export interface FailedBlockMetrics {
+    block: BlockNumber;
+    attempts: number;
+    error: string | null;
+    nextRetryAt: Date | null;
+    updatedAt: Date;
+}
+
 export interface RawBlockProgress {
     block: BlockNumber | null;
     updatedAt: Date | null;
@@ -20,7 +28,6 @@ export interface PipelineReactionMetrics {
 export interface BlockStageMetrics {
     block: BlockNumber | null;
     lagBlocks: number | null;
-    secondsSinceProgress: number | null;
 }
 
 export interface PipelineStageMetrics {
@@ -29,12 +36,19 @@ export interface PipelineStageMetrics {
     sequencer: BlockStageMetrics;
 }
 
+export interface PipelineFreshnessMetrics {
+    secondsSincePipelineUpdate: number | null;
+    secondsSinceFetch: number | null;
+}
+
 export interface ChainPipelineMetrics {
     chainId: ChainId;
     observedAt: Date;
     latestBlock: BlockNumber;
     stages: PipelineStageMetrics;
+    freshness: PipelineFreshnessMetrics;
     blockStatusCounts: BlockJobStatusCounts;
+    failedBlocks: FailedBlockMetrics[];
     reactions: PipelineReactionMetrics[];
 }
 

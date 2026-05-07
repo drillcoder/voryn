@@ -15,6 +15,8 @@ import type {
 } from "../interfaces/repositories.js";
 import type { StreamType } from "../types/pipeline.js";
 
+const FAILED_BLOCKS_LIMIT = 25;
+
 export class PipelineMetricsService {
     constructor(
         private readonly config: PipelineMetricsConfig,
@@ -32,9 +34,10 @@ export class PipelineMetricsService {
         const observedAt = new Date();
         const { chainId } = this.config;
         const latestBlock = await this.source.getLatestBlockNumber(chainId);
-        const [cursor, blockStatusCounts, rawProgress, workerCursors] = await Promise.all([
+        const [cursor, blockStatusCounts, failedBlocks, rawProgress, workerCursors] = await Promise.all([
             this.chainCursorRepository.get(chainId),
             this.blockJobsRepository.getStatusCounts(chainId),
+            this.blockJobsRepository.listFailedBlocks(chainId, FAILED_BLOCKS_LIMIT),
             this.rawBlocksRepository.getProgress(chainId),
             this.workerCursorsRepository.listByChain(chainId),
         ]);
@@ -60,11 +63,18 @@ export class PipelineMetricsService {
             observedAt,
             latestBlock,
             stages: {
-                head: createStage(observedAt, latestBlock, headBlock, null),
-                fetch: createStage(observedAt, latestBlock, rawProgress.block, rawProgress.updatedAt),
-                sequencer: createStage(observedAt, latestBlock, sequencerBlock, cursor?.updatedAt ?? null),
+                head: createStage(latestBlock, headBlock),
+                fetch: createStage(latestBlock, rawProgress.block),
+                sequencer: createStage(latestBlock, sequencerBlock),
+            },
+            freshness: {
+                secondsSincePipelineUpdate: cursor === null ? null : secondsBetween(observedAt, cursor.updatedAt),
+                secondsSinceFetch: rawProgress.updatedAt === null
+                    ? null
+                    : secondsBetween(observedAt, rawProgress.updatedAt),
             },
             blockStatusCounts,
+            failedBlocks,
             reactions,
         };
     }
@@ -78,16 +88,10 @@ export class PipelineMetricsService {
     }
 }
 
-function createStage(
-    observedAt: Date,
-    latestBlock: number,
-    block: number | null,
-    updatedAt: Date | null
-): BlockStageMetrics {
+function createStage(latestBlock: number, block: number | null): BlockStageMetrics {
     return {
         block,
         lagBlocks: block === null ? null : latestBlock - block,
-        secondsSinceProgress: updatedAt === null ? null : secondsBetween(observedAt, updatedAt),
     };
 }
 

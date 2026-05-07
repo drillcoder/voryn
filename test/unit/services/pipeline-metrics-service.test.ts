@@ -1,6 +1,6 @@
 import { PipelineMetricsService } from "../../../src/services/pipeline-metrics-service.js";
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
-import type { BlockJobStatusCounts, RawBlockProgress } from "../../../src/interfaces/metrics.js";
+import type { BlockJobStatusCounts, FailedBlockMetrics, RawBlockProgress } from "../../../src/interfaces/metrics.js";
 import type {
     BlockJobsRepository,
     CanonicalEventsRepository,
@@ -34,13 +34,22 @@ test("pipeline metrics service maps pipeline stages and reactions", async () => 
             lastCommittedHash: HASH,
             updatedAt: new Date("2026-01-01T00:00:04.000Z"),
         }),
-        createBlockJobsRepository({
-            pending: 1,
-            fetching: 2,
-            fetched: 3,
-            committed: 4,
-            failed: 5,
-        }),
+        createBlockJobsRepository(
+            {
+                pending: 1,
+                fetching: 2,
+                fetched: 3,
+                committed: 4,
+                failed: 5,
+            },
+            [{
+                block: 101,
+                attempts: 4,
+                error: "rpc timeout",
+                nextRetryAt: new Date("2026-01-01T00:00:30.000Z"),
+                updatedAt: new Date("2026-01-01T00:00:03.000Z"),
+            }]
+        ),
         createRawBlocksRepository({
             block: 104,
             updatedAt: new Date("2026-01-01T00:00:07.000Z"),
@@ -75,18 +84,19 @@ test("pipeline metrics service maps pipeline stages and reactions", async () => 
             head: {
                 block: 110,
                 lagBlocks: 10,
-                secondsSinceProgress: null,
             },
             fetch: {
                 block: 104,
                 lagBlocks: 16,
-                secondsSinceProgress: 3,
             },
             sequencer: {
                 block: 100,
                 lagBlocks: 20,
-                secondsSinceProgress: 6,
             },
+        },
+        freshness: {
+            secondsSincePipelineUpdate: 6,
+            secondsSinceFetch: 3,
         },
         blockStatusCounts: {
             pending: 1,
@@ -95,6 +105,13 @@ test("pipeline metrics service maps pipeline stages and reactions", async () => 
             committed: 4,
             failed: 5,
         },
+        failedBlocks: [{
+            block: 101,
+            attempts: 4,
+            error: "rpc timeout",
+            nextRetryAt: new Date("2026-01-01T00:00:30.000Z"),
+            updatedAt: new Date("2026-01-01T00:00:03.000Z"),
+        }],
         reactions: [
             {
                 workerName: "event-worker",
@@ -136,20 +153,22 @@ test("pipeline metrics service maps empty state", async () => {
             head: {
                 block: null,
                 lagBlocks: null,
-                secondsSinceProgress: null,
             },
             fetch: {
                 block: null,
                 lagBlocks: null,
-                secondsSinceProgress: null,
             },
             sequencer: {
                 block: null,
                 lagBlocks: null,
-                secondsSinceProgress: null,
             },
         },
+        freshness: {
+            secondsSincePipelineUpdate: null,
+            secondsSinceFetch: null,
+        },
         blockStatusCounts: createEmptyBlockStatusCounts(),
+        failedBlocks: [],
         reactions: [],
     }));
 });
@@ -178,22 +197,23 @@ test("pipeline metrics service keeps fetch progress null when no raw block exist
         head: {
             block: 55,
             lagBlocks: 5,
-            secondsSinceProgress: null,
         },
         fetch: {
             block: null,
             lagBlocks: null,
-            secondsSinceProgress: null,
         },
         sequencer: {
             block: 50,
             lagBlocks: 10,
-            secondsSinceProgress: 0,
         },
+    });
+    expect(snapshot.freshness).toEqual({
+        secondsSincePipelineUpdate: 0,
+        secondsSinceFetch: null,
     });
 });
 
-test("pipeline metrics service clamps future timestamps to zero seconds", async () => {
+test("pipeline metrics service clamps future freshness and reaction timestamps to zero seconds", async () => {
     const service = new PipelineMetricsService(
         { chainId: 1 },
         createSource(10),
@@ -231,8 +251,10 @@ test("pipeline metrics service clamps future timestamps to zero seconds", async 
 
     const snapshot = await service.get();
 
-    expect(snapshot.stages.fetch.secondsSinceProgress).toBe(0);
-    expect(snapshot.stages.sequencer.secondsSinceProgress).toBe(0);
+    expect(snapshot.freshness).toEqual({
+        secondsSincePipelineUpdate: 0,
+        secondsSinceFetch: 0,
+    });
     expect(snapshot.reactions).toEqual([
         expect.objectContaining({
             workerName: "event-worker",
@@ -267,7 +289,10 @@ function createChainCursorRepository(cursor: ChainCursor | null): ChainCursorRep
     };
 }
 
-function createBlockJobsRepository(counts: BlockJobStatusCounts): BlockJobsRepository {
+function createBlockJobsRepository(
+    counts: BlockJobStatusCounts,
+    failedBlocks: FailedBlockMetrics[] = []
+): BlockJobsRepository {
     return {
         enqueueRange: async () => undefined,
         claimForFetch: async () => null,
@@ -275,6 +300,7 @@ function createBlockJobsRepository(counts: BlockJobStatusCounts): BlockJobsRepos
         markFetchFailed: async () => undefined,
         markCommitted: async () => undefined,
         getStatusCounts: async () => counts,
+        listFailedBlocks: async (_chainId, limit) => failedBlocks.slice(0, limit),
         deleteUpToBlock: async () => 0,
         deleteAfterBlock: async () => 0,
     };

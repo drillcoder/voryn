@@ -1,7 +1,7 @@
 import { parsePgInt, parsePgTimestamp } from "../../postgres/pg-parsers.js";
 import type { BlockJobsRepository } from "../../interfaces/repositories.js";
 import type { BlockNumber, ChainId } from "../../types/chain.js";
-import type { BlockJobStatusCounts } from "../../interfaces/metrics.js";
+import type { BlockJobStatusCounts, FailedBlockMetrics } from "../../interfaces/metrics.js";
 import type { BlockJob } from "../../interfaces/pipeline.js";
 import type { BlockJobStatus } from "../../types/pipeline.js";
 import type { DbExecutor } from "../../interfaces/db.js";
@@ -23,6 +23,14 @@ interface BlockJobMetricsRow {
     fetched_count: bigint | number | string;
     committed_count: bigint | number | string;
     failed_count: bigint | number | string;
+}
+
+interface FailedBlockMetricsRow {
+    block_number: bigint | number | string;
+    attempts: number;
+    error: string | null;
+    next_retry_at: Date | string | null;
+    updated_at: Date | string;
 }
 
 export class PostgresBlockJobsRepository implements BlockJobsRepository {
@@ -216,6 +224,31 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
             committed: parsePgInt(row.committed_count),
             failed: parsePgInt(row.failed_count),
         };
+    }
+
+    async listFailedBlocks(
+        chainId: ChainId,
+        limit: number,
+        transaction?: DbExecutor
+    ): Promise<FailedBlockMetrics[]> {
+        const executor = transaction ?? this.pool;
+        const result = await executor.query<FailedBlockMetricsRow>(
+            `SELECT block_number, attempts, error, next_retry_at, updated_at
+             FROM block_jobs
+             WHERE chain_id = $1
+               AND status = 'failed'
+             ORDER BY block_number ASC
+             LIMIT $2`,
+            [chainId, limit]
+        );
+
+        return result.rows.map((row) => ({
+            block: parsePgInt(row.block_number),
+            attempts: row.attempts,
+            error: row.error,
+            nextRetryAt: row.next_retry_at === null ? null : parsePgTimestamp(row.next_retry_at),
+            updatedAt: parsePgTimestamp(row.updated_at),
+        }));
     }
 
     async deleteUpToBlock(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number> {

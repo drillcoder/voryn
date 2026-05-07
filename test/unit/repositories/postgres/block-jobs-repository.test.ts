@@ -206,6 +206,53 @@ test("getStatusCounts maps empty counts", async () => {
     });
 });
 
+test("listFailedBlocks maps oldest failed blocks", async () => {
+    const query = jest.fn(async () => ({
+        rows: [
+            {
+                block_number: "11",
+                attempts: 4,
+                error: "rpc timeout",
+                next_retry_at: "2026-03-30T10:01:00.000Z",
+                updated_at: "2026-03-30T10:00:00.000Z",
+            },
+            {
+                block_number: "12",
+                attempts: 2,
+                error: null,
+                next_retry_at: null,
+                updated_at: "2026-03-30T10:00:10.000Z",
+            },
+        ],
+        rowCount: 2,
+    }));
+    const repository = new PostgresBlockJobsRepository(createExecutor(query));
+
+    const failedBlocks = await repository.listFailedBlocks(1, 25);
+
+    expect(failedBlocks).toEqual([
+        {
+            block: 11,
+            attempts: 4,
+            error: "rpc timeout",
+            nextRetryAt: new Date("2026-03-30T10:01:00.000Z"),
+            updatedAt: new Date("2026-03-30T10:00:00.000Z"),
+        },
+        {
+            block: 12,
+            attempts: 2,
+            error: null,
+            nextRetryAt: null,
+            updatedAt: new Date("2026-03-30T10:00:10.000Z"),
+        },
+    ]);
+    const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
+    expect(calls[0]?.[0]).toContain("status = 'failed'");
+    expect(calls[0]?.[0]).toContain("ORDER BY block_number ASC");
+    expect(calls[0]?.[0]).toContain("LIMIT $2");
+    expect(calls[0]?.[1]).toEqual([1, 25]);
+});
+
 test("deleteUpToBlock returns number of deleted rows", async () => {
     const query = jest.fn(async () => ({ rows: [], rowCount: 3 }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));

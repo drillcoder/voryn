@@ -62,6 +62,7 @@ const createBlockJobsRepository = (deleted: number): BlockJobsRepository => ({
         committed: 0,
         failed: 0,
     }),
+    listFailedBlocks: async () => [],
 });
 
 const createRawBlocksRepository = (deleted: number): RawBlocksRepository => ({

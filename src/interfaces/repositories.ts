@@ -2,7 +2,7 @@ import type { DbExecutor } from "./db.js";
 import type { BlockNumber, ChainId, HashHex } from "../types/chain.js";
 import type { StreamType } from "../types/pipeline.js";
 import type { ChainBlock, ChainLog, ChainTransaction } from "./chain.js";
-import type { BlockJobStatusCounts, RawBlockProgress } from "./metrics.js";
+import type { BlockJobStatusCounts, FailedBlockMetrics, RawBlockProgress } from "./metrics.js";
 import type {
     BlockJob,
     CanonicalEvent,
@@ -73,6 +73,8 @@ export interface BlockJobsRepository {
     markCommitted(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<void>;
 
     getStatusCounts(chainId: ChainId, transaction?: DbExecutor): Promise<BlockJobStatusCounts>;
+
+    listFailedBlocks(chainId: ChainId, limit: number, transaction?: DbExecutor): Promise<FailedBlockMetrics[]>;
 
     deleteUpToBlock(chainId: ChainId, blockNumberInclusive: BlockNumber, transaction?: DbExecutor): Promise<number>;
 

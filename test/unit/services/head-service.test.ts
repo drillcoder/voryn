@@ -61,6 +61,7 @@ const createBlockJobsRepository = (overrides?: Partial<BlockJobsRepository>): Bl
         committed: 0,
         failed: 0,
     }),
+    listFailedBlocks: async () => [],
     deleteUpToBlock: async () => 0,
     deleteAfterBlock: async () => 0,
     ...overrides,
