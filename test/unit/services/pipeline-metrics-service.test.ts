@@ -295,12 +295,14 @@ function createBlockJobsRepository(
 ): BlockJobsRepository {
     return {
         enqueueRange: async () => undefined,
+        get: async () => null,
         claimForFetch: async () => null,
         markFetched: async () => undefined,
         markFetchFailed: async () => undefined,
         markCommitted: async () => undefined,
         getStatusCounts: async () => counts,
         listFailedBlocks: async (_chainId, limit) => failedBlocks.slice(0, limit),
+        retryFailed: async () => 0,
         deleteUpToBlock: async () => 0,
         deleteAfterBlock: async () => 0,
     };

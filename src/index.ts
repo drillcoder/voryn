@@ -23,6 +23,8 @@ export * from "./workers/event-reaction-worker.js";
 
 export * from "./metrics/pipeline-metrics.js";
 
+export * from "./recovery/block-job-recovery.js";
+
 export * from "./loggers/console-logger.js";
 
 export * from "./adapters/ethers-block-source.js";

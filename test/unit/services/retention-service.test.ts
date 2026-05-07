@@ -51,6 +51,7 @@ const createCursorRepository = (): ChainCursorRepository => ({
 const createBlockJobsRepository = (deleted: number): BlockJobsRepository => ({
     ...createDeleteRepo(deleted),
     enqueueRange: async () => undefined,
+    get: async () => null,
     claimForFetch: async () => null,
     markFetched: async () => undefined,
     markFetchFailed: async () => undefined,
@@ -63,6 +64,7 @@ const createBlockJobsRepository = (deleted: number): BlockJobsRepository => ({
         failed: 0,
     }),
     listFailedBlocks: async () => [],
+    retryFailed: async () => 0,
 });
 
 const createRawBlocksRepository = (deleted: number): RawBlocksRepository => ({

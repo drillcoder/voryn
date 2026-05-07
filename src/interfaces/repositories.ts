@@ -47,6 +47,8 @@ export interface BlockJobsRepository {
         transaction?: DbExecutor
     ): Promise<void>;
 
+    get(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<BlockJob | null>;
+
     claimForFetch(
         chainId: ChainId,
         workerId: string,
@@ -75,6 +77,13 @@ export interface BlockJobsRepository {
     getStatusCounts(chainId: ChainId, transaction?: DbExecutor): Promise<BlockJobStatusCounts>;
 
     listFailedBlocks(chainId: ChainId, limit: number, transaction?: DbExecutor): Promise<FailedBlockMetrics[]>;
+
+    retryFailed(
+        chainId: ChainId,
+        fromBlock: BlockNumber,
+        toBlock: BlockNumber,
+        transaction?: DbExecutor
+    ): Promise<number>;
 
     deleteUpToBlock(chainId: ChainId, blockNumberInclusive: BlockNumber, transaction?: DbExecutor): Promise<number>;
 

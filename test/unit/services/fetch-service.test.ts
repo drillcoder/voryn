@@ -45,6 +45,7 @@ const createPassThroughManager = (): TransactionManager => {
 
 const createBlockJobsRepository = (overrides?: Partial<BlockJobsRepository>): BlockJobsRepository => ({
     enqueueRange: async () => undefined,
+    get: async () => null,
     claimForFetch: async () => null,
     markFetched: async () => undefined,
     markFetchFailed: async () => undefined,
@@ -57,6 +58,7 @@ const createBlockJobsRepository = (overrides?: Partial<BlockJobsRepository>): Bl
         failed: 0,
     }),
     listFailedBlocks: async () => [],
+    retryFailed: async () => 0,
     deleteUpToBlock: async () => 0,
     deleteAfterBlock: async () => 0,
     ...overrides,

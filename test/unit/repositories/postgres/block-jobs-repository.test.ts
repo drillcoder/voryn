@@ -12,6 +12,47 @@ test("claimForFetch returns null when queue is empty", async () => {
     expect(claimed).toBeNull();
 });
 
+test("get returns null when block job does not exist", async () => {
+    const query = jest.fn(async () => ({ rows: [], rowCount: 0 }));
+    const repository = new PostgresBlockJobsRepository(createExecutor(query));
+
+    const job = await repository.get(1, 42);
+
+    expect(job).toBeNull();
+    const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
+    expect(calls[0]?.[1]).toEqual([1, 42]);
+});
+
+test("get maps block job row", async () => {
+    const query = jest.fn(async () => ({
+        rows: [{
+            chain_id: 1,
+            block_number: "42",
+            status: "failed",
+            attempts: 3,
+            next_retry_at: null,
+            error: "rpc timeout",
+            claimed_at: null,
+            updated_at: "2026-03-30T10:01:10.000Z",
+        }],
+        rowCount: 1,
+    }));
+    const repository = new PostgresBlockJobsRepository(createExecutor(query));
+
+    const job = await repository.get(1, 42);
+
+    expect(job).toEqual({
+        chainId: 1,
+        blockNumber: 42,
+        status: "failed",
+        attempts: 3,
+        nextRetryAt: null,
+        error: "rpc timeout",
+        claimedAt: null,
+        updatedAt: new Date("2026-03-30T10:01:10.000Z"),
+    });
+});
+
 test("claimForFetch maps row and passes stale threshold", async () => {
     const staleBefore = new Date("2026-03-30T10:00:00.000Z");
     const query = jest.fn(async () => ({
@@ -251,6 +292,28 @@ test("listFailedBlocks maps oldest failed blocks", async () => {
     expect(calls[0]?.[0]).toContain("ORDER BY block_number ASC");
     expect(calls[0]?.[0]).toContain("LIMIT $2");
     expect(calls[0]?.[1]).toEqual([1, 25]);
+});
+
+test("retryFailed makes failed range available for fetch and resets attempts", async () => {
+    const query = jest.fn(async () => ({ rows: [], rowCount: 2 }));
+    const repository = new PostgresBlockJobsRepository(createExecutor(query));
+
+    await expect(repository.retryFailed(1, 10, 12)).resolves.toBe(2);
+
+    const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
+    expect(calls[0]?.[0]).toContain("attempts = 0");
+    expect(calls[0]?.[0]).toContain("next_retry_at = NOW()");
+    expect(calls[0]?.[0]).toContain("status = 'failed'");
+    expect(calls[0]?.[1]).toEqual([1, 10, 12]);
+});
+
+test("retryFailed skips query when range is empty", async () => {
+    const query = jest.fn();
+    const repository = new PostgresBlockJobsRepository(createExecutor(query));
+
+    await expect(repository.retryFailed(1, 12, 10)).resolves.toBe(0);
+
+    expect(query).not.toHaveBeenCalled();
 });
 
 test("deleteUpToBlock returns number of deleted rows", async () => {

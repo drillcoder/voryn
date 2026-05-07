@@ -152,6 +152,7 @@ const createCanonicalEventsRepository = (
 
 const createBlockJobsRepository = (overrides: Partial<BlockJobsRepository> = {}): BlockJobsRepository => ({
     enqueueRange: async () => undefined,
+    get: async () => null,
     claimForFetch: async () => null,
     markFetched: async () => undefined,
     markFetchFailed: async () => undefined,
@@ -164,6 +165,7 @@ const createBlockJobsRepository = (overrides: Partial<BlockJobsRepository> = {})
         failed: 0,
     }),
     listFailedBlocks: async () => [],
+    retryFailed: async () => 0,
     deleteUpToBlock: async () => 0,
     deleteAfterBlock: async () => 0,
     ...overrides,
@@ -325,6 +327,121 @@ test("sequencer service exits when raw block is missing", async () => {
     });
 
     await expect(worker.execute()).resolves.toBeUndefined();
+});
+
+test("sequencer service warns when blocked by exhausted failed job", async () => {
+    const { manager } = createPassThroughManager();
+    const warn = jest.fn();
+    const updatedAt = new Date("2026-03-30T10:01:10.000Z");
+    const worker = createService({
+        chainCursorRepository: createChainCursorRepository(() => createCursor(9, HASH_A, 10)),
+        rawBlocksRepository: createRawBlocksRepository(() => null),
+        blockJobsRepository: createBlockJobsRepository({
+            get: async () => ({
+                chainId: 10,
+                blockNumber: 10,
+                status: "failed",
+                attempts: 3,
+                nextRetryAt: null,
+                error: "rpc timeout",
+                claimedAt: null,
+                updatedAt,
+            }),
+        }),
+        transactionManager: manager,
+        logger: {
+            debug: jest.fn(),
+            info: jest.fn(),
+            warn,
+            error: jest.fn(),
+        },
+    });
+
+    await worker.execute();
+
+    expect(warn).toHaveBeenCalledWith("sequencer_blocked_by_failed_job", {
+        chainId: 10,
+        blockNumber: 10,
+        attempts: 3,
+        error: "rpc timeout",
+        updatedAt,
+    });
+});
+
+test("sequencer service debugs when waiting for scheduled failed job retry", async () => {
+    const { manager } = createPassThroughManager();
+    const debug = jest.fn();
+    const nextRetryAt = new Date("2026-03-30T10:02:10.000Z");
+    const worker = createService({
+        chainCursorRepository: createChainCursorRepository(() => createCursor(9, HASH_A, 10)),
+        rawBlocksRepository: createRawBlocksRepository(() => null),
+        blockJobsRepository: createBlockJobsRepository({
+            get: async () => ({
+                chainId: 10,
+                blockNumber: 10,
+                status: "failed",
+                attempts: 2,
+                nextRetryAt,
+                error: "rpc timeout",
+                claimedAt: null,
+                updatedAt: new Date("2026-03-30T10:01:10.000Z"),
+            }),
+        }),
+        transactionManager: manager,
+        logger: {
+            debug,
+            info: jest.fn(),
+            warn: jest.fn(),
+            error: jest.fn(),
+        },
+    });
+
+    await worker.execute();
+
+    expect(debug).toHaveBeenCalledWith("sequencer_waiting_for_failed_job_retry", {
+        chainId: 10,
+        blockNumber: 10,
+        attempts: 2,
+        nextRetryAt,
+        error: "rpc timeout",
+    });
+});
+
+test("sequencer service debugs when waiting for block fetch", async () => {
+    const { manager } = createPassThroughManager();
+    const debug = jest.fn();
+    const worker = createService({
+        chainCursorRepository: createChainCursorRepository(() => createCursor(9, HASH_A, 10)),
+        rawBlocksRepository: createRawBlocksRepository(() => null),
+        blockJobsRepository: createBlockJobsRepository({
+            get: async () => ({
+                chainId: 10,
+                blockNumber: 10,
+                status: "fetching",
+                attempts: 2,
+                nextRetryAt: null,
+                error: null,
+                claimedAt: new Date("2026-03-30T10:00:00.000Z"),
+                updatedAt: new Date("2026-03-30T10:01:10.000Z"),
+            }),
+        }),
+        transactionManager: manager,
+        logger: {
+            debug,
+            info: jest.fn(),
+            warn: jest.fn(),
+            error: jest.fn(),
+        },
+    });
+
+    await worker.execute();
+
+    expect(debug).toHaveBeenCalledWith("sequencer_waiting_for_block_fetch", {
+        chainId: 10,
+        blockNumber: 10,
+        status: "fetching",
+        attempts: 2,
+    });
 });
 
 test("sequencer service rolls back to common ancestor on parent hash mismatch", async () => {

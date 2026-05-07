@@ -39,6 +39,7 @@ export const transactionManager: TransactionManager = {
 
 export const createNoopBlockJobsRepository = (): BlockJobsRepository => ({
     enqueueRange: async () => undefined,
+    get: async () => null,
     claimForFetch: async () => null,
     markFetched: async () => undefined,
     markFetchFailed: async () => undefined,
@@ -51,6 +52,7 @@ export const createNoopBlockJobsRepository = (): BlockJobsRepository => ({
         failed: 0,
     }),
     listFailedBlocks: async () => [],
+    retryFailed: async () => 0,
     deleteUpToBlock: async () => 0,
     deleteAfterBlock: async () => 0,
 });

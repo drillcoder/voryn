@@ -12,7 +12,7 @@ import type {
 } from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import type { SequencerWorkerConfig } from "../interfaces/runtime.js";
-import type { BlockNumber, HashHex } from "../types/chain.js";
+import type { BlockNumber, ChainId, HashHex } from "../types/chain.js";
 
 interface ReorgCandidate {
     cursor: ChainCursor;
@@ -50,8 +50,10 @@ export class SequencerService {
                 break;
             }
 
-            const raw = await this.rawBlocksRepository.get(chainId, cursor.lastCommittedBlock + 1);
+            const nextBlock = cursor.lastCommittedBlock + 1;
+            const raw = await this.rawBlocksRepository.get(chainId, nextBlock);
             if (raw === null) {
+                await this.logBlockedByMissingRawBlock(chainId, nextBlock);
                 break;
             }
 
@@ -100,6 +102,43 @@ export class SequencerService {
         } else {
             this.logger.debug("sequencer_no_block_to_commit", { chainId });
         }
+    }
+
+    private async logBlockedByMissingRawBlock(chainId: ChainId, blockNumber: BlockNumber): Promise<void> {
+        const job = await this.blockJobsRepository.get(chainId, blockNumber);
+        if (job === null) {
+            this.logger.debug("sequencer_waiting_for_block_job", { chainId, blockNumber });
+            return;
+        }
+
+        if (job.status === "failed" && job.nextRetryAt === null) {
+            this.logger.warn("sequencer_blocked_by_failed_job", {
+                chainId,
+                blockNumber,
+                attempts: job.attempts,
+                error: job.error,
+                updatedAt: job.updatedAt,
+            });
+            return;
+        }
+
+        if (job.status === "failed") {
+            this.logger.debug("sequencer_waiting_for_failed_job_retry", {
+                chainId,
+                blockNumber,
+                attempts: job.attempts,
+                nextRetryAt: job.nextRetryAt,
+                error: job.error,
+            });
+            return;
+        }
+
+        this.logger.debug("sequencer_waiting_for_block_fetch", {
+            chainId,
+            blockNumber,
+            status: job.status,
+            attempts: job.attempts,
+        });
     }
 
     private async rollbackReorg(candidate: ReorgCandidate): Promise<void> {
