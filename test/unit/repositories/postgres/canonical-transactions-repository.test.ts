@@ -53,6 +53,32 @@ test("readFromSeq maps transaction rows", async () => {
     ]);
 });
 
+test("readFromSeq maps recipient address", async () => {
+    const query = jest.fn(async () => ({
+        rows: [{
+            seq: "2",
+            chain_id: 1,
+            block_number: "10",
+            block_hash: HASH_A,
+            transaction_index: 1,
+            transaction_hash: TX_HASH,
+            from_address: FROM,
+            to_address: FROM,
+            value: "123",
+            data: DATA,
+            raw: { ok: true },
+        }],
+        rowCount: 1,
+    }));
+    const repository = new PostgresCanonicalTransactionsRepository(createExecutor(query));
+
+    await expect(repository.readFromSeq(1, 1n, 10)).resolves.toMatchObject([
+        {
+            to: FROM,
+        },
+    ]);
+});
+
 test("maxSeq returns bigint value", async () => {
     const query = jest.fn(async () => ({ rows: [{ max_seq: "9" }], rowCount: 1 }));
     const repository = new PostgresCanonicalTransactionsRepository(createExecutor(query));
@@ -74,6 +100,13 @@ test("deleteUpToBlock returns deleted rows", async () => {
     const repository = new PostgresCanonicalTransactionsRepository(createExecutor(query));
 
     await expect(repository.deleteUpToBlock(1, 10)).resolves.toBe(4);
+});
+
+test("deleteUpToBlock returns zero when rowCount is null", async () => {
+    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const repository = new PostgresCanonicalTransactionsRepository(createExecutor(query));
+
+    await expect(repository.deleteUpToBlock(1, 10)).resolves.toBe(0);
 });
 
 test("deleteAfterBlock deletes transactions after block number", async () => {

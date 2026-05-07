@@ -7,6 +7,7 @@ import {
     createNoopCanonicalTransactionsRepository,
     createNoopChainCursorRepository,
     createNoopRawBlocksRepository,
+    invokeStartLogMeta,
     invokeTick,
     leaderLock,
     transactionManager,
@@ -37,4 +38,8 @@ test("retention worker create wires service execution", async () => {
     await invokeTick(worker);
 
     expect(getCursor).toHaveBeenCalledWith(11, expect.anything());
+    expect(invokeStartLogMeta(worker)).toEqual({
+        chainId: 11,
+        retentionDepthBlocks: 100,
+    });
 });

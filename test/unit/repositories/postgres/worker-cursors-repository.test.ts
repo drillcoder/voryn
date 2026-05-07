@@ -19,6 +19,15 @@ test("advance throws if cursor does not exist", async () => {
     );
 });
 
+test("advance throws when rowCount is null", async () => {
+    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const repository = new PostgresWorkerCursorsRepository(createExecutor(query));
+
+    await expect(repository.advance("worker-a", 1, "event", 12n)).rejects.toThrow(
+        "Worker cursor is missing"
+    );
+});
+
 test("get maps cursor row", async () => {
     const query = jest.fn(async () => ({
         rows: [{

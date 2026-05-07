@@ -65,6 +65,13 @@ test("deleteUpToBlock returns deleted rows", async () => {
     await expect(repository.deleteUpToBlock(1, 100)).resolves.toBe(2);
 });
 
+test("deleteUpToBlock returns zero when rowCount is null", async () => {
+    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const repository = new PostgresCanonicalBlocksRepository(createExecutor(query));
+
+    await expect(repository.deleteUpToBlock(1, 100)).resolves.toBe(0);
+});
+
 test("deleteAfterBlock deletes blocks after block number", async () => {
     const query = jest.fn(async () => ({ rows: [], rowCount: 2 }));
     const repository = new PostgresCanonicalBlocksRepository(createExecutor(query));

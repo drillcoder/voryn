@@ -125,6 +125,55 @@ test("head service enqueues and updates cursor in transaction", async () => {
     ]);
 });
 
+test("head service starts enqueue range from zero when depth exceeds safe head", async () => {
+    const calls: unknown[] = [];
+    const { manager, transaction } = createPassThroughManager();
+
+    const source: BlockSource = {
+        getLatestBlockNumber: async () => 3,
+        getBlockData: async () => {
+            throw new Error("not used");
+        },
+    };
+
+    const chainCursorRepository: ChainCursorRepository = {
+        get: async () => ({
+            chainId: 1,
+            lastEnqueuedBlock: 0,
+            lastCommittedBlock: 0,
+            lastCommittedHash: HASH_A,
+            updatedAt: new Date(),
+        }),
+        getForUpdate: async () => { throw new Error("not used"); },
+        insert: async () => undefined,
+        setLastEnqueued: async (_chainId, block, tx) => {
+            calls.push(["setLastEnqueued", block, tx]);
+        },
+        setPositions: async () => undefined,
+        advanceLastCommitted: async () => undefined,
+    };
+
+    const worker = new HeadService(
+        config,
+        source,
+        chainCursorRepository,
+        createBlockJobsRepository({
+            enqueueRange: async (_chainId, from, to, tx) => {
+                calls.push(["enqueueRange", from, to, tx]);
+            },
+        }),
+        createRawBlocksRepository(),
+        manager,
+    );
+
+    await worker.execute();
+
+    expect(calls).toEqual([
+        ["enqueueRange", 1, 1, transaction],
+        ["setLastEnqueued", 1, transaction],
+    ]);
+});
+
 test("head service bootstraps missing cursor", async () => {
     const inserted: unknown[] = [];
 

@@ -8,6 +8,7 @@ import {
     DATA,
     HASH_A,
     HASH_B,
+    invokeStartLogMeta,
     invokeTick,
     leaderLock,
 } from "../helpers/pipeline-test-helpers.js";
@@ -69,4 +70,9 @@ test("event reaction worker create wires service execution", async () => {
     await invokeTick(worker);
 
     expect(handled).toEqual([1n]);
+    expect(invokeStartLogMeta(worker)).toEqual({
+        chainId: 12,
+        workerName: "event-reaction",
+        batchSize: 10,
+    });
 });

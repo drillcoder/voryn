@@ -87,6 +87,37 @@ test("applySqlFileToPostgresDb logs and rethrows query error", async () => {
     );
 });
 
+test("applySqlFileToPostgresDb logs unknown query errors", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "voryn-schema-"));
+    const sqlFilePath = join(tempDir, "schema.sql");
+    await writeFile(sqlFilePath, "SELECT fail();\n", "utf8");
+
+    const pool: MockPool = {
+        query: jest.fn().mockRejectedValue("db down"),
+    };
+    const logger = createLogger();
+
+    try {
+        await expect(
+            applySqlFileToPostgresDb({
+                pool: pool as never,
+                sqlFilePath,
+                logger: logger as Logger,
+            })
+        ).rejects.toBe("db down");
+    } finally {
+        await rm(tempDir, { recursive: true, force: true });
+    }
+
+    expect(logger.error).toHaveBeenCalledWith(
+        "db_sql_apply_failed",
+        expect.objectContaining({
+            sqlFilePath,
+            error: "unknown error",
+        })
+    );
+});
+
 test("validatePostgresSchema passes when all required tables exist", async () => {
     const pool: MockPool = {
         query: jest.fn().mockResolvedValue({
@@ -135,4 +166,20 @@ test("validatePostgresSchema throws when required table is missing", async () =>
     expect(validationFailedMeta).toBeDefined();
     expect(typeof validationFailedMeta?.error).toBe("string");
     expect(String(validationFailedMeta?.error)).toContain("missing tables");
+});
+
+test("validatePostgresSchema logs unknown validation errors", async () => {
+    const pool: MockPool = {
+        query: jest.fn().mockRejectedValue("db down"),
+    };
+    const logger = createLogger();
+
+    await expect(
+        validatePostgresSchema({ pool: pool as never, logger: logger as Logger })
+    ).rejects.toBe("db down");
+
+    expect(logger.error).toHaveBeenCalledWith(
+        "db_schema_validation_failed",
+        expect.objectContaining({ error: "unknown error" })
+    );
 });

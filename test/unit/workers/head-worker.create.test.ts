@@ -5,6 +5,7 @@ import {
     createNoopBlockJobsRepository,
     createNoopChainCursorRepository,
     createNoopRawBlocksRepository,
+    invokeStartLogMeta,
     invokeTick,
     leaderLock,
     transactionManager,
@@ -40,4 +41,9 @@ test("head worker create wires service execution", async () => {
     await invokeTick(worker);
 
     expect(getLatestBlockNumber).toHaveBeenCalledWith(7);
+    expect(invokeStartLogMeta(worker)).toEqual({
+        chainId: 7,
+        confirmations: 1,
+        depthBlocks: 10,
+    });
 });

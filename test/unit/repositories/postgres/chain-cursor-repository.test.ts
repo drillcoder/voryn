@@ -76,6 +76,24 @@ test("advanceLastCommitted throws when optimistic update fails", async () => {
     ).rejects.toThrow("Failed to advance chain cursor");
 });
 
+test("advanceLastCommitted throws when rowCount is null", async () => {
+    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const repository = new PostgresChainCursorRepository(createExecutor(query));
+
+    await expect(
+        repository.advanceLastCommitted(10, 11, HASH_A, 12, HASH_A)
+    ).rejects.toThrow("Failed to advance chain cursor");
+});
+
+test("advanceLastCommitted succeeds when one row is updated", async () => {
+    const query = jest.fn(async () => ({ rows: [], rowCount: 1 }));
+    const repository = new PostgresChainCursorRepository(createExecutor(query));
+
+    await expect(
+        repository.advanceLastCommitted(10, 11, HASH_A, 12, HASH_A)
+    ).resolves.toBeUndefined();
+});
+
 test("setLastEnqueued throws when cursor is missing", async () => {
     const query = jest.fn(async () => ({ rows: [], rowCount: 0 }));
     const repository = new PostgresChainCursorRepository(createExecutor(query));
@@ -83,8 +101,31 @@ test("setLastEnqueued throws when cursor is missing", async () => {
     await expect(repository.setLastEnqueued(10, 12)).rejects.toThrow("Chain cursor for chain 10 not found");
 });
 
+test("setLastEnqueued throws when rowCount is null", async () => {
+    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const repository = new PostgresChainCursorRepository(createExecutor(query));
+
+    await expect(repository.setLastEnqueued(10, 12)).rejects.toThrow("Chain cursor for chain 10 not found");
+});
+
+test("setLastEnqueued succeeds when cursor exists", async () => {
+    const query = jest.fn(async () => ({ rows: [], rowCount: 1 }));
+    const repository = new PostgresChainCursorRepository(createExecutor(query));
+
+    await expect(repository.setLastEnqueued(10, 12)).resolves.toBeUndefined();
+});
+
 test("setPositions throws when cursor is missing", async () => {
     const query = jest.fn(async () => ({ rows: [], rowCount: 0 }));
+    const repository = new PostgresChainCursorRepository(createExecutor(query));
+
+    await expect(repository.setPositions(10, 12, HASH_A, 12)).rejects.toThrow(
+        "Chain cursor for chain 10 not found"
+    );
+});
+
+test("setPositions throws when rowCount is null", async () => {
+    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
     const repository = new PostgresChainCursorRepository(createExecutor(query));
 
     await expect(repository.setPositions(10, 12, HASH_A, 12)).rejects.toThrow(

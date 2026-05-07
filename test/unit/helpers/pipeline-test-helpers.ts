@@ -21,6 +21,10 @@ export const invokeTick = async (worker: object): Promise<void> => {
     await (worker as { tick: () => Promise<void> }).tick();
 };
 
+export const invokeStartLogMeta = (worker: object): Record<string, unknown> => (
+    worker as { buildStartLogMeta: () => Record<string, unknown> }
+).buildStartLogMeta();
+
 export const leaderLock: LeaderLock = {
     tryAcquire: async () => true,
     release: async () => undefined,

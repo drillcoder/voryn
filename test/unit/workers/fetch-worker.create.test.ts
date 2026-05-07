@@ -4,6 +4,7 @@ import { FetchWorker } from "../../../src/workers/fetch-worker.js";
 import {
     createNoopBlockJobsRepository,
     createNoopRawBlocksRepository,
+    invokeStartLogMeta,
     invokeTick,
     transactionManager,
 } from "../helpers/pipeline-test-helpers.js";
@@ -40,4 +41,13 @@ test("fetch worker create wires service execution", async () => {
     await invokeTick(worker);
 
     expect(claimForFetch).toHaveBeenCalledWith(1, "fetch-w1", expect.any(Date));
+    expect(invokeStartLogMeta(worker)).toEqual({
+        workerId: "fetch-w1",
+        chainId: 1,
+        fetchBatchSize: 1,
+        fetchClaimTtlMs: 1000,
+        retryMaxAttempts: 3,
+        retryBaseDelayMs: 100,
+        retryMaxDelayMs: 1000,
+    });
 });

@@ -9,6 +9,7 @@ import {
     createNoopChainCursorRepository,
     createNoopRawBlocksRepository,
     HASH_A,
+    invokeStartLogMeta,
     invokeTick,
     leaderLock,
     transactionManager,
@@ -48,4 +49,8 @@ test("sequencer worker create wires service execution", async () => {
     await invokeTick(worker);
 
     expect(getCursor).toHaveBeenCalledWith(10);
+    expect(invokeStartLogMeta(worker)).toEqual({
+        chainId: 10,
+        maxBlocksPerTick: 1,
+    });
 });
