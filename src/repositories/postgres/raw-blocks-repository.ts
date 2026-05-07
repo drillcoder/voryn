@@ -2,7 +2,7 @@ import { asHash32 } from "../../utils/hex.js";
 import { parsePgInt, parsePgTimestamp } from "../../postgres/pg-parsers.js";
 import type { RawBlocksRepository } from "../../interfaces/repositories.js";
 import type { BlockNumber, ChainId } from "../../types/chain.js";
-import type { RawBlockMetrics } from "../../interfaces/metrics.js";
+import type { RawBlockProgress } from "../../interfaces/metrics.js";
 import type { FetchedBlock } from "../../interfaces/chain.js";
 import type { RawBlock } from "../../interfaces/pipeline.js";
 import type { DbExecutor } from "../../interfaces/db.js";
@@ -16,13 +16,9 @@ interface RawBlockRow {
     fetched_at: Date | string;
 }
 
-interface RawBlockMetricsRow {
+interface RawBlockProgressRow {
     max_fetched_block: bigint | number | string | null;
     last_fetched_at: Date | string | null;
-}
-
-interface MissingRawBlockRow {
-    block_number: bigint | number | string;
 }
 
 export class PostgresRawBlocksRepository implements RawBlocksRepository {
@@ -81,9 +77,9 @@ export class PostgresRawBlocksRepository implements RawBlocksRepository {
         };
     }
 
-    async getMetrics(chainId: ChainId, transaction?: DbExecutor): Promise<RawBlockMetrics> {
+    async getProgress(chainId: ChainId, transaction?: DbExecutor): Promise<RawBlockProgress> {
         const executor = transaction ?? this.pool;
-        const result = await executor.query<RawBlockMetricsRow>(
+        const result = await executor.query<RawBlockProgressRow>(
             `SELECT MAX(block_number) AS max_fetched_block,
                     MAX(fetched_at) AS last_fetched_at
              FROM raw_blocks
@@ -93,39 +89,9 @@ export class PostgresRawBlocksRepository implements RawBlocksRepository {
         const row = result.rows[0];
 
         return {
-            maxFetchedBlock: row.max_fetched_block === null ? null : parsePgInt(row.max_fetched_block),
-            lastFetchedAt: row.last_fetched_at === null ? null : parsePgTimestamp(row.last_fetched_at),
+            block: row.max_fetched_block === null ? null : parsePgInt(row.max_fetched_block),
+            updatedAt: row.last_fetched_at === null ? null : parsePgTimestamp(row.last_fetched_at),
         };
-    }
-
-    async findFirstMissingInRange(
-        chainId: ChainId,
-        fromBlock: BlockNumber,
-        toBlock: BlockNumber,
-        transaction?: DbExecutor
-    ): Promise<BlockNumber | null> {
-        if (fromBlock > toBlock) {
-            return null;
-        }
-
-        const executor = transaction ?? this.pool;
-        const result = await executor.query<MissingRawBlockRow>(
-            `SELECT gs AS block_number
-             FROM generate_series($2::BIGINT, $3::BIGINT) AS gs
-             LEFT JOIN raw_blocks rb
-               ON rb.chain_id = $1
-              AND rb.block_number = gs
-             WHERE rb.block_number IS NULL
-             ORDER BY gs
-             LIMIT 1`,
-            [chainId, fromBlock, toBlock]
-        );
-
-        if (result.rows.length === 0) {
-            return null;
-        }
-
-        return parsePgInt(result.rows[0].block_number);
     }
 
     async deleteUpToBlock(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number> {

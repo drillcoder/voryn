@@ -155,7 +155,7 @@ test("markCommitted treats rowCount=null as failure", async () => {
     await expect(repository.markCommitted(1, 10)).rejects.toThrow("Failed to mark block job as committed");
 });
 
-test("getMetrics maps counts, oldest blocks, and oldest fetching claim time", async () => {
+test("getStatusCounts maps counts by status", async () => {
     const query = jest.fn(async () => ({
         rows: [{
             pending_count: "2",
@@ -163,38 +163,26 @@ test("getMetrics maps counts, oldest blocks, and oldest fetching claim time", as
             fetched_count: "3",
             committed_count: "10",
             failed_count: "4",
-            oldest_pending_block: "11",
-            oldest_fetching_block: "12",
-            oldest_fetched_block: "13",
-            oldest_failed_block: "14",
-            oldest_fetching_claimed_at: "2026-03-30T10:00:00.000Z",
         }],
         rowCount: 1,
     }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
-    const metrics = await repository.getMetrics(1);
+    const counts = await repository.getStatusCounts(1);
 
-    expect(metrics).toEqual({
-        counts: {
-            pending: 2,
-            fetching: 1,
-            fetched: 3,
-            committed: 10,
-            failed: 4,
-        },
-        oldestPendingBlock: 11,
-        oldestFetchingBlock: 12,
-        oldestFetchedBlock: 13,
-        oldestFailedBlock: 14,
-        oldestFetchingClaimedAt: new Date("2026-03-30T10:00:00.000Z"),
+    expect(counts).toEqual({
+        pending: 2,
+        fetching: 1,
+        fetched: 3,
+        committed: 10,
+        failed: 4,
     });
     const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
     expect(calls[0]?.[0]).toContain("COUNT(*) FILTER");
     expect(calls[0]?.[1]).toEqual([1]);
 });
 
-test("getMetrics maps nullable oldest values", async () => {
+test("getStatusCounts maps empty counts", async () => {
     const query = jest.fn(async () => ({
         rows: [{
             pending_count: "0",
@@ -202,31 +190,19 @@ test("getMetrics maps nullable oldest values", async () => {
             fetched_count: "0",
             committed_count: "0",
             failed_count: "0",
-            oldest_pending_block: null,
-            oldest_fetching_block: null,
-            oldest_fetched_block: null,
-            oldest_failed_block: null,
-            oldest_fetching_claimed_at: null,
         }],
         rowCount: 1,
     }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
-    const metrics = await repository.getMetrics(1);
+    const counts = await repository.getStatusCounts(1);
 
-    expect(metrics).toEqual({
-        counts: {
-            pending: 0,
-            fetching: 0,
-            fetched: 0,
-            committed: 0,
-            failed: 0,
-        },
-        oldestPendingBlock: null,
-        oldestFetchingBlock: null,
-        oldestFetchedBlock: null,
-        oldestFailedBlock: null,
-        oldestFetchingClaimedAt: null,
+    expect(counts).toEqual({
+        pending: 0,
+        fetching: 0,
+        fetched: 0,
+        committed: 0,
+        failed: 0,
     });
 });
 

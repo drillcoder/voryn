@@ -23,7 +23,7 @@ import { PostgresRawBlocksRepository } from "../repositories/postgres/raw-blocks
 import { RetentionService } from "../services/retention-service.js";
 import { RETENTION_WORKER_LOCK_KEY_BASE } from "./worker-lock-keys.js";
 import { resolveDbDependencies } from "../runtime/resolvers.js";
-import type { WorkerBaseOptions, WorkerDbOptions } from "../runtime/types.js";
+import type { RuntimeBaseOptions, RuntimeDbOptions } from "../runtime/types.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
 export interface RetentionWorkerDatabaseDependencies {
@@ -38,8 +38,8 @@ export interface RetentionWorkerDatabaseDependencies {
 }
 
 export type CreateRetentionWorkerOptions =
-    WorkerBaseOptions<RetentionWorkerConfig>
-    & WorkerDbOptions<RetentionWorkerDatabaseDependencies>;
+    RuntimeBaseOptions<RetentionWorkerConfig>
+    & RuntimeDbOptions<RetentionWorkerDatabaseDependencies>;
 
 export class RetentionWorker extends SingletonPollingWorker {
     static async create(options: CreateRetentionWorkerOptions): Promise<RetentionWorker> {

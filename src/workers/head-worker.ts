@@ -14,7 +14,7 @@ import { PostgresRawBlocksRepository } from "../repositories/postgres/raw-blocks
 import { HeadService } from "../services/head-service.js";
 import { HEAD_WORKER_LOCK_KEY_BASE } from "./worker-lock-keys.js";
 import { resolveDbDependencies, resolveEthersSource } from "../runtime/resolvers.js";
-import type { WorkerBaseOptions, WorkerDbOptions, WorkerSourceOptions } from "../runtime/types.js";
+import type { RuntimeBaseOptions, RuntimeDbOptions, RuntimeSourceOptions } from "../runtime/types.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
 export interface HeadWorkerDatabaseDependencies {
@@ -26,9 +26,9 @@ export interface HeadWorkerDatabaseDependencies {
 }
 
 export type CreateHeadWorkerOptions =
-    WorkerBaseOptions<HeadWorkerConfig>
-    & WorkerSourceOptions<BlockSource>
-    & WorkerDbOptions<HeadWorkerDatabaseDependencies>;
+    RuntimeBaseOptions<HeadWorkerConfig>
+    & RuntimeSourceOptions<BlockSource>
+    & RuntimeDbOptions<HeadWorkerDatabaseDependencies>;
 
 export class HeadWorker extends SingletonPollingWorker {
     static async create(options: CreateHeadWorkerOptions): Promise<HeadWorker> {

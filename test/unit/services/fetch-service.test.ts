@@ -49,19 +49,12 @@ const createBlockJobsRepository = (overrides?: Partial<BlockJobsRepository>): Bl
     markFetched: async () => undefined,
     markFetchFailed: async () => undefined,
     markCommitted: async () => undefined,
-    getMetrics: async () => ({
-        counts: {
-            pending: 0,
-            fetching: 0,
-            fetched: 0,
-            committed: 0,
-            failed: 0,
-        },
-        oldestPendingBlock: null,
-        oldestFetchingBlock: null,
-        oldestFetchedBlock: null,
-        oldestFailedBlock: null,
-        oldestFetchingClaimedAt: null,
+    getStatusCounts: async () => ({
+        pending: 0,
+        fetching: 0,
+        fetched: 0,
+        committed: 0,
+        failed: 0,
     }),
     deleteUpToBlock: async () => 0,
     deleteAfterBlock: async () => 0,
@@ -71,11 +64,10 @@ const createBlockJobsRepository = (overrides?: Partial<BlockJobsRepository>): Bl
 const createRawBlocksRepository = (overrides?: Partial<RawBlocksRepository>): RawBlocksRepository => ({
     save: async () => undefined,
     get: async () => null,
-    getMetrics: async () => ({
-        maxFetchedBlock: null,
-        lastFetchedAt: null,
+    getProgress: async () => ({
+        block: null,
+        updatedAt: null,
     }),
-    findFirstMissingInRange: async () => null,
     deleteUpToBlock: async () => 0,
     deleteAfterBlock: async () => 0,
     ...overrides,

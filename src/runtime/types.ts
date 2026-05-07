@@ -1,16 +1,16 @@
 import type { Logger } from "../interfaces/logger.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
 
-export interface WorkerBaseOptions<TConfig> {
+export interface RuntimeBaseOptions<TConfig> {
     config: TConfig;
     logger?: Logger;
 }
 
-export interface ReactionWorkerBaseOptions<TConfig, THandler> extends WorkerBaseOptions<TConfig> {
+export interface ReactionWorkerBaseOptions<TConfig, THandler> extends RuntimeBaseOptions<TConfig> {
     handler: THandler;
 }
 
-export type WorkerSourceOptions<TSource> =
+export type RuntimeSourceOptions<TSource> =
     | { source: TSource; rpcUrl?: never }
     | { source?: never; rpcUrl: string };
 
@@ -19,7 +19,7 @@ export interface ResolveDbDependenciesResult<TDependencies extends object> {
     dispose?: () => Promise<void>;
 }
 
-export type WorkerDbOptions<TDependencies extends object> =
+export type RuntimeDbOptions<TDependencies extends object> =
     | {
         dbUrl: string;
         overrides?: Partial<TDependencies>;

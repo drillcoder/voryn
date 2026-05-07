@@ -4,10 +4,9 @@ import { ConsoleLogger, PipelineMetrics } from "@drillcoder/voryn";
     const dbUrl = "postgres://user:pass@localhost:5432/voryn";
     const rpcUrl = "https://rpc.example.org";
     const chainId = 1;
-    const confirmations = 0;
 
     const logger = new ConsoleLogger({ minLevel: "info" });
-    const config = { chainId, confirmations };
+    const config = { chainId };
 
     const metrics = await PipelineMetrics.create({ config, logger, dbUrl, rpcUrl });
 

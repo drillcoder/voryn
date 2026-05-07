@@ -1,5 +1,10 @@
 import type { BlockSource } from "../interfaces/block-source.js";
-import type { ChainPipelineMetrics, PipelineMetricsConfig, PipelineReactionMetrics } from "../interfaces/metrics.js";
+import type {
+    BlockStageMetrics,
+    ChainPipelineMetrics,
+    PipelineMetricsConfig,
+    PipelineReactionMetrics,
+} from "../interfaces/metrics.js";
 import type {
     BlockJobsRepository,
     CanonicalEventsRepository,
@@ -25,73 +30,65 @@ export class PipelineMetricsService {
 
     async get(): Promise<ChainPipelineMetrics> {
         const observedAt = new Date();
-        const { chainId, confirmations } = this.config;
+        const { chainId } = this.config;
         const latestBlock = await this.source.getLatestBlockNumber(chainId);
-        const safeHeadBlock = latestBlock - confirmations;
-        const [cursor, jobs, raw, workerCursors] = await Promise.all([
+        const [cursor, blockStatusCounts, rawProgress, workerCursors] = await Promise.all([
             this.chainCursorRepository.get(chainId),
-            this.blockJobsRepository.getMetrics(chainId),
-            this.rawBlocksRepository.getMetrics(chainId),
+            this.blockJobsRepository.getStatusCounts(chainId),
+            this.rawBlocksRepository.getProgress(chainId),
             this.workerCursorsRepository.listByChain(chainId),
         ]);
-        const firstMissingRawBlock = cursor === null
-            ? null
-            : await this.rawBlocksRepository.findFirstMissingInRange(
-                chainId,
-                cursor.lastCommittedBlock + 1,
-                cursor.lastEnqueuedBlock,
-            );
         const reactions = await Promise.all(
             workerCursors.map(async (workerCursor): Promise<PipelineReactionMetrics> => {
-                const maxSeq = await this.maxSeq(workerCursor.streamType);
+                const targetSeq = await this.targetSeq(workerCursor.streamType);
 
                 return {
                     workerName: workerCursor.workerName,
                     streamType: workerCursor.streamType,
-                    lastSeq: workerCursor.lastSeq,
-                    maxSeq,
-                    lagSeq: maxSeq - workerCursor.lastSeq,
-                    updatedAt: workerCursor.updatedAt,
-                    secondsSinceLastProgress: secondsBetween(observedAt, workerCursor.updatedAt),
+                    processedSeq: workerCursor.lastSeq,
+                    targetSeq,
+                    lagSeq: targetSeq - workerCursor.lastSeq,
+                    secondsSinceProgress: secondsBetween(observedAt, workerCursor.updatedAt),
                 };
             })
         );
+        const headBlock = cursor?.lastEnqueuedBlock ?? null;
+        const sequencerBlock = cursor?.lastCommittedBlock ?? null;
 
         return {
             chainId,
             observedAt,
             latestBlock,
-            safeHeadBlock,
-            lastEnqueuedBlock: cursor?.lastEnqueuedBlock ?? null,
-            lastFetchedBlock: raw.maxFetchedBlock,
-            lastCommittedBlock: cursor?.lastCommittedBlock ?? null,
-            firstMissingRawBlock,
-            secondsSinceLastFetch: raw.lastFetchedAt === null ? null : secondsBetween(observedAt, raw.lastFetchedAt),
-            secondsSinceLastCommit: cursor === null ? null : secondsBetween(observedAt, cursor.updatedAt),
-            lag: {
-                headToLatestBlocks: confirmations,
-                enqueueToSafeBlocks: cursor === null ? null : safeHeadBlock - cursor.lastEnqueuedBlock,
-                fetchToEnqueuedBlocks: cursor === null || raw.maxFetchedBlock === null
-                    ? null
-                    : cursor.lastEnqueuedBlock - raw.maxFetchedBlock,
-                commitToFetchedBlocks: cursor === null || raw.maxFetchedBlock === null
-                    ? null
-                    : raw.maxFetchedBlock - cursor.lastCommittedBlock,
-                commitToSafeBlocks: cursor === null ? null : safeHeadBlock - cursor.lastCommittedBlock,
-                commitToLatestBlocks: cursor === null ? null : latestBlock - cursor.lastCommittedBlock,
+            stages: {
+                head: createStage(observedAt, latestBlock, headBlock, null),
+                fetch: createStage(observedAt, latestBlock, rawProgress.block, rawProgress.updatedAt),
+                sequencer: createStage(observedAt, latestBlock, sequencerBlock, cursor?.updatedAt ?? null),
             },
-            jobs,
+            blockStatusCounts,
             reactions,
         };
     }
 
-    private async maxSeq(streamType: StreamType): Promise<bigint> {
+    private async targetSeq(streamType: StreamType): Promise<bigint> {
         if (streamType === "event") {
             return this.canonicalEventsRepository.maxSeq(this.config.chainId);
         }
 
         return this.canonicalTransactionsRepository.maxSeq(this.config.chainId);
     }
+}
+
+function createStage(
+    observedAt: Date,
+    latestBlock: number,
+    block: number | null,
+    updatedAt: Date | null
+): BlockStageMetrics {
+    return {
+        block,
+        lagBlocks: block === null ? null : latestBlock - block,
+        secondsSinceProgress: updatedAt === null ? null : secondsBetween(observedAt, updatedAt),
+    };
 }
 
 function secondsBetween(later: Date, earlier: Date): number {

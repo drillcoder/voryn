@@ -1,6 +1,6 @@
 import { PipelineMetricsService } from "../../../src/services/pipeline-metrics-service.js";
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
-import type { BlockJobMetrics, RawBlockMetrics } from "../../../src/interfaces/metrics.js";
+import type { BlockJobStatusCounts, RawBlockProgress } from "../../../src/interfaces/metrics.js";
 import type {
     BlockJobsRepository,
     CanonicalEventsRepository,
@@ -23,10 +23,9 @@ afterEach(() => {
     jest.useRealTimers();
 });
 
-test("pipeline metrics service computes block and reaction lag", async () => {
-    const findFirstMissingInRange = jest.fn(async () => 105);
+test("pipeline metrics service maps pipeline stages and reactions", async () => {
     const service = new PipelineMetricsService(
-        { chainId: 1, confirmations: 6 },
+        { chainId: 1 },
         createSource(120),
         createChainCursorRepository({
             chainId: 1,
@@ -36,26 +35,16 @@ test("pipeline metrics service computes block and reaction lag", async () => {
             updatedAt: new Date("2026-01-01T00:00:04.000Z"),
         }),
         createBlockJobsRepository({
-            counts: {
-                pending: 1,
-                fetching: 2,
-                fetched: 3,
-                committed: 4,
-                failed: 5,
-            },
-            oldestPendingBlock: 106,
-            oldestFetchingBlock: 107,
-            oldestFetchedBlock: 101,
-            oldestFailedBlock: 108,
-            oldestFetchingClaimedAt: new Date("2026-01-01T00:00:03.000Z"),
+            pending: 1,
+            fetching: 2,
+            fetched: 3,
+            committed: 4,
+            failed: 5,
         }),
-        createRawBlocksRepository(
-            {
-                maxFetchedBlock: 104,
-                lastFetchedAt: new Date("2026-01-01T00:00:07.000Z"),
-            },
-            findFirstMissingInRange
-        ),
+        createRawBlocksRepository({
+            block: 104,
+            updatedAt: new Date("2026-01-01T00:00:07.000Z"),
+        }),
         createCanonicalTransactionsRepository(15n),
         createCanonicalEventsRepository(20n),
         createWorkerCursorsRepository([
@@ -78,53 +67,62 @@ test("pipeline metrics service computes block and reaction lag", async () => {
 
     const snapshot = await service.get();
 
-    expect(findFirstMissingInRange).toHaveBeenCalledWith(1, 101, 110);
-    expect(snapshot).toEqual(expect.objectContaining({
+    expect(snapshot).toEqual({
         chainId: 1,
         observedAt: NOW,
         latestBlock: 120,
-        safeHeadBlock: 114,
-        lastEnqueuedBlock: 110,
-        lastFetchedBlock: 104,
-        lastCommittedBlock: 100,
-        firstMissingRawBlock: 105,
-        secondsSinceLastFetch: 3,
-        secondsSinceLastCommit: 6,
-        lag: {
-            headToLatestBlocks: 6,
-            enqueueToSafeBlocks: 4,
-            fetchToEnqueuedBlocks: 6,
-            commitToFetchedBlocks: 4,
-            commitToSafeBlocks: 14,
-            commitToLatestBlocks: 20,
+        stages: {
+            head: {
+                block: 110,
+                lagBlocks: 10,
+                secondsSinceProgress: null,
+            },
+            fetch: {
+                block: 104,
+                lagBlocks: 16,
+                secondsSinceProgress: 3,
+            },
+            sequencer: {
+                block: 100,
+                lagBlocks: 20,
+                secondsSinceProgress: 6,
+            },
         },
-    }));
-    expect(snapshot.reactions).toEqual([
-        expect.objectContaining({
-            workerName: "event-worker",
-            streamType: "event",
-            maxSeq: 20n,
-            lagSeq: 3n,
-            secondsSinceLastProgress: 9,
-        }),
-        expect.objectContaining({
-            workerName: "tx-worker",
-            streamType: "tx",
-            maxSeq: 15n,
-            lagSeq: 5n,
-            secondsSinceLastProgress: 8,
-        }),
-    ]);
+        blockStatusCounts: {
+            pending: 1,
+            fetching: 2,
+            fetched: 3,
+            committed: 4,
+            failed: 5,
+        },
+        reactions: [
+            {
+                workerName: "event-worker",
+                streamType: "event",
+                processedSeq: 17n,
+                targetSeq: 20n,
+                lagSeq: 3n,
+                secondsSinceProgress: 9,
+            },
+            {
+                workerName: "tx-worker",
+                streamType: "tx",
+                processedSeq: 10n,
+                targetSeq: 15n,
+                lagSeq: 5n,
+                secondsSinceProgress: 8,
+            },
+        ],
+    });
 });
 
-test("pipeline metrics service maps empty state without raw gap scan", async () => {
-    const findFirstMissingInRange = jest.fn(async () => 1);
+test("pipeline metrics service maps empty state", async () => {
     const service = new PipelineMetricsService(
-        { chainId: 1, confirmations: 0 },
+        { chainId: 1 },
         createSource(10),
         createChainCursorRepository(null),
-        createBlockJobsRepository(createEmptyBlockJobMetrics()),
-        createRawBlocksRepository({ maxFetchedBlock: null, lastFetchedAt: null }, findFirstMissingInRange),
+        createBlockJobsRepository(createEmptyBlockStatusCounts()),
+        createRawBlocksRepository({ block: null, updatedAt: null }),
         createCanonicalTransactionsRepository(0n),
         createCanonicalEventsRepository(0n),
         createWorkerCursorsRepository([]),
@@ -132,32 +130,33 @@ test("pipeline metrics service maps empty state without raw gap scan", async () 
 
     const snapshot = await service.get();
 
-    expect(findFirstMissingInRange).not.toHaveBeenCalled();
     expect(snapshot).toEqual(expect.objectContaining({
         latestBlock: 10,
-        safeHeadBlock: 10,
-        lastEnqueuedBlock: null,
-        lastFetchedBlock: null,
-        lastCommittedBlock: null,
-        firstMissingRawBlock: null,
-        secondsSinceLastFetch: null,
-        secondsSinceLastCommit: null,
-        lag: {
-            headToLatestBlocks: 0,
-            enqueueToSafeBlocks: null,
-            fetchToEnqueuedBlocks: null,
-            commitToFetchedBlocks: null,
-            commitToSafeBlocks: null,
-            commitToLatestBlocks: null,
+        stages: {
+            head: {
+                block: null,
+                lagBlocks: null,
+                secondsSinceProgress: null,
+            },
+            fetch: {
+                block: null,
+                lagBlocks: null,
+                secondsSinceProgress: null,
+            },
+            sequencer: {
+                block: null,
+                lagBlocks: null,
+                secondsSinceProgress: null,
+            },
         },
+        blockStatusCounts: createEmptyBlockStatusCounts(),
         reactions: [],
     }));
 });
 
-test("pipeline metrics service keeps raw-dependent lag null when no raw block exists", async () => {
-    const findFirstMissingInRange = jest.fn(async () => 51);
+test("pipeline metrics service keeps fetch progress null when no raw block exists", async () => {
     const service = new PipelineMetricsService(
-        { chainId: 1, confirmations: 3 },
+        { chainId: 1 },
         createSource(60),
         createChainCursorRepository({
             chainId: 1,
@@ -166,8 +165,8 @@ test("pipeline metrics service keeps raw-dependent lag null when no raw block ex
             lastCommittedHash: HASH,
             updatedAt: new Date("2026-01-01T00:00:10.000Z"),
         }),
-        createBlockJobsRepository(createEmptyBlockJobMetrics()),
-        createRawBlocksRepository({ maxFetchedBlock: null, lastFetchedAt: null }, findFirstMissingInRange),
+        createBlockJobsRepository(createEmptyBlockStatusCounts()),
+        createRawBlocksRepository({ block: null, updatedAt: null }),
         createCanonicalTransactionsRepository(0n),
         createCanonicalEventsRepository(0n),
         createWorkerCursorsRepository([]),
@@ -175,54 +174,28 @@ test("pipeline metrics service keeps raw-dependent lag null when no raw block ex
 
     const snapshot = await service.get();
 
-    expect(findFirstMissingInRange).toHaveBeenCalledWith(1, 51, 55);
-    expect(snapshot.lastFetchedBlock).toBeNull();
-    expect(snapshot.secondsSinceLastFetch).toBeNull();
-    expect(snapshot.lag).toEqual({
-        headToLatestBlocks: 3,
-        enqueueToSafeBlocks: 2,
-        fetchToEnqueuedBlocks: null,
-        commitToFetchedBlocks: null,
-        commitToSafeBlocks: 7,
-        commitToLatestBlocks: 10,
+    expect(snapshot.stages).toEqual({
+        head: {
+            block: 55,
+            lagBlocks: 5,
+            secondsSinceProgress: null,
+        },
+        fetch: {
+            block: null,
+            lagBlocks: null,
+            secondsSinceProgress: null,
+        },
+        sequencer: {
+            block: 50,
+            lagBlocks: 10,
+            secondsSinceProgress: 0,
+        },
     });
-});
-
-test("pipeline metrics service maps null gap when committed block reaches enqueued block", async () => {
-    const findFirstMissingInRange = jest.fn(async () => null);
-    const service = new PipelineMetricsService(
-        { chainId: 1, confirmations: 1 },
-        createSource(11),
-        createChainCursorRepository({
-            chainId: 1,
-            lastEnqueuedBlock: 10,
-            lastCommittedBlock: 10,
-            lastCommittedHash: HASH,
-            updatedAt: new Date("2026-01-01T00:00:10.000Z"),
-        }),
-        createBlockJobsRepository(createEmptyBlockJobMetrics()),
-        createRawBlocksRepository(
-            {
-                maxFetchedBlock: 10,
-                lastFetchedAt: new Date("2026-01-01T00:00:10.000Z"),
-            },
-            findFirstMissingInRange
-        ),
-        createCanonicalTransactionsRepository(0n),
-        createCanonicalEventsRepository(0n),
-        createWorkerCursorsRepository([]),
-    );
-
-    const snapshot = await service.get();
-
-    expect(findFirstMissingInRange).toHaveBeenCalledWith(1, 11, 10);
-    expect(snapshot.firstMissingRawBlock).toBeNull();
-    expect(snapshot.lag.commitToSafeBlocks).toBe(0);
 });
 
 test("pipeline metrics service clamps future timestamps to zero seconds", async () => {
     const service = new PipelineMetricsService(
-        { chainId: 1, confirmations: 0 },
+        { chainId: 1 },
         createSource(10),
         createChainCursorRepository({
             chainId: 1,
@@ -231,14 +204,11 @@ test("pipeline metrics service clamps future timestamps to zero seconds", async 
             lastCommittedHash: HASH,
             updatedAt: new Date("2026-01-01T00:00:20.000Z"),
         }),
-        createBlockJobsRepository(createEmptyBlockJobMetrics()),
-        createRawBlocksRepository(
-            {
-                maxFetchedBlock: 10,
-                lastFetchedAt: new Date("2026-01-01T00:00:20.000Z"),
-            },
-            jest.fn(async () => null)
-        ),
+        createBlockJobsRepository(createEmptyBlockStatusCounts()),
+        createRawBlocksRepository({
+            block: 10,
+            updatedAt: new Date("2026-01-01T00:00:20.000Z"),
+        }),
         createCanonicalTransactionsRepository(5n),
         createCanonicalEventsRepository(7n),
         createWorkerCursorsRepository([
@@ -261,18 +231,18 @@ test("pipeline metrics service clamps future timestamps to zero seconds", async 
 
     const snapshot = await service.get();
 
-    expect(snapshot.secondsSinceLastFetch).toBe(0);
-    expect(snapshot.secondsSinceLastCommit).toBe(0);
+    expect(snapshot.stages.fetch.secondsSinceProgress).toBe(0);
+    expect(snapshot.stages.sequencer.secondsSinceProgress).toBe(0);
     expect(snapshot.reactions).toEqual([
         expect.objectContaining({
             workerName: "event-worker",
             lagSeq: 0n,
-            secondsSinceLastProgress: 0,
+            secondsSinceProgress: 0,
         }),
         expect.objectContaining({
             workerName: "tx-worker",
             lagSeq: 0n,
-            secondsSinceLastProgress: 0,
+            secondsSinceProgress: 0,
         }),
     ]);
 });
@@ -297,47 +267,43 @@ function createChainCursorRepository(cursor: ChainCursor | null): ChainCursorRep
     };
 }
 
-function createBlockJobsRepository(metrics: BlockJobMetrics): BlockJobsRepository {
+function createBlockJobsRepository(counts: BlockJobStatusCounts): BlockJobsRepository {
     return {
         enqueueRange: async () => undefined,
         claimForFetch: async () => null,
         markFetched: async () => undefined,
         markFetchFailed: async () => undefined,
         markCommitted: async () => undefined,
-        getMetrics: async () => metrics,
+        getStatusCounts: async () => counts,
         deleteUpToBlock: async () => 0,
         deleteAfterBlock: async () => 0,
     };
 }
 
-function createRawBlocksRepository(
-    metrics: RawBlockMetrics,
-    findFirstMissingInRange: RawBlocksRepository["findFirstMissingInRange"]
-): RawBlocksRepository {
+function createRawBlocksRepository(progress: RawBlockProgress): RawBlocksRepository {
     return {
         save: async () => undefined,
         get: async () => null,
-        getMetrics: async () => metrics,
-        findFirstMissingInRange,
+        getProgress: async () => progress,
         deleteUpToBlock: async () => 0,
         deleteAfterBlock: async () => 0,
     };
 }
 
-function createCanonicalTransactionsRepository(maxSeq: bigint): CanonicalTransactionsRepository {
+function createCanonicalTransactionsRepository(targetSeq: bigint): CanonicalTransactionsRepository {
     return {
         readFromSeq: async () => [],
-        maxSeq: async () => maxSeq,
+        maxSeq: async () => targetSeq,
         insertMany: async () => undefined,
         deleteUpToBlock: async () => 0,
         deleteAfterBlock: async () => 0,
     };
 }
 
-function createCanonicalEventsRepository(maxSeq: bigint): CanonicalEventsRepository {
+function createCanonicalEventsRepository(targetSeq: bigint): CanonicalEventsRepository {
     return {
         readFromSeq: async () => [],
-        maxSeq: async () => maxSeq,
+        maxSeq: async () => targetSeq,
         insertMany: async () => undefined,
         deleteUpToBlock: async () => 0,
         deleteAfterBlock: async () => 0,
@@ -353,19 +319,12 @@ function createWorkerCursorsRepository(cursors: WorkerCursor[]): WorkerCursorsRe
     };
 }
 
-function createEmptyBlockJobMetrics(): BlockJobMetrics {
+function createEmptyBlockStatusCounts(): BlockJobStatusCounts {
     return {
-        counts: {
-            pending: 0,
-            fetching: 0,
-            fetched: 0,
-            committed: 0,
-            failed: 0,
-        },
-        oldestPendingBlock: null,
-        oldestFetchingBlock: null,
-        oldestFetchedBlock: null,
-        oldestFailedBlock: null,
-        oldestFetchingClaimedAt: null,
+        pending: 0,
+        fetching: 0,
+        fetched: 0,
+        committed: 0,
+        failed: 0,
     };
 }

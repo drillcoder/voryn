@@ -12,7 +12,6 @@ import {
 
 const config: PipelineMetricsConfig = {
     chainId: 7,
-    confirmations: 2,
 };
 
 test("pipeline metrics create wires service execution", async () => {

@@ -17,7 +17,7 @@ import { PostgresRawBlocksRepository } from "../repositories/postgres/raw-blocks
 import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker-cursors-repository.js";
 import { PipelineMetricsService } from "../services/pipeline-metrics-service.js";
 import { resolveDbDependencies, resolveEthersSource } from "../runtime/resolvers.js";
-import type { WorkerBaseOptions, WorkerDbOptions, WorkerSourceOptions } from "../runtime/types.js";
+import type { RuntimeBaseOptions, RuntimeDbOptions, RuntimeSourceOptions } from "../runtime/types.js";
 
 export interface PipelineMetricsDatabaseDependencies {
     chainCursorRepository: ChainCursorRepository;
@@ -29,9 +29,9 @@ export interface PipelineMetricsDatabaseDependencies {
 }
 
 export type CreatePipelineMetricsOptions =
-    WorkerBaseOptions<PipelineMetricsConfig>
-    & WorkerSourceOptions<BlockSource>
-    & WorkerDbOptions<PipelineMetricsDatabaseDependencies>;
+    RuntimeBaseOptions<PipelineMetricsConfig>
+    & RuntimeSourceOptions<BlockSource>
+    & RuntimeDbOptions<PipelineMetricsDatabaseDependencies>;
 
 export class PipelineMetrics {
     static async create(options: CreatePipelineMetricsOptions): Promise<PipelineMetrics> {

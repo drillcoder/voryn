@@ -2,7 +2,7 @@ import type { DbExecutor } from "./db.js";
 import type { BlockNumber, ChainId, HashHex } from "../types/chain.js";
 import type { StreamType } from "../types/pipeline.js";
 import type { ChainBlock, ChainLog, ChainTransaction } from "./chain.js";
-import type { BlockJobMetrics, RawBlockMetrics } from "./metrics.js";
+import type { BlockJobStatusCounts, RawBlockProgress } from "./metrics.js";
 import type {
     BlockJob,
     CanonicalEvent,
@@ -72,7 +72,7 @@ export interface BlockJobsRepository {
 
     markCommitted(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<void>;
 
-    getMetrics(chainId: ChainId, transaction?: DbExecutor): Promise<BlockJobMetrics>;
+    getStatusCounts(chainId: ChainId, transaction?: DbExecutor): Promise<BlockJobStatusCounts>;
 
     deleteUpToBlock(chainId: ChainId, blockNumberInclusive: BlockNumber, transaction?: DbExecutor): Promise<number>;
 
@@ -84,14 +84,7 @@ export interface RawBlocksRepository {
 
     get(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<RawBlock | null>;
 
-    getMetrics(chainId: ChainId, transaction?: DbExecutor): Promise<RawBlockMetrics>;
-
-    findFirstMissingInRange(
-        chainId: ChainId,
-        fromBlock: BlockNumber,
-        toBlock: BlockNumber,
-        transaction?: DbExecutor
-    ): Promise<BlockNumber | null>;
+    getProgress(chainId: ChainId, transaction?: DbExecutor): Promise<RawBlockProgress>;
 
     deleteUpToBlock(chainId: ChainId, blockNumberInclusive: BlockNumber, transaction?: DbExecutor): Promise<number>;
 

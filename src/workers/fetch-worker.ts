@@ -8,7 +8,7 @@ import { PostgresRawBlocksRepository } from "../repositories/postgres/raw-blocks
 import { FetchService } from "../services/fetch-service.js";
 import { resolveDbDependencies, resolveEthersSource } from "../runtime/resolvers.js";
 import { PollingWorker } from "./polling-worker.js";
-import type { WorkerBaseOptions, WorkerDbOptions, WorkerSourceOptions } from "../runtime/types.js";
+import type { RuntimeBaseOptions, RuntimeDbOptions, RuntimeSourceOptions } from "../runtime/types.js";
 import type { BlockJobsRepository, RawBlocksRepository } from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import type { BlockSource } from "../interfaces/block-source.js";
@@ -20,9 +20,9 @@ export interface FetchWorkerDatabaseDependencies {
 }
 
 export type CreateFetchWorkerOptions =
-    WorkerBaseOptions<FetchWorkerConfig>
-    & WorkerSourceOptions<BlockSource>
-    & WorkerDbOptions<FetchWorkerDatabaseDependencies>;
+    RuntimeBaseOptions<FetchWorkerConfig>
+    & RuntimeSourceOptions<BlockSource>
+    & RuntimeDbOptions<FetchWorkerDatabaseDependencies>;
 
 export class FetchWorker extends PollingWorker {
     static async create(options: CreateFetchWorkerOptions): Promise<FetchWorker> {

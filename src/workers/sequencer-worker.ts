@@ -23,7 +23,7 @@ import { PostgresRawBlocksRepository } from "../repositories/postgres/raw-blocks
 import { SequencerService } from "../services/sequencer-service.js";
 import { SEQUENCER_WORKER_LOCK_KEY_BASE } from "./worker-lock-keys.js";
 import { resolveDbDependencies, resolveEthersSource } from "../runtime/resolvers.js";
-import type { WorkerBaseOptions, WorkerDbOptions, WorkerSourceOptions } from "../runtime/types.js";
+import type { RuntimeBaseOptions, RuntimeDbOptions, RuntimeSourceOptions } from "../runtime/types.js";
 import type { BlockSource } from "../interfaces/block-source.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
@@ -39,9 +39,9 @@ export interface SequencerWorkerDatabaseDependencies {
 }
 
 export type CreateSequencerWorkerOptions =
-    WorkerBaseOptions<SequencerWorkerConfig>
-    & WorkerSourceOptions<BlockSource>
-    & WorkerDbOptions<SequencerWorkerDatabaseDependencies>;
+    RuntimeBaseOptions<SequencerWorkerConfig>
+    & RuntimeSourceOptions<BlockSource>
+    & RuntimeDbOptions<SequencerWorkerDatabaseDependencies>;
 
 export class SequencerWorker extends SingletonPollingWorker {
     static async create(options: CreateSequencerWorkerOptions): Promise<SequencerWorker> {

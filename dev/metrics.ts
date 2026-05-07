@@ -6,9 +6,8 @@ async function run(): Promise<void> {
     const dbUrl = envValue("DATABASE_URL", "");
     const rpcUrl = envValue("VORYN_METRICS_RPC_URL", "");
     const chainId = envNumber("VORYN_CHAIN_ID", "0");
-    const confirmations = envNumber("VORYN_METRICS_CONFIRMATIONS", "0");
 
-    const config = { chainId, confirmations };
+    const config = { chainId };
     const metrics = await PipelineMetrics.create({ config, logger, dbUrl, rpcUrl });
 
     try {

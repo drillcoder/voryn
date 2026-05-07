@@ -8,9 +8,9 @@ import type { BlockSource } from "../interfaces/block-source.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
 import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
-import type { ResolveDbDependenciesResult, WorkerDbOptions, WorkerSourceOptions } from "./types.js";
+import type { ResolveDbDependenciesResult, RuntimeDbOptions, RuntimeSourceOptions } from "./types.js";
 
-export function resolveEthersSource(options: WorkerSourceOptions<BlockSource>): BlockSource {
+export function resolveEthersSource(options: RuntimeSourceOptions<BlockSource>): BlockSource {
     if (options.source !== undefined) {
         return options.source;
     }
@@ -22,7 +22,7 @@ export function resolveEthersSource(options: WorkerSourceOptions<BlockSource>): 
 }
 
 export async function resolveDbDependencies<TDependencies extends object>(
-    options: WorkerDbOptions<TDependencies> & { logger?: Logger },
+    options: RuntimeDbOptions<TDependencies> & { logger?: Logger },
     buildDefaults: (pool: Pool) => TDependencies
 ): Promise<ResolveDbDependenciesResult<TDependencies>> {
     if (options.dbUrl !== undefined) {

@@ -11,7 +11,6 @@ jest.mock("../../../src/postgres/schema.js", () => ({
 
 const config: PipelineMetricsConfig = {
     chainId: 7,
-    confirmations: 2,
 };
 
 interface PipelineMetricsInternals {
