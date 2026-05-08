@@ -1,7 +1,7 @@
 # Voryn
 
 <p align="center">
-  <strong>TypeScript-каркас для надежной индексации EVM-сетей через PostgreSQL.</strong>
+  <strong>A TypeScript framework for reliable EVM indexing with PostgreSQL.</strong>
 </p>
 
 <p align="center">
@@ -13,32 +13,36 @@
   <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-ready-4169e1?style=flat-square">
 </p>
 
-Voryn помогает строить индексаторы, которые читают блоки из EVM RPC, сохраняют сырые данные, последовательно коммитят каноническую цепочку и запускают пользовательские обработчики по транзакциям и событиям.
+<p align="center">
+  <a href="./README.ru.md">Russian documentation</a>
+</p>
 
-Библиотека закрывает скучную, но критичную инфраструктуру: очереди блоков, ретраи, курсоры, singleton-locks, защиту от reorg, retention и метрики. Вы пишете бизнес-логику поверх уже канонических данных.
+Voryn helps you build indexers that read blocks from EVM RPC, store raw data, commit the canonical chain in strict order, and run your application logic on transactions and events.
 
-## Для кого
+The library handles the boring but critical infrastructure: block queues, retries, cursors, singleton locks, reorg protection, retention, and metrics. You write business logic on top of canonical data.
 
-Voryn подойдет командам, которые делают:
+## Who it is for
 
-- backend для DeFi, NFT, payments, wallets и on-chain analytics;
-- event-driven сервисы, которым нужно реагировать на логи контрактов;
-- пайплайны для загрузки блоков, транзакций и событий в PostgreSQL;
-- свои индексаторы вместо готовых hosted-решений;
-- multi-chain сервисы, где прогресс каждой сети должен быть изолирован.
+Voryn is a good fit for teams building:
 
-Не лучший выбор, если нужен разовый скрипт `getLogs`, полноценный query layer как у hosted indexer из коробки или хранение без PostgreSQL.
+- backends for DeFi, NFT, payments, wallets, and on-chain analytics;
+- event-driven services that react to contract logs;
+- pipelines that load blocks, transactions, and events into PostgreSQL;
+- custom indexers instead of hosted indexing services;
+- multi-chain services where each chain needs isolated progress tracking.
 
-## Что внутри
+It is not the best fit if you only need a one-off `getLogs` script, a full query layer like a hosted indexer provides out of the box, or storage without PostgreSQL.
 
-- **Ingestion pipeline**: `HeadWorker` ставит блоки в очередь, `FetchWorker` скачивает данные, `SequencerWorker` коммитит только строгую последовательность `N -> N+1`.
-- **Reorg handling**: проверка `parentHash`, поиск общего предка и откат неканонических данных.
-- **Horizontal fetch scaling**: несколько fetch-воркеров могут безопасно делить одну очередь через PostgreSQL.
-- **Durable reactions**: `EventReactionWorker` и `TransactionReactionWorker` читают канонические потоки по `seq` и ведут собственные курсоры.
-- **Operational tools**: `RetentionWorker`, `PipelineMetrics`, `BlockJobRecovery`, `ConsoleLogger`, PostgreSQL schema helper.
-- **Replaceable pieces**: можно подставить свой `BlockSource`, logger, repositories, transaction manager или leader lock.
+## What is included
 
-## Как это работает
+- **Ingestion pipeline**: `HeadWorker` enqueues blocks, `FetchWorker` downloads data, and `SequencerWorker` commits only the strict `N -> N+1` sequence.
+- **Reorg handling**: `parentHash` checks, common ancestor lookup, and rollback of non-canonical data.
+- **Horizontal fetch scaling**: multiple fetch workers can safely share one PostgreSQL-backed queue.
+- **Durable reactions**: `EventReactionWorker` and `TransactionReactionWorker` read canonical streams by `seq` and maintain their own cursors.
+- **Operational tools**: `RetentionWorker`, `PipelineMetrics`, `BlockJobRecovery`, `ConsoleLogger`, and a PostgreSQL schema helper.
+- **Replaceable pieces**: you can bring your own `BlockSource`, logger, repositories, transaction manager, or leader lock.
+
+## How it works
 
 ```mermaid
 flowchart LR
@@ -54,27 +58,27 @@ flowchart LR
     Events --> EventReaction["EventReactionWorker"]
 ```
 
-`fetch` можно масштабировать горизонтально. `head`, `sequencer`, `retention` и reaction-воркеры работают как singleton-процессы через `LeaderLock`.
+`fetch` can be scaled horizontally. `head`, `sequencer`, `retention`, and reaction workers run as singleton processes through `LeaderLock`.
 
-## Установка
+## Installation
 
 ```bash
 npm install @drillcoder/voryn
 ```
 
-Пакет опубликован как ESM и использует `ethers` v6 и `pg`.
+The package is published as ESM and uses `ethers` v6 and `pg`.
 
-## Инициализация БД
+## Database setup
 
-Voryn ожидает базовую PostgreSQL-схему из `src/sql/postgres-schema.sql`.
+Voryn expects the base PostgreSQL schema from `src/sql/postgres-schema.sql`.
 
-Можно применить SQL своим способом:
+You can apply the SQL with your own migration flow:
 
 ```bash
 psql "$DATABASE_URL" -f node_modules/@drillcoder/voryn/dist/sql/postgres-schema.sql
 ```
 
-Или использовать helper:
+Or use the built-in helper:
 
 ```ts
 import { Pool } from "pg";
@@ -92,11 +96,11 @@ await applySqlFileToPostgresDb({
 await pool.end();
 ```
 
-Готовый пример: [examples/db-apply-sql.ts](./examples/db-apply-sql.ts)
+Full example: [examples/db-apply-sql.ts](./examples/db-apply-sql.ts)
 
-## Быстрый старт
+## Quick start
 
-Минимальный ingestion-контур состоит из `head`, `fetch` и `sequencer`. В продакшене их обычно запускают отдельными процессами или контейнерами.
+The minimal ingestion pipeline consists of `head`, `fetch`, and `sequencer`. In production, they are usually started as separate processes or containers.
 
 ```ts
 import { ConsoleLogger, FetchWorker, HeadWorker, SequencerWorker } from "@drillcoder/voryn";
@@ -152,16 +156,16 @@ await Promise.all([
 ]);
 ```
 
-Полные примеры запуска:
+Full worker examples:
 
 - [HeadWorker](./examples/head-worker.ts)
 - [FetchWorker](./examples/fetch-worker.ts)
 - [SequencerWorker](./examples/sequencer-worker.ts)
 - [RetentionWorker](./examples/retention-worker.ts)
 
-## Реакции на события и транзакции
+## Event and transaction reactions
 
-Reaction-воркеры читают только канонически закоммиченные данные. Каждый `workerName` имеет свой durable cursor, поэтому обработчик можно безопасно перезапускать.
+Reaction workers read only canonical committed data. Each `workerName` has its own durable cursor, so handlers can be restarted safely.
 
 ```ts
 import type { EventReactionHandler } from "@drillcoder/voryn";
@@ -196,14 +200,14 @@ const worker = await EventReactionWorker.create({
 await worker.start();
 ```
 
-Примеры:
+Examples:
 
 - [EventReactionWorker](./examples/event-reaction-worker.ts)
 - [TransactionReactionWorker](./examples/transaction-reaction-worker.ts)
 
-## Метрики и recovery
+## Metrics and recovery
 
-`PipelineMetrics` дает снимок состояния пайплайна: текущий RPC head, отставание стадий, свежесть данных, статусы block jobs, failed-блоки и lag reaction-воркеров.
+`PipelineMetrics` returns a pipeline snapshot: current RPC head, stage lag, data freshness, block job statuses, failed blocks, and reaction worker lag.
 
 ```ts
 import { PipelineMetrics } from "@drillcoder/voryn";
@@ -221,16 +225,16 @@ const snapshot = await metrics.get();
 await metrics.close();
 ```
 
-Для ручного возврата failed-блоков в обработку есть `BlockJobRecovery`.
+Use `BlockJobRecovery` to manually put failed blocks back into processing.
 
-Примеры:
+Examples:
 
 - [Metrics](./examples/metrics.ts)
 - [BlockJobRecovery](./examples/block-job-recovery.ts)
 
 ## EthersBlockSource
 
-Из коробки есть адаптер для `ethers` v6:
+Voryn includes an adapter for `ethers` v6:
 
 ```ts
 import { JsonRpcProvider } from "ethers";
@@ -242,27 +246,27 @@ const source = new EthersBlockSource({
 });
 ```
 
-Адаптер валидирует chain id, хеши, адреса, `data`-поля, индексы транзакций и соответствие номера блока. Для другого источника данных достаточно реализовать интерфейс `BlockSource`.
+The adapter validates chain id, hashes, addresses, `data` fields, transaction indexes, and block number consistency. To use another data source, implement the `BlockSource` interface.
 
-## Публичный API
+## Public API
 
-Основные экспорты:
+Main exports:
 
-- воркеры: `HeadWorker`, `FetchWorker`, `SequencerWorker`, `RetentionWorker`, `EventReactionWorker`, `TransactionReactionWorker`;
-- данные и реакции: `CanonicalTransaction`, `CanonicalEvent`, `EventReactionHandler`, `TransactionReactionHandler`;
-- инфраструктура: `EthersBlockSource`, `ConsoleLogger`, `PostgresLeaderLock`, `PostgresTransactionManager`;
-- PostgreSQL-репозитории и schema helpers;
-- операционные инструменты: `PipelineMetrics`, `BlockJobRecovery`.
+- workers: `HeadWorker`, `FetchWorker`, `SequencerWorker`, `RetentionWorker`, `EventReactionWorker`, `TransactionReactionWorker`;
+- data and reactions: `CanonicalTransaction`, `CanonicalEvent`, `EventReactionHandler`, `TransactionReactionHandler`;
+- infrastructure: `EthersBlockSource`, `ConsoleLogger`, `PostgresLeaderLock`, `PostgresTransactionManager`;
+- PostgreSQL repositories and schema helpers;
+- operational tools: `PipelineMetrics`, `BlockJobRecovery`.
 
-## Документация
+## Documentation
 
-- [Архитектура](./docs/ARCHITECTURE.md)
-- [Схема БД](./docs/DB_SCHEMA.md)
-- [Разработка](./docs/DEVELOPMENT.md)
+- [Architecture](./docs/ARCHITECTURE.md)
+- [Database schema](./docs/DB_SCHEMA.md)
+- [Development](./docs/DEVELOPMENT.md)
 
-## Разработка
+## Development
 
-Команды собраны в [dev/Makefile](./dev/Makefile). Так как проверки используют зависимости проекта, запускайте их через `tools`-контейнер:
+Commands are collected in [dev/Makefile](./dev/Makefile). Checks that require project dependencies should be run through the `tools` container:
 
 ```bash
 make lint
@@ -270,7 +274,7 @@ make test
 make build
 ```
 
-Для локального dev-окружения:
+For the local development environment:
 
 ```bash
 cp dev/.env.example dev/.env
