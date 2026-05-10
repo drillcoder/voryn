@@ -260,9 +260,9 @@ Main exports:
 
 ## Documentation
 
-- [Architecture](./docs/ARCHITECTURE.md)
-- [Database schema](./docs/DB_SCHEMA.md)
-- [Development](./docs/DEVELOPMENT.md)
+- [Architecture](./docs/en/ARCHITECTURE.md)
+- [Database schema](./docs/en/DB_SCHEMA.md)
+- [Development](./docs/en/DEVELOPMENT.md)
 
 ## Development
 

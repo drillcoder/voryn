@@ -1,6 +1,6 @@
 # Схема БД (поля таблиц)
 
-Документ описывает поля из файла [postgres-schema.sql](../src/sql/postgres-schema.sql).
+Документ описывает поля из файла [postgres-schema.sql](../../src/sql/postgres-schema.sql).
 
 ## `chain_cursor`
 

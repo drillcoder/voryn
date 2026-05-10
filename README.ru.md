@@ -260,9 +260,9 @@ const source = new EthersBlockSource({
 
 ## Документация
 
-- [Архитектура](./docs/ARCHITECTURE.md)
-- [Схема БД](./docs/DB_SCHEMA.md)
-- [Разработка](./docs/DEVELOPMENT.md)
+- [Архитектура](./docs/ru/ARCHITECTURE.md)
+- [Схема БД](./docs/ru/DB_SCHEMA.md)
+- [Разработка](./docs/ru/DEVELOPMENT.md)
 
 ## Разработка
 
