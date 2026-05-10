@@ -3,6 +3,15 @@
 Команды для разработки собраны в `dev/Makefile`.
 Для удобства в корне есть прокси-`Makefile`, поэтому можно запускать: `make lint`, `make test`, `make init`.
 
+Основные команды:
+
+- `make install` — установить зависимости в `tools`-контейнере.
+- `make build` — собрать пакет.
+- `make build-test` — проверить компиляцию тестов.
+- `make lint` — запустить ESLint.
+- `make test` — запустить весь Jest-набор.
+- `make test-coverage` — запустить тесты с coverage.
+
 ## Docker (dev)
 
 Для docker-compose переменная `VORYN_CHAIN_ID` обязательна (`is required`),
@@ -70,6 +79,39 @@ docker compose --env-file dev/.env -f dev/docker-compose.yml logs -f head fetch 
 
 - `VORYN_RETENTION_DELAY_BETWEEN_TICKS_MS` (`optional`, по умолчанию `60_000`) — задержка между тиками в миллисекундах.
 - `VORYN_RETENTION_DEPTH_BLOCKS` (`optional`, по умолчанию `65_000`) — глубина хранения в committed-блоках.
+
+## Операционные dev-скрипты
+
+Применить SQL-схему:
+
+```bash
+npm run db:apply-sql -- src/sql/postgres-schema.sql
+```
+
+Получить snapshot метрик пайплайна:
+
+```bash
+npm exec -- tsx --tsconfig dev/tsconfig.json dev/metrics.ts
+```
+
+Дополнительно для `metrics`:
+
+- `VORYN_METRICS_RPC_URL` (`required`) — RPC URL для чтения текущего latest block.
+
+Вернуть failed block jobs в обработку:
+
+```bash
+npm exec -- tsx --tsconfig dev/tsconfig.json dev/block-job-recovery.ts
+```
+
+Дополнительно для `block-job-recovery`:
+
+- `VORYN_RECOVERY_BLOCK` (`optional`) — один failed-блок для повторной обработки.
+- `VORYN_RECOVERY_FROM_BLOCK` (`optional`) — начало диапазона failed-блоков.
+- `VORYN_RECOVERY_TO_BLOCK` (`optional`) — конец диапазона failed-блоков.
+
+Нужно задать либо `VORYN_RECOVERY_BLOCK`, либо обе переменные диапазона:
+`VORYN_RECOVERY_FROM_BLOCK` и `VORYN_RECOVERY_TO_BLOCK`.
 
 Пример:
 

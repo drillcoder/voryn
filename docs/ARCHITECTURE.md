@@ -11,7 +11,8 @@ Ingestion-воркеры последовательно собирают и ко
 - Порядок блоков: коммит только `N -> N+1` для каждой сети (`chain_id`).
 - Разделение ответственности:
   - репозитории делают только простые операции с БД,
-  - orchestration и транзакционные границы задаются на уровне воркеров.
+  - сервисы описывают один доменный `tick` и его транзакционные границы,
+  - воркеры отвечают за polling/lifecycle, singleton-locks и wiring зависимостей.
 - Изоляция реакций: падение reaction-воркера не останавливает ingestion-контур.
 - Singleton для критичных воркеров: через `LeaderLock`.
 
@@ -19,9 +20,15 @@ Ingestion-воркеры последовательно собирают и ко
 
 - `src/types` — базовые типы (`ChainId`, `HashHex`, статусы и т.д.).
 - `src/interfaces` — контракты доменных сущностей, репозиториев, runtime-конфигов и инфраструктуры.
+- `src/services` — доменная логика одного `tick`: ingestion, reactions, retention, metrics и recovery.
 - `src/repositories/postgres` — PostgreSQL-репозитории (по таблицам).
 - `src/postgres` — PostgreSQL-инфраструктура (`LeaderLock`, `TransactionManager`, парсеры).
-- `src/workers` — бизнес-процессы (`PollingWorker`, `SingletonPollingWorker`, ingestion/reaction воркеры).
+- `src/workers` — lifecycle-обертки (`PollingWorker`, `SingletonPollingWorker`, ingestion/reaction воркеры).
+- `src/runtime` — helper-типы и резолверы для `create(...)` фабрик.
+- `src/adapters` — адаптеры внешних источников данных, сейчас `EthersBlockSource`.
+- `src/metrics` — публичный facade для снимка состояния пайплайна.
+- `src/recovery` — публичный facade для ручного восстановления failed block jobs.
+- `src/loggers` — готовые реализации `Logger`.
 - `src/sql/postgres-schema.sql` — схема таблиц.
 
 ## Контракты и модели
@@ -46,7 +53,7 @@ Ingestion-воркеры последовательно собирают и ко
 
 - Абстракция: `TransactionManager` (`src/interfaces/transaction-manager.ts`).
 - PostgreSQL-реализация: `PostgresTransactionManager` (`src/postgres/transaction-manager.ts`).
-- Транзакционная логика задается в воркерах через `transactionManager.run(...)`.
+- Транзакционная логика задается в сервисах через `transactionManager.run(...)`.
 
 Это позволяет держать бизнес-сценарии и транзакционные границы в одном месте.
 
@@ -87,6 +94,9 @@ Ingestion-воркеры последовательно собирают и ко
   - вставляет данные в `canonical_blocks`, `canonical_transactions`, `canonical_events`,
   - двигает `last_committed_*` в `chain_cursor`,
   - помечает job как `committed`.
+- Если `parent_hash` не совпал с `last_committed_hash`, ищет общий предок через `BlockSource`,
+  удаляет неканонические данные после него из `block_jobs`, `raw_blocks`, `canonical_blocks`,
+  `canonical_transactions`, `canonical_events` и возвращает `chain_cursor` к предку.
 
 Именно этот воркер обеспечивает строгий порядок канонического потока.
 
@@ -106,13 +116,28 @@ Ingestion-воркеры последовательно собирают и ко
 
 - Читает события из `canonical_events` по `seq`.
 - Ведет прогресс в `worker_cursors` (`stream_type = event`).
+- При первом запуске нового `workerName` инициализирует cursor текущим `maxSeq`, поэтому начинает с новых событий, а не с исторического backfill.
 - Вызывает пользовательский `EventReactionHandler`.
 
-### `TransactionReactionWorker`
+### `TransactionReactionService`
 
 - Читает транзакции из `canonical_transactions` по `seq`.
 - Ведет прогресс в `worker_cursors` (`stream_type = tx`).
+- При первом запуске нового `workerName` инициализирует cursor текущим `maxSeq`, поэтому начинает с новых транзакций, а не с исторического backfill.
 - Вызывает пользовательский `TransactionReactionHandler`.
+
+## Операционные инструменты
+
+### `PipelineMetrics`
+
+- Читает `latestBlock` из `BlockSource`.
+- Возвращает lag стадий `head`, `fetch`, `sequencer`.
+- Показывает свежесть cursor/fetch, счетчики `block_jobs`, список failed-блоков и lag reaction-воркеров.
+
+### `BlockJobRecovery`
+
+- Возвращает failed block jobs в обработку для одного блока или диапазона.
+- Сбрасывает attempts и выставляет `next_retry_at = NOW()` через `BlockJobsRepository.retryFailed(...)`.
 
 ## Оркестрация процессов
 
@@ -136,4 +161,4 @@ Ingestion-воркеры последовательно собирают и ко
 - Курсор цепочки: `chain_cursor`
 - Курсоры реакторов: `worker_cursors`
 
-Подробная схема: [DB_SCHEMA.md](/docs/DB_SCHEMA.md)
+Подробная схема: [DB_SCHEMA.md](./DB_SCHEMA.md)
