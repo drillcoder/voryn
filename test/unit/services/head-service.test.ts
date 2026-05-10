@@ -257,7 +257,7 @@ test("head service skips when cursor is already ahead of safe head", async () =>
     expect(enqueued).toBe(false);
 });
 
-test("head service rebases and trims old jobs when committed block is below floor", async () => {
+test("head service rebases and enqueues new jobs when committed block is below floor", async () => {
     const calls: unknown[] = [];
     const { manager, transaction } = createPassThroughManager();
 
@@ -286,8 +286,8 @@ test("head service rebases and trims old jobs when committed block is below floo
             };
         },
         insert: async () => undefined,
-        setLastEnqueued: async () => {
-            throw new Error("must not set enqueued in rebase branch");
+        setLastEnqueued: async (_chainId, block, tx) => {
+            calls.push(["setLastEnqueued", block, tx]);
         },
         setPositions: async (_chainId, committed, committedHash, enqueued, tx) => {
             calls.push(["setPositions", committed, committedHash, enqueued, tx]);
@@ -308,8 +308,8 @@ test("head service rebases and trims old jobs when committed block is below floo
     };
 
     const blockJobsRepository = createBlockJobsRepository({
-        enqueueRange: async () => {
-            throw new Error("must not enqueue during rebase tick");
+        enqueueRange: async (_chainId, from, to, tx) => {
+            calls.push(["enqueueRange", from, to, tx]);
         },
         deleteUpToBlock: async (_chainId, toBlock, tx) => {
             calls.push(["deleteJobsUpToBlock", toBlock, tx]);
@@ -334,10 +334,12 @@ test("head service rebases and trims old jobs when committed block is below floo
         ["setPositions", 113, HASH_C, 113, transaction],
         ["deleteJobsUpToBlock", 113, transaction],
         ["deleteRawUpToBlock", 113, transaction],
+        ["enqueueRange", 114, 118, transaction],
+        ["setLastEnqueued", 118, transaction],
     ]);
 });
 
-test("head service does not rebase when cursor catches up before transactional check", async () => {
+test("head service enqueues without rebase when cursor catches up before transactional check", async () => {
     const calls: unknown[] = [];
     const { manager, transaction } = createPassThroughManager();
 
@@ -359,14 +361,16 @@ test("head service does not rebase when cursor catches up before transactional c
             expect(tx).toBe(transaction);
             return {
                 chainId: 1,
-                lastEnqueuedBlock: 200,
+                lastEnqueuedBlock: 115,
                 lastCommittedBlock: 113,
                 lastCommittedHash: HASH_A,
                 updatedAt: new Date(),
             };
         },
         insert: async () => undefined,
-        setLastEnqueued: async () => undefined,
+        setLastEnqueued: async (_chainId, block, tx) => {
+            calls.push(["setLastEnqueued", block, tx]);
+        },
         setPositions: async () => {
             calls.push("setPositions");
         },
@@ -383,8 +387,8 @@ test("head service does not rebase when cursor catches up before transactional c
     };
 
     const blockJobsRepository = createBlockJobsRepository({
-        enqueueRange: async () => {
-            throw new Error("must not enqueue in this tick");
+        enqueueRange: async (_chainId, from, to, tx) => {
+            calls.push(["enqueueRange", from, to, tx]);
         },
         deleteUpToBlock: async () => {
             calls.push("deleteJobs");
@@ -405,7 +409,10 @@ test("head service does not rebase when cursor catches up before transactional c
 
     expect(getCalls).toBe(1);
     expect(getForUpdateCalls).toBe(1);
-    expect(calls).toEqual([]);
+    expect(calls).toEqual([
+        ["enqueueRange", 116, 118, transaction],
+        ["setLastEnqueued", 118, transaction],
+    ]);
 });
 
 test("head service throws when cursor disappears inside enqueue transaction", async () => {

@@ -1,9 +1,11 @@
 import type { BlockSource } from "../interfaces/block-source.js";
+import type { DbExecutor } from "../interfaces/db.js";
 import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
 import type { BlockJobsRepository, ChainCursorRepository, RawBlocksRepository } from "../interfaces/repositories.js";
 import type { HeadWorkerConfig } from "../interfaces/runtime.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
+import type { BlockNumber, ChainId } from "../types/chain.js";
 
 export class HeadService {
     constructor(
@@ -65,6 +67,13 @@ export class HeadService {
                 }
 
                 if (chainCursor.lastCommittedBlock >= floorBlock - 1) {
+                    await this.enqueueMissingBlockJobs(
+                        chainId,
+                        chainCursor.lastEnqueuedBlock,
+                        floorBlock,
+                        safeHead,
+                        transaction,
+                    );
                     return;
                 }
 
@@ -86,6 +95,8 @@ export class HeadService {
                     floorBlock,
                     rebasedToBlock: rebaseTo,
                 });
+
+                await this.enqueueMissingBlockJobs(chainId, rebaseTo, floorBlock, safeHead, transaction);
             });
             return;
         }
@@ -97,20 +108,36 @@ export class HeadService {
                 throw new Error(`Chain cursor not found for chain ${String(chainId)}`);
             }
 
-            const fromBlock = Math.max(chainCursor.lastEnqueuedBlock + 1, floorBlock);
-
-            if (fromBlock > safeHead) {
-                return;
-            }
-
-            await this.blockJobsRepository.enqueueRange(chainId, fromBlock, safeHead, transaction);
-            await this.chainCursorRepository.setLastEnqueued(chainId, safeHead, transaction);
-
-            this.logger.info("enqueued_block_jobs", {
+            await this.enqueueMissingBlockJobs(
                 chainId,
-                fromBlock,
-                toBlock: safeHead,
-            });
+                chainCursor.lastEnqueuedBlock,
+                floorBlock,
+                safeHead,
+                transaction,
+            );
+        });
+    }
+
+    private async enqueueMissingBlockJobs(
+        chainId: ChainId,
+        lastEnqueuedBlock: BlockNumber,
+        floorBlock: BlockNumber,
+        safeHead: BlockNumber,
+        transaction: DbExecutor,
+    ): Promise<void> {
+        const fromBlock = Math.max(lastEnqueuedBlock + 1, floorBlock);
+
+        if (fromBlock > safeHead) {
+            return;
+        }
+
+        await this.blockJobsRepository.enqueueRange(chainId, fromBlock, safeHead, transaction);
+        await this.chainCursorRepository.setLastEnqueued(chainId, safeHead, transaction);
+
+        this.logger.info("enqueued_block_jobs", {
+            chainId,
+            fromBlock,
+            toBlock: safeHead,
         });
     }
 }

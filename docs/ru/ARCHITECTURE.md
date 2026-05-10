@@ -69,7 +69,9 @@ Ingestion-воркеры последовательно собирают и ко
   - читает `floorBlock` из RPC и берет `parentHash`,
   - в транзакции сдвигает `chain_cursor` на `floorBlock - 1`,
   - удаляет старые записи до этой границы из `block_jobs` и `raw_blocks`,
-  - завершает тик ранним выходом.
+  - добавляет jobs в диапазоне `[floorBlock, safeHead]`,
+  - обновляет `lastEnqueuedBlock`,
+  - завершает тик.
 - В одной транзакции:
   - читает cursor,
   - добавляет jobs в диапазоне `[max(lastEnqueuedBlock + 1, floorBlock), safeHead]`,

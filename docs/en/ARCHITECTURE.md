@@ -69,7 +69,9 @@ This keeps business scenarios and transaction boundaries in one place.
   - reads `floorBlock` from RPC and uses its `parentHash`,
   - moves `chain_cursor` to `floorBlock - 1` in a transaction,
   - deletes old records up to that boundary from `block_jobs` and `raw_blocks`,
-  - exits the tick early.
+  - enqueues jobs in `[floorBlock, safeHead]`,
+  - updates `lastEnqueuedBlock`,
+  - finishes the tick.
 - In one transaction:
   - reads the cursor,
   - enqueues jobs in `[max(lastEnqueuedBlock + 1, floorBlock), safeHead]`,
