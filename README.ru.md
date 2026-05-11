@@ -222,8 +222,13 @@ const metrics = await PipelineMetrics.create({
 });
 
 const snapshot = await metrics.get();
+const prometheusText = await metrics.getPrometheus();
 await metrics.close();
 ```
+
+`get()` возвращает сырой снимок состояния пайплайна как объект.
+`getPrometheus()` возвращает метрики в Prometheus text exposition format. Его можно отдавать из своего
+`/metrics` endpoint.
 
 Для ручного возврата failed-блоков в обработку есть `BlockJobRecovery`.
 

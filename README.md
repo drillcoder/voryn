@@ -222,8 +222,12 @@ const metrics = await PipelineMetrics.create({
 });
 
 const snapshot = await metrics.get();
+const prometheusText = await metrics.getPrometheus();
 await metrics.close();
 ```
+
+`get()` returns the raw pipeline snapshot as an object.
+`getPrometheus()` returns Prometheus text exposition format. Serve it from your own `/metrics` endpoint.
 
 Use `BlockJobRecovery` to manually put failed blocks back into processing.
 

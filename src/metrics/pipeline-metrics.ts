@@ -18,6 +18,7 @@ import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker
 import { PipelineMetricsService } from "../services/pipeline-metrics-service.js";
 import { resolveDbDependencies, resolveEthersSource } from "../runtime/resolvers.js";
 import type { RuntimeBaseOptions, RuntimeDbOptions, RuntimeSourceOptions } from "../runtime/types.js";
+import { formatPipelineMetricsPrometheus } from "./prometheus.js";
 
 export interface PipelineMetricsDatabaseDependencies {
     chainCursorRepository: ChainCursorRepository;
@@ -69,6 +70,10 @@ export class PipelineMetrics {
 
     async get(): Promise<ChainPipelineMetrics> {
         return this.service.get();
+    }
+
+    async getPrometheus(): Promise<string> {
+        return formatPipelineMetricsPrometheus(await this.get());
     }
 
     async close(): Promise<void> {

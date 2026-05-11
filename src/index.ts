@@ -22,6 +22,7 @@ export * from "./workers/transaction-reaction-worker.js";
 export * from "./workers/event-reaction-worker.js";
 
 export * from "./metrics/pipeline-metrics.js";
+export * from "./metrics/prometheus.js";
 
 export * from "./recovery/block-job-recovery.js";
 

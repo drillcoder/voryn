@@ -41,3 +41,31 @@ test("pipeline metrics create wires service execution", async () => {
 
     expect(getLatestBlockNumber).toHaveBeenCalledWith(7);
 });
+
+test("pipeline metrics returns prometheus text", async () => {
+    const source: BlockSource = {
+        getLatestBlockNumber: async () => 20,
+        getBlockData: async () => {
+            throw new Error("not expected");
+        },
+    };
+    const metrics = await PipelineMetrics.create({
+        config,
+        source,
+        overrides: {
+            chainCursorRepository: createNoopChainCursorRepository(),
+            blockJobsRepository: createNoopBlockJobsRepository(),
+            rawBlocksRepository: createNoopRawBlocksRepository(),
+            canonicalTransactionsRepository: createNoopCanonicalTransactionsRepository(),
+            canonicalEventsRepository: createNoopCanonicalEventsRepository(),
+            workerCursorsRepository: createNoopWorkerCursorsRepository(),
+        },
+    });
+
+    const text = await metrics.getPrometheus();
+
+    await metrics.close();
+
+    expect(text).toContain("# TYPE voryn_pipeline_latest_block gauge");
+    expect(text).toContain("voryn_pipeline_latest_block{chain_id=\"7\"} 20");
+});
