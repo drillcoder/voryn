@@ -39,73 +39,29 @@ export class HeadService {
         const cursorBeforeTx = await this.chainCursorRepository.get(chainId);
 
         if (cursorBeforeTx === null) {
-            const latestBlockData = await this.source.getBlockData(chainId, latestBlock);
-            await this.chainCursorRepository.insert({
-                chainId,
-                lastEnqueuedBlock: latestBlock,
-                lastCommittedBlock: latestBlock,
-                lastCommittedHash: latestBlockData.block.hash,
-            });
-
-            this.logger.info("chain_cursor_initialized", {
-                chainId,
-                latestBlock,
-                latestBlockHash: latestBlockData.block.hash,
-            });
-
+            await this.initializeCursor(chainId, latestBlock);
             return;
         }
 
         if (cursorBeforeTx.lastCommittedBlock < floorBlock - 1) {
-            const floorData = await this.source.getBlockData(chainId, floorBlock);
-            const floorParentHash = floorData.block.parentHash;
-            await this.transactionManager.run(async (transaction) => {
-                const chainCursor = await this.chainCursorRepository.getForUpdate(chainId, transaction);
-
-                if (chainCursor === null) {
-                    throw new Error(`Chain cursor not found for chain ${String(chainId)}`);
-                }
-
-                if (chainCursor.lastCommittedBlock >= floorBlock - 1) {
-                    await this.enqueueMissingBlockJobs(
-                        chainId,
-                        chainCursor.lastEnqueuedBlock,
-                        floorBlock,
-                        safeHead,
-                        transaction,
-                    );
-                    return;
-                }
-
-                const rebaseTo = floorBlock - 1;
-                await this.chainCursorRepository.setPositions(
-                    chainId,
-                    rebaseTo,
-                    floorParentHash,
-                    rebaseTo,
-                    transaction,
-                );
-                await this.blockJobsRepository.deleteUpToBlock(chainId, rebaseTo, transaction);
-                await this.rawBlocksRepository.deleteUpToBlock(chainId, rebaseTo, transaction);
-
-                this.logger.info("chain_cursor_rebased", {
-                    chainId,
-                    safeHead,
-                    depthBlocks,
-                    floorBlock,
-                    rebasedToBlock: rebaseTo,
-                });
-
-                await this.enqueueMissingBlockJobs(chainId, rebaseTo, floorBlock, safeHead, transaction);
-            });
+            await this.rebaseCursorAndEnqueue(chainId, safeHead, floorBlock, depthBlocks);
             return;
         }
 
         await this.transactionManager.run(async (transaction) => {
-            const chainCursor = await this.chainCursorRepository.get(chainId, transaction);
+            const chainCursor = await this.chainCursorRepository.getForUpdate(chainId, transaction);
 
             if (chainCursor === null) {
                 throw new Error(`Chain cursor not found for chain ${String(chainId)}`);
+            }
+
+            if (chainCursor.lastCommittedBlock < floorBlock - 1) {
+                this.logger.debug("head_enqueue_deferred_until_rebase", {
+                    chainId,
+                    lastCommittedBlock: chainCursor.lastCommittedBlock,
+                    floorBlock,
+                });
+                return;
             }
 
             await this.enqueueMissingBlockJobs(
@@ -115,6 +71,71 @@ export class HeadService {
                 safeHead,
                 transaction,
             );
+        });
+    }
+
+    private async initializeCursor(chainId: ChainId, latestBlock: BlockNumber): Promise<void> {
+        const latestBlockData = await this.source.getBlockData(chainId, latestBlock);
+        await this.chainCursorRepository.insert({
+            chainId,
+            lastEnqueuedBlock: latestBlock,
+            lastCommittedBlock: latestBlock,
+            lastCommittedHash: latestBlockData.block.hash,
+        });
+
+        this.logger.info("chain_cursor_initialized", {
+            chainId,
+            latestBlock,
+            latestBlockHash: latestBlockData.block.hash,
+        });
+    }
+
+    private async rebaseCursorAndEnqueue(
+        chainId: ChainId,
+        safeHead: BlockNumber,
+        floorBlock: BlockNumber,
+        depthBlocks: number,
+    ): Promise<void> {
+        const floorData = await this.source.getBlockData(chainId, floorBlock);
+        const floorParentHash = floorData.block.parentHash;
+        await this.transactionManager.run(async (transaction) => {
+            const chainCursor = await this.chainCursorRepository.getForUpdate(chainId, transaction);
+
+            if (chainCursor === null) {
+                throw new Error(`Chain cursor not found for chain ${String(chainId)}`);
+            }
+
+            if (chainCursor.lastCommittedBlock >= floorBlock - 1) {
+                await this.enqueueMissingBlockJobs(
+                    chainId,
+                    chainCursor.lastEnqueuedBlock,
+                    floorBlock,
+                    safeHead,
+                    transaction,
+                );
+                return;
+            }
+
+            const rebaseTo = floorBlock - 1;
+            await this.chainCursorRepository.setPositions(
+                chainId,
+                rebaseTo,
+                floorParentHash,
+                rebaseTo,
+                transaction,
+            );
+            await this.blockJobsRepository.deleteUpToBlock(chainId, rebaseTo, transaction);
+            await this.rawBlocksRepository.deleteUpToBlock(chainId, rebaseTo, transaction);
+
+            this.logger.info("chain_cursor_rebased", {
+                chainId,
+                safeHead,
+                depthBlocks,
+                floorBlock,
+                rebasedToBlock: rebaseTo,
+            });
+
+            await this.enqueueMissingBlockJobs(chainId, rebaseTo, floorBlock, safeHead, transaction);
         });
     }
 

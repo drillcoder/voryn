@@ -88,7 +88,13 @@ test("head service enqueues and updates cursor in transaction", async () => {
             lastCommittedHash: HASH_A,
             updatedAt: new Date(),
         }),
-        getForUpdate: async () => { throw new Error("not used"); },
+        getForUpdate: async () => ({
+            chainId: 1,
+            lastEnqueuedBlock: 10,
+            lastCommittedBlock: 8,
+            lastCommittedHash: HASH_A,
+            updatedAt: new Date(),
+        }),
         insert: async () => undefined,
         setLastEnqueued: async (_chainId, block, tx) => {
             calls.push(["setLastEnqueued", block, tx]);
@@ -139,7 +145,13 @@ test("head service starts enqueue range from zero when depth exceeds safe head",
             lastCommittedHash: HASH_A,
             updatedAt: new Date(),
         }),
-        getForUpdate: async () => { throw new Error("not used"); },
+        getForUpdate: async () => ({
+            chainId: 1,
+            lastEnqueuedBlock: 0,
+            lastCommittedBlock: 0,
+            lastCommittedHash: HASH_A,
+            updatedAt: new Date(),
+        }),
         insert: async () => undefined,
         setLastEnqueued: async (_chainId, block, tx) => {
             calls.push(["setLastEnqueued", block, tx]);
@@ -237,7 +249,13 @@ test("head service skips when cursor is already ahead of safe head", async () =>
                 lastCommittedHash: HASH_A,
                 updatedAt: new Date(),
             }),
-            getForUpdate: async () => { throw new Error("not used"); },
+            getForUpdate: async () => ({
+                chainId: 1,
+                lastEnqueuedBlock: 11,
+                lastCommittedBlock: 10,
+                lastCommittedHash: HASH_A,
+                updatedAt: new Date(),
+            }),
             insert: async () => undefined,
             setLastEnqueued: async () => undefined,
             setPositions: async () => undefined,
@@ -415,6 +433,62 @@ test("head service enqueues without rebase when cursor catches up before transac
     ]);
 });
 
+test("head service defers enqueue when locked cursor needs rebase", async () => {
+    const calls: unknown[] = [];
+    const { manager } = createPassThroughManager();
+
+    const source: BlockSource = {
+        getLatestBlockNumber: async () => 15,
+        getBlockData: async () => {
+            throw new Error("not used");
+        },
+    };
+
+    const chainCursorRepository: ChainCursorRepository = {
+        get: async () => ({
+            chainId: 1,
+            lastEnqueuedBlock: 20,
+            lastCommittedBlock: 8,
+            lastCommittedHash: HASH_A,
+            updatedAt: new Date(),
+        }),
+        getForUpdate: async () => ({
+            chainId: 1,
+            lastEnqueuedBlock: 7,
+            lastCommittedBlock: 7,
+            lastCommittedHash: HASH_A,
+            updatedAt: new Date(),
+        }),
+        insert: async () => undefined,
+        setLastEnqueued: async (_chainId, block) => {
+            calls.push(["setLastEnqueued", block]);
+        },
+        setPositions: async () => {
+            calls.push("setPositions");
+        },
+        advanceLastCommitted: async () => undefined,
+    };
+
+    const blockJobsRepository = createBlockJobsRepository({
+        enqueueRange: async (_chainId, from, to) => {
+            calls.push(["enqueueRange", from, to]);
+        },
+    });
+
+    const worker = new HeadService(
+        config,
+        source,
+        chainCursorRepository,
+        blockJobsRepository,
+        createRawBlocksRepository(calls),
+        manager,
+    );
+
+    await worker.execute();
+
+    expect(calls).toEqual([]);
+});
+
 test("head service throws when cursor disappears inside enqueue transaction", async () => {
     const source: BlockSource = {
         getLatestBlockNumber: async () => 12,
@@ -436,7 +510,7 @@ test("head service throws when cursor disappears inside enqueue transaction", as
                 updatedAt: new Date(),
             };
         },
-        getForUpdate: async () => { throw new Error("not used"); },
+        getForUpdate: async () => null,
         insert: async () => undefined,
         setLastEnqueued: async () => undefined,
         setPositions: async () => undefined,
