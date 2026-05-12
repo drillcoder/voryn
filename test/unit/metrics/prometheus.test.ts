@@ -162,6 +162,59 @@ test("omits nullable metrics when values are unknown", () => {
     expect(formatted).not.toContain("voryn_pipeline_freshness_seconds{");
 });
 
+test("omits failed block retry timestamp when retry date is unknown", () => {
+    const metrics: ChainPipelineMetrics = {
+        chainId: 1,
+        observedAt: new Date("2026-01-01T00:00:00.000Z"),
+        latestBlock: 10,
+        stages: {
+            head: {
+                block: null,
+                lagBlocks: null,
+            },
+            fetch: {
+                block: null,
+                lagBlocks: null,
+            },
+            sequencer: {
+                block: null,
+                lagBlocks: null,
+            },
+        },
+        maxLag: {
+            blocks: null,
+            seconds: null,
+        },
+        freshness: {
+            secondsSincePipelineUpdate: null,
+            secondsSinceFetch: null,
+        },
+        blockStatusCounts: {
+            pending: 0,
+            fetching: 0,
+            fetched: 0,
+            committed: 0,
+            failed: 1,
+        },
+        failedBlocks: [{
+            block: 11,
+            attempts: 2,
+            error: "rpc timeout",
+            nextRetryAt: null,
+            updatedAt: new Date("2026-01-01T00:00:05.000Z"),
+        }],
+        reactions: [],
+    };
+
+    const formatted = formatPipelineMetricsPrometheus(metrics);
+
+    expect(formatted).toContain("voryn_pipeline_failed_block_attempts{chain_id=\"1\",block=\"11\"} 2");
+    expect(formatted).not.toContain("voryn_pipeline_failed_block_next_retry_timestamp_seconds{");
+    expect(formatted).toContain(
+        "voryn_pipeline_failed_block_updated_timestamp_seconds{chain_id=\"1\",block=\"11\"} 1767225605"
+    );
+});
+
 test("escapes label values", () => {
     const metrics: ChainPipelineMetrics = {
         chainId: 1,

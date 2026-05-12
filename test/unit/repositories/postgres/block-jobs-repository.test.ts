@@ -316,6 +316,13 @@ test("retryFailed skips query when range is empty", async () => {
     expect(query).not.toHaveBeenCalled();
 });
 
+test("retryFailed returns zero when rowCount is null", async () => {
+    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const repository = new PostgresBlockJobsRepository(createExecutor(query));
+
+    await expect(repository.retryFailed(1, 10, 12)).resolves.toBe(0);
+});
+
 test("deleteUpToBlock returns number of deleted rows", async () => {
     const query = jest.fn(async () => ({ rows: [], rowCount: 3 }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));

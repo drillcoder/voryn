@@ -238,6 +238,32 @@ test("reads block without prefetching transactions", async () => {
     expect(provider.getBlock.mock.calls).toEqual([[55, false]]);
 });
 
+test("reads latest block without validating requested number", async () => {
+    const provider = createProviderMock();
+    provider.getBlock.mockResolvedValue({
+        number: 56,
+        hash: hash("a"),
+        parentHash: hash("b"),
+        timestamp: 1235,
+        transactions: [],
+        prefetchedTransactions: [],
+    });
+
+    const source = new EthersBlockSource({
+        provider,
+    });
+
+    await expect(source.getLatestBlock(7)).resolves.toMatchObject({
+        chainId: 7,
+        number: 56,
+        hash: hash("a"),
+        parentHash: hash("b"),
+        timestamp: 1235,
+    });
+
+    expect(provider.getBlock.mock.calls).toEqual([["latest", false]]);
+});
+
 test("throws when block is missing", async () => {
     const provider = createProviderMock();
     provider.getNetwork.mockResolvedValue({ chainId: 7n });
@@ -249,6 +275,59 @@ test("throws when block is missing", async () => {
 
     await expect(source.getBlockData(7, 42)).rejects.toThrow(
         "block not found for chain 7 at number 42"
+    );
+});
+
+test("throws when requested block is missing", async () => {
+    const provider = createProviderMock();
+    provider.getBlock.mockResolvedValue(null);
+
+    const source = new EthersBlockSource({
+        provider,
+    });
+
+    await expect(source.getBlock(7, 42)).rejects.toThrow(
+        "block not found for chain 7 at 42"
+    );
+});
+
+test("throws when requested block number mismatches", async () => {
+    const provider = createProviderMock();
+    provider.getBlock.mockResolvedValue({
+        number: 43,
+        hash: hash("a"),
+        parentHash: hash("b"),
+        timestamp: 1,
+        transactions: [],
+        prefetchedTransactions: [],
+    });
+
+    const source = new EthersBlockSource({
+        provider,
+    });
+
+    await expect(source.getBlock(7, 42)).rejects.toThrow(
+        "block number mismatch for chain 7: expected 42, got 43"
+    );
+});
+
+test("throws when requested block hash is missing", async () => {
+    const provider = createProviderMock();
+    provider.getBlock.mockResolvedValue({
+        number: 42,
+        hash: null,
+        parentHash: hash("b"),
+        timestamp: 1,
+        transactions: [],
+        prefetchedTransactions: [],
+    });
+
+    const source = new EthersBlockSource({
+        provider,
+    });
+
+    await expect(source.getBlock(7, 42)).rejects.toThrow(
+        "block hash is missing for chain 7 at number 42"
     );
 });
 
