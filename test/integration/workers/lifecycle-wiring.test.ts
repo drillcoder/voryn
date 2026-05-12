@@ -13,6 +13,12 @@ const DATABASE_URL = getRequiredDatabaseUrl();
 
 const idleSource: BlockSource = {
     getLatestBlockNumber: async () => 0,
+    getLatestBlock: async () => {
+        throw new Error("latest block is not expected in lifecycle tests");
+    },
+    getBlock: async () => {
+        throw new Error("block is not expected in lifecycle tests");
+    },
     getBlockData: async () => {
         throw new Error("block data is not expected in lifecycle tests");
     },

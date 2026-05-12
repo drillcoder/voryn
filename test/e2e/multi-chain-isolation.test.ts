@@ -223,6 +223,19 @@ function createMultiChainSource(
 
             return latest;
         },
+        async getLatestBlock(chainId: number) {
+            const latest = await this.getLatestBlockNumber(chainId);
+
+            return this.getBlock(chainId, latest);
+        },
+        async getBlock(chainId: number, blockNumber: number) {
+            const block = chainBlocks.get(`${String(chainId)}:${String(blockNumber)}`);
+            if (block === undefined) {
+                throw new Error(`missing block ${String(blockNumber)} for chain ${String(chainId)}`);
+            }
+
+            return block.block;
+        },
         async getBlockData(chainId: number, blockNumber: number): Promise<FetchedBlock> {
             const block = chainBlocks.get(`${String(chainId)}:${String(blockNumber)}`);
             if (block === undefined) {

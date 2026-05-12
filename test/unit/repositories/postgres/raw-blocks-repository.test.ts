@@ -74,6 +74,7 @@ test("getProgress maps fetched block boundary and fetch time", async () => {
     const query = jest.fn(async () => ({
         rows: [{
             max_fetched_block: "123",
+            max_fetched_block_timestamp: "1711792800",
             last_fetched_at: "2026-03-30T10:00:00.000Z",
         }],
         rowCount: 1,
@@ -82,28 +83,59 @@ test("getProgress maps fetched block boundary and fetch time", async () => {
 
     await expect(repository.getProgress(1)).resolves.toEqual({
         block: 123,
+        blockTimestamp: 1711792800,
         updatedAt: new Date("2026-03-30T10:00:00.000Z"),
     });
 
     const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
-    expect(calls[0]?.[0]).toContain("MAX(block_number)");
+    expect(calls[0]?.[0]).toContain("ORDER BY block_number DESC");
+    expect(calls[0]?.[0]).toContain("MAX(fetched_at)");
     expect(calls[0]?.[1]).toEqual([1]);
 });
 
-test("getProgress maps empty raw block table", async () => {
+test("getProgress returns null when raw block table is empty", async () => {
     const query = jest.fn(async () => ({
-        rows: [{
-            max_fetched_block: null,
-            last_fetched_at: null,
-        }],
-        rowCount: 1,
+        rows: [],
+        rowCount: 0,
     }));
     const repository = new PostgresRawBlocksRepository(createExecutor(query));
 
-    await expect(repository.getProgress(1)).resolves.toEqual({
-        block: null,
-        updatedAt: null,
-    });
+    await expect(repository.getProgress(1)).resolves.toBeNull();
+});
+
+test("getProgress throws when progress row is malformed", async () => {
+    const query = jest.fn()
+        .mockResolvedValueOnce({
+            rows: [{
+                max_fetched_block: null,
+                max_fetched_block_timestamp: null,
+                last_fetched_at: "2026-03-30T10:00:00.000Z",
+            }],
+            rowCount: 1,
+        })
+        .mockResolvedValueOnce({
+            rows: [{
+                max_fetched_block: "123",
+                max_fetched_block_timestamp: null,
+                last_fetched_at: "2026-03-30T10:00:00.000Z",
+            }],
+            rowCount: 1,
+        })
+        .mockResolvedValueOnce({
+            rows: [{
+                max_fetched_block: "123",
+                max_fetched_block_timestamp: "1711792800",
+                last_fetched_at: null,
+            }],
+            rowCount: 1,
+        });
+    const repository = new PostgresRawBlocksRepository(createExecutor(query));
+
+    await expect(repository.getProgress(1)).rejects.toThrow("Raw block progress block is missing for chain 1");
+    await expect(repository.getProgress(1)).rejects.toThrow(
+        "Raw block timestamp is missing for chain 1 block 123"
+    );
+    await expect(repository.getProgress(1)).rejects.toThrow("Raw block fetch time is missing for chain 1");
 });
 
 test("deleteUpToBlock returns deleted rows", async () => {

@@ -18,6 +18,7 @@ interface RawBlockRow {
 
 interface RawBlockProgressRow {
     max_fetched_block: bigint | number | string | null;
+    max_fetched_block_timestamp: bigint | number | string | null;
     last_fetched_at: Date | string | null;
 }
 
@@ -77,20 +78,44 @@ export class PostgresRawBlocksRepository implements RawBlocksRepository {
         };
     }
 
-    async getProgress(chainId: ChainId, transaction?: DbExecutor): Promise<RawBlockProgress> {
+    async getProgress(chainId: ChainId, transaction?: DbExecutor): Promise<RawBlockProgress | null> {
         const executor = transaction ?? this.pool;
         const result = await executor.query<RawBlockProgressRow>(
-            `SELECT MAX(block_number) AS max_fetched_block,
-                    MAX(fetched_at) AS last_fetched_at
-             FROM raw_blocks
-             WHERE chain_id = $1`,
+            `SELECT
+                 latest.block_number AS max_fetched_block,
+                 (latest.payload->'block'->>'timestamp')::BIGINT AS max_fetched_block_timestamp,
+                 (SELECT MAX(fetched_at) FROM raw_blocks WHERE chain_id = $1) AS last_fetched_at
+             FROM (
+                 SELECT block_number, payload
+                 FROM raw_blocks
+                 WHERE chain_id = $1
+                 ORDER BY block_number DESC
+                 LIMIT 1
+             ) latest`,
             [chainId]
         );
+
+        if (result.rows.length === 0) {
+            return null;
+        }
+
         const row = result.rows[0];
+        if (row.max_fetched_block === null) {
+            throw new Error(`Raw block progress block is missing for chain ${String(chainId)}`);
+        }
+        if (row.max_fetched_block_timestamp === null) {
+            throw new Error(
+                `Raw block timestamp is missing for chain ${String(chainId)} block ${String(row.max_fetched_block)}`
+            );
+        }
+        if (row.last_fetched_at === null) {
+            throw new Error(`Raw block fetch time is missing for chain ${String(chainId)}`);
+        }
 
         return {
-            block: row.max_fetched_block === null ? null : parsePgInt(row.max_fetched_block),
-            updatedAt: row.last_fetched_at === null ? null : parsePgTimestamp(row.last_fetched_at),
+            block: parsePgInt(row.max_fetched_block),
+            blockTimestamp: parsePgInt(row.max_fetched_block_timestamp),
+            updatedAt: parsePgTimestamp(row.last_fetched_at),
         };
     }
 

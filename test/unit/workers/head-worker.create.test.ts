@@ -21,6 +21,12 @@ test("head worker create wires service execution", async () => {
     };
     const source: BlockSource = {
         getLatestBlockNumber,
+        getLatestBlock: async () => {
+            throw new Error("not expected");
+        },
+        getBlock: async () => {
+            throw new Error("not expected");
+        },
         getBlockData: async () => {
             throw new Error("not expected");
         },

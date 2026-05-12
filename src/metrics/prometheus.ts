@@ -63,6 +63,20 @@ export function formatPipelineMetricsPrometheus(metrics: ChainPipelineMetrics): 
             { stage },
         );
     }
+    addGauge(
+        {
+            name: "voryn_pipeline_max_lag_blocks",
+            help: "Maximum pipeline lag from fetch and sequencer stages.",
+        },
+        metrics.maxLag.blocks,
+    );
+    addGauge(
+        {
+            name: "voryn_pipeline_max_lag_seconds",
+            help: "Maximum pipeline lag in seconds from fetch and sequencer stages.",
+        },
+        metrics.maxLag.seconds,
+    );
 
     addGauge(
         {

@@ -87,6 +87,8 @@ const createSource = (
     getBlockData: BlockSource["getBlockData"] = async () => createFetchedBlock(0, HASH_A, HASH_A),
 ): BlockSource => ({
     getLatestBlockNumber: async () => 0,
+    getLatestBlock: async () => (await getBlockData(0, 0)).block,
+    getBlock: async (...args) => (await getBlockData(...args)).block,
     getBlockData,
 });
 
@@ -109,10 +111,7 @@ const createRawBlocksRepository = (
 ): RawBlocksRepository => ({
     save: async () => undefined,
     get: async (chainId, blockNumber, transaction) => getRaw(chainId, blockNumber, transaction),
-    getProgress: async () => ({
-        block: null,
-        updatedAt: null,
-    }),
+    getProgress: async () => null,
     deleteUpToBlock: async () => 0,
     deleteAfterBlock: async () => 0,
     ...overrides,

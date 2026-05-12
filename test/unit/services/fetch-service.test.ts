@@ -67,23 +67,24 @@ const createBlockJobsRepository = (overrides?: Partial<BlockJobsRepository>): Bl
 const createRawBlocksRepository = (overrides?: Partial<RawBlocksRepository>): RawBlocksRepository => ({
     save: async () => undefined,
     get: async () => null,
-    getProgress: async () => ({
-        block: null,
-        updatedAt: null,
-    }),
+    getProgress: async () => null,
     deleteUpToBlock: async () => 0,
     deleteAfterBlock: async () => 0,
     ...overrides,
+});
+
+const createSource = (getBlockData: BlockSource["getBlockData"]): BlockSource => ({
+    getLatestBlockNumber: async () => 0,
+    getLatestBlock: async () => blockPayload.block,
+    getBlock: async () => blockPayload.block,
+    getBlockData,
 });
 
 test("fetch service stores fetched block and marks job fetched", async () => {
     const saved: number[] = [];
     const fetched: number[] = [];
 
-    const source: BlockSource = {
-        getLatestBlockNumber: async () => 0,
-        getBlockData: async () => blockPayload,
-    };
+    const source = createSource(async () => blockPayload);
 
     const rawBlocksRepository = createRawBlocksRepository({
         save: async (block) => {
@@ -129,12 +130,9 @@ test("fetch service stores fetched block and marks job fetched", async () => {
 test("fetch service marks failure with retry date", async () => {
     const failed: Array<{ blockNumber: number; workerId: string; nextRetryAt: Date | null }> = [];
 
-    const source: BlockSource = {
-        getLatestBlockNumber: async () => 0,
-        getBlockData: async () => {
-            throw new Error("rpc unavailable");
-        },
-    };
+    const source = createSource(async () => {
+        throw new Error("rpc unavailable");
+    });
 
     const blockJobsRepository = createBlockJobsRepository({
         claimForFetch: async () => ({
@@ -171,10 +169,7 @@ test("fetch service marks failure with retry date", async () => {
 test("fetch service swallows claim-lost race without failing tick", async () => {
     const logger = { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
 
-    const source: BlockSource = {
-        getLatestBlockNumber: async () => 0,
-        getBlockData: async () => blockPayload,
-    };
+    const source = createSource(async () => blockPayload);
 
     const blockJobsRepository = createBlockJobsRepository({
         claimForFetch: async () => ({
@@ -212,10 +207,7 @@ test("fetch service tries at least one claim when batch size is zero", async () 
     let claims = 0;
     const worker = new FetchService(
         { ...config, fetchBatchSize: 0 },
-        {
-            getLatestBlockNumber: async () => 0,
-            getBlockData: async () => blockPayload,
-        },
+        createSource(async () => blockPayload),
         createBlockJobsRepository({
             claimForFetch: async () => {
                 claims += 1;
@@ -235,12 +227,9 @@ test("fetch service sets nextRetryAt=null when max attempts reached", async () =
     let nextRetryAt: Date | null | undefined;
     const worker = new FetchService(
         config,
-        {
-            getLatestBlockNumber: async () => 0,
-            getBlockData: async () => {
-                throw new Error("fatal");
-            },
-        },
+        createSource(async () => {
+            throw new Error("fatal");
+        }),
         createBlockJobsRepository({
             claimForFetch: async () => ({
                 chainId: 7,
@@ -269,12 +258,9 @@ test("fetch service swallows claim-lost during markFetchFailed", async () => {
     const logger = { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
     const worker = new FetchService(
         config,
-        {
-            getLatestBlockNumber: async () => 0,
-            getBlockData: async () => {
-                throw new Error("rpc down");
-            },
-        },
+        createSource(async () => {
+            throw new Error("rpc down");
+        }),
         createBlockJobsRepository({
             claimForFetch: async () => ({
                 chainId: 7,
@@ -302,12 +288,9 @@ test("fetch service swallows claim-lost during markFetchFailed", async () => {
 test("fetch service rethrows non-claim-lost error from markFetchFailed", async () => {
     const worker = new FetchService(
         config,
-        {
-            getLatestBlockNumber: async () => 0,
-            getBlockData: async () => {
-                throw new Error("rpc down");
-            },
-        },
+        createSource(async () => {
+            throw new Error("rpc down");
+        }),
         createBlockJobsRepository({
             claimForFetch: async () => ({
                 chainId: 7,

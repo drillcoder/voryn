@@ -1,7 +1,7 @@
 import type { Block, Log, Provider, TransactionResponse } from "ethers";
 import type { BlockSource } from "../interfaces/block-source.js";
 import type { BlockNumber, ChainId, HashHex } from "../types/chain.js";
-import type { ChainLog, ChainTransaction, FetchedBlock } from "../interfaces/chain.js";
+import type { ChainBlock, ChainLog, ChainTransaction, FetchedBlock } from "../interfaces/chain.js";
 import { asAddress, asHash32, asHexData } from "../utils/hex.js";
 
 export type EthersNetworkLike = Pick<Awaited<ReturnType<Provider["getNetwork"]>>, "chainId">;
@@ -30,7 +30,7 @@ export interface EthersProviderLike {
 
     getBlockNumber(): Promise<BlockNumber>;
 
-    getBlock(blockNumber: BlockNumber, prefetchTxs?: boolean): Promise<EthersBlockLike | null>;
+    getBlock(blockNumber: BlockNumber | "latest", prefetchTxs?: boolean): Promise<EthersBlockLike | null>;
 
     getTransaction(hash: string): Promise<EthersTransactionLike | null>;
 
@@ -51,6 +51,20 @@ export class EthersBlockSource implements BlockSource {
     async getLatestBlockNumber(chainId: ChainId): Promise<BlockNumber> {
         const provider = await this.getProvider(chainId);
         return provider.getBlockNumber();
+    }
+
+    async getLatestBlock(chainId: ChainId): Promise<ChainBlock> {
+        const provider = await this.getProvider(chainId);
+        const block = await provider.getBlock("latest", false);
+
+        return this.mapBlock(chainId, block, "latest");
+    }
+
+    async getBlock(chainId: ChainId, blockNumber: BlockNumber): Promise<ChainBlock> {
+        const provider = await this.getProvider(chainId);
+        const block = await provider.getBlock(blockNumber, false);
+
+        return this.mapBlock(chainId, block, blockNumber);
     }
 
     async getBlockData(chainId: ChainId, blockNumber: BlockNumber): Promise<FetchedBlock> {
@@ -112,6 +126,40 @@ export class EthersBlockSource implements BlockSource {
 
         this.checkedProviderChainIds.add(chainId);
         return provider;
+    }
+
+    private mapBlock(
+        chainId: ChainId,
+        block: EthersBlockLike | null,
+        expectedBlock: BlockNumber | "latest",
+    ): ChainBlock {
+        if (!block) {
+            throw new Error(
+                `block not found for chain ${String(chainId)} at ${String(expectedBlock)}`
+            );
+        }
+
+        if (expectedBlock !== "latest" && block.number !== expectedBlock) {
+            throw new Error(
+                "block number mismatch for chain "
+                + `${String(chainId)}: expected ${String(expectedBlock)}, got ${String(block.number)}`
+            );
+        }
+
+        if (block.hash === null) {
+            throw new Error(
+                `block hash is missing for chain ${String(chainId)} at number ${String(block.number)}`
+            );
+        }
+
+        return {
+            chainId,
+            number: block.number,
+            hash: asHash32(block.hash),
+            parentHash: asHash32(block.parentHash),
+            timestamp: block.timestamp,
+            raw: block,
+        };
     }
 
     private async fetchTransactions(

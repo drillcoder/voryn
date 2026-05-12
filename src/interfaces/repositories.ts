@@ -95,7 +95,7 @@ export interface RawBlocksRepository {
 
     get(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<RawBlock | null>;
 
-    getProgress(chainId: ChainId, transaction?: DbExecutor): Promise<RawBlockProgress>;
+    getProgress(chainId: ChainId, transaction?: DbExecutor): Promise<RawBlockProgress | null>;
 
     deleteUpToBlock(chainId: ChainId, blockNumberInclusive: BlockNumber, transaction?: DbExecutor): Promise<number>;
 

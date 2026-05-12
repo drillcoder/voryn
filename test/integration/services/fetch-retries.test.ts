@@ -39,6 +39,12 @@ describe("integration services: fetch retries", () => {
             async getLatestBlockNumber(): Promise<number> {
                 return targetBlock;
             },
+            async getLatestBlock() {
+                return payload.block;
+            },
+            async getBlock() {
+                return payload.block;
+            },
             async getBlockData(): Promise<FetchedBlock> {
                 calls += 1;
                 if (calls === 1) {
@@ -117,6 +123,12 @@ describe("integration services: fetch retries", () => {
         const source: BlockSource = {
             async getLatestBlockNumber(): Promise<number> {
                 return targetBlock;
+            },
+            async getLatestBlock() {
+                return payload.block;
+            },
+            async getBlock() {
+                return payload.block;
             },
             async getBlockData(): Promise<FetchedBlock> {
                 return payload;

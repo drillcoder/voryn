@@ -71,10 +71,7 @@ const createRawBlocksRepository = (deleted: number): RawBlocksRepository => ({
     ...createDeleteRepo(deleted),
     save: async () => undefined,
     get: async () => null,
-    getProgress: async () => ({
-        block: null,
-        updatedAt: null,
-    }),
+    getProgress: async () => null,
 });
 
 const createCanonicalBlocksRepository = (deleted: number): CanonicalBlocksRepository => ({

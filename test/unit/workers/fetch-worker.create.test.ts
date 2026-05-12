@@ -23,6 +23,12 @@ test("fetch worker create wires service execution", async () => {
     };
     const source: BlockSource = {
         getLatestBlockNumber: async () => 0,
+        getLatestBlock: async () => {
+            throw new Error("not expected");
+        },
+        getBlock: async () => {
+            throw new Error("not expected");
+        },
         getBlockData: async () => {
             throw new Error("not expected");
         },

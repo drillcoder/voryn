@@ -24,6 +24,15 @@ test("sequencer worker create wires service execution", async () => {
     };
     const source: BlockSource = {
         getLatestBlockNumber: async () => 0,
+        getLatestBlock: async () => ({
+            chainId: 10,
+            number: 0,
+            hash: HASH_A,
+            parentHash: HASH_A,
+            timestamp: 0,
+            raw: {},
+        }),
+        getBlock: async () => ({ chainId: 10, number: 0, hash: HASH_A, parentHash: HASH_A, timestamp: 0, raw: {} }),
         getBlockData: async () => ({
             block: { chainId: 10, number: 0, hash: HASH_A, parentHash: HASH_A, timestamp: 0, raw: {} },
             transactions: [],

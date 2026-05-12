@@ -12,8 +12,9 @@ export interface FailedBlockMetrics {
 }
 
 export interface RawBlockProgress {
-    block: BlockNumber | null;
-    updatedAt: Date | null;
+    block: BlockNumber;
+    blockTimestamp: number;
+    updatedAt: Date;
 }
 
 export interface PipelineReactionMetrics {
@@ -28,6 +29,11 @@ export interface PipelineReactionMetrics {
 export interface BlockStageMetrics {
     block: BlockNumber | null;
     lagBlocks: number | null;
+}
+
+export interface PipelineMaxLagMetrics {
+    blocks: number | null;
+    seconds: number | null;
 }
 
 export interface PipelineStageMetrics {
@@ -46,6 +52,7 @@ export interface ChainPipelineMetrics {
     observedAt: Date;
     latestBlock: BlockNumber;
     stages: PipelineStageMetrics;
+    maxLag: PipelineMaxLagMetrics;
     freshness: PipelineFreshnessMetrics;
     blockStatusCounts: BlockJobStatusCounts;
     failedBlocks: FailedBlockMetrics[];

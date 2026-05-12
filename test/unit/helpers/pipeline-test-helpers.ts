@@ -60,10 +60,7 @@ export const createNoopBlockJobsRepository = (): BlockJobsRepository => ({
 export const createNoopRawBlocksRepository = (): RawBlocksRepository => ({
     save: async () => undefined,
     get: async () => null,
-    getProgress: async () => ({
-        block: null,
-        updatedAt: null,
-    }),
+    getProgress: async () => null,
     deleteUpToBlock: async () => 0,
     deleteAfterBlock: async () => 0,
 });

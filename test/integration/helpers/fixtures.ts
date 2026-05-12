@@ -36,6 +36,22 @@ export function createMapBlockSource(
         async getLatestBlockNumber(): Promise<number> {
             return latestBlock;
         },
+        async getLatestBlock() {
+            const value = byNumber.get(latestBlock);
+            if (value === undefined) {
+                throw new Error(`missing block ${String(latestBlock)}`);
+            }
+
+            return value.block;
+        },
+        async getBlock(_: number, blockNumber: number) {
+            const value = byNumber.get(blockNumber);
+            if (value === undefined) {
+                throw new Error(`missing block ${String(blockNumber)}`);
+            }
+
+            return value.block;
+        },
         async getBlockData(_: number, blockNumber: number): Promise<FetchedBlock> {
             const value = byNumber.get(blockNumber);
             if (value === undefined) {

@@ -3,6 +3,7 @@ import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import type { BlockJobStatusCounts, FailedBlockMetrics, RawBlockProgress } from "../../../src/interfaces/metrics.js";
 import type {
     BlockJobsRepository,
+    CanonicalBlocksRepository,
     CanonicalEventsRepository,
     CanonicalTransactionsRepository,
     ChainCursorRepository,
@@ -26,7 +27,7 @@ afterEach(() => {
 test("pipeline metrics service maps pipeline stages and reactions", async () => {
     const service = new PipelineMetricsService(
         { chainId: 1 },
-        createSource(120),
+        createSource(120, 300),
         createChainCursorRepository({
             chainId: 1,
             lastEnqueuedBlock: 110,
@@ -52,7 +53,11 @@ test("pipeline metrics service maps pipeline stages and reactions", async () => 
         ),
         createRawBlocksRepository({
             block: 104,
+            blockTimestamp: 240,
             updatedAt: new Date("2026-01-01T00:00:07.000Z"),
+        }),
+        createCanonicalBlocksRepository({
+            100: 220,
         }),
         createCanonicalTransactionsRepository(15n),
         createCanonicalEventsRepository(20n),
@@ -94,6 +99,10 @@ test("pipeline metrics service maps pipeline stages and reactions", async () => 
                 lagBlocks: 20,
             },
         },
+        maxLag: {
+            blocks: 20,
+            seconds: 80,
+        },
         freshness: {
             secondsSincePipelineUpdate: 6,
             secondsSinceFetch: 3,
@@ -133,44 +142,20 @@ test("pipeline metrics service maps pipeline stages and reactions", async () => 
     });
 });
 
-test("pipeline metrics service maps empty state", async () => {
+test("pipeline metrics service throws when chain cursor is missing", async () => {
     const service = new PipelineMetricsService(
         { chainId: 1 },
         createSource(10),
         createChainCursorRepository(null),
         createBlockJobsRepository(createEmptyBlockStatusCounts()),
-        createRawBlocksRepository({ block: null, updatedAt: null }),
+        createRawBlocksRepository(null),
+        createCanonicalBlocksRepository({}),
         createCanonicalTransactionsRepository(0n),
         createCanonicalEventsRepository(0n),
         createWorkerCursorsRepository([]),
     );
 
-    const snapshot = await service.get();
-
-    expect(snapshot).toEqual(expect.objectContaining({
-        latestBlock: 10,
-        stages: {
-            head: {
-                block: null,
-                lagBlocks: null,
-            },
-            fetch: {
-                block: null,
-                lagBlocks: null,
-            },
-            sequencer: {
-                block: null,
-                lagBlocks: null,
-            },
-        },
-        freshness: {
-            secondsSincePipelineUpdate: null,
-            secondsSinceFetch: null,
-        },
-        blockStatusCounts: createEmptyBlockStatusCounts(),
-        failedBlocks: [],
-        reactions: [],
-    }));
+    await expect(service.get()).rejects.toThrow("Chain cursor not found for chain 1");
 });
 
 test("pipeline metrics service keeps fetch progress null when no raw block exists", async () => {
@@ -185,7 +170,10 @@ test("pipeline metrics service keeps fetch progress null when no raw block exist
             updatedAt: new Date("2026-01-01T00:00:10.000Z"),
         }),
         createBlockJobsRepository(createEmptyBlockStatusCounts()),
-        createRawBlocksRepository({ block: null, updatedAt: null }),
+        createRawBlocksRepository(null),
+        createCanonicalBlocksRepository({
+            50: 500,
+        }),
         createCanonicalTransactionsRepository(0n),
         createCanonicalEventsRepository(0n),
         createWorkerCursorsRepository([]),
@@ -211,6 +199,10 @@ test("pipeline metrics service keeps fetch progress null when no raw block exist
         secondsSincePipelineUpdate: 0,
         secondsSinceFetch: null,
     });
+    expect(snapshot.maxLag).toEqual({
+        blocks: 10,
+        seconds: 100,
+    });
 });
 
 test("pipeline metrics service clamps future freshness and reaction timestamps to zero seconds", async () => {
@@ -227,7 +219,11 @@ test("pipeline metrics service clamps future freshness and reaction timestamps t
         createBlockJobsRepository(createEmptyBlockStatusCounts()),
         createRawBlocksRepository({
             block: 10,
+            blockTimestamp: 100,
             updatedAt: new Date("2026-01-01T00:00:20.000Z"),
+        }),
+        createCanonicalBlocksRepository({
+            9: 90,
         }),
         createCanonicalTransactionsRepository(5n),
         createCanonicalEventsRepository(7n),
@@ -269,9 +265,25 @@ test("pipeline metrics service clamps future freshness and reaction timestamps t
     ]);
 });
 
-function createSource(latestBlock: number): BlockSource {
+function createSource(latestBlock: number, latestBlockTimestamp = latestBlock * 10): BlockSource {
     return {
         getLatestBlockNumber: async () => latestBlock,
+        getLatestBlock: async () => ({
+            chainId: 1,
+            number: latestBlock,
+            hash: HASH,
+            parentHash: HASH,
+            timestamp: latestBlockTimestamp,
+            raw: {},
+        }),
+        getBlock: async () => ({
+            chainId: 1,
+            number: latestBlock,
+            hash: HASH,
+            parentHash: HASH,
+            timestamp: latestBlockTimestamp,
+            raw: {},
+        }),
         getBlockData: async () => {
             throw new Error("not expected");
         },
@@ -308,11 +320,35 @@ function createBlockJobsRepository(
     };
 }
 
-function createRawBlocksRepository(progress: RawBlockProgress): RawBlocksRepository {
+function createRawBlocksRepository(progress: RawBlockProgress | null): RawBlocksRepository {
     return {
         save: async () => undefined,
         get: async () => null,
         getProgress: async () => progress,
+        deleteUpToBlock: async () => 0,
+        deleteAfterBlock: async () => 0,
+    };
+}
+
+function createCanonicalBlocksRepository(blockTimestamps: Partial<Record<number, number>>): CanonicalBlocksRepository {
+    return {
+        insert: async () => undefined,
+        get: async (_chainId, blockNumber) => {
+            const timestamp = blockTimestamps[blockNumber];
+
+            if (timestamp === undefined) {
+                return null;
+            }
+
+            return {
+                chainId: 1,
+                number: blockNumber,
+                hash: HASH,
+                parentHash: HASH,
+                timestamp,
+                raw: {},
+            };
+        },
         deleteUpToBlock: async () => 0,
         deleteAfterBlock: async () => 0,
     };

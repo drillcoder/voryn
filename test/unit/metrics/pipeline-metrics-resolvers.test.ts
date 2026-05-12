@@ -4,6 +4,9 @@ import type { BlockJobsRepository } from "../../../src/interfaces/repositories.j
 import { PipelineMetrics } from "../../../src/metrics/pipeline-metrics.js";
 import { validatePostgresSchema } from "../../../src/postgres/schema.js";
 import { createNoopBlockJobsRepository } from "../helpers/pipeline-test-helpers.js";
+import { asHash32 } from "../../../src/utils/hex.js";
+
+const HASH = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
 jest.mock("../../../src/postgres/schema.js", () => ({
     validatePostgresSchema: jest.fn(async () => undefined),
@@ -26,6 +29,22 @@ test("pipeline metrics merges db defaults with overrides and returns disposer", 
         config,
         source: {
             getLatestBlockNumber: async () => 0,
+            getLatestBlock: async () => ({
+                chainId: 7,
+                number: 0,
+                hash: HASH,
+                parentHash: HASH,
+                timestamp: 0,
+                raw: {},
+            }),
+            getBlock: async () => ({
+                chainId: 7,
+                number: 0,
+                hash: HASH,
+                parentHash: HASH,
+                timestamp: 0,
+                raw: {},
+            }),
             getBlockData: async () => {
                 throw new Error("not expected");
             },

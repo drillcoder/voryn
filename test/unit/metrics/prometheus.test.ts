@@ -20,6 +20,10 @@ test("formats pipeline metrics as prometheus text", () => {
                 lagBlocks: 20,
             },
         },
+        maxLag: {
+            blocks: 20,
+            seconds: 80,
+        },
         freshness: {
             secondsSincePipelineUpdate: 6,
             secondsSinceFetch: 3,
@@ -66,6 +70,12 @@ test("formats pipeline metrics as prometheus text", () => {
         "voryn_pipeline_stage_lag_blocks{chain_id=\"7\",stage=\"fetch\"} 16",
         "voryn_pipeline_stage_block{chain_id=\"7\",stage=\"sequencer\"} 100",
         "voryn_pipeline_stage_lag_blocks{chain_id=\"7\",stage=\"sequencer\"} 20",
+        "# HELP voryn_pipeline_max_lag_blocks Maximum pipeline lag from fetch and sequencer stages.",
+        "# TYPE voryn_pipeline_max_lag_blocks gauge",
+        "voryn_pipeline_max_lag_blocks{chain_id=\"7\"} 20",
+        "# HELP voryn_pipeline_max_lag_seconds Maximum pipeline lag in seconds from fetch and sequencer stages.",
+        "# TYPE voryn_pipeline_max_lag_seconds gauge",
+        "voryn_pipeline_max_lag_seconds{chain_id=\"7\"} 80",
         "# HELP voryn_pipeline_freshness_seconds Seconds since the last pipeline progress timestamp.",
         "# TYPE voryn_pipeline_freshness_seconds gauge",
         "voryn_pipeline_freshness_seconds{chain_id=\"7\",source=\"pipeline_update\"} 6",
@@ -124,6 +134,10 @@ test("omits nullable metrics when values are unknown", () => {
                 lagBlocks: null,
             },
         },
+        maxLag: {
+            blocks: null,
+            seconds: null,
+        },
         freshness: {
             secondsSincePipelineUpdate: null,
             secondsSinceFetch: null,
@@ -143,6 +157,8 @@ test("omits nullable metrics when values are unknown", () => {
 
     expect(formatted).not.toContain("voryn_pipeline_stage_block{");
     expect(formatted).not.toContain("voryn_pipeline_stage_lag_blocks{");
+    expect(formatted).not.toContain("voryn_pipeline_max_lag_blocks{");
+    expect(formatted).not.toContain("voryn_pipeline_max_lag_seconds{");
     expect(formatted).not.toContain("voryn_pipeline_freshness_seconds{");
 });
 
@@ -164,6 +180,10 @@ test("escapes label values", () => {
                 block: null,
                 lagBlocks: null,
             },
+        },
+        maxLag: {
+            blocks: null,
+            seconds: null,
         },
         freshness: {
             secondsSincePipelineUpdate: null,

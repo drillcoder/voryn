@@ -136,6 +136,16 @@ function createFlakyBlockSource(
         async getLatestBlockNumber(): Promise<number> {
             return latestBlock;
         },
+        async getLatestBlock() {
+            return block.block;
+        },
+        async getBlock(_: number, blockNumber: number) {
+            if (blockNumber !== block.block.number) {
+                throw new Error(`unexpected block number ${String(blockNumber)}`);
+            }
+
+            return block.block;
+        },
         async getBlockData(_: number, blockNumber: number): Promise<FetchedBlock> {
             if (blockNumber !== block.block.number) {
                 throw new Error(`unexpected block number ${String(blockNumber)}`);

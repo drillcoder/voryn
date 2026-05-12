@@ -24,7 +24,11 @@ test("maps latest block, transactions and logs from ethers provider", async () =
     const provider = createProviderMock();
     provider.getNetwork.mockResolvedValue({ chainId: 7n });
     provider.getBlockNumber.mockResolvedValue(120);
-    provider.getBlock.mockImplementation(async (blockNumber: number, prefetchTxs?: boolean) => {
+    provider.getBlock.mockImplementation(async (blockNumber: number | "latest", prefetchTxs?: boolean) => {
+        if (blockNumber === "latest") {
+            throw new Error("latest block is not expected");
+        }
+
         blockCalls.push({ blockNumber, prefetchTxs });
         const transaction: EthersTransactionLike = {
             chainId: 7n,
@@ -206,6 +210,32 @@ test("reads latest block number from a single provider", async () => {
     });
 
     await expect(source.getLatestBlockNumber(42)).resolves.toBe(999);
+});
+
+test("reads block without prefetching transactions", async () => {
+    const provider = createProviderMock();
+    provider.getBlock.mockResolvedValue({
+        number: 55,
+        hash: hash("a"),
+        parentHash: hash("b"),
+        timestamp: 1234,
+        transactions: [],
+        prefetchedTransactions: [],
+    });
+
+    const source = new EthersBlockSource({
+        provider,
+    });
+
+    await expect(source.getBlock(7, 55)).resolves.toMatchObject({
+        chainId: 7,
+        number: 55,
+        hash: hash("a"),
+        parentHash: hash("b"),
+        timestamp: 1234,
+    });
+
+    expect(provider.getBlock.mock.calls).toEqual([[55, false]]);
 });
 
 test("throws when block is missing", async () => {

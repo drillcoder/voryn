@@ -37,10 +37,7 @@ const createPassThroughManager = (): { manager: TransactionManager; transaction:
 const createRawBlocksRepository = (calls?: unknown[]): RawBlocksRepository => ({
     save: async () => undefined,
     get: async () => null,
-    getProgress: async () => ({
-        block: null,
-        updatedAt: null,
-    }),
+    getProgress: async () => null,
     deleteUpToBlock: async (_chainId, toBlock, tx) => {
         calls?.push(["deleteRawUpToBlock", toBlock, tx]);
         return 0;
@@ -75,6 +72,12 @@ test("head service enqueues and updates cursor in transaction", async () => {
 
     const source: BlockSource = {
         getLatestBlockNumber: async () => 15,
+        getLatestBlock: async () => {
+            throw new Error("not used");
+        },
+        getBlock: async () => {
+            throw new Error("not used");
+        },
         getBlockData: async () => {
             throw new Error("not used");
         },
@@ -132,6 +135,12 @@ test("head service starts enqueue range from zero when depth exceeds safe head",
 
     const source: BlockSource = {
         getLatestBlockNumber: async () => 3,
+        getLatestBlock: async () => {
+            throw new Error("not used");
+        },
+        getBlock: async () => {
+            throw new Error("not used");
+        },
         getBlockData: async () => {
             throw new Error("not used");
         },
@@ -186,6 +195,15 @@ test("head service bootstraps missing cursor", async () => {
 
     const source: BlockSource = {
         getLatestBlockNumber: async () => 20,
+        getLatestBlock: async () => ({
+            chainId: 1,
+            number: 20,
+            hash: HASH_A,
+            parentHash: HASH_B,
+            timestamp: 1,
+            raw: {},
+        }),
+        getBlock: async () => ({ chainId: 1, number: 20, hash: HASH_A, parentHash: HASH_B, timestamp: 1, raw: {} }),
         getBlockData: async () => ({
             block: { chainId: 1, number: 20, hash: HASH_A, parentHash: HASH_B, timestamp: 1, raw: {} },
             transactions: [],
@@ -237,6 +255,12 @@ test("head service skips when cursor is already ahead of safe head", async () =>
         config,
         {
             getLatestBlockNumber: async () => 12,
+            getLatestBlock: async () => {
+                throw new Error("not used");
+            },
+            getBlock: async () => {
+                throw new Error("not used");
+            },
             getBlockData: async () => {
                 throw new Error("not used");
             },
@@ -315,6 +339,15 @@ test("head service rebases and enqueues new jobs when committed block is below f
 
     const source: BlockSource = {
         getLatestBlockNumber: async () => 120,
+        getLatestBlock: async () => ({
+            chainId: 1,
+            number: 120,
+            hash: HASH_A,
+            parentHash: HASH_B,
+            timestamp: 1,
+            raw: {},
+        }),
+        getBlock: async () => ({ chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1, raw: {} }),
         getBlockData: async (_chainId, blockNumber) => {
             expect(blockNumber).toBe(114);
             return {
@@ -397,6 +430,15 @@ test("head service enqueues without rebase when cursor catches up before transac
 
     const source: BlockSource = {
         getLatestBlockNumber: async () => 120,
+        getLatestBlock: async () => ({
+            chainId: 1,
+            number: 120,
+            hash: HASH_A,
+            parentHash: HASH_B,
+            timestamp: 1,
+            raw: {},
+        }),
+        getBlock: async () => ({ chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1, raw: {} }),
         getBlockData: async () => ({
             block: { chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1, raw: {} },
             transactions: [],
@@ -439,6 +481,12 @@ test("head service defers enqueue when locked cursor needs rebase", async () => 
 
     const source: BlockSource = {
         getLatestBlockNumber: async () => 15,
+        getLatestBlock: async () => {
+            throw new Error("not used");
+        },
+        getBlock: async () => {
+            throw new Error("not used");
+        },
         getBlockData: async () => {
             throw new Error("not used");
         },
@@ -492,6 +540,12 @@ test("head service defers enqueue when locked cursor needs rebase", async () => 
 test("head service throws when cursor disappears inside enqueue transaction", async () => {
     const source: BlockSource = {
         getLatestBlockNumber: async () => 12,
+        getLatestBlock: async () => {
+            throw new Error("not used");
+        },
+        getBlock: async () => {
+            throw new Error("not used");
+        },
         getBlockData: async () => {
             throw new Error("not used");
         },
@@ -532,6 +586,15 @@ test("head service throws when cursor disappears inside enqueue transaction", as
 test("head service throws when cursor disappears inside rebase transaction", async () => {
     const source: BlockSource = {
         getLatestBlockNumber: async () => 120,
+        getLatestBlock: async () => ({
+            chainId: 1,
+            number: 120,
+            hash: HASH_A,
+            parentHash: HASH_B,
+            timestamp: 1,
+            raw: {},
+        }),
+        getBlock: async () => ({ chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1, raw: {} }),
         getBlockData: async () => ({
             block: { chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1, raw: {} },
             transactions: [],
