@@ -51,7 +51,7 @@ export interface BlockJobsRepository {
 
     claimForFetch(
         chainId: ChainId,
-        workerId: string,
+        instanceId: string,
         staleClaimedBefore: Date,
         transaction?: DbExecutor
     ): Promise<BlockJob | null>;
@@ -59,14 +59,14 @@ export interface BlockJobsRepository {
     markFetched(
         chainId: ChainId,
         blockNumber: BlockNumber,
-        workerId: string,
+        instanceId: string,
         transaction?: DbExecutor
     ): Promise<void>;
 
     markFetchFailed(
         chainId: ChainId,
         blockNumber: BlockNumber,
-        workerId: string,
+        instanceId: string,
         error: string,
         nextRetryAt: Date | null,
         transaction?: DbExecutor

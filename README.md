@@ -130,7 +130,6 @@ const fetch = await FetchWorker.create({
     config: {
         chainId,
         delayBetweenTicksMs: 100,
-        workerId: "fetch-1",
         fetchBatchSize: 10,
         fetchClaimTtlMs: 125_000,
         retryMaxAttempts: 10,

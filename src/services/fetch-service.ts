@@ -6,9 +6,13 @@ import type { FetchWorkerConfig } from "../interfaces/runtime.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import { asErrorMessage } from "../utils/errors.js";
 
+export interface FetchServiceConfig extends FetchWorkerConfig {
+    instanceId: string;
+}
+
 export class FetchService {
     constructor(
-        private readonly config: FetchWorkerConfig,
+        private readonly config: FetchServiceConfig,
         private readonly source: BlockSource,
         private readonly blockJobsRepository: BlockJobsRepository,
         private readonly rawBlocksRepository: RawBlocksRepository,
@@ -28,7 +32,7 @@ export class FetchService {
         for (let index = 0; index < batchSize; index++) {
             const job = await this.blockJobsRepository.claimForFetch(
                 chainId,
-                this.config.workerId,
+                this.config.instanceId,
                 staleClaimedBefore
             );
 
@@ -53,7 +57,7 @@ export class FetchService {
                     await this.blockJobsRepository.markFetched(
                         chainId,
                         job.blockNumber,
-                        this.config.workerId,
+                        this.config.instanceId,
                         transaction
                     );
                 });
@@ -63,7 +67,7 @@ export class FetchService {
                     this.logger.warn("fetch_claim_lost_before_mark_fetched", {
                         chainId,
                         blockNumber: job.blockNumber,
-                        workerId: this.config.workerId,
+                        instanceId: this.config.instanceId,
                     });
                     continue;
                 }
@@ -73,7 +77,7 @@ export class FetchService {
                     await this.blockJobsRepository.markFetchFailed(
                         chainId,
                         job.blockNumber,
-                        this.config.workerId,
+                        this.config.instanceId,
                         asErrorMessage(error),
                         nextRetryAt,
                     );
@@ -83,7 +87,7 @@ export class FetchService {
                         this.logger.warn("fetch_claim_lost_before_mark_failed", {
                             chainId,
                             blockNumber: job.blockNumber,
-                            workerId: this.config.workerId,
+                            instanceId: this.config.instanceId,
                         });
                         continue;
                     }
@@ -96,7 +100,7 @@ export class FetchService {
         if (claimed > 0) {
             this.logger.info("fetch_tick_processed", {
                 chainId,
-                workerId: this.config.workerId,
+                instanceId: this.config.instanceId,
                 claimed,
                 fetched,
                 failed,

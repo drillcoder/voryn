@@ -23,7 +23,6 @@ import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../integration/
 const DATABASE_URL = getRequiredDatabaseUrl();
 const REACTION_WORKER_EVENT = "reaction-event-e2e";
 const REACTION_WORKER_TX = "reaction-tx-e2e";
-const FETCH_WORKER_ID = "fetch-worker-e2e";
 
 describe("e2e pipeline", () => {
     let db: IsolatedDbContext;
@@ -130,7 +129,6 @@ describe("e2e pipeline", () => {
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
-                workerId: FETCH_WORKER_ID,
                 fetchBatchSize: 2,
                 fetchClaimTtlMs: 60_000,
                 retryMaxAttempts: 3,

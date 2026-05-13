@@ -48,7 +48,6 @@ describe("integration workers: lifecycle and wiring", () => {
             config: {
                 chainId: 1,
                 delayBetweenTicksMs: 1,
-                workerId: "fetch-int",
                 fetchBatchSize: 1,
                 fetchClaimTtlMs: 10_000,
                 retryMaxAttempts: 3,
@@ -76,7 +75,6 @@ describe("integration workers: lifecycle and wiring", () => {
             config: {
                 chainId: 1,
                 delayBetweenTicksMs: 1,
-                workerId: "fetch-finalized",
                 fetchBatchSize: 1,
                 fetchClaimTtlMs: 10_000,
                 retryMaxAttempts: 3,
@@ -95,7 +93,7 @@ describe("integration workers: lifecycle and wiring", () => {
         await worker.stop();
 
         await expect(worker.start()).rejects.toThrow(
-            'Worker "fetch:1:fetch-finalized" cannot be started because its lifecycle is finalized'
+            /^Worker "fetch:1:.+" cannot be started because its lifecycle is finalized$/
         );
     });
 

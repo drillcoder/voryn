@@ -4,7 +4,7 @@ import type { LeaderLock } from "../../../src/interfaces/leader-lock.js";
 import { asAddress, asHash32, asHexData } from "../../../src/utils/hex.js";
 
 export const CHAIN_ID = 1;
-export const WORKER_ID = "fetch-worker-int";
+export const FETCH_INSTANCE_ID = "fetch-instance-int";
 export const REACTION_WORKER_EVENT = "reaction-event-int";
 export const REACTION_WORKER_TX = "reaction-tx-int";
 

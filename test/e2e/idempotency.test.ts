@@ -189,7 +189,6 @@ async function createWorkerSet(
         config: {
             chainId: CHAIN_ID,
             delayBetweenTicksMs: 5,
-            workerId: `fetch-worker-${workerSuffix}`,
             fetchBatchSize: 2,
             fetchClaimTtlMs: 60_000,
             retryMaxAttempts: 3,

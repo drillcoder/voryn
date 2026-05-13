@@ -81,7 +81,6 @@ describe("e2e concurrent fetch workers", () => {
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
-                workerId: "fetch-worker-e2e-a",
                 fetchBatchSize: 2,
                 fetchClaimTtlMs: 60_000,
                 retryMaxAttempts: 3,
@@ -99,7 +98,6 @@ describe("e2e concurrent fetch workers", () => {
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
-                workerId: "fetch-worker-e2e-b",
                 fetchBatchSize: 2,
                 fetchClaimTtlMs: 60_000,
                 retryMaxAttempts: 3,

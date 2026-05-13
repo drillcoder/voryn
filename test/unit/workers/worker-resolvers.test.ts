@@ -30,7 +30,6 @@ jest.mock("../../../src/postgres/schema.js", () => ({
 const fetchConfig: FetchWorkerConfig = {
     chainId: 1,
     delayBetweenTicksMs: 1000,
-    workerId: "fetch-worker",
     fetchBatchSize: 1,
     fetchClaimTtlMs: 1000,
     retryMaxAttempts: 3,
@@ -91,7 +90,7 @@ test("fetch worker merges db defaults with overrides and returns disposer", asyn
     });
     await invokeTick(worker);
 
-    expect(claimForFetch).toHaveBeenCalledWith(1, "fetch-worker", expect.any(Date));
+    expect(claimForFetch).toHaveBeenCalledWith(1, expect.any(String), expect.any(Date));
     expect(validatePostgresSchema).toHaveBeenCalledTimes(1);
     expect(Reflect.get(worker, "cleanupFn")).toBeDefined();
     await worker.stop();

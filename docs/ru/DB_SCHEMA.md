@@ -21,7 +21,7 @@
 - `status` (`TEXT`): статус задания (`pending`, `fetching`, `fetched`, `committed`, `failed`).
 - `attempts` (`INT`, default `0`): число попыток обработки.
 - `next_retry_at` (`TIMESTAMPTZ`, nullable): когда job можно снова брать в работу после ошибки.
-- `claimed_by` (`TEXT`, nullable): id fetch-воркера, который забрал задачу.
+- `claimed_by` (`TEXT`, nullable): сгенерированный id инстанса fetch-воркера, который забрал задачу.
 - `claimed_at` (`TIMESTAMPTZ`, nullable): когда задачу забрали.
 - `error` (`TEXT`, nullable): текст последней ошибки.
 - `updated_at` (`TIMESTAMPTZ`): время последнего изменения.

@@ -72,7 +72,6 @@ describe("e2e retention boundary", () => {
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
-                workerId: "fetch-worker-e2e-retention",
                 fetchBatchSize: 2,
                 fetchClaimTtlMs: 60_000,
                 retryMaxAttempts: 3,

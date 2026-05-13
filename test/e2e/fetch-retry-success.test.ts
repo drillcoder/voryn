@@ -72,7 +72,6 @@ describe("e2e fetch retry success", () => {
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
-                workerId: "fetch-worker-e2e-retry-success",
                 fetchBatchSize: 1,
                 fetchClaimTtlMs: 60_000,
                 retryMaxAttempts: 3,

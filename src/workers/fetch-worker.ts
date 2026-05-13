@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
@@ -6,6 +7,7 @@ import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../repositories/postgres/block-jobs-repository.js";
 import { PostgresRawBlocksRepository } from "../repositories/postgres/raw-blocks-repository.js";
 import { FetchService } from "../services/fetch-service.js";
+import type { FetchServiceConfig } from "../services/fetch-service.js";
 import { resolveDbDependencies, resolveEthersSource } from "../runtime/resolvers.js";
 import { PollingWorker } from "./polling-worker.js";
 import type { RuntimeBaseOptions, RuntimeDbOptions, RuntimeSourceOptions } from "../runtime/types.js";
@@ -27,6 +29,10 @@ export type CreateFetchWorkerOptions =
 export class FetchWorker extends PollingWorker {
     static async create(options: CreateFetchWorkerOptions): Promise<FetchWorker> {
         const source = resolveEthersSource(options);
+        const config: FetchServiceConfig = {
+            ...options.config,
+            instanceId: randomUUID(),
+        };
         const { dependencies, dispose } = await resolveDbDependencies<FetchWorkerDatabaseDependencies>(
             options,
             (pool: Pool): FetchWorkerDatabaseDependencies => ({
@@ -36,7 +42,7 @@ export class FetchWorker extends PollingWorker {
             })
         );
         const service = new FetchService(
-            options.config,
+            config,
             source,
             dependencies.blockJobsRepository,
             dependencies.rawBlocksRepository,
@@ -44,17 +50,17 @@ export class FetchWorker extends PollingWorker {
             options.logger
         );
 
-        return new FetchWorker(options.config, service, dispose, options.logger);
+        return new FetchWorker(config, service, dispose, options.logger);
     }
 
     private constructor(
-        private readonly config: FetchWorkerConfig,
+        private readonly config: FetchServiceConfig,
         private readonly service: FetchService,
         dispose?: () => Promise<void>,
         logger?: Logger,
     ) {
         super(
-            `fetch:${String(config.chainId)}:${config.workerId}`,
+            `fetch:${String(config.chainId)}:${config.instanceId}`,
             config.delayBetweenTicksMs,
             logger ?? noopLogger,
             dispose
@@ -67,7 +73,7 @@ export class FetchWorker extends PollingWorker {
 
     protected override buildStartLogMeta(): Record<string, unknown> {
         return {
-            workerId: this.config.workerId,
+            instanceId: this.config.instanceId,
             chainId: this.config.chainId,
             fetchBatchSize: this.config.fetchBatchSize,
             fetchClaimTtlMs: this.config.fetchClaimTtlMs,

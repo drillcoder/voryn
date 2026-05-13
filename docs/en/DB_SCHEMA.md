@@ -21,7 +21,7 @@ Block processing queue.
 - `status` (`TEXT`): job status (`pending`, `fetching`, `fetched`, `committed`, `failed`).
 - `attempts` (`INT`, default `0`): number of processing attempts.
 - `next_retry_at` (`TIMESTAMPTZ`, nullable): when the job can be picked up again after an error.
-- `claimed_by` (`TEXT`, nullable): id of the fetch worker that claimed the job.
+- `claimed_by` (`TEXT`, nullable): generated id of the fetch worker instance that claimed the job.
 - `claimed_at` (`TIMESTAMPTZ`, nullable): when the job was claimed.
 - `error` (`TEXT`, nullable): last error text.
 - `updated_at` (`TIMESTAMPTZ`): last update time.

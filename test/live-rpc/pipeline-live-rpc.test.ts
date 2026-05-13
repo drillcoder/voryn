@@ -97,7 +97,7 @@ describeLive("live rpc pipeline", () => {
             {
                 chainId,
                 delayBetweenTicksMs: 1,
-                workerId: "fetch-worker-live-rpc",
+                instanceId: "fetch-instance-live-rpc",
                 fetchBatchSize: 1,
                 fetchClaimTtlMs: 60_000,
                 retryMaxAttempts: 3,

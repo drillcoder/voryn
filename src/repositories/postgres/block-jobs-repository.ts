@@ -82,7 +82,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
 
     async claimForFetch(
         chainId: ChainId,
-        workerId: string,
+        instanceId: string,
         staleClaimedBefore: Date,
         transaction?: DbExecutor
     ): Promise<BlockJob | null> {
@@ -121,7 +121,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
                  j.error,
                  j.claimed_at,
                  j.updated_at`,
-            [chainId, workerId, staleClaimedBefore]
+            [chainId, instanceId, staleClaimedBefore]
         );
 
         if (result.rows.length === 0) {
@@ -134,7 +134,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
     async markFetched(
         chainId: ChainId,
         blockNumber: BlockNumber,
-        workerId: string,
+        instanceId: string,
         transaction?: DbExecutor
     ): Promise<void> {
         const executor = transaction ?? this.pool;
@@ -150,7 +150,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
                AND block_number = $2
                AND status = 'fetching'
                AND claimed_by = $3`,
-            [chainId, blockNumber, workerId]
+            [chainId, blockNumber, instanceId]
         );
 
         if ((result.rowCount ?? 0) === 0) {
@@ -163,7 +163,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
     async markFetchFailed(
         chainId: ChainId,
         blockNumber: BlockNumber,
-        workerId: string,
+        instanceId: string,
         error: string,
         nextRetryAt: Date | null,
         transaction?: DbExecutor
@@ -181,7 +181,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
                AND block_number = $2
                AND status = 'fetching'
                AND claimed_by = $3`,
-            [chainId, blockNumber, workerId, error, nextRetryAt]
+            [chainId, blockNumber, instanceId, error, nextRetryAt]
         );
 
         if ((result.rowCount ?? 0) === 0) {

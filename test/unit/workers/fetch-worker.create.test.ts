@@ -14,7 +14,6 @@ test("fetch worker create wires service execution", async () => {
     const config: FetchWorkerConfig = {
         chainId: 1,
         delayBetweenTicksMs: 1000,
-        workerId: "fetch-w1",
         fetchBatchSize: 1,
         fetchClaimTtlMs: 1000,
         retryMaxAttempts: 3,
@@ -46,9 +45,10 @@ test("fetch worker create wires service execution", async () => {
 
     await invokeTick(worker);
 
-    expect(claimForFetch).toHaveBeenCalledWith(1, "fetch-w1", expect.any(Date));
-    expect(invokeStartLogMeta(worker)).toEqual({
-        workerId: "fetch-w1",
+    expect(claimForFetch).toHaveBeenCalledWith(1, expect.any(String), expect.any(Date));
+    const startLogMeta = invokeStartLogMeta(worker);
+    expect(typeof startLogMeta.instanceId).toBe("string");
+    expect(startLogMeta).toMatchObject({
         chainId: 1,
         fetchBatchSize: 1,
         fetchClaimTtlMs: 1000,

@@ -14,8 +14,8 @@ import {
     buildFetchedBlock,
     CHAIN_ID,
     createMapBlockSource,
+    FETCH_INSTANCE_ID,
     hashFromNumber,
-    WORKER_ID,
 } from "../helpers/fixtures.js";
 import type { IsolatedDbContext } from "../helpers/test-db.js";
 import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../helpers/test-db.js";
@@ -77,7 +77,7 @@ describe("integration services: head/fetch/sequencer", () => {
             {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 1,
-                workerId: WORKER_ID,
+                instanceId: FETCH_INSTANCE_ID,
                 fetchBatchSize: 10,
                 fetchClaimTtlMs: 60_000,
                 retryMaxAttempts: 3,

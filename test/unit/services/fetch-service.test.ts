@@ -2,17 +2,17 @@ import type { BlockJobsRepository, RawBlocksRepository } from "../../../src/inte
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import type { DbExecutor } from "../../../src/interfaces/db.js";
 import type { TransactionManager } from "../../../src/interfaces/transaction-manager.js";
-import type { FetchWorkerConfig } from "../../../src/interfaces/runtime.js";
 import { FetchService } from "../../../src/services/fetch-service.js";
+import type { FetchServiceConfig } from "../../../src/services/fetch-service.js";
 import { asHash32 } from "../../../src/utils/hex.js";
 
 const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 const HASH_B = asHash32("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
 
-const config: FetchWorkerConfig = {
+const config: FetchServiceConfig = {
     chainId: 7,
     delayBetweenTicksMs: 1000,
-    workerId: "w1",
+    instanceId: "w1",
     fetchBatchSize: 1,
     fetchClaimTtlMs: 10_000,
     retryMaxAttempts: 4,
@@ -94,7 +94,7 @@ test("fetch service stores fetched block and marks job fetched", async () => {
 
     const staleThresholds: Date[] = [];
     const blockJobsRepository = createBlockJobsRepository({
-        claimForFetch: async (_chainId, _workerId, staleClaimedBefore) => {
+        claimForFetch: async (_chainId, _instanceId, staleClaimedBefore) => {
             staleThresholds.push(staleClaimedBefore);
             return {
                 chainId: 7,
@@ -128,7 +128,7 @@ test("fetch service stores fetched block and marks job fetched", async () => {
 });
 
 test("fetch service marks failure with retry date", async () => {
-    const failed: Array<{ blockNumber: number; workerId: string; nextRetryAt: Date | null }> = [];
+    const failed: Array<{ blockNumber: number; instanceId: string; nextRetryAt: Date | null }> = [];
 
     const source = createSource(async () => {
         throw new Error("rpc unavailable");
@@ -145,8 +145,8 @@ test("fetch service marks failure with retry date", async () => {
             claimedAt: new Date(),
             updatedAt: new Date(),
         }),
-        markFetchFailed: async (_chainId, blockNumber, workerId, _error, nextRetryAt) => {
-            failed.push({ blockNumber, workerId, nextRetryAt });
+        markFetchFailed: async (_chainId, blockNumber, instanceId, _error, nextRetryAt) => {
+            failed.push({ blockNumber, instanceId, nextRetryAt });
         },
     });
 
@@ -162,7 +162,7 @@ test("fetch service marks failure with retry date", async () => {
 
     expect(failed).toHaveLength(1);
     expect(failed[0]?.blockNumber).toBe(33);
-    expect(failed[0]?.workerId).toBe("w1");
+    expect(failed[0]?.instanceId).toBe("w1");
     expect(failed[0]?.nextRetryAt).toBeInstanceOf(Date);
 });
 
@@ -241,7 +241,7 @@ test("fetch service sets nextRetryAt=null when max attempts reached", async () =
                 claimedAt: new Date(),
                 updatedAt: new Date(),
             }),
-            markFetchFailed: async (_chainId, _blockNumber, _workerId, _error, value) => {
+            markFetchFailed: async (_chainId, _blockNumber, _instanceId, _error, value) => {
                 nextRetryAt = value;
             },
         }),

@@ -1,4 +1,3 @@
-import { hostname } from "node:os";
 import { FetchWorker } from "../src/index.js";
 import { createDevLogger, envNumber, envValue, runWithErrorHandling, runWorkerLifecycle } from "./runtime.js";
 
@@ -8,7 +7,6 @@ async function run(): Promise<void> {
     const rpcUrl = envValue("VORYN_FETCH_RPC_URL", "");
     const chainId = envNumber("VORYN_CHAIN_ID", "0");
     const delayBetweenTicksMs = envNumber("VORYN_FETCH_DELAY_BETWEEN_TICKS_MS", "100");
-    const workerId = envValue("VORYN_FETCH_WORKER_ID", `${hostname()}-${String(process.pid)}`);
     const fetchBatchSize = envNumber("VORYN_FETCH_BATCH_SIZE", "10");
     const fetchClaimTtlMs = envNumber("VORYN_FETCH_CLAIM_TTL_MS", "125000");
     const retryMaxAttempts = envNumber("VORYN_FETCH_RETRY_MAX_ATTEMPTS", "10");
@@ -18,7 +16,6 @@ async function run(): Promise<void> {
     const config = {
         chainId,
         delayBetweenTicksMs,
-        workerId,
         fetchBatchSize,
         fetchClaimTtlMs,
         retryMaxAttempts,

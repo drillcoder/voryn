@@ -70,7 +70,6 @@ describe("e2e sequencer mismatch", () => {
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
-                workerId: "fetch-worker-e2e-mismatch",
                 fetchBatchSize: 1,
                 fetchClaimTtlMs: 60_000,
                 retryMaxAttempts: 3,

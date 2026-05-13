@@ -63,7 +63,6 @@ describe("e2e fetch retry exhausted", () => {
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
-                workerId: "fetch-worker-e2e-retry-exhausted",
                 fetchBatchSize: 1,
                 fetchClaimTtlMs: 60_000,
                 retryMaxAttempts: 3,

@@ -4,7 +4,7 @@ import { PostgresTransactionManager } from "../../../src/postgres/transaction-ma
 import { PostgresBlockJobsRepository } from "../../../src/repositories/postgres/block-jobs-repository.js";
 import { PostgresRawBlocksRepository } from "../../../src/repositories/postgres/raw-blocks-repository.js";
 import { FetchService } from "../../../src/services/fetch-service.js";
-import { buildFetchedBlock, CHAIN_ID, hashFromNumber, WORKER_ID } from "../helpers/fixtures.js";
+import { buildFetchedBlock, CHAIN_ID, FETCH_INSTANCE_ID, hashFromNumber } from "../helpers/fixtures.js";
 import type { IsolatedDbContext } from "../helpers/test-db.js";
 import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../helpers/test-db.js";
 
@@ -59,7 +59,7 @@ describe("integration services: fetch retries", () => {
             {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 1,
-                workerId: WORKER_ID,
+                instanceId: FETCH_INSTANCE_ID,
                 fetchBatchSize: 1,
                 fetchClaimTtlMs: 60_000,
                 retryMaxAttempts: 3,
@@ -139,7 +139,7 @@ describe("integration services: fetch retries", () => {
             {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 1,
-                workerId: "fresh-worker",
+                instanceId: "fresh-instance",
                 fetchBatchSize: 1,
                 fetchClaimTtlMs: 1_000,
                 retryMaxAttempts: 3,

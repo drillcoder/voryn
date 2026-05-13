@@ -86,7 +86,6 @@ describe("e2e multi-chain isolation", () => {
                 config: {
                     chainId: CHAIN_A,
                     delayBetweenTicksMs: 5,
-                    workerId: "fetch-worker-chain-a",
                     fetchBatchSize: 2,
                     fetchClaimTtlMs: 60_000,
                     retryMaxAttempts: 3,
@@ -129,7 +128,6 @@ describe("e2e multi-chain isolation", () => {
                 config: {
                     chainId: CHAIN_B,
                     delayBetweenTicksMs: 5,
-                    workerId: "fetch-worker-chain-b",
                     fetchBatchSize: 2,
                     fetchClaimTtlMs: 60_000,
                     retryMaxAttempts: 3,

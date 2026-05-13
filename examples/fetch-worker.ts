@@ -5,7 +5,6 @@ import { ConsoleLogger, FetchWorker } from "@drillcoder/voryn";
     const rpcUrl = "https://rpc.example.org";
     const chainId = 1;
     const delayBetweenTicksMs = 100;
-    const workerId = "fetch-worker-1";
     const fetchBatchSize = 10;
     const fetchClaimTtlMs = 125_000;
     const retryMaxAttempts = 10;
@@ -16,7 +15,6 @@ import { ConsoleLogger, FetchWorker } from "@drillcoder/voryn";
     const config = {
         chainId,
         delayBetweenTicksMs,
-        workerId,
         fetchBatchSize,
         fetchClaimTtlMs,
         retryMaxAttempts,
