@@ -7,7 +7,6 @@ import { ConsoleLogger, EventReactionWorker } from "@drillcoder/voryn";
     const workerName = "event-reaction-worker";
     const delayBetweenTicksMs = 1_000;
     const batchSize = 250;
-    const lockKey = 40_000_000n;
 
     const logger = new ConsoleLogger({ minLevel: "info" });
     const config = { chainId, delayBetweenTicksMs, workerName, batchSize };
@@ -23,7 +22,7 @@ import { ConsoleLogger, EventReactionWorker } from "@drillcoder/voryn";
         },
     };
 
-    const worker = await EventReactionWorker.create({ config, logger, dbUrl, lockKey, handler });
+    const worker = await EventReactionWorker.create({ config, logger, dbUrl, handler });
 
     const shutdown = async (): Promise<void> => {
         await worker.stop();

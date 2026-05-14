@@ -5,12 +5,14 @@ import type { LeaderLock } from "../interfaces/leader-lock.js";
 import type { TransactionReactionHandler } from "../interfaces/reaction.js";
 import type { CanonicalTransactionsRepository, WorkerCursorsRepository } from "../interfaces/repositories.js";
 import type { ReactionWorkerConfig } from "../interfaces/runtime.js";
+import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresCanonicalTransactionsRepository } from "../repositories/postgres/canonical-transactions-repository.js";
 import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker-cursors-repository.js";
 import { TransactionReactionService } from "../services/transaction-reaction-service.js";
-import { resolveDbDependencies, resolveReactionLeaderLock } from "../runtime/resolvers.js";
+import { resolveDbDependencies } from "../runtime/resolvers.js";
 import type { ReactionWorkerOptions } from "../runtime/types.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
+import { buildReactionWorkerLockKey } from "./worker-lock-keys.js";
 
 export interface TransactionReactionWorkerDatabaseDependencies {
     transactionsRepository: CanonicalTransactionsRepository;
@@ -31,12 +33,7 @@ export class TransactionReactionWorker extends SingletonPollingWorker {
             (pool: Pool): TransactionReactionWorkerDatabaseDependencies => ({
                 transactionsRepository: new PostgresCanonicalTransactionsRepository(pool),
                 workerCursorsRepository: new PostgresWorkerCursorsRepository(pool),
-                leaderLock: resolveReactionLeaderLock(
-                    options.overrides?.leaderLock,
-                    options.lockKey,
-                    pool,
-                    "Transaction reaction worker lock is not configured: pass lockKey or overrides.leaderLock."
-                ),
+                leaderLock: new PostgresLeaderLock(pool, buildReactionWorkerLockKey("transaction", options.config)),
             })
         );
         const service = new TransactionReactionService(

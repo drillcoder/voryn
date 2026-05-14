@@ -9,6 +9,7 @@ import { HeadWorker } from "../../../src/workers/head-worker.js";
 import { RetentionWorker } from "../../../src/workers/retention-worker.js";
 import { SequencerWorker } from "../../../src/workers/sequencer-worker.js";
 import { TransactionReactionWorker } from "../../../src/workers/transaction-reaction-worker.js";
+import { buildReactionWorkerLockKey } from "../../../src/workers/worker-lock-keys.js";
 import {
     createNoopBlockJobsRepository,
     createNoopCanonicalEventsRepository,
@@ -21,7 +22,6 @@ import {
 import type { EventReactionHandler, TransactionReactionHandler } from "../../../src/interfaces/reaction.js";
 import type { FetchWorkerConfig, ReactionWorkerConfig } from "../../../src/interfaces/runtime.js";
 import type { WorkerCursorsRepository } from "../../../src/interfaces/repositories.js";
-import type { CreateTransactionReactionWorkerOptions } from "../../../src/workers/transaction-reaction-worker.js";
 
 jest.mock("../../../src/postgres/schema.js", () => ({
     validatePostgresSchema: jest.fn(async () => undefined),
@@ -96,12 +96,11 @@ test("fetch worker merges db defaults with overrides and returns disposer", asyn
     await worker.stop();
 });
 
-test("event reaction worker creates leader lock from lockKey", async () => {
+test("event reaction worker creates leader lock from worker identity", async () => {
     const worker = await EventReactionWorker.create({
         config: reactionConfig,
         handler: eventHandler,
         dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
-        lockKey: 123n,
         overrides: {
             canonicalEventsRepository: createNoopCanonicalEventsRepository(),
             workerCursorsRepository,
@@ -110,6 +109,7 @@ test("event reaction worker creates leader lock from lockKey", async () => {
     const createdLeaderLock = Reflect.get(worker, "leaderLock") as LeaderLock;
 
     expect(createdLeaderLock).toBeInstanceOf(PostgresLeaderLock);
+    expect(Reflect.get(createdLeaderLock, "lockKey")).toBe(buildReactionWorkerLockKey("event", reactionConfig));
     expect(Reflect.get(worker, "cleanupFn")).toBeDefined();
     await worker.stop();
 });
@@ -192,8 +192,8 @@ test("event reaction worker uses override leader lock when provided with dbUrl",
     await worker.stop();
 });
 
-test("transaction reaction worker throws when lock is not configured", async () => {
-    const options = {
+test("transaction reaction worker creates leader lock from worker identity", async () => {
+    const worker = await TransactionReactionWorker.create({
         config: reactionConfig,
         handler: transactionHandler,
         dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
@@ -201,9 +201,12 @@ test("transaction reaction worker throws when lock is not configured", async () 
             transactionsRepository: createNoopCanonicalTransactionsRepository(),
             workerCursorsRepository,
         },
-    } as unknown as CreateTransactionReactionWorkerOptions;
+    });
+    const createdLeaderLock = Reflect.get(worker, "leaderLock") as LeaderLock;
 
-    await expect(TransactionReactionWorker.create(options)).rejects.toThrow(
-        "Transaction reaction worker lock is not configured: pass lockKey or overrides.leaderLock."
-    );
+    expect(createdLeaderLock).toBeInstanceOf(PostgresLeaderLock);
+    expect(Reflect.get(createdLeaderLock, "lockKey")).toBe(buildReactionWorkerLockKey("transaction", reactionConfig));
+    expect(Reflect.get(createdLeaderLock, "lockKey")).not.toBe(buildReactionWorkerLockKey("event", reactionConfig));
+    expect(Reflect.get(worker, "cleanupFn")).toBeDefined();
+    await worker.stop();
 });

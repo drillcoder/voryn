@@ -2,10 +2,8 @@ import type { Pool } from "pg";
 import { Pool as PostgresPool } from "pg";
 import { JsonRpcProvider } from "ethers";
 import { EthersBlockSource } from "../adapters/ethers-block-source.js";
-import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { validatePostgresSchema } from "../postgres/schema.js";
 import type { BlockSource } from "../interfaces/block-source.js";
-import type { LeaderLock } from "../interfaces/leader-lock.js";
 import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
 import type { ResolveDbDependenciesResult, RuntimeDbOptions, RuntimeSourceOptions } from "./types.js";
@@ -51,21 +49,4 @@ export async function resolveDbDependencies<TDependencies extends object>(
     return {
         dependencies: options.overrides,
     };
-}
-
-export function resolveReactionLeaderLock(
-    override: LeaderLock | undefined,
-    lockKey: bigint | undefined,
-    pool: Pool,
-    lockErrorMessage: string
-): LeaderLock {
-    if (override !== undefined) {
-        return override;
-    }
-
-    if (lockKey !== undefined) {
-        return new PostgresLeaderLock(pool, lockKey);
-    }
-
-    throw new Error(lockErrorMessage);
 }

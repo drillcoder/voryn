@@ -186,7 +186,6 @@ const handler: EventReactionHandler = {
 
 const worker = await EventReactionWorker.create({
     dbUrl: "postgres://user:pass@localhost:5432/voryn",
-    lockKey: 40_000_000n,
     logger,
     handler,
     config: {

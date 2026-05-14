@@ -7,7 +7,6 @@ import { ConsoleLogger, TransactionReactionWorker } from "@drillcoder/voryn";
     const workerName = "transaction-reaction-worker";
     const delayBetweenTicksMs = 1_000;
     const batchSize = 100;
-    const lockKey = 50_000_000n;
 
     const logger = new ConsoleLogger({ minLevel: "info" });
     const config = { chainId, delayBetweenTicksMs, workerName, batchSize };
@@ -23,7 +22,7 @@ import { ConsoleLogger, TransactionReactionWorker } from "@drillcoder/voryn";
         },
     };
 
-    const worker = await TransactionReactionWorker.create({ config, logger, dbUrl, lockKey, handler });
+    const worker = await TransactionReactionWorker.create({ config, logger, dbUrl, handler });
 
     const shutdown = async (): Promise<void> => {
         await worker.stop();

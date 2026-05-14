@@ -1,13 +1,8 @@
 import type { Logger } from "../interfaces/logger.js";
-import type { LeaderLock } from "../interfaces/leader-lock.js";
 
 export interface RuntimeBaseOptions<TConfig> {
     config: TConfig;
     logger?: Logger;
-}
-
-export interface ReactionWorkerBaseOptions<TConfig, THandler> extends RuntimeBaseOptions<TConfig> {
-    handler: THandler;
 }
 
 export type RuntimeSourceOptions<TSource> =
@@ -29,24 +24,7 @@ export type RuntimeDbOptions<TDependencies extends object> =
         overrides: TDependencies;
     };
 
-type DbOptionsWithUrl<TDependencies extends { leaderLock: LeaderLock }> =
-    | {
-        dbUrl: string;
-        overrides?: Partial<TDependencies>;
-        lockKey: bigint;
-    }
-    | {
-        dbUrl: string;
-        overrides: Partial<TDependencies> & Pick<TDependencies, "leaderLock">;
-        lockKey?: never;
-    };
-
-interface DbOptionsWithOverrides<TDependencies> {
-    dbUrl?: undefined;
-    overrides: TDependencies;
-    lockKey?: never;
-}
-
-export type ReactionWorkerOptions<TConfig, THandler, TDependencies extends { leaderLock: LeaderLock }> =
-    ReactionWorkerBaseOptions<TConfig, THandler>
-    & (DbOptionsWithUrl<TDependencies> | DbOptionsWithOverrides<TDependencies>);
+export type ReactionWorkerOptions<TConfig, THandler, TDependencies extends object> =
+    RuntimeBaseOptions<TConfig>
+    & RuntimeDbOptions<TDependencies>
+    & { handler: THandler };

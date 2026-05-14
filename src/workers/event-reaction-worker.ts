@@ -5,12 +5,14 @@ import type { LeaderLock } from "../interfaces/leader-lock.js";
 import type { EventReactionHandler } from "../interfaces/reaction.js";
 import type { CanonicalEventsRepository, WorkerCursorsRepository } from "../interfaces/repositories.js";
 import type { ReactionWorkerConfig } from "../interfaces/runtime.js";
+import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresCanonicalEventsRepository } from "../repositories/postgres/canonical-events-repository.js";
 import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker-cursors-repository.js";
 import { EventReactionService } from "../services/event-reaction-service.js";
-import { resolveDbDependencies, resolveReactionLeaderLock } from "../runtime/resolvers.js";
+import { resolveDbDependencies } from "../runtime/resolvers.js";
 import type { ReactionWorkerOptions } from "../runtime/types.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
+import { buildReactionWorkerLockKey } from "./worker-lock-keys.js";
 
 export interface EventReactionWorkerDatabaseDependencies {
     canonicalEventsRepository: CanonicalEventsRepository;
@@ -31,12 +33,7 @@ export class EventReactionWorker extends SingletonPollingWorker {
             (pool: Pool): EventReactionWorkerDatabaseDependencies => ({
                 canonicalEventsRepository: new PostgresCanonicalEventsRepository(pool),
                 workerCursorsRepository: new PostgresWorkerCursorsRepository(pool),
-                leaderLock: resolveReactionLeaderLock(
-                    options.overrides?.leaderLock,
-                    options.lockKey,
-                    pool,
-                    "Event reaction worker lock is not configured: pass lockKey or overrides.leaderLock."
-                ),
+                leaderLock: new PostgresLeaderLock(pool, buildReactionWorkerLockKey("event", options.config)),
             })
         );
         const service = new EventReactionService(
