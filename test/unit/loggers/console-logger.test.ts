@@ -124,6 +124,31 @@ test("console logger enables colors automatically when output is TTY", () => {
     }
 });
 
+test("console logger enables colors automatically when stderr is TTY", () => {
+    const stdout = createWriter(false);
+    const stderr = createWriter(true);
+    const previousNoColor = process.env.NO_COLOR;
+    delete process.env.NO_COLOR;
+
+    try {
+        const logger = new ConsoleLogger({
+            timestamp: false,
+            stdout: stdout.writer,
+            stderr: stderr.writer,
+        });
+
+        logger.warn("tty error output");
+
+        expect(stderr.lines).toEqual(["\u001b[33mWARN\u001b[0m tty error output\n"]);
+    } finally {
+        if (previousNoColor === undefined) {
+            delete process.env.NO_COLOR;
+        } else {
+            process.env.NO_COLOR = previousNoColor;
+        }
+    }
+});
+
 test("console logger disables colors when NO_COLOR is set", () => {
     const stdout = createWriter(true);
     const stderr = createWriter(true);
@@ -151,7 +176,7 @@ test("console logger disables colors when NO_COLOR is set", () => {
 
 test("console logger uses default options when no options provided", () => {
     const previousNoColor = process.env.NO_COLOR;
-    delete process.env.NO_COLOR;
+    process.env.NO_COLOR = "1";
 
     const stdoutWriteSpy = jest
         .spyOn(process.stdout, "write")

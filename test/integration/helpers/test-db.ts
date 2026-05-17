@@ -45,6 +45,11 @@ export async function createIsolatedDbContext(databaseUrlRaw: string): Promise<I
 
     databaseUrl.pathname = `/${testDatabaseName}`;
     const pool = new Pool({ connectionString: databaseUrl.toString() });
+    pool.on("error", (error: Error) => {
+        if (!isPostgresTerminationError(error)) {
+            throw error;
+        }
+    });
 
     const schemaSql = await readFile("src/sql/postgres-schema.sql", "utf8");
     await pool.query(schemaSql);
@@ -88,4 +93,8 @@ export async function createIsolatedDbContext(databaseUrlRaw: string): Promise<I
 
 function quoteIdentifier(value: string): string {
     return `"${value.replaceAll("\"", "\"\"")}"`;
+}
+
+function isPostgresTerminationError(error: Error): boolean {
+    return "code" in error && error.code === "57P01";
 }

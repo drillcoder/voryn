@@ -1,3 +1,5 @@
+name: voryn
+
 x-node-base: &node-base
   build:
     context: .
@@ -14,7 +16,7 @@ x-worker-base: &worker-base
       condition: service_healthy
 
 x-worker-env: &worker-env
-  DATABASE_URL: postgres://voryn:voryn@postgres:5432/voryn
+  DATABASE_URL: postgres://user:pass@postgres:5432/voryn
   VORYN_CHAIN_ID: ${VORYN_CHAIN_ID:?VORYN_CHAIN_ID is required}
   VORYN_LOG_LEVEL: ${VORYN_LOG_LEVEL:-}
 
@@ -23,13 +25,13 @@ services:
     image: postgres:16-alpine
     container_name: voryn-postgres
     environment:
-      POSTGRES_USER: voryn
-      POSTGRES_PASSWORD: voryn
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
       POSTGRES_DB: voryn
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U voryn -d voryn"]
+      test: ["CMD-SHELL", "pg_isready -U user -d voryn"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -39,7 +41,7 @@ services:
   tools:
     <<: *node-base
     environment:
-      DATABASE_URL: postgres://voryn:voryn@postgres:5432/voryn
+      DATABASE_URL: postgres://user:pass@postgres:5432/voryn
       VORYN_CHAIN_ID: ${VORYN_CHAIN_ID:-}
       VORYN_HEAD_RPC_URL: ${VORYN_HEAD_RPC_URL:-}
       VORYN_FETCH_RPC_URL: ${VORYN_FETCH_RPC_URL:-}
