@@ -57,7 +57,6 @@ const createRawBlock = (
             hash: blockHash,
             parentHash,
             timestamp,
-            raw: {},
         },
         transactions: [],
         logs: [],
@@ -77,7 +76,6 @@ const createFetchedBlock = (
         hash: blockHash,
         parentHash,
         timestamp,
-        raw: {},
     },
     transactions: [],
     logs: [],
@@ -203,7 +201,7 @@ test("sequencer service commits next block", async () => {
     const calls: string[] = [];
     const { manager, transaction } = createPassThroughManager();
     const cursor = createCursor(40, HASH_A, 50);
-    const raw = createRawBlock(41, HASH_B, HASH_A);
+    const rawBlock = createRawBlock(41, HASH_B, HASH_A);
 
     const worker = createService({
         chainCursorRepository: createChainCursorRepository(() => cursor, {
@@ -211,7 +209,7 @@ test("sequencer service commits next block", async () => {
                 calls.push(`advance:${String(blockNumber)}:${String(tx === transaction)}`);
             },
         }),
-        rawBlocksRepository: createRawBlocksRepository(() => raw),
+        rawBlocksRepository: createRawBlocksRepository(() => rawBlock),
         canonicalBlocksRepository: createCanonicalBlocksRepository({
             insert: async () => {
                 calls.push("insert-block");

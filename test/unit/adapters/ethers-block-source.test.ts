@@ -107,10 +107,6 @@ test("maps latest block, transactions and logs from ethers provider", async () =
             index: 3,
         }],
     });
-    expect(fetchedBlock.block.raw).toBeDefined();
-    expect(fetchedBlock.transactions[0]?.raw).toBeDefined();
-    expect(fetchedBlock.logs[0]?.raw).toBeDefined();
-
     expect(blockCalls).toEqual([{ blockNumber: 12, prefetchTxs: true }]);
     expect(logCalls).toEqual([{ fromBlock: 12, toBlock: 12 }]);
 });

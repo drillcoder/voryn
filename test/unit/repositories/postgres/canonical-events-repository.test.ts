@@ -33,7 +33,6 @@ test("readFromSeq maps event rows", async () => {
             address: ADDRESS,
             topics: [TOPIC],
             data: DATA,
-            raw: { ok: true },
         }],
         rowCount: 1,
     }));
@@ -116,7 +115,6 @@ test("insertMany writes one batch for small input", async () => {
             address: ADDRESS,
             topics: [TOPIC],
             data: DATA,
-            raw: {},
         },
     ]);
 
@@ -136,7 +134,6 @@ test("readFromSeq throws when topics payload is invalid", async () => {
             address: ADDRESS,
             topics: "bad-topics-shape",
             data: DATA,
-            raw: { ok: true },
         }],
         rowCount: 1,
     }));

@@ -274,7 +274,6 @@ function createSource(latestBlock: number, latestBlockTimestamp = latestBlock * 
             hash: HASH,
             parentHash: HASH,
             timestamp: latestBlockTimestamp,
-            raw: {},
         }),
         getBlock: async () => ({
             chainId: 1,
@@ -282,7 +281,6 @@ function createSource(latestBlock: number, latestBlockTimestamp = latestBlock * 
             hash: HASH,
             parentHash: HASH,
             timestamp: latestBlockTimestamp,
-            raw: {},
         }),
         getBlockData: async () => {
             throw new Error("not expected");
@@ -346,7 +344,6 @@ function createCanonicalBlocksRepository(blockTimestamps: Partial<Record<number,
                 hash: HASH,
                 parentHash: HASH,
                 timestamp,
-                raw: {},
             };
         },
         deleteUpToBlock: async () => 0,

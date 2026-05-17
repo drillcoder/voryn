@@ -35,7 +35,6 @@ test("pipeline metrics merges db defaults with overrides and returns disposer", 
                 hash: HASH,
                 parentHash: HASH,
                 timestamp: 0,
-                raw: {},
             }),
             getBlock: async () => ({
                 chainId: 7,
@@ -43,7 +42,6 @@ test("pipeline metrics merges db defaults with overrides and returns disposer", 
                 hash: HASH,
                 parentHash: HASH,
                 timestamp: 0,
-                raw: {},
             }),
             getBlockData: async () => {
                 throw new Error("not expected");

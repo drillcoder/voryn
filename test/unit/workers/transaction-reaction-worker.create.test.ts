@@ -52,7 +52,6 @@ test("transaction reaction worker create wires service execution", async () => {
                 to: ADDRESS,
                 value: "1",
                 data: DATA,
-                raw: {},
             },
         ],
     };

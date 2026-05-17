@@ -40,7 +40,6 @@ test("transaction reaction service processes txs and advances cursor", async () 
                 to: TO,
                 value: "1",
                 data: DATA,
-                raw: { amount: 1 },
             },
             {
                 seq: 102n,
@@ -53,7 +52,6 @@ test("transaction reaction service processes txs and advances cursor", async () 
                 to: null,
                 value: "2",
                 data: DATA,
-                raw: { amount: 2 },
             },
         ],
         maxSeq: async () => 0n,

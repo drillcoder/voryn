@@ -27,7 +27,6 @@ const blockPayload = {
         hash: HASH_A,
         parentHash: HASH_B,
         timestamp: 100,
-        raw: {},
     },
     transactions: [],
     logs: [],

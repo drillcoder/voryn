@@ -33,7 +33,7 @@ Ingestion workers collect and commit blocks in order, while reaction workers rea
 
 ## Contracts and Models
 
-`src/interfaces/pipeline.ts` describes pipeline domain entities at the application level: chain cursor, block queue jobs, raw and canonical data, reaction cursors, and retention purge result. This is the main data contract between workers and repositories.
+`src/interfaces/pipeline.ts` describes pipeline domain entities at the application level: chain cursor, block queue jobs, fetched and canonical data, reaction cursors, and retention purge result. This is the main data contract between workers and repositories.
 
 `src/types/pipeline.ts` defines limited pipeline types: reaction stream type and block job status. These types act as the shared state dictionary across all layers.
 

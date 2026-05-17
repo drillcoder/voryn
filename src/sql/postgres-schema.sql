@@ -46,7 +46,6 @@ CREATE TABLE IF NOT EXISTS canonical_blocks
     block_hash      VARCHAR(66) NOT NULL,
     parent_hash     VARCHAR(66) NOT NULL,
     block_timestamp BIGINT      NOT NULL,
-    raw             JSONB       NOT NULL,
     PRIMARY KEY (chain_id, block_number)
 );
 
@@ -62,7 +61,6 @@ CREATE TABLE IF NOT EXISTS canonical_transactions
     to_address        VARCHAR(42),
     value             TEXT        NOT NULL,
     data              TEXT        NOT NULL,
-    raw               JSONB       NOT NULL,
     UNIQUE (chain_id, block_number, transaction_index)
 );
 
@@ -81,7 +79,6 @@ CREATE TABLE IF NOT EXISTS canonical_events
     address           VARCHAR(42) NOT NULL,
     topics            TEXT[]      NOT NULL,
     data              TEXT        NOT NULL,
-    raw               JSONB       NOT NULL,
     UNIQUE (chain_id, block_number, transaction_index, log_index)
 );
 

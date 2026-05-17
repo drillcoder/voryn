@@ -11,7 +11,6 @@ interface CanonicalBlockRow {
     block_hash: string;
     parent_hash: string;
     block_timestamp: bigint | number | string;
-    raw: unknown;
 }
 
 export class PostgresCanonicalBlocksRepository implements CanonicalBlocksRepository {
@@ -21,17 +20,17 @@ export class PostgresCanonicalBlocksRepository implements CanonicalBlocksReposit
     async insert(block: ChainBlock, transaction?: DbExecutor): Promise<void> {
         const executor = transaction ?? this.pool;
         await executor.query(
-            `INSERT INTO canonical_blocks (chain_id, block_number, block_hash, parent_hash, block_timestamp, raw)
-             VALUES ($1, $2, $3, $4, $5, $6)
+            `INSERT INTO canonical_blocks (chain_id, block_number, block_hash, parent_hash, block_timestamp)
+             VALUES ($1, $2, $3, $4, $5)
              ON CONFLICT (chain_id, block_number) DO NOTHING`,
-            [block.chainId, block.number, block.hash, block.parentHash, block.timestamp, block.raw]
+            [block.chainId, block.number, block.hash, block.parentHash, block.timestamp]
         );
     }
 
     async get(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<ChainBlock | null> {
         const executor = transaction ?? this.pool;
         const result = await executor.query<CanonicalBlockRow>(
-            `SELECT chain_id, block_number, block_hash, parent_hash, block_timestamp, raw
+            `SELECT chain_id, block_number, block_hash, parent_hash, block_timestamp
              FROM canonical_blocks
              WHERE chain_id = $1
                AND block_number = $2`,
@@ -48,7 +47,6 @@ export class PostgresCanonicalBlocksRepository implements CanonicalBlocksReposit
             hash: asHash32(result.rows[0].block_hash),
             parentHash: asHash32(result.rows[0].parent_hash),
             timestamp: parsePgInt(result.rows[0].block_timestamp),
-            raw: result.rows[0].raw,
         };
     }
 

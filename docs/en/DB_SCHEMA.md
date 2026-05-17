@@ -32,13 +32,13 @@ Keys and indexes:
 
 ## `raw_blocks`
 
-Raw data fetched from RPC before canonical commit.
+Normalized fetched block data before canonical commit.
 
 - `chain_id` (`INT`): network.
 - `block_number` (`BIGINT`): block number.
 - `block_hash` (`VARCHAR(66)`): block hash.
 - `parent_hash` (`VARCHAR(66)`): parent block hash.
-- `payload` (`JSONB`): raw block/transaction/log JSON payload.
+- `payload` (`JSONB`): normalized block/transaction/log payload.
 - `fetched_at` (`TIMESTAMPTZ`): when the block was fetched.
 
 Keys:
@@ -53,8 +53,6 @@ Confirmed canonical blocks.
 - `block_hash` (`VARCHAR(66)`): canonical block hash.
 - `parent_hash` (`VARCHAR(66)`): parent hash.
 - `block_timestamp` (`BIGINT`): block timestamp from the network.
-- `raw` (`JSONB`): raw/normalized block object.
-
 Keys:
 - PK: (`chain_id`, `block_number`)
 
@@ -72,8 +70,6 @@ Confirmed transactions with a separate `seq` stream for transaction workers.
 - `to_address` (`VARCHAR(42)`, nullable): recipient address.
 - `value` (`TEXT`): transaction value in wei, as a string.
 - `data` (`TEXT`): transaction calldata.
-- `raw` (`JSONB`): raw/normalized transaction object.
-
 Keys and indexes:
 - PK: (`seq`)
 - UNIQUE: (`chain_id`, `block_number`, `transaction_index`)
@@ -93,8 +89,6 @@ Confirmed events/logs with a separate `seq` stream for event workers.
 - `address` (`VARCHAR(42)`): address of the contract that emitted the log.
 - `topics` (`TEXT[]`): event topics.
 - `data` (`TEXT`): event data.
-- `raw` (`JSONB`): raw/normalized log object.
-
 Keys and indexes:
 - PK: (`seq`)
 - UNIQUE: (`chain_id`, `block_number`, `transaction_index`, `log_index`)

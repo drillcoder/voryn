@@ -1,7 +1,7 @@
 import type { BlockSource } from "../interfaces/block-source.js";
 import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
-import type { ChainCursor, RawBlock } from "../interfaces/pipeline.js";
+import type { ChainCursor } from "../interfaces/pipeline.js";
 import type {
     BlockJobsRepository,
     CanonicalBlocksRepository,
@@ -13,11 +13,6 @@ import type {
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import type { SequencerWorkerConfig } from "../interfaces/runtime.js";
 import type { BlockNumber, ChainId, HashHex } from "../types/chain.js";
-
-interface ReorgCandidate {
-    cursor: ChainCursor;
-    raw: RawBlock;
-}
 
 interface CommonAncestor {
     blockNumber: BlockNumber;
@@ -51,43 +46,43 @@ export class SequencerService {
             }
 
             const nextBlock = cursor.lastCommittedBlock + 1;
-            const raw = await this.rawBlocksRepository.get(chainId, nextBlock);
-            if (raw === null) {
+            const rawBlock = await this.rawBlocksRepository.get(chainId, nextBlock);
+            if (rawBlock === null) {
                 await this.logBlockedByMissingRawBlock(chainId, nextBlock);
                 break;
             }
 
-            if (raw.parentHash !== cursor.lastCommittedHash) {
-                await this.rollbackReorg({ cursor, raw });
+            if (rawBlock.parentHash !== cursor.lastCommittedHash) {
+                await this.rollbackReorg(cursor);
                 break;
             }
 
             const committedBlock = await this.transactionManager.run(async (transaction): Promise<number> => {
-                await this.canonicalBlocksRepository.insert(raw.payload.block, transaction);
+                await this.canonicalBlocksRepository.insert(rawBlock.payload.block, transaction);
                 await this.canonicalTransactionsRepository.insertMany(
-                    raw.payload.block.chainId,
-                    raw.payload.block.number,
-                    raw.blockHash,
-                    raw.payload.transactions,
+                    rawBlock.payload.block.chainId,
+                    rawBlock.payload.block.number,
+                    rawBlock.blockHash,
+                    rawBlock.payload.transactions,
                     transaction
                 );
                 await this.canonicalEventsRepository.insertMany(
-                    raw.payload.block.chainId,
-                    raw.payload.block.number,
-                    raw.blockHash,
-                    raw.payload.logs,
+                    rawBlock.payload.block.chainId,
+                    rawBlock.payload.block.number,
+                    rawBlock.blockHash,
+                    rawBlock.payload.logs,
                     transaction
                 );
                 await this.chainCursorRepository.advanceLastCommitted(
                     cursor.chainId,
                     cursor.lastCommittedBlock,
                     cursor.lastCommittedHash,
-                    raw.blockNumber,
-                    raw.blockHash,
+                    rawBlock.blockNumber,
+                    rawBlock.blockHash,
                     transaction
                 );
-                await this.blockJobsRepository.markCommitted(cursor.chainId, raw.blockNumber, transaction);
-                return raw.blockNumber;
+                await this.blockJobsRepository.markCommitted(cursor.chainId, rawBlock.blockNumber, transaction);
+                return rawBlock.blockNumber;
             });
             committedBlocks.push(committedBlock);
         }
@@ -141,9 +136,9 @@ export class SequencerService {
         });
     }
 
-    private async rollbackReorg(candidate: ReorgCandidate): Promise<void> {
+    private async rollbackReorg(candidateCursor: ChainCursor): Promise<void> {
         const chainId = this.config.chainId;
-        const ancestor = await this.findCommonAncestor(candidate.cursor);
+        const ancestor = await this.findCommonAncestor(candidateCursor);
 
         const result = await this.transactionManager.run(async (transaction) => {
             const cursor = await this.chainCursorRepository.getForUpdate(chainId, transaction);
@@ -152,15 +147,15 @@ export class SequencerService {
             }
 
             if (
-                cursor.lastCommittedBlock !== candidate.cursor.lastCommittedBlock
-                || cursor.lastCommittedHash !== candidate.cursor.lastCommittedHash
+                cursor.lastCommittedBlock !== candidateCursor.lastCommittedBlock
+                || cursor.lastCommittedHash !== candidateCursor.lastCommittedHash
             ) {
                 return null;
             }
 
             const nextBlock = cursor.lastCommittedBlock + 1;
-            const raw = await this.rawBlocksRepository.get(chainId, nextBlock, transaction);
-            if (raw === null || raw.parentHash === cursor.lastCommittedHash) {
+            const rawBlock = await this.rawBlocksRepository.get(chainId, nextBlock, transaction);
+            if (rawBlock === null || rawBlock.parentHash === cursor.lastCommittedHash) {
                 return null;
             }
 

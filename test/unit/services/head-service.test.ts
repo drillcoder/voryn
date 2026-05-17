@@ -201,11 +201,10 @@ test("head service bootstraps missing cursor", async () => {
             hash: HASH_A,
             parentHash: HASH_B,
             timestamp: 1,
-            raw: {},
         }),
-        getBlock: async () => ({ chainId: 1, number: 20, hash: HASH_A, parentHash: HASH_B, timestamp: 1, raw: {} }),
+        getBlock: async () => ({ chainId: 1, number: 20, hash: HASH_A, parentHash: HASH_B, timestamp: 1 }),
         getBlockData: async () => ({
-            block: { chainId: 1, number: 20, hash: HASH_A, parentHash: HASH_B, timestamp: 1, raw: {} },
+            block: { chainId: 1, number: 20, hash: HASH_A, parentHash: HASH_B, timestamp: 1 },
             transactions: [],
             logs: [],
         }),
@@ -345,13 +344,12 @@ test("head service rebases and enqueues new jobs when committed block is below f
             hash: HASH_A,
             parentHash: HASH_B,
             timestamp: 1,
-            raw: {},
         }),
-        getBlock: async () => ({ chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1, raw: {} }),
+        getBlock: async () => ({ chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1 }),
         getBlockData: async (_chainId, blockNumber) => {
             expect(blockNumber).toBe(114);
             return {
-                block: { chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1, raw: {} },
+                block: { chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1 },
                 transactions: [],
                 logs: [],
             };
@@ -436,11 +434,10 @@ test("head service enqueues without rebase when cursor catches up before transac
             hash: HASH_A,
             parentHash: HASH_B,
             timestamp: 1,
-            raw: {},
         }),
-        getBlock: async () => ({ chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1, raw: {} }),
+        getBlock: async () => ({ chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1 }),
         getBlockData: async () => ({
-            block: { chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1, raw: {} },
+            block: { chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1 },
             transactions: [],
             logs: [],
         }),
@@ -592,11 +589,10 @@ test("head service throws when cursor disappears inside rebase transaction", asy
             hash: HASH_A,
             parentHash: HASH_B,
             timestamp: 1,
-            raw: {},
         }),
-        getBlock: async () => ({ chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1, raw: {} }),
+        getBlock: async () => ({ chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1 }),
         getBlockData: async () => ({
-            block: { chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1, raw: {} },
+            block: { chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1 },
             transactions: [],
             logs: [],
         }),

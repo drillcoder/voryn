@@ -17,7 +17,6 @@ interface CanonicalEventRow {
     address: string;
     topics: unknown;
     data: string;
-    raw: unknown;
 }
 
 const MAX_SQL_PARAMS_PER_QUERY = 60000;
@@ -42,7 +41,7 @@ export class PostgresCanonicalEventsRepository implements CanonicalEventsReposit
         const executor = transaction ?? this.pool;
         const result = await executor.query<CanonicalEventRow>(
             `SELECT seq, chain_id, block_number, block_hash, transaction_index, transaction_hash,
-                    log_index, address, topics, data, raw
+                    log_index, address, topics, data
              FROM canonical_events
              WHERE chain_id = $1
                AND seq > $2
@@ -62,7 +61,6 @@ export class PostgresCanonicalEventsRepository implements CanonicalEventsReposit
             address: asAddress(row.address),
             topics: parseTopics(row.topics),
             data: asHexData(row.data),
-            raw: row.raw,
         }));
     }
 
@@ -107,8 +105,7 @@ export class PostgresCanonicalEventsRepository implements CanonicalEventsReposit
                         log_index,
                         address,
                         topics,
-                        data,
-                        raw
+                        data
                     )
                  VALUES ${placeholders}
                  ON CONFLICT (chain_id, block_number, transaction_index, log_index) DO NOTHING`,
@@ -162,7 +159,6 @@ function buildEventInsertRowParams(
         log.address,
         log.topics,
         log.data,
-        log.raw,
     ];
 }
 

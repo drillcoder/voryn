@@ -79,7 +79,6 @@ export function buildFetchedBlock(
         to: ADDRESS_B,
         value: String(100 + index),
         data: asHexData("0x1234"),
-        raw: { txIndex: index },
     }));
     const logs = Array.from({ length: txAndLogCount }, (_, index) => ({
         chainId: CHAIN_ID,
@@ -91,7 +90,6 @@ export function buildFetchedBlock(
         address: ADDRESS_C,
         topics: [hashFromNumber(blockNumber * 10 + index)],
         data: asHexData("0xabcd"),
-        raw: { logIndex: index },
     }));
 
     return {
@@ -101,7 +99,6 @@ export function buildFetchedBlock(
             hash: blockHash,
             parentHash,
             timestamp: 1_700_000_000 + blockNumber,
-            raw: { blockNumber },
         },
         transactions,
         logs,

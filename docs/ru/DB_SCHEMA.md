@@ -32,13 +32,13 @@
 
 ## `raw_blocks`
 
-Сырые данные, скачанные из RPC до канонического коммита.
+Нормализованные скачанные данные блока до канонического коммита.
 
 - `chain_id` (`INT`): сеть.
 - `block_number` (`BIGINT`): номер блока.
 - `block_hash` (`VARCHAR(66)`): хэш блока.
 - `parent_hash` (`VARCHAR(66)`): хэш родительского блока.
-- `payload` (`JSONB`): сырой JSON блока/транзакций/логов.
+- `payload` (`JSONB`): нормализованный payload блока/транзакций/логов.
 - `fetched_at` (`TIMESTAMPTZ`): когда блок был скачан.
 
 Ключи:
@@ -53,8 +53,6 @@
 - `block_hash` (`VARCHAR(66)`): хэш канонического блока.
 - `parent_hash` (`VARCHAR(66)`): хэш родителя.
 - `block_timestamp` (`BIGINT`): timestamp блока из сети.
-- `raw` (`JSONB`): сырой/нормализованный объект блока.
-
 Ключи:
 - PK: (`chain_id`, `block_number`)
 
@@ -72,8 +70,6 @@
 - `to_address` (`VARCHAR(42)`, nullable): адрес получателя.
 - `value` (`TEXT`): значение транзакции в wei, как строка.
 - `data` (`TEXT`): calldata транзакции.
-- `raw` (`JSONB`): сырой/нормализованный объект транзакции.
-
 Ключи и индексы:
 - PK: (`seq`)
 - UNIQUE: (`chain_id`, `block_number`, `transaction_index`)
@@ -93,8 +89,6 @@
 - `address` (`VARCHAR(42)`): адрес контракта, который эмитил лог.
 - `topics` (`TEXT[]`): массив топиков события.
 - `data` (`TEXT`): data события.
-- `raw` (`JSONB`): сырой/нормализованный объект лога.
-
 Ключи и индексы:
 - PK: (`seq`)
 - UNIQUE: (`chain_id`, `block_number`, `transaction_index`, `log_index`)

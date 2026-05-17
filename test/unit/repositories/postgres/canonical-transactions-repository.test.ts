@@ -32,7 +32,6 @@ test("readFromSeq maps transaction rows", async () => {
             to_address: null,
             value: "123",
             data: DATA,
-            raw: { ok: true },
         }],
         rowCount: 1,
     }));
@@ -66,7 +65,6 @@ test("readFromSeq maps recipient address", async () => {
             to_address: FROM,
             value: "123",
             data: DATA,
-            raw: { ok: true },
         }],
         rowCount: 1,
     }));
@@ -142,7 +140,6 @@ test("insertMany writes one batch for small input", async () => {
             to: null,
             value: "1",
             data: DATA,
-            raw: {},
         },
     ]);
 

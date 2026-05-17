@@ -25,7 +25,6 @@ test("pipeline metrics create wires service execution", async () => {
         hash: HASH,
         parentHash: HASH,
         timestamp: 200,
-        raw: {},
     }));
     const source: BlockSource = {
         getLatestBlockNumber: async () => 20,
@@ -36,7 +35,6 @@ test("pipeline metrics create wires service execution", async () => {
             hash: HASH,
             parentHash: HASH,
             timestamp: 200,
-            raw: {},
         }),
         getBlockData: async () => {
             throw new Error("not expected");
@@ -72,7 +70,6 @@ test("pipeline metrics returns prometheus text", async () => {
             hash: HASH,
             parentHash: HASH,
             timestamp: 200,
-            raw: {},
         }),
         getBlock: async () => ({
             chainId: 7,
@@ -80,7 +77,6 @@ test("pipeline metrics returns prometheus text", async () => {
             hash: HASH,
             parentHash: HASH,
             timestamp: 200,
-            raw: {},
         }),
         getBlockData: async () => {
             throw new Error("not expected");

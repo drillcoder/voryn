@@ -22,7 +22,6 @@ test("get maps raw block row", async () => {
             hash: HASH_A,
             parentHash: HASH_B,
             timestamp: 1,
-            raw: {},
         },
         transactions: [],
         logs: [],
@@ -49,11 +48,11 @@ test("get maps raw block row", async () => {
     });
 });
 
-test("save stores raw block payload", async () => {
+test("save stores fetched block payload", async () => {
     const query = jest.fn(async () => ({ rows: [], rowCount: 1 }));
     const repository = new PostgresRawBlocksRepository(createExecutor(query));
     const payload = {
-        block: { chainId: 1, number: 100, hash: HASH_A, parentHash: HASH_B, timestamp: 1, raw: {} },
+        block: { chainId: 1, number: 100, hash: HASH_A, parentHash: HASH_B, timestamp: 1 },
         transactions: [],
         logs: [],
     };

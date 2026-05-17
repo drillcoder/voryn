@@ -39,7 +39,6 @@ test("event reaction service processes events and advances cursor", async () => 
                 address: ADDRESS,
                 topics: [HASH_A],
                 data: DATA,
-                raw: { v: 1 },
             },
             {
                 seq: 12n,
@@ -52,7 +51,6 @@ test("event reaction service processes events and advances cursor", async () => 
                 address: ADDRESS,
                 topics: [HASH_A],
                 data: DATA,
-                raw: { v: 2 },
             },
         ],
         maxSeq: async () => 0n,

@@ -26,7 +26,7 @@ describe("integration repositories: postgres", () => {
         await db.close();
     });
 
-    test("repositories keep idempotency and raw block save uses upsert", async () => {
+    test("repositories keep idempotency and fetched block save uses upsert", async () => {
         const rawBlocksRepository = new PostgresRawBlocksRepository(db.pool);
         const canonicalBlocksRepository = new PostgresCanonicalBlocksRepository(db.pool);
         const canonicalTransactionsRepository = new PostgresCanonicalTransactionsRepository(db.pool);
@@ -36,7 +36,6 @@ describe("integration repositories: postgres", () => {
         const first = buildFetchedBlock(blockNumber, parentHash);
         const second = buildFetchedBlock(blockNumber, parentHash);
         second.block.hash = hashFromNumber(3300);
-        second.block.raw = { source: "upserted" };
 
         await rawBlocksRepository.save({
             chainId: CHAIN_ID,
@@ -62,9 +61,9 @@ describe("integration repositories: postgres", () => {
         await canonicalEventsRepository.insertMany(CHAIN_ID, blockNumber, first.block.hash, first.logs);
         await canonicalEventsRepository.insertMany(CHAIN_ID, blockNumber, first.block.hash, first.logs);
 
-        const raw = await rawBlocksRepository.get(CHAIN_ID, blockNumber);
-        expect(raw?.blockHash).toBe(second.block.hash);
-        expect(raw?.payload.block.raw).toEqual({ source: "upserted" });
+        const savedBlock = await rawBlocksRepository.get(CHAIN_ID, blockNumber);
+        expect(savedBlock?.blockHash).toBe(second.block.hash);
+        expect(savedBlock?.payload.block.hash).toBe(second.block.hash);
         await expect(db.countRows("raw_blocks")).resolves.toBe(1);
         await expect(db.countRows("canonical_blocks")).resolves.toBe(1);
         await expect(db.countRows("canonical_transactions")).resolves.toBe(1);

@@ -18,7 +18,7 @@
   <a href="./README.ru.md">Russian documentation</a>
 </p>
 
-Voryn helps you build indexers that read blocks from EVM RPC, store raw data, commit the canonical chain in strict order, and run your application logic on transactions and events.
+Voryn helps you build indexers that read blocks from EVM RPC, store normalized fetched data, commit the canonical chain in strict order, and run your application logic on transactions and events.
 
 The library handles the boring but critical infrastructure: block queues, retries, cursors, singleton locks, reorg protection, retention, and metrics. You write business logic on top of canonical data.
 
@@ -225,7 +225,7 @@ const prometheusText = await metrics.getPrometheus();
 await metrics.close();
 ```
 
-`get()` returns the raw pipeline snapshot as an object.
+`get()` returns the pipeline snapshot as an object.
 `getPrometheus()` returns Prometheus text exposition format. Serve it from your own `/metrics` endpoint.
 
 Use `BlockJobRecovery` to manually put failed blocks back into processing.

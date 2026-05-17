@@ -103,7 +103,6 @@ export class EthersBlockSource implements BlockSource {
                 hash: blockHash,
                 parentHash,
                 timestamp: block.timestamp,
-                raw: block,
             },
             transactions,
             logs,
@@ -158,7 +157,6 @@ export class EthersBlockSource implements BlockSource {
             hash: asHash32(block.hash),
             parentHash: asHash32(block.parentHash),
             timestamp: block.timestamp,
-            raw: block,
         };
     }
 
@@ -246,7 +244,6 @@ export class EthersBlockSource implements BlockSource {
             from: asAddress(transaction.from),
             data: asHexData(transaction.data),
             value: transaction.value.toString(),
-            raw: transaction,
         };
     }
 
@@ -287,7 +284,6 @@ export class EthersBlockSource implements BlockSource {
                 data: asHexData(log.data),
                 topics: log.topics.map((topic) => asHash32(topic)),
                 index: log.index,
-                raw: log,
             };
         });
     }

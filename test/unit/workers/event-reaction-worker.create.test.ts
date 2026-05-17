@@ -52,7 +52,6 @@ test("event reaction worker create wires service execution", async () => {
                 address: ADDRESS,
                 topics: [HASH_A],
                 data: DATA,
-                raw: {},
             },
         ],
     };

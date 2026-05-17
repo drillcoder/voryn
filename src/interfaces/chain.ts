@@ -6,16 +6,15 @@ import type {
     HashHex,
 } from "../types/chain.js";
 
-export interface ChainBlock<TRaw = unknown> {
+export interface ChainBlock {
     chainId: ChainId;
     number: BlockNumber;
     hash: HashHex;
     parentHash: HashHex;
     timestamp: number;
-    raw: TRaw;
 }
 
-export interface ChainTransaction<TRaw = unknown> {
+export interface ChainTransaction {
     chainId: ChainId;
     blockNumber: BlockNumber;
     blockHash: HashHex;
@@ -25,10 +24,9 @@ export interface ChainTransaction<TRaw = unknown> {
     to: AddressHex | null;
     value: string;
     data: DataHex;
-    raw: TRaw;
 }
 
-export interface ChainLog<TRaw = unknown> {
+export interface ChainLog {
     chainId: ChainId;
     blockNumber: BlockNumber;
     blockHash: HashHex;
@@ -38,11 +36,10 @@ export interface ChainLog<TRaw = unknown> {
     address: AddressHex;
     topics: HashHex[];
     data: DataHex;
-    raw: TRaw;
 }
 
-export interface FetchedBlock<TBlockRaw = unknown, TTransactionRaw = unknown, TLogRaw = unknown> {
-    block: ChainBlock<TBlockRaw>;
-    transactions: ChainTransaction<TTransactionRaw>[];
-    logs: ChainLog<TLogRaw>[];
+export interface FetchedBlock {
+    block: ChainBlock;
+    transactions: ChainTransaction[];
+    logs: ChainLog[];
 }

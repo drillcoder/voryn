@@ -30,11 +30,10 @@ test("sequencer worker create wires service execution", async () => {
             hash: HASH_A,
             parentHash: HASH_A,
             timestamp: 0,
-            raw: {},
         }),
-        getBlock: async () => ({ chainId: 10, number: 0, hash: HASH_A, parentHash: HASH_A, timestamp: 0, raw: {} }),
+        getBlock: async () => ({ chainId: 10, number: 0, hash: HASH_A, parentHash: HASH_A, timestamp: 0 }),
         getBlockData: async () => ({
-            block: { chainId: 10, number: 0, hash: HASH_A, parentHash: HASH_A, timestamp: 0, raw: {} },
+            block: { chainId: 10, number: 0, hash: HASH_A, parentHash: HASH_A, timestamp: 0 },
             transactions: [],
             logs: [],
         }),

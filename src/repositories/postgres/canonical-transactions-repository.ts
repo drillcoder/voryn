@@ -17,7 +17,6 @@ interface CanonicalTransactionRow {
     to_address: string | null;
     value: string;
     data: string;
-    raw: unknown;
 }
 
 const MAX_SQL_PARAMS_PER_QUERY = 60000;
@@ -42,7 +41,7 @@ export class PostgresCanonicalTransactionsRepository implements CanonicalTransac
         const executor = transaction ?? this.pool;
         const result = await executor.query<CanonicalTransactionRow>(
             `SELECT seq, chain_id, block_number, block_hash, transaction_index, transaction_hash,
-                    from_address, to_address, value, data, raw
+                    from_address, to_address, value, data
              FROM canonical_transactions
              WHERE chain_id = $1
                AND seq > $2
@@ -62,7 +61,6 @@ export class PostgresCanonicalTransactionsRepository implements CanonicalTransac
             to: row.to_address === null ? null : asAddress(row.to_address),
             value: row.value,
             data: asHexData(row.data),
-            raw: row.raw,
         }));
     }
 
@@ -116,8 +114,7 @@ export class PostgresCanonicalTransactionsRepository implements CanonicalTransac
                         from_address,
                         to_address,
                         value,
-                        data,
-                        raw
+                        data
                     )
                  VALUES ${placeholders}
                  ON CONFLICT (chain_id, block_number, transaction_index) DO NOTHING`,
@@ -163,7 +160,6 @@ function buildTransactionInsertRowParams(
         tx.to,
         tx.value,
         tx.data,
-        tx.raw,
     ];
 }
 

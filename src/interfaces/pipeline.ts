@@ -36,7 +36,7 @@ export interface RawBlock {
     fetchedAt: Date;
 }
 
-export interface CanonicalEvent<TRaw = unknown> {
+export interface CanonicalEvent {
     seq: bigint;
     chainId: ChainId;
     blockNumber: BlockNumber;
@@ -47,10 +47,9 @@ export interface CanonicalEvent<TRaw = unknown> {
     address: AddressHex;
     topics: HashHex[];
     data: DataHex;
-    raw: TRaw;
 }
 
-export interface CanonicalTransaction<TRaw = unknown> {
+export interface CanonicalTransaction {
     seq: bigint;
     chainId: ChainId;
     blockNumber: BlockNumber;
@@ -61,7 +60,6 @@ export interface CanonicalTransaction<TRaw = unknown> {
     to: AddressHex | null;
     value: string;
     data: DataHex;
-    raw: TRaw;
 }
 
 export interface WorkerCursor {

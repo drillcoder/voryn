@@ -19,12 +19,11 @@ test("insert writes canonical block", async () => {
         hash: HASH_A,
         parentHash: HASH_B,
         timestamp: 123,
-        raw: { any: true },
     });
 
     expect(query).toHaveBeenCalledTimes(1);
     const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
-    expect(calls[0]?.[1]).toEqual([1, 10, HASH_A, HASH_B, 123, { any: true }]);
+    expect(calls[0]?.[1]).toEqual([1, 10, HASH_A, HASH_B, 123]);
 });
 
 test("get returns null when canonical block is missing", async () => {
@@ -42,7 +41,6 @@ test("get maps canonical block row", async () => {
             block_hash: HASH_A,
             parent_hash: HASH_B,
             block_timestamp: "123",
-            raw: { any: true },
         }],
         rowCount: 1,
     }));
@@ -54,7 +52,6 @@ test("get maps canonical block row", async () => {
         hash: HASH_A,
         parentHash: HASH_B,
         timestamp: 123,
-        raw: { any: true },
     });
 });
 
