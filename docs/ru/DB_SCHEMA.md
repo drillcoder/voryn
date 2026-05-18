@@ -8,8 +8,8 @@
 
 - `chain_id` (`INT`, PK): числовой chain id.
 - `last_enqueued_block` (`BIGINT`): до какого блока задания уже поставлены в `block_jobs`.
-- `last_committed_block` (`BIGINT`): последний канонически подтвержденный блок.
-- `last_committed_hash` (`VARCHAR(66)`): хэш последнего подтвержденного блока.
+- `last_committed_block` (`BIGINT`): последний блок в committed-позиции.
+- `last_committed_hash` (`VARCHAR(66)`): хэш последнего блока в committed-позиции.
 - `updated_at` (`TIMESTAMPTZ`): время последнего обновления строки.
 
 ## `block_jobs`
@@ -30,69 +30,51 @@
 - PK: (`chain_id`, `block_number`)
 - Index: (`chain_id`, `status`, `next_retry_at`, `block_number`)
 
-## `raw_blocks`
+## `blocks`
 
-Нормализованные скачанные данные блока до канонического коммита.
+Сохраненные данные блока.
 
 - `chain_id` (`INT`): сеть.
 - `block_number` (`BIGINT`): номер блока.
 - `block_hash` (`VARCHAR(66)`): хэш блока.
 - `parent_hash` (`VARCHAR(66)`): хэш родительского блока.
-- `payload` (`JSONB`): нормализованный payload блока/транзакций/логов.
+- `block_timestamp` (`BIGINT`): timestamp блока из сети.
 - `fetched_at` (`TIMESTAMPTZ`): когда блок был скачан.
 
-Ключи:
+Ключи и индексы:
 - PK: (`chain_id`, `block_number`)
 
-## `canonical_blocks`
+## `transactions`
 
-Подтвержденные (канонические) блоки.
+Сохраненные транзакции.
 
-- `chain_id` (`INT`): сеть.
-- `block_number` (`BIGINT`): номер блока.
-- `block_hash` (`VARCHAR(66)`): хэш канонического блока.
-- `parent_hash` (`VARCHAR(66)`): хэш родителя.
-- `block_timestamp` (`BIGINT`): timestamp блока из сети.
-Ключи:
-- PK: (`chain_id`, `block_number`)
-
-## `canonical_transactions`
-
-Подтвержденные транзакции с отдельным потоком `seq` для transaction-воркеров.
-
-- `seq` (`BIGSERIAL`, PK): порядковый номер в transaction-потоке.
 - `chain_id` (`INT`): сеть.
 - `block_number` (`BIGINT`): номер блока транзакции.
-- `block_hash` (`VARCHAR(66)`): хэш блока транзакции.
 - `transaction_index` (`INT`): индекс транзакции внутри блока.
 - `transaction_hash` (`VARCHAR(66)`): хэш транзакции.
 - `from_address` (`VARCHAR(42)`): адрес отправителя.
 - `to_address` (`VARCHAR(42)`, nullable): адрес получателя.
 - `value` (`TEXT`): значение транзакции в wei, как строка.
 - `data` (`TEXT`): calldata транзакции.
+
 Ключи и индексы:
-- PK: (`seq`)
-- UNIQUE: (`chain_id`, `block_number`, `transaction_index`)
-- Index: (`chain_id`, `seq`)
+- PK: (`chain_id`, `block_number`, `transaction_index`)
 
-## `canonical_events`
+## `events`
 
-Подтвержденные события (логи) с отдельным потоком `seq` для event-воркеров.
+Сохраненные события (логи).
 
-- `seq` (`BIGSERIAL`, PK): порядковый номер в event-потоке.
 - `chain_id` (`INT`): сеть.
 - `block_number` (`BIGINT`): номер блока события.
-- `block_hash` (`VARCHAR(66)`): хэш блока события.
 - `transaction_index` (`INT`): индекс транзакции в блоке.
 - `transaction_hash` (`VARCHAR(66)`): хэш транзакции события.
 - `log_index` (`INT`): индекс лога.
 - `address` (`VARCHAR(42)`): адрес контракта, который эмитил лог.
 - `topics` (`TEXT[]`): массив топиков события.
 - `data` (`TEXT`): data события.
+
 Ключи и индексы:
-- PK: (`seq`)
-- UNIQUE: (`chain_id`, `block_number`, `transaction_index`, `log_index`)
-- Index: (`chain_id`, `seq`)
+- PK: (`chain_id`, `block_number`, `transaction_index`, `log_index`)
 
 ## `worker_cursors`
 
@@ -101,7 +83,9 @@
 - `worker_name` (`TEXT`): имя воркера.
 - `chain_id` (`INT`): сеть.
 - `stream_type` (`TEXT`): тип потока, `event` или `tx`.
-- `last_seq` (`BIGINT`): последний успешно обработанный `seq` для этого потока.
+- `last_block_number` (`BIGINT`): номер последнего обработанного блока.
+- `last_transaction_index` (`INT`): индекс последней обработанной транзакции.
+- `last_log_index` (`INT`, nullable): индекс последнего обработанного лога. Используется для `event`, для `tx` остается `NULL`.
 - `updated_at` (`TIMESTAMPTZ`): время последнего обновления курсора.
 
 Ключи:

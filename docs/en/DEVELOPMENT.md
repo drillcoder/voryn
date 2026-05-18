@@ -35,7 +35,7 @@ Logs:
 docker compose --env-file dev/.env -f dev/docker-compose.yml logs -f head fetch sequencer retention
 ```
 
-## Running Ingestion Workers
+## Running Block Processing Workers
 
 Use the dev scripts:
 
@@ -47,7 +47,7 @@ Use the dev scripts:
 Main environment variables:
 
 - `DATABASE_URL` (`required`) — PostgreSQL connection string.
-- `VORYN_CHAIN_ID` (`required`) — numeric network id for ingestion.
+- `VORYN_CHAIN_ID` (`required`) — numeric network id for block processing.
 - `VORYN_LOG_LEVEL` (`optional`, `debug` | `info` | `warn` | `error`, default `info`) — minimum log level.
 
 For `head`:

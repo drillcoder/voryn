@@ -36,7 +36,7 @@ docker compose --env-file dev/.env -f dev/docker-compose.yml up -d postgres head
 docker compose --env-file dev/.env -f dev/docker-compose.yml logs -f head fetch sequencer retention
 ```
 
-## Запуск ingestion воркеров
+## Запуск воркеров обработки блоков
 
 Для запуска используйте dev-скрипты:
 
@@ -48,7 +48,7 @@ docker compose --env-file dev/.env -f dev/docker-compose.yml logs -f head fetch 
 Основные переменные окружения:
 
 - `DATABASE_URL` (`required`) — строка подключения к PostgreSQL.
-- `VORYN_CHAIN_ID` (`required`) — числовой id сети для ingestion.
+- `VORYN_CHAIN_ID` (`required`) — числовой id сети для обработки блоков.
 - `VORYN_LOG_LEVEL` (`optional`, `debug` | `info` | `warn` | `error`, по умолчанию `info`) — минимальный уровень логов.
 
 Дополнительно для `head`:
