@@ -26,32 +26,20 @@ CREATE TABLE IF NOT EXISTS block_jobs
 CREATE INDEX IF NOT EXISTS block_jobs_claim_idx
     ON block_jobs (chain_id, status, next_retry_at, block_number);
 
--- Raw full block payload before canonical commit.
-CREATE TABLE IF NOT EXISTS raw_blocks
-(
-    chain_id     INT         NOT NULL,
-    block_number BIGINT      NOT NULL,
-    block_hash   VARCHAR(66) NOT NULL,
-    parent_hash  VARCHAR(66) NOT NULL,
-    payload      JSONB       NOT NULL,
-    fetched_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (chain_id, block_number)
-);
-
--- Canonical block/tx/event stream used by downstream workers.
-CREATE TABLE IF NOT EXISTS canonical_blocks
+-- Normalized block data written by fetch-workers.
+CREATE TABLE IF NOT EXISTS blocks
 (
     chain_id        INT         NOT NULL,
     block_number    BIGINT      NOT NULL,
     block_hash      VARCHAR(66) NOT NULL,
     parent_hash     VARCHAR(66) NOT NULL,
     block_timestamp BIGINT      NOT NULL,
+    fetched_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (chain_id, block_number)
 );
 
-CREATE TABLE IF NOT EXISTS canonical_transactions
+CREATE TABLE IF NOT EXISTS transactions
 (
-    seq               BIGSERIAL PRIMARY KEY,
     chain_id          INT         NOT NULL,
     block_number      BIGINT      NOT NULL,
     block_hash        VARCHAR(66) NOT NULL,
@@ -61,15 +49,11 @@ CREATE TABLE IF NOT EXISTS canonical_transactions
     to_address        VARCHAR(42),
     value             TEXT        NOT NULL,
     data              TEXT        NOT NULL,
-    UNIQUE (chain_id, block_number, transaction_index)
+    PRIMARY KEY (chain_id, block_number, transaction_index)
 );
 
-CREATE INDEX IF NOT EXISTS canonical_transactions_order_idx
-    ON canonical_transactions (chain_id, seq);
-
-CREATE TABLE IF NOT EXISTS canonical_events
+CREATE TABLE IF NOT EXISTS events
 (
-    seq               BIGSERIAL PRIMARY KEY,
     chain_id          INT         NOT NULL,
     block_number      BIGINT      NOT NULL,
     block_hash        VARCHAR(66) NOT NULL,
@@ -79,19 +63,18 @@ CREATE TABLE IF NOT EXISTS canonical_events
     address           VARCHAR(42) NOT NULL,
     topics            TEXT[]      NOT NULL,
     data              TEXT        NOT NULL,
-    UNIQUE (chain_id, block_number, transaction_index, log_index)
+    PRIMARY KEY (chain_id, block_number, transaction_index, log_index)
 );
-
-CREATE INDEX IF NOT EXISTS canonical_events_order_idx
-    ON canonical_events (chain_id, seq);
 
 -- Independent cursors per reaction worker.
 CREATE TABLE IF NOT EXISTS worker_cursors
 (
-    worker_name TEXT        NOT NULL,
-    chain_id    INT         NOT NULL,
-    stream_type TEXT        NOT NULL,
-    last_seq    BIGINT      NOT NULL,
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    worker_name            TEXT        NOT NULL,
+    chain_id               INT         NOT NULL,
+    stream_type            TEXT        NOT NULL,
+    last_block_number      BIGINT      NOT NULL,
+    last_transaction_index INT         NOT NULL,
+    last_log_index         INT,
+    updated_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (worker_name, chain_id, stream_type)
 );

@@ -5,10 +5,9 @@ import type { Logger } from "../interfaces/logger.js";
 const REQUIRED_SCHEMA_TABLES = [
     "chain_cursor",
     "block_jobs",
-    "raw_blocks",
-    "canonical_blocks",
-    "canonical_transactions",
-    "canonical_events",
+    "blocks",
+    "transactions",
+    "events",
     "worker_cursors",
 ] as const;
 

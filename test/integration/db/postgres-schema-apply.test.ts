@@ -28,10 +28,9 @@ describe("integration postgres schema apply script", () => {
             try {
                 await expect(hasTable(checkPool, "chain_cursor")).resolves.toBe(true);
                 await expect(hasTable(checkPool, "block_jobs")).resolves.toBe(true);
-                await expect(hasTable(checkPool, "raw_blocks")).resolves.toBe(true);
-                await expect(hasTable(checkPool, "canonical_blocks")).resolves.toBe(true);
-                await expect(hasTable(checkPool, "canonical_transactions")).resolves.toBe(true);
-                await expect(hasTable(checkPool, "canonical_events")).resolves.toBe(true);
+                await expect(hasTable(checkPool, "blocks")).resolves.toBe(true);
+                await expect(hasTable(checkPool, "transactions")).resolves.toBe(true);
+                await expect(hasTable(checkPool, "events")).resolves.toBe(true);
                 await expect(hasTable(checkPool, "worker_cursors")).resolves.toBe(true);
             } finally {
                 await checkPool.end();
