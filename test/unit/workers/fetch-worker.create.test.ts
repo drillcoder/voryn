@@ -3,7 +3,9 @@ import type { FetchWorkerConfig } from "../../../src/interfaces/runtime.js";
 import { FetchWorker } from "../../../src/workers/fetch-worker.js";
 import {
     createNoopBlockJobsRepository,
-    createNoopRawBlocksRepository,
+    createNoopBlocksRepository,
+    createNoopEventsRepository,
+    createNoopTransactionsRepository,
     invokeStartLogMeta,
     invokeTick,
     transactionManager,
@@ -38,7 +40,9 @@ test("fetch worker create wires service execution", async () => {
         source,
         overrides: {
             blockJobsRepository: { ...createNoopBlockJobsRepository(), claimForFetch },
-            rawBlocksRepository: createNoopRawBlocksRepository(),
+            blocksRepository: createNoopBlocksRepository(),
+            transactionsRepository: createNoopTransactionsRepository(),
+            eventsRepository: createNoopEventsRepository(),
             transactionManager,
         },
     });

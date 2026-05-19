@@ -1,4 +1,9 @@
-import type { BlockJobsRepository, RawBlocksRepository } from "../../../src/interfaces/repositories.js";
+import type {
+    BlockJobsRepository,
+    BlocksRepository,
+    EventsRepository,
+    TransactionsRepository,
+} from "../../../src/interfaces/repositories.js";
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import type { DbExecutor } from "../../../src/interfaces/db.js";
 import type { TransactionManager } from "../../../src/interfaces/transaction-manager.js";
@@ -58,17 +63,35 @@ const createBlockJobsRepository = (overrides?: Partial<BlockJobsRepository>): Bl
     }),
     listFailedBlocks: async () => [],
     retryFailed: async () => 0,
-    deleteUpToBlock: async () => 0,
-    deleteAfterBlock: async () => 0,
+    deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteAfterBlockNumber: async () => 0,
     ...overrides,
 });
 
-const createRawBlocksRepository = (overrides?: Partial<RawBlocksRepository>): RawBlocksRepository => ({
-    save: async () => undefined,
+const createBlocksRepository = (overrides?: Partial<BlocksRepository>): BlocksRepository => ({
+    insert: async () => undefined,
     get: async () => null,
     getProgress: async () => null,
-    deleteUpToBlock: async () => 0,
-    deleteAfterBlock: async () => 0,
+    deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteAfterBlockNumber: async () => 0,
+    ...overrides,
+});
+
+const createTransactionsRepository = (
+    overrides?: Partial<TransactionsRepository>
+): TransactionsRepository => ({
+    listAfterPosition: async () => [],
+    insertMany: async () => undefined,
+    deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteAfterBlockNumber: async () => 0,
+    ...overrides,
+});
+
+const createEventsRepository = (overrides?: Partial<EventsRepository>): EventsRepository => ({
+    listAfterPosition: async () => [],
+    insertMany: async () => undefined,
+    deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteAfterBlockNumber: async () => 0,
     ...overrides,
 });
 
@@ -79,15 +102,27 @@ const createSource = (getBlockData: BlockSource["getBlockData"]): BlockSource =>
     getBlockData,
 });
 
-test("fetch service stores fetched block and marks job fetched", async () => {
-    const saved: number[] = [];
+test("fetch service stores fetched block data and marks job fetched", async () => {
+    const savedBlocks: number[] = [];
+    const savedTransactionCounts: number[] = [];
+    const savedEventCounts: number[] = [];
     const fetched: number[] = [];
 
     const source = createSource(async () => blockPayload);
 
-    const rawBlocksRepository = createRawBlocksRepository({
-        save: async (block) => {
-            saved.push(block.blockNumber);
+    const blocksRepository = createBlocksRepository({
+        insert: async (block) => {
+            savedBlocks.push(block.blockNumber);
+        },
+    });
+    const transactionsRepository = createTransactionsRepository({
+        insertMany: async (transactions) => {
+            savedTransactionCounts.push(transactions.length);
+        },
+    });
+    const eventsRepository = createEventsRepository({
+        insertMany: async (events) => {
+            savedEventCounts.push(events.length);
         },
     });
 
@@ -115,13 +150,17 @@ test("fetch service stores fetched block and marks job fetched", async () => {
         config,
         source,
         blockJobsRepository,
-        rawBlocksRepository,
+        blocksRepository,
+        transactionsRepository,
+        eventsRepository,
         createPassThroughManager(),
     );
 
     await worker.execute();
 
-    expect(saved).toEqual([12]);
+    expect(savedBlocks).toEqual([12]);
+    expect(savedTransactionCounts).toEqual([0]);
+    expect(savedEventCounts).toEqual([0]);
     expect(fetched).toEqual([12]);
     expect(staleThresholds[0]).toBeInstanceOf(Date);
 });
@@ -153,7 +192,9 @@ test("fetch service marks failure with retry date", async () => {
         config,
         source,
         blockJobsRepository,
-        createRawBlocksRepository(),
+        createBlocksRepository(),
+        createTransactionsRepository(),
+        createEventsRepository(),
         createPassThroughManager(),
     );
 
@@ -193,7 +234,9 @@ test("fetch service swallows claim-lost race without failing tick", async () => 
         config,
         source,
         blockJobsRepository,
-        createRawBlocksRepository(),
+        createBlocksRepository(),
+        createTransactionsRepository(),
+        createEventsRepository(),
         createPassThroughManager(),
         logger,
     );
@@ -213,7 +256,9 @@ test("fetch service tries at least one claim when batch size is zero", async () 
                 return null;
             },
         }),
-        createRawBlocksRepository(),
+        createBlocksRepository(),
+        createTransactionsRepository(),
+        createEventsRepository(),
         createPassThroughManager(),
     );
 
@@ -244,7 +289,9 @@ test("fetch service sets nextRetryAt=null when max attempts reached", async () =
                 nextRetryAt = value;
             },
         }),
-        createRawBlocksRepository(),
+        createBlocksRepository(),
+        createTransactionsRepository(),
+        createEventsRepository(),
         createPassThroughManager(),
     );
 
@@ -275,7 +322,9 @@ test("fetch service swallows claim-lost during markFetchFailed", async () => {
                 throw new Error("Cannot mark block job as failed for chain 7 block 88");
             },
         }),
-        createRawBlocksRepository(),
+        createBlocksRepository(),
+        createTransactionsRepository(),
+        createEventsRepository(),
         createPassThroughManager(),
         logger,
     );
@@ -305,7 +354,9 @@ test("fetch service rethrows non-claim-lost error from markFetchFailed", async (
                 throw new Error("db write failed");
             },
         }),
-        createRawBlocksRepository(),
+        createBlocksRepository(),
+        createTransactionsRepository(),
+        createEventsRepository(),
         createPassThroughManager(),
     );
 

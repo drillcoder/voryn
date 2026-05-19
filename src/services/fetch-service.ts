@@ -1,7 +1,12 @@
 import type { BlockSource } from "../interfaces/block-source.js";
 import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
-import type { BlockJobsRepository, RawBlocksRepository } from "../interfaces/repositories.js";
+import type {
+    BlockJobsRepository,
+    BlocksRepository,
+    EventsRepository,
+    TransactionsRepository,
+} from "../interfaces/repositories.js";
 import type { FetchWorkerConfig } from "../interfaces/runtime.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import { asErrorMessage } from "../utils/errors.js";
@@ -15,7 +20,9 @@ export class FetchService {
         private readonly config: FetchServiceConfig,
         private readonly source: BlockSource,
         private readonly blockJobsRepository: BlockJobsRepository,
-        private readonly rawBlocksRepository: RawBlocksRepository,
+        private readonly blocksRepository: BlocksRepository,
+        private readonly transactionsRepository: TransactionsRepository,
+        private readonly eventsRepository: EventsRepository,
         private readonly transactionManager: TransactionManager,
         private readonly logger: Logger = noopLogger,
     ) {
@@ -45,14 +52,16 @@ export class FetchService {
                 const fetchedBlock = await this.source.getBlockData(chainId, job.blockNumber);
 
                 await this.transactionManager.run(async (transaction) => {
-                    await this.rawBlocksRepository.save({
+                    await this.blocksRepository.insert({
                         chainId: chainId,
                         blockNumber: job.blockNumber,
                         blockHash: fetchedBlock.block.hash,
                         parentHash: fetchedBlock.block.parentHash,
-                        payload: fetchedBlock,
+                        blockTimestamp: fetchedBlock.block.timestamp,
                         fetchedAt: new Date(),
                     }, transaction);
+                    await this.transactionsRepository.insertMany(fetchedBlock.transactions, transaction);
+                    await this.eventsRepository.insertMany(fetchedBlock.logs, transaction);
 
                     await this.blockJobsRepository.markFetched(
                         chainId,

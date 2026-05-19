@@ -5,19 +5,28 @@ import { noopLogger } from "../interfaces/logger.js";
 import type { FetchWorkerConfig } from "../interfaces/runtime.js";
 import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../repositories/postgres/block-jobs-repository.js";
-import { PostgresRawBlocksRepository } from "../repositories/postgres/raw-blocks-repository.js";
+import { PostgresBlocksRepository } from "../repositories/postgres/blocks-repository.js";
+import { PostgresEventsRepository } from "../repositories/postgres/events-repository.js";
+import { PostgresTransactionsRepository } from "../repositories/postgres/transactions-repository.js";
 import { FetchService } from "../services/fetch-service.js";
 import type { FetchServiceConfig } from "../services/fetch-service.js";
 import { resolveDbDependencies, resolveEthersSource } from "../runtime/resolvers.js";
 import { PollingWorker } from "./polling-worker.js";
 import type { RuntimeBaseOptions, RuntimeDbOptions, RuntimeSourceOptions } from "../runtime/types.js";
-import type { BlockJobsRepository, RawBlocksRepository } from "../interfaces/repositories.js";
+import type {
+    BlockJobsRepository,
+    BlocksRepository,
+    EventsRepository,
+    TransactionsRepository,
+} from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import type { BlockSource } from "../interfaces/block-source.js";
 
 export interface FetchWorkerDatabaseDependencies {
     blockJobsRepository: BlockJobsRepository;
-    rawBlocksRepository: RawBlocksRepository;
+    blocksRepository: BlocksRepository;
+    transactionsRepository: TransactionsRepository;
+    eventsRepository: EventsRepository;
     transactionManager: TransactionManager;
 }
 
@@ -37,7 +46,9 @@ export class FetchWorker extends PollingWorker {
             options,
             (pool: Pool): FetchWorkerDatabaseDependencies => ({
                 blockJobsRepository: new PostgresBlockJobsRepository(pool),
-                rawBlocksRepository: new PostgresRawBlocksRepository(pool),
+                blocksRepository: new PostgresBlocksRepository(pool),
+                transactionsRepository: new PostgresTransactionsRepository(pool),
+                eventsRepository: new PostgresEventsRepository(pool),
                 transactionManager: new PostgresTransactionManager(pool),
             })
         );
@@ -45,7 +56,9 @@ export class FetchWorker extends PollingWorker {
             config,
             source,
             dependencies.blockJobsRepository,
-            dependencies.rawBlocksRepository,
+            dependencies.blocksRepository,
+            dependencies.transactionsRepository,
+            dependencies.eventsRepository,
             dependencies.transactionManager,
             options.logger
         );

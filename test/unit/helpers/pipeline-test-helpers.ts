@@ -2,11 +2,10 @@ import type { DbExecutor } from "../../../src/interfaces/db.js";
 import type { LeaderLock } from "../../../src/interfaces/leader-lock.js";
 import type {
     BlockJobsRepository,
-    CanonicalBlocksRepository,
-    CanonicalEventsRepository,
-    CanonicalTransactionsRepository,
     ChainCursorRepository,
-    RawBlocksRepository,
+    BlocksRepository,
+    EventsRepository,
+    TransactionsRepository,
     WorkerCursorsRepository,
 } from "../../../src/interfaces/repositories.js";
 import type { TransactionManager } from "../../../src/interfaces/transaction-manager.js";
@@ -53,16 +52,16 @@ export const createNoopBlockJobsRepository = (): BlockJobsRepository => ({
     }),
     listFailedBlocks: async () => [],
     retryFailed: async () => 0,
-    deleteUpToBlock: async () => 0,
-    deleteAfterBlock: async () => 0,
+    deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteAfterBlockNumber: async () => 0,
 });
 
-export const createNoopRawBlocksRepository = (): RawBlocksRepository => ({
-    save: async () => undefined,
+export const createNoopBlocksRepository = (): BlocksRepository => ({
+    insert: async () => undefined,
     get: async () => null,
     getProgress: async () => null,
-    deleteUpToBlock: async () => 0,
-    deleteAfterBlock: async () => 0,
+    deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteAfterBlockNumber: async () => 0,
 });
 
 export const createNoopChainCursorRepository = (): ChainCursorRepository => ({
@@ -74,27 +73,18 @@ export const createNoopChainCursorRepository = (): ChainCursorRepository => ({
     advanceLastCommitted: async () => undefined,
 });
 
-export const createNoopCanonicalBlocksRepository = (): CanonicalBlocksRepository => ({
-    insert: async () => undefined,
-    get: async () => null,
-    deleteUpToBlock: async () => 0,
-    deleteAfterBlock: async () => 0,
+export const createNoopTransactionsRepository = (): TransactionsRepository => ({
+    listAfterPosition: async () => [],
+    insertMany: async () => undefined,
+    deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteAfterBlockNumber: async () => 0,
 });
 
-export const createNoopCanonicalTransactionsRepository = (): CanonicalTransactionsRepository => ({
-    readFromSeq: async () => [],
-    maxSeq: async () => 0n,
+export const createNoopEventsRepository = (): EventsRepository => ({
+    listAfterPosition: async () => [],
     insertMany: async () => undefined,
-    deleteUpToBlock: async () => 0,
-    deleteAfterBlock: async () => 0,
-});
-
-export const createNoopCanonicalEventsRepository = (): CanonicalEventsRepository => ({
-    readFromSeq: async () => [],
-    maxSeq: async () => 0n,
-    insertMany: async () => undefined,
-    deleteUpToBlock: async () => 0,
-    deleteAfterBlock: async () => 0,
+    deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteAfterBlockNumber: async () => 0,
 });
 
 export const createNoopWorkerCursorsRepository = (): WorkerCursorsRepository => ({
