@@ -227,9 +227,8 @@ const prometheusText = await metrics.getPrometheus();
 await metrics.close();
 ```
 
-`get()` возвращает снимок состояния пайплайна как объект.
-`getPrometheus()` возвращает метрики в Prometheus text exposition format. Его можно отдавать из своего
-`/metrics` endpoint.
+- `get()` возвращает снимок состояния пайплайна как объект.
+- `getPrometheus()` возвращает метрики в Prometheus text exposition format. Его можно отдавать из своего `/metrics` endpoint.
 
 Для ручного возврата failed-блоков в обработку есть `BlockJobRecovery`.
 

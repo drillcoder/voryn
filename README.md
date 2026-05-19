@@ -227,8 +227,8 @@ const prometheusText = await metrics.getPrometheus();
 await metrics.close();
 ```
 
-`get()` returns the pipeline snapshot as an object.
-`getPrometheus()` returns Prometheus text exposition format. Serve it from your own `/metrics` endpoint.
+- `get()` returns the pipeline snapshot as an object.
+- `getPrometheus()` returns Prometheus text exposition format. Serve it from your own `/metrics` endpoint.
 
 Use `BlockJobRecovery` to manually put failed blocks back into processing.
 
