@@ -1,15 +1,15 @@
 import type { DbExecutor } from "./db.js";
 import type { BlockNumber, ChainId, HashHex } from "../types/chain.js";
 import type { StreamType } from "../types/pipeline.js";
-import type { ChainBlock, ChainLog, ChainTransaction } from "./chain.js";
-import type { BlockJobStatusCounts, FailedBlockMetrics, RawBlockProgress } from "./metrics.js";
+import type { BlockDataProgress, BlockJobStatusCounts, FailedBlockMetrics } from "./metrics.js";
 import type {
     BlockJob,
-    CanonicalEvent,
-    CanonicalTransaction,
     ChainCursor,
-    RawBlock,
-    WorkerCursor
+    PipelineBlock,
+    PipelineEvent,
+    PipelineTransaction,
+    WorkerCursor,
+    WorkerCursorPosition,
 } from "./pipeline.js";
 
 export interface ChainCursorRepository {
@@ -85,81 +85,56 @@ export interface BlockJobsRepository {
         transaction?: DbExecutor
     ): Promise<number>;
 
-    deleteUpToBlock(chainId: ChainId, blockNumberInclusive: BlockNumber, transaction?: DbExecutor): Promise<number>;
+    deleteAtOrBeforeBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 
-    deleteAfterBlock(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
+    deleteAfterBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 }
 
-export interface RawBlocksRepository {
-    save(block: RawBlock, transaction?: DbExecutor): Promise<void>;
+export interface BlocksRepository {
+    get(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<PipelineBlock | null>;
 
-    get(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<RawBlock | null>;
+    getProgress(chainId: ChainId, transaction?: DbExecutor): Promise<BlockDataProgress | null>;
 
-    getProgress(chainId: ChainId, transaction?: DbExecutor): Promise<RawBlockProgress | null>;
+    insert(block: PipelineBlock, transaction?: DbExecutor): Promise<void>;
 
-    deleteUpToBlock(chainId: ChainId, blockNumberInclusive: BlockNumber, transaction?: DbExecutor): Promise<number>;
+    deleteAtOrBeforeBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 
-    deleteAfterBlock(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
+    deleteAfterBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 }
 
-export interface CanonicalBlocksRepository {
-    insert(block: ChainBlock, transaction?: DbExecutor): Promise<void>;
-
-    get(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<ChainBlock | null>;
-
-    deleteUpToBlock(
+export interface TransactionsRepository {
+    listAfterPosition(
         chainId: ChainId,
-        blockNumberInclusive: BlockNumber,
-        transaction?: DbExecutor
-    ): Promise<number>;
-
-    deleteAfterBlock(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
-}
-
-export interface CanonicalTransactionsRepository {
-    readFromSeq(
-        chainId: ChainId,
-        fromSeqExclusive: bigint,
+        maxBlockNumber: BlockNumber,
+        afterBlockNumber: BlockNumber,
+        afterTransactionIndex: number,
         limit: number,
         transaction?: DbExecutor
-    ): Promise<CanonicalTransaction[]>;
+    ): Promise<PipelineTransaction[]>;
 
-    maxSeq(chainId: ChainId, transaction?: DbExecutor): Promise<bigint>;
+    insertMany(transactions: PipelineTransaction[], transaction?: DbExecutor): Promise<void>;
 
-    insertMany(
-        chainId: ChainId,
-        blockNumber: BlockNumber,
-        blockHash: HashHex,
-        transactions: ChainTransaction[],
-        transaction?: DbExecutor
-    ): Promise<void>;
+    deleteAtOrBeforeBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 
-    deleteUpToBlock(chainId: ChainId, blockNumberInclusive: BlockNumber, transaction?: DbExecutor): Promise<number>;
-
-    deleteAfterBlock(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
+    deleteAfterBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 }
 
-export interface CanonicalEventsRepository {
-    readFromSeq(
+export interface EventsRepository {
+    listAfterPosition(
         chainId: ChainId,
-        fromSeqExclusive: bigint,
+        maxBlockNumber: BlockNumber,
+        afterBlockNumber: BlockNumber,
+        afterTransactionIndex: number,
+        afterLogIndex: number,
         limit: number,
         transaction?: DbExecutor
-    ): Promise<CanonicalEvent[]>;
+    ): Promise<PipelineEvent[]>;
 
-    maxSeq(chainId: ChainId, transaction?: DbExecutor): Promise<bigint>;
+    insertMany(events: PipelineEvent[], transaction?: DbExecutor): Promise<void>;
 
-    insertMany(
-        chainId: ChainId,
-        blockNumber: BlockNumber,
-        blockHash: HashHex,
-        logs: ChainLog[],
-        transaction?: DbExecutor
-    ): Promise<void>;
+    deleteAtOrBeforeBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 
-    deleteUpToBlock(chainId: ChainId, blockNumberInclusive: BlockNumber, transaction?: DbExecutor): Promise<number>;
-
-    deleteAfterBlock(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
+    deleteAfterBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 }
 
 export interface WorkerCursorsRepository {
@@ -176,7 +151,7 @@ export interface WorkerCursorsRepository {
         workerName: string,
         chainId: ChainId,
         streamType: StreamType,
-        lastSeq: bigint,
+        position: WorkerCursorPosition,
         transaction?: DbExecutor
     ): Promise<void>;
 
@@ -184,7 +159,7 @@ export interface WorkerCursorsRepository {
         workerName: string,
         chainId: ChainId,
         streamType: StreamType,
-        seq: bigint,
+        position: WorkerCursorPosition,
         transaction?: DbExecutor
     ): Promise<void>;
 }

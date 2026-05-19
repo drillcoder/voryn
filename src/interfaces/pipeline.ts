@@ -6,7 +6,6 @@ import type {
     HashHex,
 } from "../types/chain.js";
 import type { BlockJobStatus, StreamType } from "../types/pipeline.js";
-import type { FetchedBlock } from "./chain.js";
 
 export interface ChainCursor {
     chainId: ChainId;
@@ -27,30 +26,16 @@ export interface BlockJob {
     updatedAt: Date;
 }
 
-export interface RawBlock {
+export interface PipelineBlock {
     chainId: ChainId;
     blockNumber: BlockNumber;
     blockHash: HashHex;
     parentHash: HashHex;
-    payload: FetchedBlock;
+    blockTimestamp: number;
     fetchedAt: Date;
 }
 
-export interface CanonicalEvent {
-    seq: bigint;
-    chainId: ChainId;
-    blockNumber: BlockNumber;
-    blockHash: HashHex;
-    transactionIndex: number;
-    transactionHash: HashHex;
-    index: number;
-    address: AddressHex;
-    topics: HashHex[];
-    data: DataHex;
-}
-
-export interface CanonicalTransaction {
-    seq: bigint;
+export interface PipelineTransaction {
     chainId: ChainId;
     blockNumber: BlockNumber;
     blockHash: HashHex;
@@ -62,18 +47,35 @@ export interface CanonicalTransaction {
     data: DataHex;
 }
 
+export interface PipelineEvent {
+    chainId: ChainId;
+    blockNumber: BlockNumber;
+    blockHash: HashHex;
+    transactionIndex: number;
+    transactionHash: HashHex;
+    index: number;
+    address: AddressHex;
+    topics: HashHex[];
+    data: DataHex;
+}
+
+export interface WorkerCursorPosition {
+    lastBlockNumber: BlockNumber;
+    lastTransactionIndex: number;
+    lastLogIndex?: number | null;
+}
+
 export interface WorkerCursor {
     workerName: string;
     chainId: ChainId;
     streamType: StreamType;
-    lastSeq: bigint;
+    position: WorkerCursorPosition;
     updatedAt: Date;
 }
 
 export interface RetentionPurgeResult {
     deletedBlockJobs: number;
-    deletedRawBlocks: number;
-    deletedCanonicalBlocks: number;
-    deletedCanonicalTransactions: number;
-    deletedCanonicalEvents: number;
+    deletedBlocks: number;
+    deletedTransactions: number;
+    deletedEvents: number;
 }
