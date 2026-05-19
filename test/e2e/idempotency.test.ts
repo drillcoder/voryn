@@ -1,13 +1,10 @@
 import type { EventReactionHandler, TransactionReactionHandler } from "../../src/interfaces/reaction.js";
 import { PostgresTransactionManager } from "../../src/postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../../src/repositories/postgres/block-jobs-repository.js";
-import { PostgresCanonicalBlocksRepository } from "../../src/repositories/postgres/canonical-blocks-repository.js";
-import { PostgresCanonicalEventsRepository } from "../../src/repositories/postgres/canonical-events-repository.js";
-import {
-    PostgresCanonicalTransactionsRepository
-} from "../../src/repositories/postgres/canonical-transactions-repository.js";
+import { PostgresBlocksRepository } from "../../src/repositories/postgres/blocks-repository.js";
 import { PostgresChainCursorRepository } from "../../src/repositories/postgres/chain-cursor-repository.js";
-import { PostgresRawBlocksRepository } from "../../src/repositories/postgres/raw-blocks-repository.js";
+import { PostgresEventsRepository } from "../../src/repositories/postgres/events-repository.js";
+import { PostgresTransactionsRepository } from "../../src/repositories/postgres/transactions-repository.js";
 import { PostgresWorkerCursorsRepository } from "../../src/repositories/postgres/worker-cursors-repository.js";
 import { EventReactionWorker } from "../../src/workers/event-reaction-worker.js";
 import { FetchWorker } from "../../src/workers/fetch-worker.js";
@@ -46,10 +43,9 @@ describe("e2e idempotency", () => {
         const transactionManager = new PostgresTransactionManager(db.pool);
         const chainCursorRepository = new PostgresChainCursorRepository(db.pool);
         const blockJobsRepository = new PostgresBlockJobsRepository(db.pool);
-        const rawBlocksRepository = new PostgresRawBlocksRepository(db.pool);
-        const canonicalBlocksRepository = new PostgresCanonicalBlocksRepository(db.pool);
-        const canonicalTransactionsRepository = new PostgresCanonicalTransactionsRepository(db.pool);
-        const canonicalEventsRepository = new PostgresCanonicalEventsRepository(db.pool);
+        const blocksRepository = new PostgresBlocksRepository(db.pool);
+        const transactionsRepository = new PostgresTransactionsRepository(db.pool);
+        const eventsRepository = new PostgresEventsRepository(db.pool);
         const workerCursorsRepository = new PostgresWorkerCursorsRepository(db.pool);
 
         const committedHash = hashFromNumber(9);
@@ -64,17 +60,17 @@ describe("e2e idempotency", () => {
         const block11 = buildFetchedBlock(11, block10.block.hash, 1);
         const source = createMapBlockSource(11, [block10, block11]);
 
-        const firstEventHandled: bigint[] = [];
-        const firstTxHandled: bigint[] = [];
+        const firstEventHandled: string[] = [];
+        const firstTxHandled: string[] = [];
 
         const firstEventHandler: EventReactionHandler = {
             async handle(event): Promise<void> {
-                firstEventHandled.push(event.seq);
+                firstEventHandled.push(`${String(event.blockNumber)}:${String(event.index)}`);
             },
         };
         const firstTxHandler: TransactionReactionHandler = {
             async handle(transaction): Promise<void> {
-                firstTxHandled.push(transaction.seq);
+                firstTxHandled.push(`${String(transaction.blockNumber)}:${String(transaction.index)}`);
             },
         };
 
@@ -83,10 +79,9 @@ describe("e2e idempotency", () => {
             transactionManager,
             chainCursorRepository,
             blockJobsRepository,
-            rawBlocksRepository,
-            canonicalBlocksRepository,
-            canonicalTransactionsRepository,
-            canonicalEventsRepository,
+            blocksRepository,
+            transactionsRepository,
+            eventsRepository,
             workerCursorsRepository,
             firstEventHandler,
             firstTxHandler,
@@ -103,21 +98,21 @@ describe("e2e idempotency", () => {
             await waitFor(async () => firstEventHandled.length === 3 && firstTxHandled.length === 3);
 
             const baseline = await snapshotCounts(db);
-            expect(firstEventHandled).toEqual([1n, 2n, 3n]);
-            expect(firstTxHandled).toEqual([1n, 2n, 3n]);
+            expect(firstEventHandled).toEqual(["10:0", "10:1", "11:0"]);
+            expect(firstTxHandled).toEqual(["10:0", "10:1", "11:0"]);
 
             await stopWorkers(firstRunWorkers.all);
 
-            const secondEventHandled: bigint[] = [];
-            const secondTxHandled: bigint[] = [];
+            const secondEventHandled: string[] = [];
+            const secondTxHandled: string[] = [];
             const secondEventHandler: EventReactionHandler = {
                 async handle(event): Promise<void> {
-                    secondEventHandled.push(event.seq);
+                    secondEventHandled.push(`${String(event.blockNumber)}:${String(event.index)}`);
                 },
             };
             const secondTxHandler: TransactionReactionHandler = {
                 async handle(transaction): Promise<void> {
-                    secondTxHandled.push(transaction.seq);
+                    secondTxHandled.push(`${String(transaction.blockNumber)}:${String(transaction.index)}`);
                 },
             };
 
@@ -126,10 +121,9 @@ describe("e2e idempotency", () => {
                 transactionManager,
                 chainCursorRepository,
                 blockJobsRepository,
-                rawBlocksRepository,
-                canonicalBlocksRepository,
-                canonicalTransactionsRepository,
-                canonicalEventsRepository,
+                blocksRepository,
+                transactionsRepository,
+                eventsRepository,
                 workerCursorsRepository,
                 secondEventHandler,
                 secondTxHandler,
@@ -158,10 +152,9 @@ async function createWorkerSet(
     transactionManager: PostgresTransactionManager,
     chainCursorRepository: PostgresChainCursorRepository,
     blockJobsRepository: PostgresBlockJobsRepository,
-    rawBlocksRepository: PostgresRawBlocksRepository,
-    canonicalBlocksRepository: PostgresCanonicalBlocksRepository,
-    canonicalTransactionsRepository: PostgresCanonicalTransactionsRepository,
-    canonicalEventsRepository: PostgresCanonicalEventsRepository,
+    blocksRepository: PostgresBlocksRepository,
+    transactionsRepository: PostgresTransactionsRepository,
+    eventsRepository: PostgresEventsRepository,
     workerCursorsRepository: PostgresWorkerCursorsRepository,
     eventHandler: EventReactionHandler,
     txHandler: TransactionReactionHandler,
@@ -180,7 +173,9 @@ async function createWorkerSet(
         overrides: {
             chainCursorRepository,
             blockJobsRepository,
-            rawBlocksRepository,
+            blocksRepository,
+            transactionsRepository,
+            eventsRepository,
             transactionManager,
             leaderLock: createLeaderLock(),
         },
@@ -198,7 +193,9 @@ async function createWorkerSet(
         source,
         overrides: {
             blockJobsRepository,
-            rawBlocksRepository,
+            blocksRepository,
+            transactionsRepository,
+            eventsRepository,
             transactionManager,
         },
     });
@@ -207,10 +204,9 @@ async function createWorkerSet(
         source,
         overrides: {
             chainCursorRepository,
-            rawBlocksRepository,
-            canonicalBlocksRepository,
-            canonicalTransactionsRepository,
-            canonicalEventsRepository,
+            blocksRepository,
+            transactionsRepository,
+            eventsRepository,
             blockJobsRepository,
             transactionManager,
             leaderLock: createLeaderLock(),
@@ -225,7 +221,8 @@ async function createWorkerSet(
         },
         handler: eventHandler,
         overrides: {
-            canonicalEventsRepository,
+            chainCursorRepository,
+            eventsRepository,
             workerCursorsRepository,
             leaderLock: createLeaderLock(),
         },
@@ -239,7 +236,8 @@ async function createWorkerSet(
         },
         handler: txHandler,
         overrides: {
-            transactionsRepository: canonicalTransactionsRepository,
+            chainCursorRepository,
+            transactionsRepository,
             workerCursorsRepository,
             leaderLock: createLeaderLock(),
         },
@@ -272,9 +270,8 @@ async function startPipeline(workers: {
 async function snapshotCounts(db: IsolatedDbContext): Promise<Record<string, number>> {
     return {
         blockJobs: await db.countRows("block_jobs", "block_number BETWEEN 10 AND 11"),
-        rawBlocks: await db.countRows("raw_blocks", "block_number BETWEEN 10 AND 11"),
-        canonicalBlocks: await db.countRows("canonical_blocks", "block_number BETWEEN 10 AND 11"),
-        canonicalTx: await db.countRows("canonical_transactions", "block_number BETWEEN 10 AND 11"),
-        canonicalEvents: await db.countRows("canonical_events", "block_number BETWEEN 10 AND 11"),
+        blocks: await db.countRows("blocks", "block_number BETWEEN 10 AND 11"),
+        transactions: await db.countRows("transactions", "block_number BETWEEN 10 AND 11"),
+        events: await db.countRows("events", "block_number BETWEEN 10 AND 11"),
     };
 }

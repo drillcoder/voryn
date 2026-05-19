@@ -3,8 +3,10 @@ import type { HeadWorkerConfig } from "../../../src/interfaces/runtime.js";
 import { HeadWorker } from "../../../src/workers/head-worker.js";
 import {
     createNoopBlockJobsRepository,
+    createNoopBlocksRepository,
     createNoopChainCursorRepository,
-    createNoopRawBlocksRepository,
+    createNoopEventsRepository,
+    createNoopTransactionsRepository,
     invokeStartLogMeta,
     invokeTick,
     leaderLock,
@@ -38,7 +40,9 @@ test("head worker create wires service execution", async () => {
         overrides: {
             chainCursorRepository: createNoopChainCursorRepository(),
             blockJobsRepository: createNoopBlockJobsRepository(),
-            rawBlocksRepository: createNoopRawBlocksRepository(),
+            blocksRepository: createNoopBlocksRepository(),
+            transactionsRepository: createNoopTransactionsRepository(),
+            eventsRepository: createNoopEventsRepository(),
             transactionManager,
             leaderLock,
         },

@@ -1,7 +1,9 @@
 import type {
     BlockJobsRepository,
+    BlocksRepository,
     ChainCursorRepository,
-    RawBlocksRepository,
+    EventsRepository,
+    TransactionsRepository,
 } from "../../../src/interfaces/repositories.js";
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import type { DbExecutor } from "../../../src/interfaces/db.js";
@@ -34,15 +36,35 @@ const createPassThroughManager = (): { manager: TransactionManager; transaction:
     };
 };
 
-const createRawBlocksRepository = (calls?: unknown[]): RawBlocksRepository => ({
-    save: async () => undefined,
+const createBlocksRepository = (calls?: unknown[]): BlocksRepository => ({
+    insert: async () => undefined,
     get: async () => null,
     getProgress: async () => null,
-    deleteUpToBlock: async (_chainId, toBlock, tx) => {
-        calls?.push(["deleteRawUpToBlock", toBlock, tx]);
+    deleteAtOrBeforeBlockNumber: async (_chainId, toBlock, tx) => {
+        calls?.push(["deleteBlocksAtOrBefore", toBlock, tx]);
         return 0;
     },
-    deleteAfterBlock: async () => 0,
+    deleteAfterBlockNumber: async () => 0,
+});
+
+const createTransactionsRepository = (calls?: unknown[]): TransactionsRepository => ({
+    listAfterPosition: async () => [],
+    insertMany: async () => undefined,
+    deleteAtOrBeforeBlockNumber: async (_chainId, toBlock, tx) => {
+        calls?.push(["deleteTransactionsAtOrBefore", toBlock, tx]);
+        return 0;
+    },
+    deleteAfterBlockNumber: async () => 0,
+});
+
+const createEventsRepository = (calls?: unknown[]): EventsRepository => ({
+    listAfterPosition: async () => [],
+    insertMany: async () => undefined,
+    deleteAtOrBeforeBlockNumber: async (_chainId, toBlock, tx) => {
+        calls?.push(["deleteEventsAtOrBefore", toBlock, tx]);
+        return 0;
+    },
+    deleteAfterBlockNumber: async () => 0,
 });
 
 const createBlockJobsRepository = (overrides?: Partial<BlockJobsRepository>): BlockJobsRepository => ({
@@ -61,8 +83,8 @@ const createBlockJobsRepository = (overrides?: Partial<BlockJobsRepository>): Bl
     }),
     listFailedBlocks: async () => [],
     retryFailed: async () => 0,
-    deleteUpToBlock: async () => 0,
-    deleteAfterBlock: async () => 0,
+    deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteAfterBlockNumber: async () => 0,
     ...overrides,
 });
 
@@ -117,7 +139,9 @@ test("head service enqueues and updates cursor in transaction", async () => {
         source,
         chainCursorRepository,
         blockJobsRepository,
-        createRawBlocksRepository(),
+        createBlocksRepository(),
+        createTransactionsRepository(),
+        createEventsRepository(),
         manager,
     );
 
@@ -178,7 +202,9 @@ test("head service starts enqueue range from zero when depth exceeds safe head",
                 calls.push(["enqueueRange", from, to, tx]);
             },
         }),
-        createRawBlocksRepository(),
+        createBlocksRepository(),
+        createTransactionsRepository(),
+        createEventsRepository(),
         manager,
     );
 
@@ -232,7 +258,9 @@ test("head service bootstraps missing cursor", async () => {
         source,
         chainCursorRepository,
         blockJobsRepository,
-        createRawBlocksRepository(),
+        createBlocksRepository(),
+        createTransactionsRepository(),
+        createEventsRepository(),
         createPassThroughManager().manager,
     );
 
@@ -289,7 +317,9 @@ test("head service skips when cursor is already ahead of safe head", async () =>
                 enqueued = true;
             },
         }),
-        createRawBlocksRepository(),
+        createBlocksRepository(),
+        createTransactionsRepository(),
+        createEventsRepository(),
         createPassThroughManager().manager,
     );
 
@@ -360,8 +390,8 @@ test("head service rebases and enqueues new jobs when committed block is below f
         enqueueRange: async (_chainId, from, to, tx) => {
             calls.push(["enqueueRange", from, to, tx]);
         },
-        deleteUpToBlock: async (_chainId, toBlock, tx) => {
-            calls.push(["deleteJobsUpToBlock", toBlock, tx]);
+        deleteAtOrBeforeBlockNumber: async (_chainId, toBlock, tx) => {
+            calls.push(["deleteJobsAtOrBefore", toBlock, tx]);
             return 0;
         },
     });
@@ -371,7 +401,9 @@ test("head service rebases and enqueues new jobs when committed block is below f
         source,
         chainCursorRepository,
         blockJobsRepository,
-        createRawBlocksRepository(calls),
+        createBlocksRepository(calls),
+        createTransactionsRepository(calls),
+        createEventsRepository(calls),
         manager,
     );
 
@@ -381,8 +413,10 @@ test("head service rebases and enqueues new jobs when committed block is below f
     expect(getForUpdateCalls).toBe(1);
     expect(calls).toEqual([
         ["setPositions", 113, HASH_C, 113, transaction],
-        ["deleteJobsUpToBlock", 113, transaction],
-        ["deleteRawUpToBlock", 113, transaction],
+        ["deleteEventsAtOrBefore", 113, transaction],
+        ["deleteTransactionsAtOrBefore", 113, transaction],
+        ["deleteBlocksAtOrBefore", 113, transaction],
+        ["deleteJobsAtOrBefore", 113, transaction],
         ["enqueueRange", 114, 118, transaction],
         ["setLastEnqueued", 118, transaction],
     ]);
@@ -447,7 +481,7 @@ test("head service enqueues without rebase when cursor catches up before transac
         enqueueRange: async (_chainId, from, to, tx) => {
             calls.push(["enqueueRange", from, to, tx]);
         },
-        deleteUpToBlock: async () => {
+        deleteAtOrBeforeBlockNumber: async () => {
             calls.push("deleteJobs");
             return 0;
         },
@@ -458,7 +492,9 @@ test("head service enqueues without rebase when cursor catches up before transac
         source,
         chainCursorRepository,
         blockJobsRepository,
-        createRawBlocksRepository(calls),
+        createBlocksRepository(calls),
+        createTransactionsRepository(calls),
+        createEventsRepository(calls),
         manager,
     );
 
@@ -525,7 +561,9 @@ test("head service defers enqueue when locked cursor needs rebase", async () => 
         source,
         chainCursorRepository,
         blockJobsRepository,
-        createRawBlocksRepository(calls),
+        createBlocksRepository(calls),
+        createTransactionsRepository(calls),
+        createEventsRepository(calls),
         manager,
     );
 
@@ -573,7 +611,9 @@ test("head service throws when cursor disappears inside enqueue transaction", as
         source,
         chainCursorRepository,
         createBlockJobsRepository(),
-        createRawBlocksRepository(),
+        createBlocksRepository(),
+        createTransactionsRepository(),
+        createEventsRepository(),
         createPassThroughManager().manager,
     );
 
@@ -618,7 +658,9 @@ test("head service throws when cursor disappears inside rebase transaction", asy
         source,
         chainCursorRepository,
         createBlockJobsRepository(),
-        createRawBlocksRepository(),
+        createBlocksRepository(),
+        createTransactionsRepository(),
+        createEventsRepository(),
         createPassThroughManager().manager,
     );
 

@@ -191,6 +191,15 @@ test("escapes label values", () => {
     );
 });
 
+test("formats bigint metric values", () => {
+    const metrics = createEmptyMetrics();
+    Object.defineProperty(metrics, "latestBlock", { value: 10n });
+
+    expect(formatPipelineMetricsPrometheus(metrics)).toContain(
+        "voryn_pipeline_latest_block{chain_id=\"1\"} 10"
+    );
+});
+
 function createEmptyMetrics(): ChainPipelineMetrics {
     return {
         chainId: 1,

@@ -3,8 +3,10 @@ import type { FetchedBlock } from "../../src/interfaces/chain.js";
 import { PostgresLeaderLock } from "../../src/postgres/leader-lock.js";
 import { PostgresTransactionManager } from "../../src/postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../../src/repositories/postgres/block-jobs-repository.js";
+import { PostgresBlocksRepository } from "../../src/repositories/postgres/blocks-repository.js";
 import { PostgresChainCursorRepository } from "../../src/repositories/postgres/chain-cursor-repository.js";
-import { PostgresRawBlocksRepository } from "../../src/repositories/postgres/raw-blocks-repository.js";
+import { PostgresEventsRepository } from "../../src/repositories/postgres/events-repository.js";
+import { PostgresTransactionsRepository } from "../../src/repositories/postgres/transactions-repository.js";
 import { FetchWorker } from "../../src/workers/fetch-worker.js";
 import { HeadWorker } from "../../src/workers/head-worker.js";
 import { buildFetchedBlock, CHAIN_ID, hashFromNumber } from "../integration/helpers/fixtures.js";
@@ -34,7 +36,9 @@ describe("e2e fetch retry exhausted", () => {
         const transactionManager = new PostgresTransactionManager(db.pool);
         const chainCursorRepository = new PostgresChainCursorRepository(db.pool);
         const blockJobsRepository = new PostgresBlockJobsRepository(db.pool);
-        const rawBlocksRepository = new PostgresRawBlocksRepository(db.pool);
+        const blocksRepository = new PostgresBlocksRepository(db.pool);
+        const transactionsRepository = new PostgresTransactionsRepository(db.pool);
+        const eventsRepository = new PostgresEventsRepository(db.pool);
 
         const committedHash = hashFromNumber(9);
         const block10 = buildFetchedBlock(10, committedHash, 1);
@@ -54,7 +58,9 @@ describe("e2e fetch retry exhausted", () => {
             overrides: {
                 chainCursorRepository,
                 blockJobsRepository,
-                rawBlocksRepository,
+                blocksRepository,
+                transactionsRepository,
+                eventsRepository,
                 transactionManager,
                 leaderLock: new PostgresLeaderLock(db.pool, 31_200_001n),
             },
@@ -72,7 +78,9 @@ describe("e2e fetch retry exhausted", () => {
             source,
             overrides: {
                 blockJobsRepository,
-                rawBlocksRepository,
+                blocksRepository,
+                transactionsRepository,
+                eventsRepository,
                 transactionManager,
             },
         });
@@ -92,7 +100,7 @@ describe("e2e fetch retry exhausted", () => {
             expect(job?.nextRetryAt).toBeNull();
             expect(job?.error).toContain("permanent RPC error");
             expect(source.blockFetchCalls).toBe(2);
-            await expect(db.countRows("raw_blocks", "block_number = 10")).resolves.toBe(0);
+            await expect(db.countRows("blocks", "block_number = 10")).resolves.toBe(0);
         } finally {
             await stopWorkers([headWorker, fetchWorker]);
         }

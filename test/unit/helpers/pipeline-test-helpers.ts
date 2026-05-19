@@ -1,6 +1,12 @@
 import type { DbExecutor } from "../../../src/interfaces/db.js";
 import type { LeaderLock } from "../../../src/interfaces/leader-lock.js";
 import type {
+    PipelineBlock,
+    PipelineEvent,
+    PipelineTransaction,
+    WorkerCursorPosition,
+} from "../../../src/interfaces/pipeline.js";
+import type {
     BlockJobsRepository,
     ChainCursorRepository,
     BlocksRepository,
@@ -15,6 +21,56 @@ export const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 export const HASH_B = asHash32("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
 export const ADDRESS = asAddress("0x1111111111111111111111111111111111111111");
 export const DATA = asHexData("0x01");
+
+export const createPipelineBlock = (
+    overrides: Partial<PipelineBlock> = {},
+): PipelineBlock => ({
+    chainId: 7,
+    blockNumber: 1,
+    blockHash: HASH_A,
+    parentHash: HASH_B,
+    blockTimestamp: 1_700_000_001,
+    fetchedAt: new Date("2024-01-01T00:00:00.000Z"),
+    ...overrides,
+});
+
+export const createPipelineTransaction = (
+    overrides: Partial<PipelineTransaction> = {},
+): PipelineTransaction => ({
+    chainId: 7,
+    blockNumber: 1,
+    blockHash: HASH_A,
+    index: 0,
+    hash: HASH_B,
+    from: ADDRESS,
+    to: null,
+    value: "0",
+    data: DATA,
+    ...overrides,
+});
+
+export const createPipelineEvent = (
+    overrides: Partial<PipelineEvent> = {},
+): PipelineEvent => ({
+    chainId: 7,
+    blockNumber: 1,
+    blockHash: HASH_A,
+    transactionIndex: 0,
+    transactionHash: HASH_B,
+    index: 0,
+    address: ADDRESS,
+    topics: [HASH_A],
+    data: DATA,
+    ...overrides,
+});
+
+export const createWorkerCursorPosition = (
+    overrides: Partial<WorkerCursorPosition> = {},
+): WorkerCursorPosition => ({
+    lastBlockNumber: 1,
+    lastTransactionIndex: 0,
+    ...overrides,
+});
 
 export const invokeTick = async (worker: object): Promise<void> => {
     await (worker as { tick: () => Promise<void> }).tick();

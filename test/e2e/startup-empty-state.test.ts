@@ -2,12 +2,10 @@ import type { EventReactionHandler, TransactionReactionHandler } from "../../src
 import { PostgresLeaderLock } from "../../src/postgres/leader-lock.js";
 import { PostgresTransactionManager } from "../../src/postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../../src/repositories/postgres/block-jobs-repository.js";
-import { PostgresCanonicalEventsRepository } from "../../src/repositories/postgres/canonical-events-repository.js";
-import {
-    PostgresCanonicalTransactionsRepository
-} from "../../src/repositories/postgres/canonical-transactions-repository.js";
+import { PostgresBlocksRepository } from "../../src/repositories/postgres/blocks-repository.js";
 import { PostgresChainCursorRepository } from "../../src/repositories/postgres/chain-cursor-repository.js";
-import { PostgresRawBlocksRepository } from "../../src/repositories/postgres/raw-blocks-repository.js";
+import { PostgresEventsRepository } from "../../src/repositories/postgres/events-repository.js";
+import { PostgresTransactionsRepository } from "../../src/repositories/postgres/transactions-repository.js";
 import { PostgresWorkerCursorsRepository } from "../../src/repositories/postgres/worker-cursors-repository.js";
 import { EventReactionWorker } from "../../src/workers/event-reaction-worker.js";
 import { HeadWorker } from "../../src/workers/head-worker.js";
@@ -38,9 +36,9 @@ describe("e2e startup from empty state", () => {
         const transactionManager = new PostgresTransactionManager(db.pool);
         const chainCursorRepository = new PostgresChainCursorRepository(db.pool);
         const blockJobsRepository = new PostgresBlockJobsRepository(db.pool);
-        const rawBlocksRepository = new PostgresRawBlocksRepository(db.pool);
-        const canonicalTransactionsRepository = new PostgresCanonicalTransactionsRepository(db.pool);
-        const canonicalEventsRepository = new PostgresCanonicalEventsRepository(db.pool);
+        const blocksRepository = new PostgresBlocksRepository(db.pool);
+        const transactionsRepository = new PostgresTransactionsRepository(db.pool);
+        const eventsRepository = new PostgresEventsRepository(db.pool);
         const workerCursorsRepository = new PostgresWorkerCursorsRepository(db.pool);
 
         const latestBlock = buildFetchedBlock(20, hashFromNumber(19), 0);
@@ -63,7 +61,9 @@ describe("e2e startup from empty state", () => {
             overrides: {
                 chainCursorRepository,
                 blockJobsRepository,
-                rawBlocksRepository,
+                blocksRepository,
+                transactionsRepository,
+                eventsRepository,
                 transactionManager,
                 leaderLock: new PostgresLeaderLock(db.pool, 31_300_001n),
             },
@@ -72,7 +72,8 @@ describe("e2e startup from empty state", () => {
             config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, workerName: "reaction-event-startup", batchSize: 5 },
             handler: eventHandler,
             overrides: {
-                canonicalEventsRepository,
+                chainCursorRepository,
+                eventsRepository,
                 workerCursorsRepository,
                 leaderLock: new PostgresLeaderLock(db.pool, 31_300_002n),
             },
@@ -81,7 +82,8 @@ describe("e2e startup from empty state", () => {
             config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, workerName: "reaction-tx-startup", batchSize: 5 },
             handler: txHandler,
             overrides: {
-                transactionsRepository: canonicalTransactionsRepository,
+                chainCursorRepository,
+                transactionsRepository,
                 workerCursorsRepository,
                 leaderLock: new PostgresLeaderLock(db.pool, 31_300_003n),
             },
@@ -110,8 +112,16 @@ describe("e2e startup from empty state", () => {
 
             const eventCursor = await workerCursorsRepository.get("reaction-event-startup", CHAIN_ID, "event");
             const txCursor = await workerCursorsRepository.get("reaction-tx-startup", CHAIN_ID, "tx");
-            expect(eventCursor?.lastSeq).toBe(0n);
-            expect(txCursor?.lastSeq).toBe(0n);
+            expect(eventCursor?.position).toEqual({
+                lastBlockNumber: 20,
+                lastTransactionIndex: -1,
+                lastLogIndex: -1,
+            });
+            expect(txCursor?.position).toEqual({
+                lastBlockNumber: 20,
+                lastTransactionIndex: -1,
+                lastLogIndex: null,
+            });
             await expect(db.countRows("block_jobs")).resolves.toBe(0);
         } finally {
             await stopWorkers([headWorker, eventWorker, txWorker]);

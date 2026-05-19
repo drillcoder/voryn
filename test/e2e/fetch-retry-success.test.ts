@@ -3,13 +3,10 @@ import type { FetchedBlock } from "../../src/interfaces/chain.js";
 import { PostgresLeaderLock } from "../../src/postgres/leader-lock.js";
 import { PostgresTransactionManager } from "../../src/postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../../src/repositories/postgres/block-jobs-repository.js";
-import { PostgresCanonicalBlocksRepository } from "../../src/repositories/postgres/canonical-blocks-repository.js";
-import { PostgresCanonicalEventsRepository } from "../../src/repositories/postgres/canonical-events-repository.js";
-import {
-    PostgresCanonicalTransactionsRepository
-} from "../../src/repositories/postgres/canonical-transactions-repository.js";
+import { PostgresBlocksRepository } from "../../src/repositories/postgres/blocks-repository.js";
 import { PostgresChainCursorRepository } from "../../src/repositories/postgres/chain-cursor-repository.js";
-import { PostgresRawBlocksRepository } from "../../src/repositories/postgres/raw-blocks-repository.js";
+import { PostgresEventsRepository } from "../../src/repositories/postgres/events-repository.js";
+import { PostgresTransactionsRepository } from "../../src/repositories/postgres/transactions-repository.js";
 import { FetchWorker } from "../../src/workers/fetch-worker.js";
 import { HeadWorker } from "../../src/workers/head-worker.js";
 import { SequencerWorker } from "../../src/workers/sequencer-worker.js";
@@ -40,10 +37,9 @@ describe("e2e fetch retry success", () => {
         const transactionManager = new PostgresTransactionManager(db.pool);
         const chainCursorRepository = new PostgresChainCursorRepository(db.pool);
         const blockJobsRepository = new PostgresBlockJobsRepository(db.pool);
-        const rawBlocksRepository = new PostgresRawBlocksRepository(db.pool);
-        const canonicalBlocksRepository = new PostgresCanonicalBlocksRepository(db.pool);
-        const canonicalTransactionsRepository = new PostgresCanonicalTransactionsRepository(db.pool);
-        const canonicalEventsRepository = new PostgresCanonicalEventsRepository(db.pool);
+        const blocksRepository = new PostgresBlocksRepository(db.pool);
+        const transactionsRepository = new PostgresTransactionsRepository(db.pool);
+        const eventsRepository = new PostgresEventsRepository(db.pool);
 
         const committedHash = hashFromNumber(9);
         const block10 = buildFetchedBlock(10, committedHash, 1);
@@ -63,7 +59,9 @@ describe("e2e fetch retry success", () => {
             overrides: {
                 chainCursorRepository,
                 blockJobsRepository,
-                rawBlocksRepository,
+                blocksRepository,
+                transactionsRepository,
+                eventsRepository,
                 transactionManager,
                 leaderLock: new PostgresLeaderLock(db.pool, 31_100_001n),
             },
@@ -81,7 +79,9 @@ describe("e2e fetch retry success", () => {
             source,
             overrides: {
                 blockJobsRepository,
-                rawBlocksRepository,
+                blocksRepository,
+                transactionsRepository,
+                eventsRepository,
                 transactionManager,
             },
         });
@@ -90,10 +90,9 @@ describe("e2e fetch retry success", () => {
             source,
             overrides: {
                 chainCursorRepository,
-                rawBlocksRepository,
-                canonicalBlocksRepository,
-                canonicalTransactionsRepository,
-                canonicalEventsRepository,
+                blocksRepository,
+                transactionsRepository,
+                eventsRepository,
                 blockJobsRepository,
                 transactionManager,
                 leaderLock: new PostgresLeaderLock(db.pool, 31_100_002n),
@@ -114,7 +113,7 @@ describe("e2e fetch retry success", () => {
             expect(job?.status).toBe("committed");
             expect(job?.attempts).toBe(2);
             expect(source.blockFetchCalls).toBe(2);
-            await expect(db.countRows("canonical_blocks", "block_number = 10")).resolves.toBe(1);
+            await expect(db.countRows("blocks", "block_number = 10")).resolves.toBe(1);
         } finally {
             await stopWorkers([headWorker, fetchWorker, sequencerWorker]);
         }

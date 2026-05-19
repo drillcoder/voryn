@@ -279,6 +279,102 @@ test("sequencer service waits when next job is not fetched", async () => {
     });
 });
 
+test("sequencer service waits when next block job is missing", async () => {
+    const { manager } = createPassThroughManager();
+    const debug = jest.fn();
+    const worker = createService({
+        chainCursorRepository: createChainCursorRepository(() => createCursor(9, HASH_A, 10)),
+        blocksRepository: createBlocksRepository(() => createBlock(10, HASH_B, HASH_A)),
+        blockJobsRepository: createBlockJobsRepository({
+            get: async () => null,
+        }),
+        transactionManager: manager,
+        logger: {
+            debug,
+            info: jest.fn(),
+            warn: jest.fn(),
+            error: jest.fn(),
+        },
+    });
+
+    await worker.execute();
+
+    expect(debug).toHaveBeenCalledWith("sequencer_waiting_for_block_job", {
+        chainId: 10,
+        blockNumber: 10,
+    });
+});
+
+test("sequencer service warns when next fetched job failed permanently", async () => {
+    const { manager } = createPassThroughManager();
+    const warn = jest.fn();
+    const updatedAt = new Date("2026-01-01T00:00:00.000Z");
+    const worker = createService({
+        chainCursorRepository: createChainCursorRepository(() => createCursor(9, HASH_A, 10)),
+        blocksRepository: createBlocksRepository(() => createBlock(10, HASH_B, HASH_A)),
+        blockJobsRepository: createBlockJobsRepository({
+            get: async () => ({
+                ...createJob(10, "failed"),
+                attempts: 3,
+                error: "rpc timeout",
+                updatedAt,
+            }),
+        }),
+        transactionManager: manager,
+        logger: {
+            debug: jest.fn(),
+            info: jest.fn(),
+            warn,
+            error: jest.fn(),
+        },
+    });
+
+    await worker.execute();
+
+    expect(warn).toHaveBeenCalledWith("sequencer_blocked_by_failed_job", {
+        chainId: 10,
+        blockNumber: 10,
+        attempts: 3,
+        error: "rpc timeout",
+        updatedAt,
+    });
+});
+
+test("sequencer service waits when failed job still has retry date", async () => {
+    const { manager } = createPassThroughManager();
+    const debug = jest.fn();
+    const nextRetryAt = new Date("2026-01-01T00:01:00.000Z");
+    const worker = createService({
+        chainCursorRepository: createChainCursorRepository(() => createCursor(9, HASH_A, 10)),
+        blocksRepository: createBlocksRepository(() => createBlock(10, HASH_B, HASH_A)),
+        blockJobsRepository: createBlockJobsRepository({
+            get: async () => ({
+                ...createJob(10, "failed"),
+                attempts: 2,
+                error: "rpc timeout",
+                nextRetryAt,
+            }),
+        }),
+        transactionManager: manager,
+        logger: {
+            debug,
+            info: jest.fn(),
+            warn: jest.fn(),
+            error: jest.fn(),
+        },
+    });
+
+    await worker.execute();
+
+    expect(debug).toHaveBeenCalledWith("sequencer_waiting_for_failed_job_retry", {
+        chainId: 10,
+        blockNumber: 10,
+        attempts: 2,
+        nextRetryAt,
+        error: "rpc timeout",
+    });
+});
+
 test("sequencer service throws when fetched job has no block data", async () => {
     const { manager } = createPassThroughManager();
     const worker = createService({
@@ -449,6 +545,193 @@ test("sequencer service skips rollback when cursor changes during rollback trans
             getForUpdate: async () => changedCursor,
         }),
         blocksRepository: createBlocksRepository((_chainId, blockNumber) => {
+            if (blockNumber === 11) {
+                return createBlock(11, HASH_B, newHash10, 11);
+            }
+
+            if (blockNumber === 10) {
+                return createBlock(10, oldHash10, hash9, 10);
+            }
+
+            return createBlock(9, hash9, HASH_A, 9);
+        }, {
+            deleteAfterBlockNumber: async () => {
+                calls.push("delete-blocks");
+                return 1;
+            },
+        }),
+        transactionsRepository: createTransactionsRepository({
+            deleteAfterBlockNumber: async () => {
+                calls.push("delete-transactions");
+                return 1;
+            },
+        }),
+        eventsRepository: createEventsRepository({
+            deleteAfterBlockNumber: async () => {
+                calls.push("delete-events");
+                return 1;
+            },
+        }),
+        blockJobsRepository: createBlockJobsRepository({
+            deleteAfterBlockNumber: async () => {
+                calls.push("delete-jobs");
+                return 1;
+            },
+        }),
+        transactionManager: manager,
+    });
+
+    await worker.execute();
+
+    expect(calls).toEqual([]);
+});
+
+test("sequencer service skips rollback when cursor is deleted during rollback transaction", async () => {
+    const calls: string[] = [];
+    const { manager } = createPassThroughManager();
+    const hash9 = asHash32("0x0909090909090909090909090909090909090909090909090909090909090909");
+    const oldHash10 = asHash32("0x1010101010101010101010101010101010101010101010101010101010101010");
+    const newHash10 = asHash32("0x1111111111111111111111111111111111111111111111111111111111111111");
+    const cursor = createCursor(10, oldHash10, 11);
+
+    const worker = createService({
+        source: createSource(async (_chainId, blockNumber) => {
+            if (blockNumber === 10) {
+                return createFetchedBlock(10, newHash10, hash9, 10);
+            }
+
+            return createFetchedBlock(9, hash9, HASH_A, 9);
+        }),
+        chainCursorRepository: createChainCursorRepository(() => cursor, {
+            getForUpdate: async () => null,
+        }),
+        blocksRepository: createBlocksRepository((_chainId, blockNumber) => {
+            if (blockNumber === 11) {
+                return createBlock(11, HASH_B, newHash10, 11);
+            }
+
+            if (blockNumber === 10) {
+                return createBlock(10, oldHash10, hash9, 10);
+            }
+
+            return createBlock(9, hash9, HASH_A, 9);
+        }, {
+            deleteAfterBlockNumber: async () => {
+                calls.push("delete-blocks");
+                return 1;
+            },
+        }),
+        transactionsRepository: createTransactionsRepository({
+            deleteAfterBlockNumber: async () => {
+                calls.push("delete-transactions");
+                return 1;
+            },
+        }),
+        eventsRepository: createEventsRepository({
+            deleteAfterBlockNumber: async () => {
+                calls.push("delete-events");
+                return 1;
+            },
+        }),
+        blockJobsRepository: createBlockJobsRepository({
+            deleteAfterBlockNumber: async () => {
+                calls.push("delete-jobs");
+                return 1;
+            },
+        }),
+        transactionManager: manager,
+    });
+
+    await worker.execute();
+
+    expect(calls).toEqual([]);
+});
+
+test("sequencer service skips rollback when next block is gone during rollback transaction", async () => {
+    const calls: string[] = [];
+    const { manager, transaction } = createPassThroughManager();
+    const hash9 = asHash32("0x0909090909090909090909090909090909090909090909090909090909090909");
+    const oldHash10 = asHash32("0x1010101010101010101010101010101010101010101010101010101010101010");
+    const newHash10 = asHash32("0x1111111111111111111111111111111111111111111111111111111111111111");
+    const cursor = createCursor(10, oldHash10, 11);
+
+    const worker = createService({
+        source: createSource(async (_chainId, blockNumber) => {
+            if (blockNumber === 10) {
+                return createFetchedBlock(10, newHash10, hash9, 10);
+            }
+
+            return createFetchedBlock(9, hash9, HASH_A, 9);
+        }),
+        chainCursorRepository: createChainCursorRepository(() => cursor),
+        blocksRepository: createBlocksRepository((_chainId, blockNumber, tx) => {
+            if (tx === transaction && blockNumber === 11) {
+                return null;
+            }
+
+            if (blockNumber === 11) {
+                return createBlock(11, HASH_B, newHash10, 11);
+            }
+
+            if (blockNumber === 10) {
+                return createBlock(10, oldHash10, hash9, 10);
+            }
+
+            return createBlock(9, hash9, HASH_A, 9);
+        }, {
+            deleteAfterBlockNumber: async () => {
+                calls.push("delete-blocks");
+                return 1;
+            },
+        }),
+        transactionsRepository: createTransactionsRepository({
+            deleteAfterBlockNumber: async () => {
+                calls.push("delete-transactions");
+                return 1;
+            },
+        }),
+        eventsRepository: createEventsRepository({
+            deleteAfterBlockNumber: async () => {
+                calls.push("delete-events");
+                return 1;
+            },
+        }),
+        blockJobsRepository: createBlockJobsRepository({
+            deleteAfterBlockNumber: async () => {
+                calls.push("delete-jobs");
+                return 1;
+            },
+        }),
+        transactionManager: manager,
+    });
+
+    await worker.execute();
+
+    expect(calls).toEqual([]);
+});
+
+test("sequencer service skips rollback when next block already matches cursor during rollback", async () => {
+    const calls: string[] = [];
+    const { manager, transaction } = createPassThroughManager();
+    const hash9 = asHash32("0x0909090909090909090909090909090909090909090909090909090909090909");
+    const oldHash10 = asHash32("0x1010101010101010101010101010101010101010101010101010101010101010");
+    const newHash10 = asHash32("0x1111111111111111111111111111111111111111111111111111111111111111");
+    const cursor = createCursor(10, oldHash10, 11);
+
+    const worker = createService({
+        source: createSource(async (_chainId, blockNumber) => {
+            if (blockNumber === 10) {
+                return createFetchedBlock(10, newHash10, hash9, 10);
+            }
+
+            return createFetchedBlock(9, hash9, HASH_A, 9);
+        }),
+        chainCursorRepository: createChainCursorRepository(() => cursor),
+        blocksRepository: createBlocksRepository((_chainId, blockNumber, tx) => {
+            if (tx === transaction && blockNumber === 11) {
+                return createBlock(11, HASH_B, oldHash10, 11);
+            }
+
             if (blockNumber === 11) {
                 return createBlock(11, HASH_B, newHash10, 11);
             }

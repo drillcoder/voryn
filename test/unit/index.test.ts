@@ -7,11 +7,10 @@ test("public entry point exports runtime APIs", () => {
     expect(voryn.applySqlFileToPostgresDb).toBeDefined();
     expect(voryn.validatePostgresSchema).toBeDefined();
     expect(voryn.PostgresBlockJobsRepository).toBeDefined();
-    expect(voryn.PostgresCanonicalBlocksRepository).toBeDefined();
-    expect(voryn.PostgresCanonicalEventsRepository).toBeDefined();
-    expect(voryn.PostgresCanonicalTransactionsRepository).toBeDefined();
+    expect(voryn.PostgresBlocksRepository).toBeDefined();
+    expect(voryn.PostgresEventsRepository).toBeDefined();
+    expect(voryn.PostgresTransactionsRepository).toBeDefined();
     expect(voryn.PostgresChainCursorRepository).toBeDefined();
-    expect(voryn.PostgresRawBlocksRepository).toBeDefined();
     expect(voryn.PostgresWorkerCursorsRepository).toBeDefined();
     expect(voryn.PostgresLeaderLock).toBeDefined();
     expect(voryn.PostgresTransactionManager).toBeDefined();

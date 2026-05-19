@@ -2,13 +2,10 @@ import { PostgresLeaderLock } from "../../src/postgres/leader-lock.js";
 import { PostgresTransactionManager } from "../../src/postgres/transaction-manager.js";
 import type { EventReactionHandler, TransactionReactionHandler } from "../../src/interfaces/reaction.js";
 import { PostgresBlockJobsRepository } from "../../src/repositories/postgres/block-jobs-repository.js";
-import { PostgresCanonicalBlocksRepository } from "../../src/repositories/postgres/canonical-blocks-repository.js";
-import { PostgresCanonicalEventsRepository } from "../../src/repositories/postgres/canonical-events-repository.js";
-import {
-    PostgresCanonicalTransactionsRepository
-} from "../../src/repositories/postgres/canonical-transactions-repository.js";
+import { PostgresBlocksRepository } from "../../src/repositories/postgres/blocks-repository.js";
 import { PostgresChainCursorRepository } from "../../src/repositories/postgres/chain-cursor-repository.js";
-import { PostgresRawBlocksRepository } from "../../src/repositories/postgres/raw-blocks-repository.js";
+import { PostgresEventsRepository } from "../../src/repositories/postgres/events-repository.js";
+import { PostgresTransactionsRepository } from "../../src/repositories/postgres/transactions-repository.js";
 import { PostgresWorkerCursorsRepository } from "../../src/repositories/postgres/worker-cursors-repository.js";
 import { EventReactionWorker } from "../../src/workers/event-reaction-worker.js";
 import { FetchWorker } from "../../src/workers/fetch-worker.js";
@@ -43,10 +40,9 @@ describe("e2e pipeline", () => {
         const transactionManager = new PostgresTransactionManager(db.pool);
         const chainCursorRepository = new PostgresChainCursorRepository(db.pool);
         const blockJobsRepository = new PostgresBlockJobsRepository(db.pool);
-        const rawBlocksRepository = new PostgresRawBlocksRepository(db.pool);
-        const canonicalBlocksRepository = new PostgresCanonicalBlocksRepository(db.pool);
-        const canonicalTransactionsRepository = new PostgresCanonicalTransactionsRepository(db.pool);
-        const canonicalEventsRepository = new PostgresCanonicalEventsRepository(db.pool);
+        const blocksRepository = new PostgresBlocksRepository(db.pool);
+        const transactionsRepository = new PostgresTransactionsRepository(db.pool);
+        const eventsRepository = new PostgresEventsRepository(db.pool);
         const workerCursorsRepository = new PostgresWorkerCursorsRepository(db.pool);
 
         const committedHash = hashFromNumber(9);
@@ -64,17 +60,17 @@ describe("e2e pipeline", () => {
         const source = createMapBlockSource(13, [block10, block11, block12, block13]);
         const expectedItemCount = 6;
 
-        const handledEventSeqs: bigint[] = [];
-        const handledTxSeqs: bigint[] = [];
+        const handledEvents: string[] = [];
+        const handledTransactions: string[] = [];
 
         const eventHandler: EventReactionHandler = {
             async handle(event): Promise<void> {
-                handledEventSeqs.push(event.seq);
+                handledEvents.push(`${String(event.blockNumber)}:${String(event.index)}`);
             },
         };
         const txHandler: TransactionReactionHandler = {
             async handle(transaction): Promise<void> {
-                handledTxSeqs.push(transaction.seq);
+                handledTransactions.push(`${String(transaction.blockNumber)}:${String(transaction.index)}`);
             },
         };
 
@@ -87,7 +83,8 @@ describe("e2e pipeline", () => {
             },
             handler: eventHandler,
             overrides: {
-                canonicalEventsRepository,
+                chainCursorRepository,
+                eventsRepository,
                 workerCursorsRepository,
                 leaderLock: new PostgresLeaderLock(db.pool, 30_000_001n),
             },
@@ -102,7 +99,8 @@ describe("e2e pipeline", () => {
             },
             handler: txHandler,
             overrides: {
-                transactionsRepository: canonicalTransactionsRepository,
+                chainCursorRepository,
+                transactionsRepository,
                 workerCursorsRepository,
                 leaderLock: new PostgresLeaderLock(db.pool, 30_000_002n),
             },
@@ -119,7 +117,9 @@ describe("e2e pipeline", () => {
             overrides: {
                 chainCursorRepository,
                 blockJobsRepository,
-                rawBlocksRepository,
+                blocksRepository,
+                transactionsRepository,
+                eventsRepository,
                 transactionManager,
                 leaderLock: new PostgresLeaderLock(db.pool, 30_000_003n),
             },
@@ -138,7 +138,9 @@ describe("e2e pipeline", () => {
             source,
             overrides: {
                 blockJobsRepository,
-                rawBlocksRepository,
+                blocksRepository,
+                transactionsRepository,
+                eventsRepository,
                 transactionManager,
             },
         });
@@ -152,10 +154,9 @@ describe("e2e pipeline", () => {
             source,
             overrides: {
                 chainCursorRepository,
-                rawBlocksRepository,
-                canonicalBlocksRepository,
-                canonicalTransactionsRepository,
-                canonicalEventsRepository,
+                blocksRepository,
+                transactionsRepository,
+                eventsRepository,
                 blockJobsRepository,
                 transactionManager,
                 leaderLock: new PostgresLeaderLock(db.pool, 30_000_004n),
@@ -171,10 +172,9 @@ describe("e2e pipeline", () => {
             overrides: {
                 chainCursorRepository,
                 blockJobsRepository,
-                rawBlocksRepository,
-                canonicalBlocksRepository,
-                canonicalTransactionsRepository,
-                canonicalEventsRepository,
+                blocksRepository,
+                transactionsRepository,
+                eventsRepository,
                 transactionManager,
                 leaderLock: new PostgresLeaderLock(db.pool, 30_000_005n),
             },
@@ -193,7 +193,7 @@ describe("e2e pipeline", () => {
                     return false;
                 }
 
-                if (handledEventSeqs.length !== expectedItemCount || handledTxSeqs.length !== expectedItemCount) {
+                if (handledEvents.length !== expectedItemCount || handledTransactions.length !== expectedItemCount) {
                     return false;
                 }
 
@@ -207,24 +207,23 @@ describe("e2e pipeline", () => {
             await eventWorker.stop();
             await txWorker.stop();
 
-            expect(handledEventSeqs).toEqual([1n, 2n, 3n, 4n, 5n, 6n]);
-            expect(handledTxSeqs).toEqual([1n, 2n, 3n, 4n, 5n, 6n]);
+            expect(handledEvents).toEqual(["10:0", "10:1", "11:0", "12:0", "12:1", "13:0"]);
+            expect(handledTransactions).toEqual(["10:0", "10:1", "11:0", "12:0", "12:1", "13:0"]);
 
             await retentionWorker.start();
             await waitFor(async () => {
-                const oldRows = await db.countRows("canonical_blocks", "block_number <= 11");
+                const oldRows = await db.countRows("blocks", "block_number <= 11");
                 return oldRows === 0;
             });
             await retentionWorker.stop();
 
-            await expect(db.countRows("canonical_blocks", "block_number <= 11")).resolves.toBe(0);
-            await expect(db.countRows("canonical_transactions", "block_number <= 11")).resolves.toBe(0);
-            await expect(db.countRows("canonical_events", "block_number <= 11")).resolves.toBe(0);
-            await expect(db.countRows("raw_blocks", "block_number <= 11")).resolves.toBe(0);
+            await expect(db.countRows("blocks", "block_number <= 11")).resolves.toBe(0);
+            await expect(db.countRows("transactions", "block_number <= 11")).resolves.toBe(0);
+            await expect(db.countRows("events", "block_number <= 11")).resolves.toBe(0);
             await expect(db.countRows("block_jobs", "block_number <= 11")).resolves.toBe(0);
-            await expect(db.countRows("canonical_blocks", "block_number >= 12")).resolves.toBe(2);
-            await expect(db.countRows("canonical_transactions", "block_number >= 12")).resolves.toBe(3);
-            await expect(db.countRows("canonical_events", "block_number >= 12")).resolves.toBe(3);
+            await expect(db.countRows("blocks", "block_number >= 12")).resolves.toBe(2);
+            await expect(db.countRows("transactions", "block_number >= 12")).resolves.toBe(3);
+            await expect(db.countRows("events", "block_number >= 12")).resolves.toBe(3);
         } finally {
             await Promise.all([
                 eventWorker.stop(),

@@ -1,13 +1,10 @@
 import { PostgresLeaderLock } from "../../src/postgres/leader-lock.js";
 import { PostgresTransactionManager } from "../../src/postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../../src/repositories/postgres/block-jobs-repository.js";
-import { PostgresCanonicalBlocksRepository } from "../../src/repositories/postgres/canonical-blocks-repository.js";
-import { PostgresCanonicalEventsRepository } from "../../src/repositories/postgres/canonical-events-repository.js";
-import {
-    PostgresCanonicalTransactionsRepository
-} from "../../src/repositories/postgres/canonical-transactions-repository.js";
+import { PostgresBlocksRepository } from "../../src/repositories/postgres/blocks-repository.js";
 import { PostgresChainCursorRepository } from "../../src/repositories/postgres/chain-cursor-repository.js";
-import { PostgresRawBlocksRepository } from "../../src/repositories/postgres/raw-blocks-repository.js";
+import { PostgresEventsRepository } from "../../src/repositories/postgres/events-repository.js";
+import { PostgresTransactionsRepository } from "../../src/repositories/postgres/transactions-repository.js";
 import { FetchWorker } from "../../src/workers/fetch-worker.js";
 import { HeadWorker } from "../../src/workers/head-worker.js";
 import { SequencerWorker } from "../../src/workers/sequencer-worker.js";
@@ -37,13 +34,13 @@ describe("e2e sequencer mismatch", () => {
         const transactionManager = new PostgresTransactionManager(db.pool);
         const chainCursorRepository = new PostgresChainCursorRepository(db.pool);
         const blockJobsRepository = new PostgresBlockJobsRepository(db.pool);
-        const rawBlocksRepository = new PostgresRawBlocksRepository(db.pool);
-        const canonicalBlocksRepository = new PostgresCanonicalBlocksRepository(db.pool);
-        const canonicalTransactionsRepository = new PostgresCanonicalTransactionsRepository(db.pool);
-        const canonicalEventsRepository = new PostgresCanonicalEventsRepository(db.pool);
+        const blocksRepository = new PostgresBlocksRepository(db.pool);
+        const transactionsRepository = new PostgresTransactionsRepository(db.pool);
+        const eventsRepository = new PostgresEventsRepository(db.pool);
 
         const committedHash = hashFromNumber(9);
         const wrongParentHash = hashFromNumber(12345);
+        const committedBlock = buildFetchedBlock(9, hashFromNumber(8), 0);
         const badBlock = buildFetchedBlock(10, wrongParentHash, 1);
 
         await chainCursorRepository.insert({
@@ -52,8 +49,16 @@ describe("e2e sequencer mismatch", () => {
             lastCommittedBlock: 9,
             lastCommittedHash: committedHash,
         });
+        await blocksRepository.insert({
+            chainId: CHAIN_ID,
+            blockNumber: committedBlock.block.number,
+            blockHash: committedBlock.block.hash,
+            parentHash: committedBlock.block.parentHash,
+            blockTimestamp: committedBlock.block.timestamp,
+            fetchedAt: new Date(),
+        });
 
-        const source = createMapBlockSource(10, [badBlock]);
+        const source = createMapBlockSource(10, [committedBlock, badBlock]);
 
         const headWorker = await HeadWorker.create({
             config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
@@ -61,7 +66,9 @@ describe("e2e sequencer mismatch", () => {
             overrides: {
                 chainCursorRepository,
                 blockJobsRepository,
-                rawBlocksRepository,
+                blocksRepository,
+                transactionsRepository,
+                eventsRepository,
                 transactionManager,
                 leaderLock: new PostgresLeaderLock(db.pool, 31_000_001n),
             },
@@ -79,7 +86,9 @@ describe("e2e sequencer mismatch", () => {
             source,
             overrides: {
                 blockJobsRepository,
-                rawBlocksRepository,
+                blocksRepository,
+                transactionsRepository,
+                eventsRepository,
                 transactionManager,
             },
         });
@@ -88,10 +97,9 @@ describe("e2e sequencer mismatch", () => {
             source,
             overrides: {
                 chainCursorRepository,
-                rawBlocksRepository,
-                canonicalBlocksRepository,
-                canonicalTransactionsRepository,
-                canonicalEventsRepository,
+                blocksRepository,
+                transactionsRepository,
+                eventsRepository,
                 blockJobsRepository,
                 transactionManager,
                 leaderLock: new PostgresLeaderLock(db.pool, 31_000_002n),
@@ -101,24 +109,27 @@ describe("e2e sequencer mismatch", () => {
         try {
             await headWorker.start();
             await fetchWorker.start();
+
+            await waitFor(async () => {
+                const blockCount = await db.countRows("blocks", "block_number = 10");
+                return blockCount === 1;
+            });
+
+            await headWorker.stop();
+            await fetchWorker.stop();
             await sequencerWorker.start();
 
             await waitFor(async () => {
-                const rawCount = await db.countRows("raw_blocks", "block_number = 10");
-                return rawCount === 1;
-            });
-
-            await waitFor(async () => {
-                const canonicalCount = await db.countRows("canonical_blocks");
-                return canonicalCount === 0;
+                const blockCount = await db.countRows("blocks", "block_number = 10");
+                return blockCount === 0;
             });
 
             const cursor = await chainCursorRepository.get(CHAIN_ID);
             expect(cursor?.lastCommittedBlock).toBe(9);
             expect(cursor?.lastCommittedHash).toBe(committedHash);
-            await expect(db.countRows("block_jobs", "status = 'fetched' AND block_number = 10")).resolves.toBe(1);
-            await expect(db.countRows("canonical_transactions")).resolves.toBe(0);
-            await expect(db.countRows("canonical_events")).resolves.toBe(0);
+            await expect(db.countRows("block_jobs", "status = 'committed' AND block_number = 10")).resolves.toBe(0);
+            await expect(db.countRows("transactions")).resolves.toBe(0);
+            await expect(db.countRows("events")).resolves.toBe(0);
         } finally {
             await stopWorkers([headWorker, fetchWorker, sequencerWorker]);
         }

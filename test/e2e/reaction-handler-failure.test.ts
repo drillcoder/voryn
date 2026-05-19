@@ -1,5 +1,6 @@
 import type { EventReactionHandler } from "../../src/interfaces/reaction.js";
-import { PostgresCanonicalEventsRepository } from "../../src/repositories/postgres/canonical-events-repository.js";
+import { PostgresChainCursorRepository } from "../../src/repositories/postgres/chain-cursor-repository.js";
+import { PostgresEventsRepository } from "../../src/repositories/postgres/events-repository.js";
 import { PostgresWorkerCursorsRepository } from "../../src/repositories/postgres/worker-cursors-repository.js";
 import { EventReactionWorker } from "../../src/workers/event-reaction-worker.js";
 import { buildFetchedBlock, CHAIN_ID, createLeaderLock, hashFromNumber } from "../integration/helpers/fixtures.js";
@@ -25,24 +26,36 @@ describe("e2e reaction handler failure", () => {
     });
 
     test("event cursor does not skip failed event and continues on next tick", async () => {
-        const canonicalEventsRepository = new PostgresCanonicalEventsRepository(db.pool);
+        const chainCursorRepository = new PostgresChainCursorRepository(db.pool);
+        const eventsRepository = new PostgresEventsRepository(db.pool);
         const workerCursorsRepository = new PostgresWorkerCursorsRepository(db.pool);
 
         const block = buildFetchedBlock(100, hashFromNumber(99), 3);
-        await canonicalEventsRepository.insertMany(CHAIN_ID, block.block.number, block.block.hash, block.logs);
-        await workerCursorsRepository.insert("reaction-event-failure", CHAIN_ID, "event", 0n);
+        await chainCursorRepository.insert({
+            chainId: CHAIN_ID,
+            lastEnqueuedBlock: block.block.number,
+            lastCommittedBlock: block.block.number,
+            lastCommittedHash: block.block.hash,
+        });
+        await eventsRepository.insertMany(block.logs);
+        await workerCursorsRepository.insert(
+            "reaction-event-failure",
+            CHAIN_ID,
+            "event",
+            { lastBlockNumber: 99, lastTransactionIndex: -1, lastLogIndex: -1 }
+        );
 
-        const handled: bigint[] = [];
+        const handled: number[] = [];
         let failures = 0;
 
         const handler: EventReactionHandler = {
             async handle(event): Promise<void> {
-                if (event.seq === 2n && failures === 0) {
+                if (event.index === 1 && failures === 0) {
                     failures += 1;
                     throw new Error("handler temporary failure");
                 }
 
-                handled.push(event.seq);
+                handled.push(event.index);
             },
         };
 
@@ -55,7 +68,8 @@ describe("e2e reaction handler failure", () => {
             },
             handler,
             overrides: {
-                canonicalEventsRepository,
+                chainCursorRepository,
+                eventsRepository,
                 workerCursorsRepository,
                 leaderLock: createLeaderLock(),
             },
@@ -68,11 +82,13 @@ describe("e2e reaction handler failure", () => {
 
             await waitFor(async () => {
                 const cursor = await workerCursorsRepository.get("reaction-event-failure", CHAIN_ID, "event");
-                return cursor?.lastSeq === 3n;
+                return cursor?.position.lastBlockNumber === 100
+                    && cursor.position.lastTransactionIndex === 2
+                    && cursor.position.lastLogIndex === 2;
             });
 
             expect(failures).toBe(1);
-            expect(handled).toEqual([1n, 2n, 3n]);
+            expect(handled).toEqual([0, 1, 2]);
         } finally {
             await stopWorkers([worker]);
         }

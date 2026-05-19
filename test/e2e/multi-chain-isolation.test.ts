@@ -2,13 +2,10 @@ import type { BlockSource } from "../../src/interfaces/block-source.js";
 import type { FetchedBlock } from "../../src/interfaces/chain.js";
 import { PostgresTransactionManager } from "../../src/postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../../src/repositories/postgres/block-jobs-repository.js";
-import { PostgresCanonicalBlocksRepository } from "../../src/repositories/postgres/canonical-blocks-repository.js";
-import { PostgresCanonicalEventsRepository } from "../../src/repositories/postgres/canonical-events-repository.js";
-import {
-    PostgresCanonicalTransactionsRepository
-} from "../../src/repositories/postgres/canonical-transactions-repository.js";
+import { PostgresBlocksRepository } from "../../src/repositories/postgres/blocks-repository.js";
 import { PostgresChainCursorRepository } from "../../src/repositories/postgres/chain-cursor-repository.js";
-import { PostgresRawBlocksRepository } from "../../src/repositories/postgres/raw-blocks-repository.js";
+import { PostgresEventsRepository } from "../../src/repositories/postgres/events-repository.js";
+import { PostgresTransactionsRepository } from "../../src/repositories/postgres/transactions-repository.js";
 import { FetchWorker } from "../../src/workers/fetch-worker.js";
 import { HeadWorker } from "../../src/workers/head-worker.js";
 import { SequencerWorker } from "../../src/workers/sequencer-worker.js";
@@ -40,10 +37,9 @@ describe("e2e multi-chain isolation", () => {
         const transactionManager = new PostgresTransactionManager(db.pool);
         const chainCursorRepository = new PostgresChainCursorRepository(db.pool);
         const blockJobsRepository = new PostgresBlockJobsRepository(db.pool);
-        const rawBlocksRepository = new PostgresRawBlocksRepository(db.pool);
-        const canonicalBlocksRepository = new PostgresCanonicalBlocksRepository(db.pool);
-        const canonicalTransactionsRepository = new PostgresCanonicalTransactionsRepository(db.pool);
-        const canonicalEventsRepository = new PostgresCanonicalEventsRepository(db.pool);
+        const blocksRepository = new PostgresBlocksRepository(db.pool);
+        const transactionsRepository = new PostgresTransactionsRepository(db.pool);
+        const eventsRepository = new PostgresEventsRepository(db.pool);
 
         const chainACommittedHash = hashFromNumber(9);
         const chainBCommittedHash = hashFromNumber(99);
@@ -77,7 +73,9 @@ describe("e2e multi-chain isolation", () => {
                 overrides: {
                     chainCursorRepository,
                     blockJobsRepository,
-                    rawBlocksRepository,
+                    blocksRepository,
+                    transactionsRepository,
+                    eventsRepository,
                     transactionManager,
                     leaderLock: createLeaderLock(),
                 },
@@ -95,7 +93,9 @@ describe("e2e multi-chain isolation", () => {
                 source,
                 overrides: {
                     blockJobsRepository,
-                    rawBlocksRepository,
+                    blocksRepository,
+                    transactionsRepository,
+                    eventsRepository,
                     transactionManager,
                 },
             }),
@@ -104,10 +104,9 @@ describe("e2e multi-chain isolation", () => {
                 source,
                 overrides: {
                     chainCursorRepository,
-                    rawBlocksRepository,
-                    canonicalBlocksRepository,
-                    canonicalTransactionsRepository,
-                    canonicalEventsRepository,
+                    blocksRepository,
+                    transactionsRepository,
+                    eventsRepository,
                     blockJobsRepository,
                     transactionManager,
                     leaderLock: createLeaderLock(),
@@ -119,7 +118,9 @@ describe("e2e multi-chain isolation", () => {
                 overrides: {
                     chainCursorRepository,
                     blockJobsRepository,
-                    rawBlocksRepository,
+                    blocksRepository,
+                    transactionsRepository,
+                    eventsRepository,
                     transactionManager,
                     leaderLock: createLeaderLock(),
                 },
@@ -137,7 +138,9 @@ describe("e2e multi-chain isolation", () => {
                 source,
                 overrides: {
                     blockJobsRepository,
-                    rawBlocksRepository,
+                    blocksRepository,
+                    transactionsRepository,
+                    eventsRepository,
                     transactionManager,
                 },
             }),
@@ -146,10 +149,9 @@ describe("e2e multi-chain isolation", () => {
                 source,
                 overrides: {
                     chainCursorRepository,
-                    rawBlocksRepository,
-                    canonicalBlocksRepository,
-                    canonicalTransactionsRepository,
-                    canonicalEventsRepository,
+                    blocksRepository,
+                    transactionsRepository,
+                    eventsRepository,
                     blockJobsRepository,
                     transactionManager,
                     leaderLock: createLeaderLock(),
@@ -168,12 +170,12 @@ describe("e2e multi-chain isolation", () => {
                 return cursorA?.lastCommittedBlock === 11 && cursorB?.lastCommittedBlock === 101;
             });
 
-            await expect(db.countRows("canonical_blocks", "chain_id = 1 AND block_number BETWEEN 10 AND 11"))
+            await expect(db.countRows("blocks", "chain_id = 1 AND block_number BETWEEN 10 AND 11"))
                 .resolves.toBe(2);
-            await expect(db.countRows("canonical_blocks", "chain_id = 137 AND block_number BETWEEN 100 AND 101"))
+            await expect(db.countRows("blocks", "chain_id = 137 AND block_number BETWEEN 100 AND 101"))
                 .resolves.toBe(2);
-            await expect(db.countRows("canonical_transactions", "chain_id = 1")).resolves.toBe(2);
-            await expect(db.countRows("canonical_transactions", "chain_id = 137")).resolves.toBe(2);
+            await expect(db.countRows("transactions", "chain_id = 1")).resolves.toBe(2);
+            await expect(db.countRows("transactions", "chain_id = 137")).resolves.toBe(2);
             await expect(db.countRows("block_jobs", "chain_id = 1 AND status = 'committed'")).resolves.toBe(2);
             await expect(db.countRows("block_jobs", "chain_id = 137 AND status = 'committed'")).resolves.toBe(2);
         } finally {

@@ -1,13 +1,10 @@
 import { PostgresLeaderLock } from "../../src/postgres/leader-lock.js";
 import { PostgresTransactionManager } from "../../src/postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../../src/repositories/postgres/block-jobs-repository.js";
-import { PostgresCanonicalBlocksRepository } from "../../src/repositories/postgres/canonical-blocks-repository.js";
-import { PostgresCanonicalEventsRepository } from "../../src/repositories/postgres/canonical-events-repository.js";
-import {
-    PostgresCanonicalTransactionsRepository
-} from "../../src/repositories/postgres/canonical-transactions-repository.js";
+import { PostgresBlocksRepository } from "../../src/repositories/postgres/blocks-repository.js";
 import { PostgresChainCursorRepository } from "../../src/repositories/postgres/chain-cursor-repository.js";
-import { PostgresRawBlocksRepository } from "../../src/repositories/postgres/raw-blocks-repository.js";
+import { PostgresEventsRepository } from "../../src/repositories/postgres/events-repository.js";
+import { PostgresTransactionsRepository } from "../../src/repositories/postgres/transactions-repository.js";
 import { FetchWorker } from "../../src/workers/fetch-worker.js";
 import { HeadWorker } from "../../src/workers/head-worker.js";
 import { RetentionWorker } from "../../src/workers/retention-worker.js";
@@ -38,10 +35,9 @@ describe("e2e retention boundary", () => {
         const transactionManager = new PostgresTransactionManager(db.pool);
         const chainCursorRepository = new PostgresChainCursorRepository(db.pool);
         const blockJobsRepository = new PostgresBlockJobsRepository(db.pool);
-        const rawBlocksRepository = new PostgresRawBlocksRepository(db.pool);
-        const canonicalBlocksRepository = new PostgresCanonicalBlocksRepository(db.pool);
-        const canonicalTransactionsRepository = new PostgresCanonicalTransactionsRepository(db.pool);
-        const canonicalEventsRepository = new PostgresCanonicalEventsRepository(db.pool);
+        const blocksRepository = new PostgresBlocksRepository(db.pool);
+        const transactionsRepository = new PostgresTransactionsRepository(db.pool);
+        const eventsRepository = new PostgresEventsRepository(db.pool);
 
         const committedHash = hashFromNumber(9);
         await chainCursorRepository.insert({
@@ -63,7 +59,9 @@ describe("e2e retention boundary", () => {
             overrides: {
                 chainCursorRepository,
                 blockJobsRepository,
-                rawBlocksRepository,
+                blocksRepository,
+                transactionsRepository,
+                eventsRepository,
                 transactionManager,
                 leaderLock: new PostgresLeaderLock(db.pool, 31_400_001n),
             },
@@ -81,7 +79,9 @@ describe("e2e retention boundary", () => {
             source,
             overrides: {
                 blockJobsRepository,
-                rawBlocksRepository,
+                blocksRepository,
+                transactionsRepository,
+                eventsRepository,
                 transactionManager,
             },
         });
@@ -90,10 +90,9 @@ describe("e2e retention boundary", () => {
             source,
             overrides: {
                 chainCursorRepository,
-                rawBlocksRepository,
-                canonicalBlocksRepository,
-                canonicalTransactionsRepository,
-                canonicalEventsRepository,
+                blocksRepository,
+                transactionsRepository,
+                eventsRepository,
                 blockJobsRepository,
                 transactionManager,
                 leaderLock: new PostgresLeaderLock(db.pool, 31_400_002n),
@@ -104,10 +103,9 @@ describe("e2e retention boundary", () => {
             overrides: {
                 chainCursorRepository,
                 blockJobsRepository,
-                rawBlocksRepository,
-                canonicalBlocksRepository,
-                canonicalTransactionsRepository,
-                canonicalEventsRepository,
+                blocksRepository,
+                transactionsRepository,
+                eventsRepository,
                 transactionManager,
                 leaderLock: new PostgresLeaderLock(db.pool, 31_400_003n),
             },
@@ -127,21 +125,19 @@ describe("e2e retention boundary", () => {
 
             await retentionWorker.start();
             await waitFor(async () => {
-                const oldCanonical = await db.countRows("canonical_blocks", "block_number <= 11");
-                return oldCanonical === 0;
+                const oldBlocks = await db.countRows("blocks", "block_number <= 11");
+                return oldBlocks === 0;
             });
 
             await expect(db.countRows("block_jobs", "block_number <= 11")).resolves.toBe(0);
-            await expect(db.countRows("raw_blocks", "block_number <= 11")).resolves.toBe(0);
-            await expect(db.countRows("canonical_blocks", "block_number <= 11")).resolves.toBe(0);
-            await expect(db.countRows("canonical_transactions", "block_number <= 11")).resolves.toBe(0);
-            await expect(db.countRows("canonical_events", "block_number <= 11")).resolves.toBe(0);
+            await expect(db.countRows("blocks", "block_number <= 11")).resolves.toBe(0);
+            await expect(db.countRows("transactions", "block_number <= 11")).resolves.toBe(0);
+            await expect(db.countRows("events", "block_number <= 11")).resolves.toBe(0);
 
             await expect(db.countRows("block_jobs", "block_number >= 12")).resolves.toBe(2);
-            await expect(db.countRows("raw_blocks", "block_number >= 12")).resolves.toBe(2);
-            await expect(db.countRows("canonical_blocks", "block_number >= 12")).resolves.toBe(2);
-            await expect(db.countRows("canonical_transactions", "block_number >= 12")).resolves.toBe(3);
-            await expect(db.countRows("canonical_events", "block_number >= 12")).resolves.toBe(3);
+            await expect(db.countRows("blocks", "block_number >= 12")).resolves.toBe(2);
+            await expect(db.countRows("transactions", "block_number >= 12")).resolves.toBe(3);
+            await expect(db.countRows("events", "block_number >= 12")).resolves.toBe(3);
         } finally {
             await stopWorkers([headWorker, fetchWorker, sequencerWorker, retentionWorker]);
         }

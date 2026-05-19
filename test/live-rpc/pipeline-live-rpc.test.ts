@@ -1,13 +1,10 @@
 import { JsonRpcProvider } from "ethers";
 import { PostgresTransactionManager } from "../../src/postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../../src/repositories/postgres/block-jobs-repository.js";
-import { PostgresCanonicalBlocksRepository } from "../../src/repositories/postgres/canonical-blocks-repository.js";
-import { PostgresCanonicalEventsRepository } from "../../src/repositories/postgres/canonical-events-repository.js";
-import {
-    PostgresCanonicalTransactionsRepository
-} from "../../src/repositories/postgres/canonical-transactions-repository.js";
+import { PostgresBlocksRepository } from "../../src/repositories/postgres/blocks-repository.js";
 import { PostgresChainCursorRepository } from "../../src/repositories/postgres/chain-cursor-repository.js";
-import { PostgresRawBlocksRepository } from "../../src/repositories/postgres/raw-blocks-repository.js";
+import { PostgresEventsRepository } from "../../src/repositories/postgres/events-repository.js";
+import { PostgresTransactionsRepository } from "../../src/repositories/postgres/transactions-repository.js";
 import { EthersBlockSource } from "../../src/adapters/ethers-block-source.js";
 import { FetchService } from "../../src/services/fetch-service.js";
 import { SequencerService } from "../../src/services/sequencer-service.js";
@@ -64,10 +61,9 @@ describeLive("live rpc pipeline", () => {
         const transactionManager = new PostgresTransactionManager(db.pool);
         const chainCursorRepository = new PostgresChainCursorRepository(db.pool);
         const blockJobsRepository = new PostgresBlockJobsRepository(db.pool);
-        const rawBlocksRepository = new PostgresRawBlocksRepository(db.pool);
-        const canonicalBlocksRepository = new PostgresCanonicalBlocksRepository(db.pool);
-        const canonicalTransactionsRepository = new PostgresCanonicalTransactionsRepository(db.pool);
-        const canonicalEventsRepository = new PostgresCanonicalEventsRepository(db.pool);
+        const blocksRepository = new PostgresBlocksRepository(db.pool);
+        const transactionsRepository = new PostgresTransactionsRepository(db.pool);
+        const eventsRepository = new PostgresEventsRepository(db.pool);
 
         const source = new EthersBlockSource({
             provider: new JsonRpcProvider(rpcUrl),
@@ -106,7 +102,9 @@ describeLive("live rpc pipeline", () => {
             },
             source,
             blockJobsRepository,
-            rawBlocksRepository,
+            blocksRepository,
+            transactionsRepository,
+            eventsRepository,
             transactionManager,
         );
         const sequencerService = new SequencerService(
@@ -117,10 +115,9 @@ describeLive("live rpc pipeline", () => {
             },
             source,
             chainCursorRepository,
-            rawBlocksRepository,
-            canonicalBlocksRepository,
-            canonicalTransactionsRepository,
-            canonicalEventsRepository,
+            blocksRepository,
+            transactionsRepository,
+            eventsRepository,
             blockJobsRepository,
             transactionManager,
         );
@@ -137,15 +134,15 @@ describeLive("live rpc pipeline", () => {
             `chain_id = ${String(chainId)} AND block_number = ${String(targetBlock)} AND status = 'committed'`
         )).resolves.toBe(1);
         await expect(db.countRows(
-            "canonical_blocks",
+            "blocks",
             `chain_id = ${String(chainId)} AND block_number = ${String(targetBlock)}`
         )).resolves.toBe(1);
         await expect(db.countRows(
-            "canonical_transactions",
+            "transactions",
             `chain_id = ${String(chainId)} AND block_number = ${String(targetBlock)}`
         )).resolves.toBe(expected.transactions.length);
         await expect(db.countRows(
-            "canonical_events",
+            "events",
             `chain_id = ${String(chainId)} AND block_number = ${String(targetBlock)}`
         )).resolves.toBe(expected.logs.length);
     }, 30_000);

@@ -1,12 +1,9 @@
 import { PostgresTransactionManager } from "../../../src/postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../../../src/repositories/postgres/block-jobs-repository.js";
-import { PostgresCanonicalBlocksRepository } from "../../../src/repositories/postgres/canonical-blocks-repository.js";
-import { PostgresCanonicalEventsRepository } from "../../../src/repositories/postgres/canonical-events-repository.js";
-import {
-    PostgresCanonicalTransactionsRepository
-} from "../../../src/repositories/postgres/canonical-transactions-repository.js";
+import { PostgresBlocksRepository } from "../../../src/repositories/postgres/blocks-repository.js";
 import { PostgresChainCursorRepository } from "../../../src/repositories/postgres/chain-cursor-repository.js";
-import { PostgresRawBlocksRepository } from "../../../src/repositories/postgres/raw-blocks-repository.js";
+import { PostgresEventsRepository } from "../../../src/repositories/postgres/events-repository.js";
+import { PostgresTransactionsRepository } from "../../../src/repositories/postgres/transactions-repository.js";
 import { FetchService } from "../../../src/services/fetch-service.js";
 import { HeadService } from "../../../src/services/head-service.js";
 import { SequencerService } from "../../../src/services/sequencer-service.js";
@@ -41,10 +38,9 @@ describe("integration services: head/fetch/sequencer", () => {
         const transactionManager = new PostgresTransactionManager(db.pool);
         const chainCursorRepository = new PostgresChainCursorRepository(db.pool);
         const blockJobsRepository = new PostgresBlockJobsRepository(db.pool);
-        const rawBlocksRepository = new PostgresRawBlocksRepository(db.pool);
-        const canonicalBlocksRepository = new PostgresCanonicalBlocksRepository(db.pool);
-        const canonicalTransactionsRepository = new PostgresCanonicalTransactionsRepository(db.pool);
-        const canonicalEventsRepository = new PostgresCanonicalEventsRepository(db.pool);
+        const blocksRepository = new PostgresBlocksRepository(db.pool);
+        const transactionsRepository = new PostgresTransactionsRepository(db.pool);
+        const eventsRepository = new PostgresEventsRepository(db.pool);
 
         const committedHash = hashFromNumber(9);
         await chainCursorRepository.insert({
@@ -69,7 +65,9 @@ describe("integration services: head/fetch/sequencer", () => {
             source,
             chainCursorRepository,
             blockJobsRepository,
-            rawBlocksRepository,
+            blocksRepository,
+            transactionsRepository,
+            eventsRepository,
             transactionManager,
         );
 
@@ -86,7 +84,9 @@ describe("integration services: head/fetch/sequencer", () => {
             },
             source,
             blockJobsRepository,
-            rawBlocksRepository,
+            blocksRepository,
+            transactionsRepository,
+            eventsRepository,
             transactionManager,
         );
 
@@ -98,10 +98,9 @@ describe("integration services: head/fetch/sequencer", () => {
             },
             source,
             chainCursorRepository,
-            rawBlocksRepository,
-            canonicalBlocksRepository,
-            canonicalTransactionsRepository,
-            canonicalEventsRepository,
+            blocksRepository,
+            transactionsRepository,
+            eventsRepository,
             blockJobsRepository,
             transactionManager,
         );
@@ -115,20 +114,18 @@ describe("integration services: head/fetch/sequencer", () => {
         expect(cursor?.lastCommittedHash).toBe(block12.block.hash);
 
         await expect(db.countRows("block_jobs", "status = 'committed'")).resolves.toBe(3);
-        await expect(db.countRows("raw_blocks")).resolves.toBe(3);
-        await expect(db.countRows("canonical_blocks")).resolves.toBe(3);
-        await expect(db.countRows("canonical_transactions")).resolves.toBe(3);
-        await expect(db.countRows("canonical_events")).resolves.toBe(3);
+        await expect(db.countRows("blocks")).resolves.toBe(3);
+        await expect(db.countRows("transactions")).resolves.toBe(3);
+        await expect(db.countRows("events")).resolves.toBe(3);
     });
 
     test("sequencer rolls back fetched data on parent hash mismatch", async () => {
         const transactionManager = new PostgresTransactionManager(db.pool);
         const chainCursorRepository = new PostgresChainCursorRepository(db.pool);
-        const rawBlocksRepository = new PostgresRawBlocksRepository(db.pool);
+        const blocksRepository = new PostgresBlocksRepository(db.pool);
         const blockJobsRepository = new PostgresBlockJobsRepository(db.pool);
-        const canonicalBlocksRepository = new PostgresCanonicalBlocksRepository(db.pool);
-        const canonicalTransactionsRepository = new PostgresCanonicalTransactionsRepository(db.pool);
-        const canonicalEventsRepository = new PostgresCanonicalEventsRepository(db.pool);
+        const transactionsRepository = new PostgresTransactionsRepository(db.pool);
+        const eventsRepository = new PostgresEventsRepository(db.pool);
         const committedHash = hashFromNumber(399);
         const wrongParentHash = hashFromNumber(12345);
         const committedBlock = buildFetchedBlock(399, hashFromNumber(398));
@@ -141,16 +138,29 @@ describe("integration services: head/fetch/sequencer", () => {
             lastCommittedBlock: 399,
             lastCommittedHash: committedHash,
         });
-        await blockJobsRepository.enqueueRange(CHAIN_ID, 400, 400);
-        await canonicalBlocksRepository.insert(committedBlock.block);
-        await rawBlocksRepository.save({
+        await db.pool.query(
+            `INSERT INTO block_jobs (chain_id, block_number, status)
+             VALUES ($1, $2, 'fetched')`,
+            [CHAIN_ID, 400]
+        );
+        await blocksRepository.insert({
+            chainId: CHAIN_ID,
+            blockNumber: committedBlock.block.number,
+            blockHash: committedBlock.block.hash,
+            parentHash: committedBlock.block.parentHash,
+            blockTimestamp: committedBlock.block.timestamp,
+            fetchedAt: new Date(),
+        });
+        await blocksRepository.insert({
             chainId: CHAIN_ID,
             blockNumber: 400,
             blockHash: block.block.hash,
             parentHash: block.block.parentHash,
-            payload: block,
+            blockTimestamp: block.block.timestamp,
             fetchedAt: new Date(),
         });
+        await transactionsRepository.insertMany(block.transactions);
+        await eventsRepository.insertMany(block.logs);
 
         const sequencerService = new SequencerService(
             {
@@ -160,10 +170,9 @@ describe("integration services: head/fetch/sequencer", () => {
             },
             source,
             chainCursorRepository,
-            rawBlocksRepository,
-            canonicalBlocksRepository,
-            canonicalTransactionsRepository,
-            canonicalEventsRepository,
+            blocksRepository,
+            transactionsRepository,
+            eventsRepository,
             blockJobsRepository,
             transactionManager,
         );
@@ -173,10 +182,9 @@ describe("integration services: head/fetch/sequencer", () => {
         const cursor = await chainCursorRepository.get(CHAIN_ID);
         expect(cursor?.lastCommittedBlock).toBe(399);
         expect(cursor?.lastCommittedHash).toBe(committedHash);
-        await expect(db.countRows("canonical_blocks")).resolves.toBe(1);
-        await expect(db.countRows("canonical_transactions")).resolves.toBe(0);
-        await expect(db.countRows("canonical_events")).resolves.toBe(0);
-        await expect(db.countRows("raw_blocks")).resolves.toBe(0);
+        await expect(db.countRows("blocks")).resolves.toBe(1);
+        await expect(db.countRows("transactions")).resolves.toBe(0);
+        await expect(db.countRows("events")).resolves.toBe(0);
         await expect(db.countRows("block_jobs", "status = 'pending'")).resolves.toBe(0);
     });
 });

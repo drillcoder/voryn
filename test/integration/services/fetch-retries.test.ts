@@ -2,7 +2,9 @@ import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import type { FetchedBlock } from "../../../src/interfaces/chain.js";
 import { PostgresTransactionManager } from "../../../src/postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../../../src/repositories/postgres/block-jobs-repository.js";
-import { PostgresRawBlocksRepository } from "../../../src/repositories/postgres/raw-blocks-repository.js";
+import { PostgresBlocksRepository } from "../../../src/repositories/postgres/blocks-repository.js";
+import { PostgresEventsRepository } from "../../../src/repositories/postgres/events-repository.js";
+import { PostgresTransactionsRepository } from "../../../src/repositories/postgres/transactions-repository.js";
 import { FetchService } from "../../../src/services/fetch-service.js";
 import { buildFetchedBlock, CHAIN_ID, FETCH_INSTANCE_ID, hashFromNumber } from "../helpers/fixtures.js";
 import type { IsolatedDbContext } from "../helpers/test-db.js";
@@ -28,7 +30,9 @@ describe("integration services: fetch retries", () => {
     test("fetch worker retries failed jobs and then fetches successfully", async () => {
         const transactionManager = new PostgresTransactionManager(db.pool);
         const blockJobsRepository = new PostgresBlockJobsRepository(db.pool);
-        const rawBlocksRepository = new PostgresRawBlocksRepository(db.pool);
+        const blocksRepository = new PostgresBlocksRepository(db.pool);
+        const transactionsRepository = new PostgresTransactionsRepository(db.pool);
+        const eventsRepository = new PostgresEventsRepository(db.pool);
         const targetBlock = 200;
         const payload = buildFetchedBlock(targetBlock, hashFromNumber(199));
         let calls = 0;
@@ -68,13 +72,15 @@ describe("integration services: fetch retries", () => {
             },
             source,
             blockJobsRepository,
-            rawBlocksRepository,
+            blocksRepository,
+            transactionsRepository,
+            eventsRepository,
             transactionManager,
         );
 
         await service.execute();
         await expect(db.countRows("block_jobs", "status = 'failed'")).resolves.toBe(1);
-        await expect(db.countRows("raw_blocks")).resolves.toBe(0);
+        await expect(db.countRows("blocks")).resolves.toBe(0);
 
         await db.pool.query(
             `UPDATE block_jobs
@@ -103,13 +109,17 @@ describe("integration services: fetch retries", () => {
         expect(result.rows[0]?.attempts).toBe(2);
         expect(result.rows[0]?.next_retry_at).toBeNull();
         expect(result.rows[0]?.error).toBeNull();
-        await expect(db.countRows("raw_blocks")).resolves.toBe(1);
+        await expect(db.countRows("blocks")).resolves.toBe(1);
+        await expect(db.countRows("transactions")).resolves.toBe(1);
+        await expect(db.countRows("events")).resolves.toBe(1);
     });
 
     test("fetch worker takes over stale fetching claims", async () => {
         const transactionManager = new PostgresTransactionManager(db.pool);
         const blockJobsRepository = new PostgresBlockJobsRepository(db.pool);
-        const rawBlocksRepository = new PostgresRawBlocksRepository(db.pool);
+        const blocksRepository = new PostgresBlocksRepository(db.pool);
+        const transactionsRepository = new PostgresTransactionsRepository(db.pool);
+        const eventsRepository = new PostgresEventsRepository(db.pool);
         const targetBlock = 210;
         const payload = buildFetchedBlock(targetBlock, hashFromNumber(209));
 
@@ -148,7 +158,9 @@ describe("integration services: fetch retries", () => {
             },
             source,
             blockJobsRepository,
-            rawBlocksRepository,
+            blocksRepository,
+            transactionsRepository,
+            eventsRepository,
             transactionManager,
         );
 
@@ -171,6 +183,8 @@ describe("integration services: fetch retries", () => {
         expect(result.rows[0]?.attempts).toBe(2);
         expect(result.rows[0]?.claimed_by).toBeNull();
         expect(result.rows[0]?.claimed_at).toBeNull();
-        await expect(db.countRows("raw_blocks")).resolves.toBe(1);
+        await expect(db.countRows("blocks")).resolves.toBe(1);
+        await expect(db.countRows("transactions")).resolves.toBe(1);
+        await expect(db.countRows("events")).resolves.toBe(1);
     });
 });

@@ -54,6 +54,39 @@ test("listAfterPosition maps transaction rows", async () => {
     expect(calls[0]?.[1]).toEqual([1, 10, 9, 0, 10]);
 });
 
+test("listAfterPosition maps transaction recipient address", async () => {
+    const toAddress = asAddress("0x2222222222222222222222222222222222222222");
+    const query = jest.fn(async () => ({
+        rows: [{
+            chain_id: 1,
+            block_number: "10",
+            block_hash: HASH_A,
+            transaction_index: 1,
+            transaction_hash: TX_HASH,
+            from_address: FROM,
+            to_address: toAddress,
+            value: "123",
+            data: DATA,
+        }],
+        rowCount: 1,
+    }));
+    const repository = new PostgresTransactionsRepository(createExecutor(query));
+
+    await expect(repository.listAfterPosition(1, 10, 9, 0, 10)).resolves.toEqual([
+        {
+            chainId: 1,
+            blockNumber: 10,
+            blockHash: HASH_A,
+            index: 1,
+            hash: TX_HASH,
+            from: FROM,
+            to: toAddress,
+            value: "123",
+            data: DATA,
+        },
+    ]);
+});
+
 test("insertMany skips when transaction list is empty", async () => {
     const query = jest.fn();
     const repository = new PostgresTransactionsRepository(createExecutor(query));
@@ -103,4 +136,11 @@ test("deleteAfterBlockNumber deletes transactions after block number", async () 
     const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
     expect(calls[0]?.[0]).toContain("block_number > $2");
     expect(calls[0]?.[1]).toEqual([1, 10]);
+});
+
+test("deleteAfterBlockNumber returns zero when rowCount is null", async () => {
+    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const repository = new PostgresTransactionsRepository(createExecutor(query));
+
+    await expect(repository.deleteAfterBlockNumber(1, 10)).resolves.toBe(0);
 });

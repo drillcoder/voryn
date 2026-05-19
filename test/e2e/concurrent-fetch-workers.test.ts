@@ -1,12 +1,9 @@
 import { PostgresTransactionManager } from "../../src/postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../../src/repositories/postgres/block-jobs-repository.js";
-import { PostgresCanonicalBlocksRepository } from "../../src/repositories/postgres/canonical-blocks-repository.js";
-import { PostgresCanonicalEventsRepository } from "../../src/repositories/postgres/canonical-events-repository.js";
-import {
-    PostgresCanonicalTransactionsRepository
-} from "../../src/repositories/postgres/canonical-transactions-repository.js";
+import { PostgresBlocksRepository } from "../../src/repositories/postgres/blocks-repository.js";
 import { PostgresChainCursorRepository } from "../../src/repositories/postgres/chain-cursor-repository.js";
-import { PostgresRawBlocksRepository } from "../../src/repositories/postgres/raw-blocks-repository.js";
+import { PostgresEventsRepository } from "../../src/repositories/postgres/events-repository.js";
+import { PostgresTransactionsRepository } from "../../src/repositories/postgres/transactions-repository.js";
 import { FetchWorker } from "../../src/workers/fetch-worker.js";
 import { HeadWorker } from "../../src/workers/head-worker.js";
 import { SequencerWorker } from "../../src/workers/sequencer-worker.js";
@@ -42,10 +39,9 @@ describe("e2e concurrent fetch workers", () => {
         const transactionManager = new PostgresTransactionManager(db.pool);
         const chainCursorRepository = new PostgresChainCursorRepository(db.pool);
         const blockJobsRepository = new PostgresBlockJobsRepository(db.pool);
-        const rawBlocksRepository = new PostgresRawBlocksRepository(db.pool);
-        const canonicalBlocksRepository = new PostgresCanonicalBlocksRepository(db.pool);
-        const canonicalTransactionsRepository = new PostgresCanonicalTransactionsRepository(db.pool);
-        const canonicalEventsRepository = new PostgresCanonicalEventsRepository(db.pool);
+        const blocksRepository = new PostgresBlocksRepository(db.pool);
+        const transactionsRepository = new PostgresTransactionsRepository(db.pool);
+        const eventsRepository = new PostgresEventsRepository(db.pool);
 
         const committedHash = hashFromNumber(9);
         await chainCursorRepository.insert({
@@ -72,7 +68,9 @@ describe("e2e concurrent fetch workers", () => {
             overrides: {
                 chainCursorRepository,
                 blockJobsRepository,
-                rawBlocksRepository,
+                blocksRepository,
+                transactionsRepository,
+                eventsRepository,
                 transactionManager,
                 leaderLock: createLeaderLock(),
             },
@@ -90,7 +88,9 @@ describe("e2e concurrent fetch workers", () => {
             source,
             overrides: {
                 blockJobsRepository,
-                rawBlocksRepository,
+                blocksRepository,
+                transactionsRepository,
+                eventsRepository,
                 transactionManager,
             },
         });
@@ -107,7 +107,9 @@ describe("e2e concurrent fetch workers", () => {
             source,
             overrides: {
                 blockJobsRepository,
-                rawBlocksRepository,
+                blocksRepository,
+                transactionsRepository,
+                eventsRepository,
                 transactionManager,
             },
         });
@@ -116,10 +118,9 @@ describe("e2e concurrent fetch workers", () => {
             source,
             overrides: {
                 chainCursorRepository,
-                rawBlocksRepository,
-                canonicalBlocksRepository,
-                canonicalTransactionsRepository,
-                canonicalEventsRepository,
+                blocksRepository,
+                transactionsRepository,
+                eventsRepository,
                 blockJobsRepository,
                 transactionManager,
                 leaderLock: createLeaderLock(),
@@ -150,8 +151,9 @@ describe("e2e concurrent fetch workers", () => {
             await expect(
                 db.countRows("block_jobs", "status = 'committed' AND block_number BETWEEN 10 AND 16")
             ).resolves.toBe(7);
-            await expect(db.countRows("raw_blocks", "block_number BETWEEN 10 AND 16")).resolves.toBe(7);
-            await expect(db.countRows("canonical_blocks", "block_number BETWEEN 10 AND 16")).resolves.toBe(7);
+            await expect(db.countRows("blocks", "block_number BETWEEN 10 AND 16")).resolves.toBe(7);
+            await expect(db.countRows("transactions", "block_number BETWEEN 10 AND 16")).resolves.toBe(7);
+            await expect(db.countRows("events", "block_number BETWEEN 10 AND 16")).resolves.toBe(7);
         } finally {
             await stopWorkers([headWorker, fetchWorkerA, fetchWorkerB, sequencerWorker]);
         }

@@ -1,8 +1,7 @@
 import type { EventReactionHandler, TransactionReactionHandler } from "../../../src/interfaces/reaction.js";
-import { PostgresCanonicalEventsRepository } from "../../../src/repositories/postgres/canonical-events-repository.js";
-import {
-    PostgresCanonicalTransactionsRepository
-} from "../../../src/repositories/postgres/canonical-transactions-repository.js";
+import { PostgresChainCursorRepository } from "../../../src/repositories/postgres/chain-cursor-repository.js";
+import { PostgresEventsRepository } from "../../../src/repositories/postgres/events-repository.js";
+import { PostgresTransactionsRepository } from "../../../src/repositories/postgres/transactions-repository.js";
 import { PostgresWorkerCursorsRepository } from "../../../src/repositories/postgres/worker-cursors-repository.js";
 import { EventReactionService } from "../../../src/services/event-reaction-service.js";
 import { TransactionReactionService } from "../../../src/services/transaction-reaction-service.js";
@@ -34,31 +33,43 @@ describe("integration services: reaction", () => {
     });
 
     test("event and transaction reaction services process batches and advance cursors", async () => {
-        const canonicalTransactionsRepository = new PostgresCanonicalTransactionsRepository(db.pool);
-        const canonicalEventsRepository = new PostgresCanonicalEventsRepository(db.pool);
+        const chainCursorRepository = new PostgresChainCursorRepository(db.pool);
+        const transactionsRepository = new PostgresTransactionsRepository(db.pool);
+        const eventsRepository = new PostgresEventsRepository(db.pool);
         const workerCursorsRepository = new PostgresWorkerCursorsRepository(db.pool);
         const block = buildFetchedBlock(500, hashFromNumber(499), 3);
-        const handledEventSeqs: bigint[] = [];
-        const handledTxSeqs: bigint[] = [];
+        const handledEventIndexes: number[] = [];
+        const handledTxIndexes: number[] = [];
 
-        await canonicalTransactionsRepository.insertMany(
+        await chainCursorRepository.insert({
+            chainId: CHAIN_ID,
+            lastEnqueuedBlock: block.block.number,
+            lastCommittedBlock: block.block.number,
+            lastCommittedHash: block.block.hash,
+        });
+        await transactionsRepository.insertMany(block.transactions);
+        await eventsRepository.insertMany(block.logs);
+        await workerCursorsRepository.insert(
+            REACTION_WORKER_EVENT,
             CHAIN_ID,
-            block.block.number,
-            block.block.hash,
-            block.transactions
+            "event",
+            { lastBlockNumber: 499, lastTransactionIndex: -1, lastLogIndex: -1 }
         );
-        await canonicalEventsRepository.insertMany(CHAIN_ID, block.block.number, block.block.hash, block.logs);
-        await workerCursorsRepository.insert(REACTION_WORKER_EVENT, CHAIN_ID, "event", 0n);
-        await workerCursorsRepository.insert(REACTION_WORKER_TX, CHAIN_ID, "tx", 0n);
+        await workerCursorsRepository.insert(
+            REACTION_WORKER_TX,
+            CHAIN_ID,
+            "tx",
+            { lastBlockNumber: 499, lastTransactionIndex: -1 }
+        );
 
         const eventHandler: EventReactionHandler = {
             async handle(event): Promise<void> {
-                handledEventSeqs.push(event.seq);
+                handledEventIndexes.push(event.index);
             },
         };
         const txHandler: TransactionReactionHandler = {
             async handle(transaction): Promise<void> {
-                handledTxSeqs.push(transaction.seq);
+                handledTxIndexes.push(transaction.index);
             },
         };
 
@@ -70,7 +81,8 @@ describe("integration services: reaction", () => {
                 batchSize: 2,
             },
             eventHandler,
-            canonicalEventsRepository,
+            chainCursorRepository,
+            eventsRepository,
             workerCursorsRepository,
         );
         const txService = new TransactionReactionService(
@@ -81,7 +93,8 @@ describe("integration services: reaction", () => {
                 batchSize: 2,
             },
             txHandler,
-            canonicalTransactionsRepository,
+            chainCursorRepository,
+            transactionsRepository,
             workerCursorsRepository,
         );
 
@@ -90,12 +103,20 @@ describe("integration services: reaction", () => {
         await txService.execute();
         await txService.execute();
 
-        expect(handledEventSeqs).toEqual([1n, 2n, 3n]);
-        expect(handledTxSeqs).toEqual([1n, 2n, 3n]);
+        expect(handledEventIndexes).toEqual([0, 1, 2]);
+        expect(handledTxIndexes).toEqual([0, 1, 2]);
 
         const eventCursor = await workerCursorsRepository.get(REACTION_WORKER_EVENT, CHAIN_ID, "event");
         const txCursor = await workerCursorsRepository.get(REACTION_WORKER_TX, CHAIN_ID, "tx");
-        expect(eventCursor?.lastSeq).toBe(3n);
-        expect(txCursor?.lastSeq).toBe(3n);
+        expect(eventCursor?.position).toEqual({
+            lastBlockNumber: 500,
+            lastTransactionIndex: 2,
+            lastLogIndex: 2,
+        });
+        expect(txCursor?.position).toEqual({
+            lastBlockNumber: 500,
+            lastTransactionIndex: 2,
+            lastLogIndex: null,
+        });
     });
 });
