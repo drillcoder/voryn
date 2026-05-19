@@ -3,11 +3,10 @@ import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import { SequencerWorker } from "../../../src/workers/sequencer-worker.js";
 import {
     createNoopBlockJobsRepository,
-    createNoopCanonicalBlocksRepository,
-    createNoopCanonicalEventsRepository,
-    createNoopCanonicalTransactionsRepository,
+    createNoopBlocksRepository,
     createNoopChainCursorRepository,
-    createNoopRawBlocksRepository,
+    createNoopEventsRepository,
+    createNoopTransactionsRepository,
     HASH_A,
     invokeStartLogMeta,
     invokeTick,
@@ -44,10 +43,9 @@ test("sequencer worker create wires service execution", async () => {
         source,
         overrides: {
             chainCursorRepository: { ...createNoopChainCursorRepository(), get: getCursor },
-            rawBlocksRepository: createNoopRawBlocksRepository(),
-            canonicalBlocksRepository: createNoopCanonicalBlocksRepository(),
-            canonicalTransactionsRepository: createNoopCanonicalTransactionsRepository(),
-            canonicalEventsRepository: createNoopCanonicalEventsRepository(),
+            blocksRepository: createNoopBlocksRepository(),
+            transactionsRepository: createNoopTransactionsRepository(),
+            eventsRepository: createNoopEventsRepository(),
             blockJobsRepository: createNoopBlockJobsRepository(),
             transactionManager,
             leaderLock,

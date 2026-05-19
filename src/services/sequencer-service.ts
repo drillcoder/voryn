@@ -4,11 +4,10 @@ import { noopLogger } from "../interfaces/logger.js";
 import type { ChainCursor } from "../interfaces/pipeline.js";
 import type {
     BlockJobsRepository,
-    CanonicalBlocksRepository,
-    CanonicalEventsRepository,
-    CanonicalTransactionsRepository,
+    BlocksRepository,
     ChainCursorRepository,
-    RawBlocksRepository,
+    EventsRepository,
+    TransactionsRepository,
 } from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import type { SequencerWorkerConfig } from "../interfaces/runtime.js";
@@ -24,10 +23,9 @@ export class SequencerService {
         private readonly config: SequencerWorkerConfig,
         private readonly source: BlockSource,
         private readonly chainCursorRepository: ChainCursorRepository,
-        private readonly rawBlocksRepository: RawBlocksRepository,
-        private readonly canonicalBlocksRepository: CanonicalBlocksRepository,
-        private readonly canonicalTransactionsRepository: CanonicalTransactionsRepository,
-        private readonly canonicalEventsRepository: CanonicalEventsRepository,
+        private readonly blocksRepository: BlocksRepository,
+        private readonly transactionsRepository: TransactionsRepository,
+        private readonly eventsRepository: EventsRepository,
         private readonly blockJobsRepository: BlockJobsRepository,
         private readonly transactionManager: TransactionManager,
         private readonly logger: Logger = noopLogger,
@@ -46,44 +44,53 @@ export class SequencerService {
             }
 
             const nextBlock = cursor.lastCommittedBlock + 1;
-            const rawBlock = await this.rawBlocksRepository.get(chainId, nextBlock);
-            if (rawBlock === null) {
-                await this.logBlockedByMissingRawBlock(chainId, nextBlock);
+            const job = await this.blockJobsRepository.get(chainId, nextBlock);
+            if (job?.status !== "fetched") {
+                this.logBlockedByJobStatus(chainId, nextBlock, job);
                 break;
             }
 
-            if (rawBlock.parentHash !== cursor.lastCommittedHash) {
+            const block = await this.blocksRepository.get(chainId, nextBlock);
+            if (block === null) {
+                throw new Error(
+                    `Fetched block data is missing for chain ${String(chainId)} block ${String(nextBlock)}`
+                );
+            }
+
+            if (block.parentHash !== cursor.lastCommittedHash) {
                 await this.rollbackReorg(cursor);
                 break;
             }
 
             const committedBlock = await this.transactionManager.run(async (transaction): Promise<number> => {
-                await this.canonicalBlocksRepository.insert(rawBlock.payload.block, transaction);
-                await this.canonicalTransactionsRepository.insertMany(
-                    rawBlock.payload.block.chainId,
-                    rawBlock.payload.block.number,
-                    rawBlock.blockHash,
-                    rawBlock.payload.transactions,
-                    transaction
-                );
-                await this.canonicalEventsRepository.insertMany(
-                    rawBlock.payload.block.chainId,
-                    rawBlock.payload.block.number,
-                    rawBlock.blockHash,
-                    rawBlock.payload.logs,
-                    transaction
-                );
+                const currentJob = await this.blockJobsRepository.get(chainId, nextBlock, transaction);
+                if (currentJob?.status !== "fetched") {
+                    throw new Error(
+                        `Fetched block job changed before commit for chain ${String(chainId)} `
+                        + `block ${String(nextBlock)}`
+                    );
+                }
+
+                const currentBlock = await this.blocksRepository.get(chainId, nextBlock, transaction);
+                if (currentBlock?.parentHash !== cursor.lastCommittedHash) {
+                    throw new Error(
+                        `Fetched block data changed before commit for chain ${String(chainId)} `
+                        + `block ${String(nextBlock)}`
+                    );
+                }
+
                 await this.chainCursorRepository.advanceLastCommitted(
                     cursor.chainId,
                     cursor.lastCommittedBlock,
                     cursor.lastCommittedHash,
-                    rawBlock.blockNumber,
-                    rawBlock.blockHash,
+                    currentBlock.blockNumber,
+                    currentBlock.blockHash,
                     transaction
                 );
-                await this.blockJobsRepository.markCommitted(cursor.chainId, rawBlock.blockNumber, transaction);
-                return rawBlock.blockNumber;
+                await this.blockJobsRepository.markCommitted(cursor.chainId, currentBlock.blockNumber, transaction);
+                return currentBlock.blockNumber;
             });
+
             committedBlocks.push(committedBlock);
         }
 
@@ -99,8 +106,11 @@ export class SequencerService {
         }
     }
 
-    private async logBlockedByMissingRawBlock(chainId: ChainId, blockNumber: BlockNumber): Promise<void> {
-        const job = await this.blockJobsRepository.get(chainId, blockNumber);
+    private logBlockedByJobStatus(
+        chainId: ChainId,
+        blockNumber: BlockNumber,
+        job: Awaited<ReturnType<BlockJobsRepository["get"]>>
+    ): void {
         if (job === null) {
             this.logger.debug("sequencer_waiting_for_block_job", { chainId, blockNumber });
             return;
@@ -154,32 +164,27 @@ export class SequencerService {
             }
 
             const nextBlock = cursor.lastCommittedBlock + 1;
-            const rawBlock = await this.rawBlocksRepository.get(chainId, nextBlock, transaction);
-            if (rawBlock === null || rawBlock.parentHash === cursor.lastCommittedHash) {
+            const block = await this.blocksRepository.get(chainId, nextBlock, transaction);
+            if (block === null || block.parentHash === cursor.lastCommittedHash) {
                 return null;
             }
 
-            const deletedCanonicalEvents = await this.canonicalEventsRepository.deleteAfterBlock(
+            const deletedEvents = await this.eventsRepository.deleteAfterBlockNumber(
                 chainId,
                 ancestor.blockNumber,
                 transaction
             );
-            const deletedCanonicalTransactions = await this.canonicalTransactionsRepository.deleteAfterBlock(
+            const deletedTransactions = await this.transactionsRepository.deleteAfterBlockNumber(
                 chainId,
                 ancestor.blockNumber,
                 transaction
             );
-            const deletedCanonicalBlocks = await this.canonicalBlocksRepository.deleteAfterBlock(
+            const deletedBlocks = await this.blocksRepository.deleteAfterBlockNumber(
                 chainId,
                 ancestor.blockNumber,
                 transaction
             );
-            const deletedRawBlocks = await this.rawBlocksRepository.deleteAfterBlock(
-                chainId,
-                ancestor.blockNumber,
-                transaction
-            );
-            const deletedBlockJobs = await this.blockJobsRepository.deleteAfterBlock(
+            const deletedBlockJobs = await this.blockJobsRepository.deleteAfterBlockNumber(
                 chainId,
                 ancestor.blockNumber,
                 transaction
@@ -198,10 +203,9 @@ export class SequencerService {
                 ancestorBlock: ancestor.blockNumber,
                 ancestorHash: ancestor.blockHash,
                 deletedBlockJobs,
-                deletedRawBlocks,
-                deletedCanonicalBlocks,
-                deletedCanonicalTransactions,
-                deletedCanonicalEvents,
+                deletedBlocks,
+                deletedTransactions,
+                deletedEvents,
             };
         });
 
@@ -212,15 +216,15 @@ export class SequencerService {
 
     private async findCommonAncestor(cursor: ChainCursor): Promise<CommonAncestor> {
         for (let blockNumber = cursor.lastCommittedBlock; blockNumber >= 0; blockNumber--) {
-            const [canonicalBlock, sourceBlock] = await Promise.all([
-                this.canonicalBlocksRepository.get(cursor.chainId, blockNumber),
+            const [pipelineBlock, sourceBlock] = await Promise.all([
+                this.blocksRepository.get(cursor.chainId, blockNumber),
                 this.source.getBlockData(cursor.chainId, blockNumber),
             ]);
 
-            if (canonicalBlock !== null && canonicalBlock.hash === sourceBlock.block.hash) {
+            if (pipelineBlock !== null && pipelineBlock.blockHash === sourceBlock.block.hash) {
                 return {
                     blockNumber,
-                    blockHash: canonicalBlock.hash,
+                    blockHash: pipelineBlock.blockHash,
                 };
             }
         }

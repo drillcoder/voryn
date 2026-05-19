@@ -2,14 +2,13 @@ import type { FetchedBlock } from "../../../src/interfaces/chain.js";
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import type { DbExecutor } from "../../../src/interfaces/db.js";
 import type { Logger } from "../../../src/interfaces/logger.js";
-import type { ChainCursor, RawBlock } from "../../../src/interfaces/pipeline.js";
+import type { BlockJob, ChainCursor, PipelineBlock } from "../../../src/interfaces/pipeline.js";
 import type {
     BlockJobsRepository,
-    CanonicalBlocksRepository,
-    CanonicalEventsRepository,
-    CanonicalTransactionsRepository,
+    BlocksRepository,
     ChainCursorRepository,
-    RawBlocksRepository,
+    EventsRepository,
+    TransactionsRepository,
 } from "../../../src/interfaces/repositories.js";
 import type { SequencerWorkerConfig } from "../../../src/interfaces/runtime.js";
 import type { TransactionManager } from "../../../src/interfaces/transaction-manager.js";
@@ -40,27 +39,17 @@ const createCursor = (
     updatedAt: new Date(),
 });
 
-const createRawBlock = (
+const createBlock = (
     blockNumber: BlockNumber,
     blockHash: HashHex,
     parentHash: HashHex,
     timestamp = 1,
-): RawBlock => ({
+): PipelineBlock => ({
     chainId: 10,
     blockNumber,
     blockHash,
     parentHash,
-    payload: {
-        block: {
-            chainId: 10,
-            number: blockNumber,
-            hash: blockHash,
-            parentHash,
-            timestamp,
-        },
-        transactions: [],
-        logs: [],
-    },
+    blockTimestamp: timestamp,
     fetchedAt: new Date(),
 });
 
@@ -79,6 +68,17 @@ const createFetchedBlock = (
     },
     transactions: [],
     logs: [],
+});
+
+const createJob = (blockNumber: BlockNumber, status: BlockJob["status"] = "fetched"): BlockJob => ({
+    chainId: 10,
+    blockNumber,
+    status,
+    attempts: 1,
+    nextRetryAt: null,
+    error: null,
+    claimedAt: null,
+    updatedAt: new Date(),
 });
 
 const createSource = (
@@ -103,53 +103,39 @@ const createChainCursorRepository = (
     ...overrides,
 });
 
-const createRawBlocksRepository = (
-    getRaw: (_chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor) => RawBlock | null,
-    overrides: Partial<RawBlocksRepository> = {},
-): RawBlocksRepository => ({
-    save: async () => undefined,
-    get: async (chainId, blockNumber, transaction) => getRaw(chainId, blockNumber, transaction),
+const createBlocksRepository = (
+    getBlock: (_chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor) => PipelineBlock | null,
+    overrides: Partial<BlocksRepository> = {},
+): BlocksRepository => ({
+    get: async (chainId, blockNumber, transaction) => getBlock(chainId, blockNumber, transaction),
     getProgress: async () => null,
-    deleteUpToBlock: async () => 0,
-    deleteAfterBlock: async () => 0,
-    ...overrides,
-});
-
-const createCanonicalBlocksRepository = (
-    overrides: Partial<CanonicalBlocksRepository> = {},
-): CanonicalBlocksRepository => ({
     insert: async () => undefined,
-    get: async () => null,
-    deleteUpToBlock: async () => 0,
-    deleteAfterBlock: async () => 0,
+    deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteAfterBlockNumber: async () => 0,
     ...overrides,
 });
 
-const createCanonicalTransactionsRepository = (
-    overrides: Partial<CanonicalTransactionsRepository> = {},
-): CanonicalTransactionsRepository => ({
-    readFromSeq: async () => [],
-    maxSeq: async () => 0n,
+const createTransactionsRepository = (
+    overrides: Partial<TransactionsRepository> = {},
+): TransactionsRepository => ({
+    listAfterPosition: async () => [],
     insertMany: async () => undefined,
-    deleteUpToBlock: async () => 0,
-    deleteAfterBlock: async () => 0,
+    deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteAfterBlockNumber: async () => 0,
     ...overrides,
 });
 
-const createCanonicalEventsRepository = (
-    overrides: Partial<CanonicalEventsRepository> = {},
-): CanonicalEventsRepository => ({
-    readFromSeq: async () => [],
-    maxSeq: async () => 0n,
+const createEventsRepository = (overrides: Partial<EventsRepository> = {}): EventsRepository => ({
+    listAfterPosition: async () => [],
     insertMany: async () => undefined,
-    deleteUpToBlock: async () => 0,
-    deleteAfterBlock: async () => 0,
+    deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteAfterBlockNumber: async () => 0,
     ...overrides,
 });
 
 const createBlockJobsRepository = (overrides: Partial<BlockJobsRepository> = {}): BlockJobsRepository => ({
     enqueueRange: async () => undefined,
-    get: async () => null,
+    get: async (_chainId, blockNumber) => createJob(blockNumber),
     claimForFetch: async () => null,
     markFetched: async () => undefined,
     markFetchFailed: async () => undefined,
@@ -163,18 +149,17 @@ const createBlockJobsRepository = (overrides: Partial<BlockJobsRepository> = {})
     }),
     listFailedBlocks: async () => [],
     retryFailed: async () => 0,
-    deleteUpToBlock: async () => 0,
-    deleteAfterBlock: async () => 0,
+    deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteAfterBlockNumber: async () => 0,
     ...overrides,
 });
 
 const createService = (options: {
     source?: BlockSource;
     chainCursorRepository: ChainCursorRepository;
-    rawBlocksRepository: RawBlocksRepository;
-    canonicalBlocksRepository?: CanonicalBlocksRepository;
-    canonicalTransactionsRepository?: CanonicalTransactionsRepository;
-    canonicalEventsRepository?: CanonicalEventsRepository;
+    blocksRepository: BlocksRepository;
+    transactionsRepository?: TransactionsRepository;
+    eventsRepository?: EventsRepository;
     blockJobsRepository?: BlockJobsRepository;
     transactionManager: TransactionManager;
     config?: Partial<SequencerWorkerConfig>;
@@ -188,112 +173,32 @@ const createService = (options: {
     },
     options.source ?? createSource(),
     options.chainCursorRepository,
-    options.rawBlocksRepository,
-    options.canonicalBlocksRepository ?? createCanonicalBlocksRepository(),
-    options.canonicalTransactionsRepository ?? createCanonicalTransactionsRepository(),
-    options.canonicalEventsRepository ?? createCanonicalEventsRepository(),
+    options.blocksRepository,
+    options.transactionsRepository ?? createTransactionsRepository(),
+    options.eventsRepository ?? createEventsRepository(),
     options.blockJobsRepository ?? createBlockJobsRepository(),
     options.transactionManager,
     options.logger,
 );
 
-test("sequencer service commits next block", async () => {
+test("sequencer service commits next fetched block by advancing cursor and marking job committed", async () => {
     const calls: string[] = [];
     const { manager, transaction } = createPassThroughManager();
     const cursor = createCursor(40, HASH_A, 50);
-    const rawBlock = createRawBlock(41, HASH_B, HASH_A);
+    const block = createBlock(41, HASH_B, HASH_A);
 
     const worker = createService({
-        chainCursorRepository: createChainCursorRepository(() => cursor, {
-            advanceLastCommitted: async (_chainId, _prevBlock, _prevHash, blockNumber, _blockHash, tx) => {
-                calls.push(`advance:${String(blockNumber)}:${String(tx === transaction)}`);
-            },
-        }),
-        rawBlocksRepository: createRawBlocksRepository(() => rawBlock),
-        canonicalBlocksRepository: createCanonicalBlocksRepository({
-            insert: async () => {
-                calls.push("insert-block");
-            },
-        }),
-        canonicalTransactionsRepository: createCanonicalTransactionsRepository({
-            insertMany: async () => {
-                calls.push("insert-tx");
-            },
-        }),
-        canonicalEventsRepository: createCanonicalEventsRepository({
-            insertMany: async () => {
-                calls.push("insert-event");
-            },
-        }),
-        blockJobsRepository: createBlockJobsRepository({
-            markCommitted: async () => {
-                calls.push("mark-committed");
-            },
-        }),
-        transactionManager: manager,
-    });
-
-    await worker.execute();
-
-    expect(calls).toEqual(["insert-block", "insert-tx", "insert-event", "advance:41:true", "mark-committed"]);
-});
-
-test("sequencer service exits when cursor is missing", async () => {
-    const { manager } = createPassThroughManager();
-    const worker = createService({
-        chainCursorRepository: createChainCursorRepository(() => null),
-        rawBlocksRepository: createRawBlocksRepository(() => null),
-        transactionManager: manager,
-    });
-
-    await expect(worker.execute()).resolves.toBeUndefined();
-});
-
-test("sequencer service commits multiple blocks in one tick", async () => {
-    const calls: string[] = [];
-    const { manager, transaction } = createPassThroughManager();
-    const cursor = createCursor(40, HASH_A, 50);
-    const hash41 = asHash32("0x1111111111111111111111111111111111111111111111111111111111111111");
-    const hash42 = asHash32("0x2222222222222222222222222222222222222222222222222222222222222222");
-
-    const worker = createService({
-        config: { maxBlocksPerTick: 2 },
         chainCursorRepository: createChainCursorRepository(() => cursor, {
             advanceLastCommitted: async (_chainId, _prevBlock, _prevHash, blockNumber, blockHash, tx) => {
+                calls.push(`advance:${String(blockNumber)}:${String(blockHash)}:${String(tx === transaction)}`);
                 cursor.lastCommittedBlock = blockNumber;
                 cursor.lastCommittedHash = blockHash;
-                calls.push(`advance:${String(blockNumber)}:${String(tx === transaction)}`);
             },
         }),
-        rawBlocksRepository: createRawBlocksRepository((_chainId, blockNumber) => {
-            if (blockNumber === 41) {
-                return createRawBlock(41, hash41, HASH_A, 1);
-            }
-
-            if (blockNumber === 42) {
-                return createRawBlock(42, hash42, hash41, 2);
-            }
-
-            return null;
-        }),
-        canonicalBlocksRepository: createCanonicalBlocksRepository({
-            insert: async (block) => {
-                calls.push(`insert-block:${String(block.number)}`);
-            },
-        }),
-        canonicalTransactionsRepository: createCanonicalTransactionsRepository({
-            insertMany: async (_chainId, blockNumber) => {
-                calls.push(`insert-tx:${String(blockNumber)}`);
-            },
-        }),
-        canonicalEventsRepository: createCanonicalEventsRepository({
-            insertMany: async (_chainId, blockNumber) => {
-                calls.push(`insert-event:${String(blockNumber)}`);
-            },
-        }),
+        blocksRepository: createBlocksRepository(() => block),
         blockJobsRepository: createBlockJobsRepository({
-            markCommitted: async (_chainId, blockNumber) => {
-                calls.push(`mark-committed:${String(blockNumber)}`);
+            markCommitted: async (_chainId, blockNumber, tx) => {
+                calls.push(`mark-committed:${String(blockNumber)}:${String(tx === transaction)}`);
             },
         }),
         transactionManager: manager,
@@ -302,125 +207,58 @@ test("sequencer service commits multiple blocks in one tick", async () => {
     await worker.execute();
 
     expect(calls).toEqual([
-        "insert-block:41",
-        "insert-tx:41",
-        "insert-event:41",
-        "advance:41:true",
-        "mark-committed:41",
-        "insert-block:42",
-        "insert-tx:42",
-        "insert-event:42",
-        "advance:42:true",
-        "mark-committed:42",
+        `advance:41:${String(HASH_B)}:true`,
+        "mark-committed:41:true",
     ]);
 });
 
-test("sequencer service exits when raw block is missing", async () => {
+test("sequencer service commits multiple fetched blocks in one tick", async () => {
+    const committed: number[] = [];
     const { manager } = createPassThroughManager();
-    const worker = createService({
-        chainCursorRepository: createChainCursorRepository(() => createCursor(9, HASH_A, 10)),
-        rawBlocksRepository: createRawBlocksRepository(() => null),
-        transactionManager: manager,
-    });
+    const cursor = createCursor(40, HASH_A, 50);
+    const hash41 = asHash32("0x1111111111111111111111111111111111111111111111111111111111111111");
+    const hash42 = asHash32("0x2222222222222222222222222222222222222222222222222222222222222222");
 
-    await expect(worker.execute()).resolves.toBeUndefined();
-});
-
-test("sequencer service warns when blocked by exhausted failed job", async () => {
-    const { manager } = createPassThroughManager();
-    const warn = jest.fn();
-    const updatedAt = new Date("2026-03-30T10:01:10.000Z");
     const worker = createService({
-        chainCursorRepository: createChainCursorRepository(() => createCursor(9, HASH_A, 10)),
-        rawBlocksRepository: createRawBlocksRepository(() => null),
+        config: { maxBlocksPerTick: 2 },
+        chainCursorRepository: createChainCursorRepository(() => cursor, {
+            advanceLastCommitted: async (_chainId, _prevBlock, _prevHash, blockNumber, blockHash) => {
+                cursor.lastCommittedBlock = blockNumber;
+                cursor.lastCommittedHash = blockHash;
+            },
+        }),
+        blocksRepository: createBlocksRepository((_chainId, blockNumber) => {
+            if (blockNumber === 41) {
+                return createBlock(41, hash41, HASH_A, 1);
+            }
+
+            if (blockNumber === 42) {
+                return createBlock(42, hash42, hash41, 2);
+            }
+
+            return null;
+        }),
         blockJobsRepository: createBlockJobsRepository({
-            get: async () => ({
-                chainId: 10,
-                blockNumber: 10,
-                status: "failed",
-                attempts: 3,
-                nextRetryAt: null,
-                error: "rpc timeout",
-                claimedAt: null,
-                updatedAt,
-            }),
+            markCommitted: async (_chainId, blockNumber) => {
+                committed.push(blockNumber);
+            },
         }),
         transactionManager: manager,
-        logger: {
-            debug: jest.fn(),
-            info: jest.fn(),
-            warn,
-            error: jest.fn(),
-        },
     });
 
     await worker.execute();
 
-    expect(warn).toHaveBeenCalledWith("sequencer_blocked_by_failed_job", {
-        chainId: 10,
-        blockNumber: 10,
-        attempts: 3,
-        error: "rpc timeout",
-        updatedAt,
-    });
+    expect(committed).toEqual([41, 42]);
 });
 
-test("sequencer service debugs when waiting for scheduled failed job retry", async () => {
-    const { manager } = createPassThroughManager();
-    const debug = jest.fn();
-    const nextRetryAt = new Date("2026-03-30T10:02:10.000Z");
-    const worker = createService({
-        chainCursorRepository: createChainCursorRepository(() => createCursor(9, HASH_A, 10)),
-        rawBlocksRepository: createRawBlocksRepository(() => null),
-        blockJobsRepository: createBlockJobsRepository({
-            get: async () => ({
-                chainId: 10,
-                blockNumber: 10,
-                status: "failed",
-                attempts: 2,
-                nextRetryAt,
-                error: "rpc timeout",
-                claimedAt: null,
-                updatedAt: new Date("2026-03-30T10:01:10.000Z"),
-            }),
-        }),
-        transactionManager: manager,
-        logger: {
-            debug,
-            info: jest.fn(),
-            warn: jest.fn(),
-            error: jest.fn(),
-        },
-    });
-
-    await worker.execute();
-
-    expect(debug).toHaveBeenCalledWith("sequencer_waiting_for_failed_job_retry", {
-        chainId: 10,
-        blockNumber: 10,
-        attempts: 2,
-        nextRetryAt,
-        error: "rpc timeout",
-    });
-});
-
-test("sequencer service debugs when waiting for block fetch", async () => {
+test("sequencer service waits when next job is not fetched", async () => {
     const { manager } = createPassThroughManager();
     const debug = jest.fn();
     const worker = createService({
         chainCursorRepository: createChainCursorRepository(() => createCursor(9, HASH_A, 10)),
-        rawBlocksRepository: createRawBlocksRepository(() => null),
+        blocksRepository: createBlocksRepository(() => createBlock(10, HASH_B, HASH_A)),
         blockJobsRepository: createBlockJobsRepository({
-            get: async () => ({
-                chainId: 10,
-                blockNumber: 10,
-                status: "fetching",
-                attempts: 2,
-                nextRetryAt: null,
-                error: null,
-                claimedAt: new Date("2026-03-30T10:00:00.000Z"),
-                updatedAt: new Date("2026-03-30T10:01:10.000Z"),
-            }),
+            get: async () => createJob(10, "fetching"),
         }),
         transactionManager: manager,
         logger: {
@@ -437,8 +275,19 @@ test("sequencer service debugs when waiting for block fetch", async () => {
         chainId: 10,
         blockNumber: 10,
         status: "fetching",
-        attempts: 2,
+        attempts: 1,
     });
+});
+
+test("sequencer service throws when fetched job has no block data", async () => {
+    const { manager } = createPassThroughManager();
+    const worker = createService({
+        chainCursorRepository: createChainCursorRepository(() => createCursor(9, HASH_A, 10)),
+        blocksRepository: createBlocksRepository(() => null),
+        transactionManager: manager,
+    });
+
+    await expect(worker.execute()).rejects.toThrow("Fetched block data is missing for chain 10 block 10");
 });
 
 test("sequencer service rolls back to common ancestor on parent hash mismatch", async () => {
@@ -450,66 +299,54 @@ test("sequencer service rolls back to common ancestor on parent hash mismatch", 
     const hash11 = asHash32("0x1212121212121212121212121212121212121212121212121212121212121212");
     const cursor = createCursor(10, oldHash10, 11);
 
-    const source = createSource(async (_chainId, blockNumber) => {
-        if (blockNumber === 10) {
-            return createFetchedBlock(10, newHash10, hash9, 10);
-        }
-
-        return createFetchedBlock(9, hash9, HASH_A, 9);
-    });
-
     const worker = createService({
-        source,
+        source: createSource(async (_chainId, blockNumber) => {
+            if (blockNumber === 10) {
+                return createFetchedBlock(10, newHash10, hash9, 10);
+            }
+
+            return createFetchedBlock(9, hash9, HASH_A, 9);
+        }),
         chainCursorRepository: createChainCursorRepository(() => cursor, {
-            getForUpdate: async (_chainId, tx) => {
-                calls.push(`lock:${String(tx === transaction)}`);
-                return cursor;
-            },
             setPositions: async (_chainId, blockNumber, blockHash, lastEnqueuedBlock, tx) => {
-                calls.push(
-                    `set-cursor:${String(blockNumber)}:${blockHash}:${String(lastEnqueuedBlock)}:`
-                    + String(tx === transaction)
-                );
+                calls.push(`set-cursor:${String(blockNumber)}:${String(tx === transaction)}`);
                 cursor.lastCommittedBlock = blockNumber;
                 cursor.lastCommittedHash = blockHash;
                 cursor.lastEnqueuedBlock = lastEnqueuedBlock;
             },
         }),
-        rawBlocksRepository: createRawBlocksRepository(() => createRawBlock(11, hash11, newHash10, 11), {
-            deleteAfterBlock: async (_chainId, blockNumber, tx) => {
-                calls.push(`delete-raw-after:${String(blockNumber)}:${String(tx === transaction)}`);
-                return 2;
-            },
-        }),
-        canonicalBlocksRepository: createCanonicalBlocksRepository({
-            get: async (_chainId, blockNumber) => {
-                if (blockNumber === 10) {
-                    return createFetchedBlock(10, oldHash10, hash9, 10).block;
-                }
+        blocksRepository: createBlocksRepository((_chainId, blockNumber) => {
+            if (blockNumber === 11) {
+                return createBlock(11, hash11, newHash10, 11);
+            }
 
-                return createFetchedBlock(9, hash9, HASH_A, 9).block;
-            },
-            deleteAfterBlock: async (_chainId, blockNumber, tx) => {
+            if (blockNumber === 10) {
+                return createBlock(10, oldHash10, hash9, 10);
+            }
+
+            return createBlock(9, hash9, HASH_A, 9);
+        }, {
+            deleteAfterBlockNumber: async (_chainId, blockNumber, tx) => {
                 calls.push(`delete-blocks-after:${String(blockNumber)}:${String(tx === transaction)}`);
                 return 1;
             },
         }),
-        canonicalTransactionsRepository: createCanonicalTransactionsRepository({
-            deleteAfterBlock: async (_chainId, blockNumber, tx) => {
+        transactionsRepository: createTransactionsRepository({
+            deleteAfterBlockNumber: async (_chainId, blockNumber, tx) => {
                 calls.push(`delete-tx-after:${String(blockNumber)}:${String(tx === transaction)}`);
-                return 1;
+                return 2;
             },
         }),
-        canonicalEventsRepository: createCanonicalEventsRepository({
-            deleteAfterBlock: async (_chainId, blockNumber, tx) => {
+        eventsRepository: createEventsRepository({
+            deleteAfterBlockNumber: async (_chainId, blockNumber, tx) => {
                 calls.push(`delete-events-after:${String(blockNumber)}:${String(tx === transaction)}`);
-                return 1;
+                return 3;
             },
         }),
         blockJobsRepository: createBlockJobsRepository({
-            deleteAfterBlock: async (_chainId, blockNumber, tx) => {
+            deleteAfterBlockNumber: async (_chainId, blockNumber, tx) => {
                 calls.push(`delete-jobs-after:${String(blockNumber)}:${String(tx === transaction)}`);
-                return 2;
+                return 4;
             },
         }),
         transactionManager: manager,
@@ -520,27 +357,22 @@ test("sequencer service rolls back to common ancestor on parent hash mismatch", 
     expect(cursor.lastCommittedBlock).toBe(9);
     expect(cursor.lastCommittedHash).toBe(hash9);
     expect(cursor.lastEnqueuedBlock).toBe(9);
-    expect(calls).toContain("lock:true");
-    expect(calls).toContain("delete-events-after:9:true");
-    expect(calls).toContain("delete-tx-after:9:true");
-    expect(calls).toContain("delete-blocks-after:9:true");
-    expect(calls).toContain("delete-raw-after:9:true");
-    expect(calls).toContain("delete-jobs-after:9:true");
+    expect(calls).toEqual([
+        "delete-events-after:9:true",
+        "delete-tx-after:9:true",
+        "delete-blocks-after:9:true",
+        "delete-jobs-after:9:true",
+        "set-cursor:9:true",
+    ]);
 });
 
-test("sequencer service logs rollback metadata", async () => {
+test("sequencer service logs rollback metadata for new tables", async () => {
     const { manager } = createPassThroughManager();
     const hash9 = asHash32("0x0909090909090909090909090909090909090909090909090909090909090909");
     const oldHash10 = asHash32("0x1010101010101010101010101010101010101010101010101010101010101010");
     const newHash10 = asHash32("0x1111111111111111111111111111111111111111111111111111111111111111");
     const cursor = createCursor(10, oldHash10, 11);
     const warn = jest.fn();
-    const logger: Logger = {
-        debug: jest.fn(),
-        info: jest.fn(),
-        warn,
-        error: jest.fn(),
-    };
 
     const worker = createService({
         source: createSource(async (_chainId, blockNumber) => {
@@ -550,37 +382,36 @@ test("sequencer service logs rollback metadata", async () => {
 
             return createFetchedBlock(9, hash9, HASH_A, 9);
         }),
-        chainCursorRepository: createChainCursorRepository(() => cursor, {
-            setPositions: async (_chainId, blockNumber, blockHash, lastEnqueuedBlock) => {
-                cursor.lastCommittedBlock = blockNumber;
-                cursor.lastCommittedHash = blockHash;
-                cursor.lastEnqueuedBlock = lastEnqueuedBlock;
-            },
-        }),
-        rawBlocksRepository: createRawBlocksRepository(() => createRawBlock(11, HASH_B, newHash10, 11), {
-            deleteAfterBlock: async () => 2,
-        }),
-        canonicalBlocksRepository: createCanonicalBlocksRepository({
-            get: async (_chainId, blockNumber) => {
-                if (blockNumber === 10) {
-                    return createFetchedBlock(10, oldHash10, hash9, 10).block;
-                }
+        chainCursorRepository: createChainCursorRepository(() => cursor),
+        blocksRepository: createBlocksRepository((_chainId, blockNumber) => {
+            if (blockNumber === 11) {
+                return createBlock(11, HASH_B, newHash10, 11);
+            }
 
-                return createFetchedBlock(9, hash9, HASH_A, 9).block;
-            },
-            deleteAfterBlock: async () => 3,
+            if (blockNumber === 10) {
+                return createBlock(10, oldHash10, hash9, 10);
+            }
+
+            return createBlock(9, hash9, HASH_A, 9);
+        }, {
+            deleteAfterBlockNumber: async () => 3,
         }),
-        canonicalTransactionsRepository: createCanonicalTransactionsRepository({
-            deleteAfterBlock: async () => 4,
+        transactionsRepository: createTransactionsRepository({
+            deleteAfterBlockNumber: async () => 4,
         }),
-        canonicalEventsRepository: createCanonicalEventsRepository({
-            deleteAfterBlock: async () => 5,
+        eventsRepository: createEventsRepository({
+            deleteAfterBlockNumber: async () => 5,
         }),
         blockJobsRepository: createBlockJobsRepository({
-            deleteAfterBlock: async () => 6,
+            deleteAfterBlockNumber: async () => 6,
         }),
         transactionManager: manager,
-        logger,
+        logger: {
+            debug: jest.fn(),
+            info: jest.fn(),
+            warn,
+            error: jest.fn(),
+        },
     });
 
     await worker.execute();
@@ -591,66 +422,20 @@ test("sequencer service logs rollback metadata", async () => {
         ancestorBlock: 9,
         ancestorHash: hash9,
         deletedBlockJobs: 6,
-        deletedRawBlocks: 2,
-        deletedCanonicalBlocks: 3,
-        deletedCanonicalTransactions: 4,
-        deletedCanonicalEvents: 5,
+        deletedBlocks: 3,
+        deletedTransactions: 4,
+        deletedEvents: 5,
     });
 });
 
-test("sequencer service skips rollback when cursor disappears during reorg transaction", async () => {
+test("sequencer service skips rollback when cursor changes during rollback transaction", async () => {
     const calls: string[] = [];
     const { manager } = createPassThroughManager();
     const hash9 = asHash32("0x0909090909090909090909090909090909090909090909090909090909090909");
     const oldHash10 = asHash32("0x1010101010101010101010101010101010101010101010101010101010101010");
     const newHash10 = asHash32("0x1111111111111111111111111111111111111111111111111111111111111111");
-    const cursor = createCursor(10, oldHash10, 11);
-    const logger = { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
-
-    const worker = createService({
-        source: createSource(async (_chainId, blockNumber) => {
-            if (blockNumber === 10) {
-                return createFetchedBlock(10, newHash10, hash9, 10);
-            }
-
-            return createFetchedBlock(9, hash9, HASH_A, 9);
-        }),
-        chainCursorRepository: createChainCursorRepository(() => cursor, {
-            getForUpdate: async () => null,
-        }),
-        rawBlocksRepository: createRawBlocksRepository(() => createRawBlock(11, HASH_B, newHash10, 11), {
-            deleteAfterBlock: async () => {
-                calls.push("delete-raw");
-                return 1;
-            },
-        }),
-        canonicalBlocksRepository: createCanonicalBlocksRepository({
-            get: async (_chainId, blockNumber) => {
-                if (blockNumber === 10) {
-                    return createFetchedBlock(10, oldHash10, hash9, 10).block;
-                }
-
-                return createFetchedBlock(9, hash9, HASH_A, 9).block;
-            },
-        }),
-        transactionManager: manager,
-        logger,
-    });
-
-    await worker.execute();
-
-    expect(calls).toEqual([]);
-    expect(logger.warn).not.toHaveBeenCalled();
-});
-
-test("sequencer service skips rollback when cursor changed during reorg transaction", async () => {
-    const calls: string[] = [];
-    const { manager } = createPassThroughManager();
-    const hash9 = asHash32("0x0909090909090909090909090909090909090909090909090909090909090909");
-    const oldHash10 = asHash32("0x1010101010101010101010101010101010101010101010101010101010101010");
-    const newHash10 = asHash32("0x1111111111111111111111111111111111111111111111111111111111111111");
-    const cursor = createCursor(10, oldHash10, 11);
     const changedCursor = createCursor(11, HASH_B, 11);
+    const cursor = createCursor(10, oldHash10, 11);
 
     const worker = createService({
         source: createSource(async (_chainId, blockNumber) => {
@@ -663,65 +448,38 @@ test("sequencer service skips rollback when cursor changed during reorg transact
         chainCursorRepository: createChainCursorRepository(() => cursor, {
             getForUpdate: async () => changedCursor,
         }),
-        rawBlocksRepository: createRawBlocksRepository(() => createRawBlock(11, HASH_B, newHash10, 11), {
-            deleteAfterBlock: async () => {
-                calls.push("delete-raw");
-                return 1;
-            },
-        }),
-        canonicalBlocksRepository: createCanonicalBlocksRepository({
-            get: async (_chainId, blockNumber) => {
-                if (blockNumber === 10) {
-                    return createFetchedBlock(10, oldHash10, hash9, 10).block;
-                }
+        blocksRepository: createBlocksRepository((_chainId, blockNumber) => {
+            if (blockNumber === 11) {
+                return createBlock(11, HASH_B, newHash10, 11);
+            }
 
-                return createFetchedBlock(9, hash9, HASH_A, 9).block;
-            },
-        }),
-        transactionManager: manager,
-    });
-
-    await worker.execute();
-
-    expect(calls).toEqual([]);
-});
-
-test("sequencer service skips rollback when raw block already matches current cursor", async () => {
-    const calls: string[] = [];
-    const { manager } = createPassThroughManager();
-    const hash9 = asHash32("0x0909090909090909090909090909090909090909090909090909090909090909");
-    const oldHash10 = asHash32("0x1010101010101010101010101010101010101010101010101010101010101010");
-    const newHash10 = asHash32("0x1111111111111111111111111111111111111111111111111111111111111111");
-    const cursor = createCursor(10, oldHash10, 11);
-
-    const worker = createService({
-        source: createSource(async (_chainId, blockNumber) => {
             if (blockNumber === 10) {
-                return createFetchedBlock(10, newHash10, hash9, 10);
+                return createBlock(10, oldHash10, hash9, 10);
             }
 
-            return createFetchedBlock(9, hash9, HASH_A, 9);
-        }),
-        chainCursorRepository: createChainCursorRepository(() => cursor),
-        rawBlocksRepository: createRawBlocksRepository((_chainId, _blockNumber, transaction) => {
-            if (transaction === undefined) {
-                return createRawBlock(11, HASH_B, newHash10, 11);
-            }
-
-            return createRawBlock(11, HASH_B, oldHash10, 11);
+            return createBlock(9, hash9, HASH_A, 9);
         }, {
-            deleteAfterBlock: async () => {
-                calls.push("delete-raw");
+            deleteAfterBlockNumber: async () => {
+                calls.push("delete-blocks");
                 return 1;
             },
         }),
-        canonicalBlocksRepository: createCanonicalBlocksRepository({
-            get: async (_chainId, blockNumber) => {
-                if (blockNumber === 10) {
-                    return createFetchedBlock(10, oldHash10, hash9, 10).block;
-                }
-
-                return createFetchedBlock(9, hash9, HASH_A, 9).block;
+        transactionsRepository: createTransactionsRepository({
+            deleteAfterBlockNumber: async () => {
+                calls.push("delete-transactions");
+                return 1;
+            },
+        }),
+        eventsRepository: createEventsRepository({
+            deleteAfterBlockNumber: async () => {
+                calls.push("delete-events");
+                return 1;
+            },
+        }),
+        blockJobsRepository: createBlockJobsRepository({
+            deleteAfterBlockNumber: async () => {
+                calls.push("delete-jobs");
+                return 1;
             },
         }),
         transactionManager: manager,
@@ -732,24 +490,98 @@ test("sequencer service skips rollback when raw block already matches current cu
     expect(calls).toEqual([]);
 });
 
-test("sequencer service throws when common ancestor cannot be found", async () => {
+test("sequencer service throws when common ancestor cannot be found during rollback", async () => {
     const { manager } = createPassThroughManager();
     const oldHash = asHash32("0x1010101010101010101010101010101010101010101010101010101010101010");
     const sourceHash = asHash32("0x2020202020202020202020202020202020202020202020202020202020202020");
-    const rawHash = asHash32("0x3030303030303030303030303030303030303030303030303030303030303030");
+    const nextHash = asHash32("0x3030303030303030303030303030303030303030303030303030303030303030");
     const cursor = createCursor(1, oldHash, 2);
 
     const worker = createService({
         source: createSource(async (_chainId, blockNumber) => createFetchedBlock(blockNumber, sourceHash, HASH_A)),
         chainCursorRepository: createChainCursorRepository(() => cursor),
-        rawBlocksRepository: createRawBlocksRepository(() => createRawBlock(2, rawHash, sourceHash, 2)),
-        canonicalBlocksRepository: createCanonicalBlocksRepository({
-            get: async (_chainId, blockNumber) => createFetchedBlock(blockNumber, oldHash, HASH_A).block,
+        blocksRepository: createBlocksRepository((_chainId, blockNumber) => {
+            if (blockNumber === 2) {
+                return createBlock(2, nextHash, sourceHash, 2);
+            }
+
+            return createBlock(blockNumber, oldHash, HASH_A);
         }),
         transactionManager: manager,
     });
 
     await expect(worker.execute()).rejects.toThrow("Cannot find common ancestor for chain 10 from block 1");
+});
+
+test("sequencer service leaves cursor concurrency guard to conditional advance", async () => {
+    const calls: string[] = [];
+    const { manager } = createPassThroughManager();
+    const cursor = createCursor(40, HASH_A, 50);
+
+    const worker = createService({
+        chainCursorRepository: createChainCursorRepository(() => cursor, {
+            getForUpdate: async () => {
+                calls.push("lock");
+                return cursor;
+            },
+            advanceLastCommitted: async () => {
+                calls.push("advance");
+            },
+        }),
+        blocksRepository: createBlocksRepository(() => createBlock(41, HASH_B, HASH_A)),
+        blockJobsRepository: createBlockJobsRepository({
+            markCommitted: async () => {
+                calls.push("mark-committed");
+            },
+        }),
+        transactionManager: manager,
+    });
+
+    await worker.execute();
+
+    expect(calls).toEqual(["advance", "mark-committed"]);
+});
+
+test("sequencer service throws when fetched job changes before commit", async () => {
+    const { manager, transaction } = createPassThroughManager();
+    const cursor = createCursor(40, HASH_A, 50);
+
+    const worker = createService({
+        chainCursorRepository: createChainCursorRepository(() => cursor),
+        blocksRepository: createBlocksRepository(() => createBlock(41, HASH_B, HASH_A)),
+        blockJobsRepository: createBlockJobsRepository({
+            get: async (_chainId, blockNumber, tx) => {
+                if (tx === transaction) {
+                    return createJob(blockNumber, "fetching");
+                }
+
+                return createJob(blockNumber, "fetched");
+            },
+        }),
+        transactionManager: manager,
+    });
+
+    await expect(worker.execute()).rejects.toThrow("Fetched block job changed before commit for chain 10 block 41");
+});
+
+test("sequencer service throws when fetched block data changes before commit", async () => {
+    const { manager, transaction } = createPassThroughManager();
+    const cursor = createCursor(40, HASH_A, 50);
+    const changedParentHash = asHash32("0x3333333333333333333333333333333333333333333333333333333333333333");
+
+    const worker = createService({
+        chainCursorRepository: createChainCursorRepository(() => cursor),
+        blocksRepository: createBlocksRepository((_chainId, _blockNumber, tx) => {
+            if (tx === transaction) {
+                return createBlock(41, HASH_B, changedParentHash);
+            }
+
+            return createBlock(41, HASH_B, HASH_A);
+        }),
+        transactionManager: manager,
+    });
+
+    await expect(worker.execute()).rejects.toThrow("Fetched block data changed before commit for chain 10 block 41");
 });
 
 test("sequencer service clamps max blocks per tick to one", async () => {
@@ -765,19 +597,23 @@ test("sequencer service clamps max blocks per tick to one", async () => {
             advanceLastCommitted: async (_chainId, _prevBlock, _prevHash, blockNumber, blockHash) => {
                 cursor.lastCommittedBlock = blockNumber;
                 cursor.lastCommittedHash = blockHash;
-                committed.push(blockNumber);
             },
         }),
-        rawBlocksRepository: createRawBlocksRepository((_chainId, blockNumber) => {
+        blocksRepository: createBlocksRepository((_chainId, blockNumber) => {
             if (blockNumber === 41) {
-                return createRawBlock(41, hash41, HASH_A, 1);
+                return createBlock(41, hash41, HASH_A, 1);
             }
 
             if (blockNumber === 42) {
-                return createRawBlock(42, hash42, hash41, 2);
+                return createBlock(42, hash42, hash41, 2);
             }
 
             return null;
+        }),
+        blockJobsRepository: createBlockJobsRepository({
+            markCommitted: async (_chainId, blockNumber) => {
+                committed.push(blockNumber);
+            },
         }),
         transactionManager: manager,
     });
