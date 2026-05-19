@@ -2,11 +2,10 @@ import type { RetentionWorkerConfig } from "../../../src/interfaces/runtime.js";
 import { RetentionWorker } from "../../../src/workers/retention-worker.js";
 import {
     createNoopBlockJobsRepository,
-    createNoopCanonicalBlocksRepository,
-    createNoopCanonicalEventsRepository,
-    createNoopCanonicalTransactionsRepository,
     createNoopChainCursorRepository,
-    createNoopRawBlocksRepository,
+    createNoopBlocksRepository,
+    createNoopEventsRepository,
+    createNoopTransactionsRepository,
     invokeStartLogMeta,
     invokeTick,
     leaderLock,
@@ -26,10 +25,9 @@ test("retention worker create wires service execution", async () => {
         overrides: {
             chainCursorRepository: { ...createNoopChainCursorRepository(), get: getCursor },
             blockJobsRepository: createNoopBlockJobsRepository(),
-            rawBlocksRepository: createNoopRawBlocksRepository(),
-            canonicalBlocksRepository: createNoopCanonicalBlocksRepository(),
-            canonicalTransactionsRepository: createNoopCanonicalTransactionsRepository(),
-            canonicalEventsRepository: createNoopCanonicalEventsRepository(),
+            blocksRepository: createNoopBlocksRepository(),
+            transactionsRepository: createNoopTransactionsRepository(),
+            eventsRepository: createNoopEventsRepository(),
             transactionManager,
             leaderLock,
         },

@@ -4,22 +4,20 @@ import { noopLogger } from "../interfaces/logger.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
 import type {
     BlockJobsRepository,
-    CanonicalBlocksRepository,
-    CanonicalEventsRepository,
-    CanonicalTransactionsRepository,
     ChainCursorRepository,
-    RawBlocksRepository,
+    BlocksRepository,
+    EventsRepository,
+    TransactionsRepository,
 } from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import type { RetentionWorkerConfig } from "../interfaces/runtime.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../repositories/postgres/block-jobs-repository.js";
-import { PostgresCanonicalBlocksRepository } from "../repositories/postgres/canonical-blocks-repository.js";
-import { PostgresCanonicalEventsRepository } from "../repositories/postgres/canonical-events-repository.js";
-import { PostgresCanonicalTransactionsRepository } from "../repositories/postgres/canonical-transactions-repository.js";
+import { PostgresBlocksRepository } from "../repositories/postgres/blocks-repository.js";
 import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cursor-repository.js";
-import { PostgresRawBlocksRepository } from "../repositories/postgres/raw-blocks-repository.js";
+import { PostgresEventsRepository } from "../repositories/postgres/events-repository.js";
+import { PostgresTransactionsRepository } from "../repositories/postgres/transactions-repository.js";
 import { RetentionService } from "../services/retention-service.js";
 import { RETENTION_WORKER_LOCK_KEY_BASE } from "./worker-lock-keys.js";
 import { resolveDbDependencies } from "../runtime/resolvers.js";
@@ -29,10 +27,9 @@ import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 export interface RetentionWorkerDatabaseDependencies {
     chainCursorRepository: ChainCursorRepository;
     blockJobsRepository: BlockJobsRepository;
-    rawBlocksRepository: RawBlocksRepository;
-    canonicalBlocksRepository: CanonicalBlocksRepository;
-    canonicalTransactionsRepository: CanonicalTransactionsRepository;
-    canonicalEventsRepository: CanonicalEventsRepository;
+    blocksRepository: BlocksRepository;
+    transactionsRepository: TransactionsRepository;
+    eventsRepository: EventsRepository;
     transactionManager: TransactionManager;
     leaderLock: LeaderLock;
 }
@@ -48,10 +45,9 @@ export class RetentionWorker extends SingletonPollingWorker {
             (pool: Pool): RetentionWorkerDatabaseDependencies => ({
                 chainCursorRepository: new PostgresChainCursorRepository(pool),
                 blockJobsRepository: new PostgresBlockJobsRepository(pool),
-                rawBlocksRepository: new PostgresRawBlocksRepository(pool),
-                canonicalBlocksRepository: new PostgresCanonicalBlocksRepository(pool),
-                canonicalTransactionsRepository: new PostgresCanonicalTransactionsRepository(pool),
-                canonicalEventsRepository: new PostgresCanonicalEventsRepository(pool),
+                blocksRepository: new PostgresBlocksRepository(pool),
+                transactionsRepository: new PostgresTransactionsRepository(pool),
+                eventsRepository: new PostgresEventsRepository(pool),
                 transactionManager: new PostgresTransactionManager(pool),
                 leaderLock: new PostgresLeaderLock(
                     pool,
@@ -63,10 +59,9 @@ export class RetentionWorker extends SingletonPollingWorker {
             options.config,
             dependencies.chainCursorRepository,
             dependencies.blockJobsRepository,
-            dependencies.rawBlocksRepository,
-            dependencies.canonicalBlocksRepository,
-            dependencies.canonicalTransactionsRepository,
-            dependencies.canonicalEventsRepository,
+            dependencies.blocksRepository,
+            dependencies.transactionsRepository,
+            dependencies.eventsRepository,
             dependencies.transactionManager,
             options.logger,
         );

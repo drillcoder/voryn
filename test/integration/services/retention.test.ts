@@ -1,12 +1,9 @@
 import { PostgresTransactionManager } from "../../../src/postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../../../src/repositories/postgres/block-jobs-repository.js";
-import { PostgresCanonicalBlocksRepository } from "../../../src/repositories/postgres/canonical-blocks-repository.js";
-import { PostgresCanonicalEventsRepository } from "../../../src/repositories/postgres/canonical-events-repository.js";
-import {
-    PostgresCanonicalTransactionsRepository
-} from "../../../src/repositories/postgres/canonical-transactions-repository.js";
+import { PostgresBlocksRepository } from "../../../src/repositories/postgres/blocks-repository.js";
 import { PostgresChainCursorRepository } from "../../../src/repositories/postgres/chain-cursor-repository.js";
-import { PostgresRawBlocksRepository } from "../../../src/repositories/postgres/raw-blocks-repository.js";
+import { PostgresEventsRepository } from "../../../src/repositories/postgres/events-repository.js";
+import { PostgresTransactionsRepository } from "../../../src/repositories/postgres/transactions-repository.js";
 import { RetentionService } from "../../../src/services/retention-service.js";
 import { buildFetchedBlock, CHAIN_ID, hashFromNumber } from "../helpers/fixtures.js";
 import type { IsolatedDbContext } from "../helpers/test-db.js";
@@ -33,10 +30,9 @@ describe("integration services: retention", () => {
         const transactionManager = new PostgresTransactionManager(db.pool);
         const chainCursorRepository = new PostgresChainCursorRepository(db.pool);
         const blockJobsRepository = new PostgresBlockJobsRepository(db.pool);
-        const rawBlocksRepository = new PostgresRawBlocksRepository(db.pool);
-        const canonicalBlocksRepository = new PostgresCanonicalBlocksRepository(db.pool);
-        const canonicalTransactionsRepository = new PostgresCanonicalTransactionsRepository(db.pool);
-        const canonicalEventsRepository = new PostgresCanonicalEventsRepository(db.pool);
+        const blocksRepository = new PostgresBlocksRepository(db.pool);
+        const transactionsRepository = new PostgresTransactionsRepository(db.pool);
+        const eventsRepository = new PostgresEventsRepository(db.pool);
 
         await chainCursorRepository.insert({
             chainId: CHAIN_ID,
@@ -48,22 +44,16 @@ describe("integration services: retention", () => {
         await blockJobsRepository.enqueueRange(CHAIN_ID, 6, 8);
         for (const blockNumber of [6, 7, 8]) {
             const payload = buildFetchedBlock(blockNumber, hashFromNumber(blockNumber - 1));
-            await rawBlocksRepository.save({
+            await blocksRepository.insert({
                 chainId: CHAIN_ID,
                 blockNumber,
                 blockHash: payload.block.hash,
                 parentHash: payload.block.parentHash,
-                payload,
+                blockTimestamp: payload.block.timestamp,
                 fetchedAt: new Date(),
             });
-            await canonicalBlocksRepository.insert(payload.block);
-            await canonicalTransactionsRepository.insertMany(
-                CHAIN_ID,
-                blockNumber,
-                payload.block.hash,
-                payload.transactions
-            );
-            await canonicalEventsRepository.insertMany(CHAIN_ID, blockNumber, payload.block.hash, payload.logs);
+            await transactionsRepository.insertMany(payload.transactions);
+            await eventsRepository.insertMany(payload.logs);
         }
 
         const service = new RetentionService(
@@ -74,24 +64,21 @@ describe("integration services: retention", () => {
             },
             chainCursorRepository,
             blockJobsRepository,
-            rawBlocksRepository,
-            canonicalBlocksRepository,
-            canonicalTransactionsRepository,
-            canonicalEventsRepository,
+            blocksRepository,
+            transactionsRepository,
+            eventsRepository,
             transactionManager,
         );
 
         await service.execute();
 
         await expect(db.countRows("block_jobs", "block_number <= 7")).resolves.toBe(0);
-        await expect(db.countRows("raw_blocks", "block_number <= 7")).resolves.toBe(0);
-        await expect(db.countRows("canonical_blocks", "block_number <= 7")).resolves.toBe(0);
-        await expect(db.countRows("canonical_transactions", "block_number <= 7")).resolves.toBe(0);
-        await expect(db.countRows("canonical_events", "block_number <= 7")).resolves.toBe(0);
+        await expect(db.countRows("blocks", "block_number <= 7")).resolves.toBe(0);
+        await expect(db.countRows("transactions", "block_number <= 7")).resolves.toBe(0);
+        await expect(db.countRows("events", "block_number <= 7")).resolves.toBe(0);
         await expect(db.countRows("block_jobs", "block_number = 8")).resolves.toBe(1);
-        await expect(db.countRows("raw_blocks", "block_number = 8")).resolves.toBe(1);
-        await expect(db.countRows("canonical_blocks", "block_number = 8")).resolves.toBe(1);
-        await expect(db.countRows("canonical_transactions", "block_number = 8")).resolves.toBe(1);
-        await expect(db.countRows("canonical_events", "block_number = 8")).resolves.toBe(1);
+        await expect(db.countRows("blocks", "block_number = 8")).resolves.toBe(1);
+        await expect(db.countRows("transactions", "block_number = 8")).resolves.toBe(1);
+        await expect(db.countRows("events", "block_number = 8")).resolves.toBe(1);
     });
 });

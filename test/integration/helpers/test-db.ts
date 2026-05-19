@@ -3,10 +3,9 @@ import { readFile } from "node:fs/promises";
 import { Pool } from "pg";
 
 const PIPELINE_TABLES = [
-    "canonical_events",
-    "canonical_transactions",
-    "canonical_blocks",
-    "raw_blocks",
+    "events",
+    "transactions",
+    "blocks",
     "block_jobs",
     "chain_cursor",
     "worker_cursors",
@@ -59,10 +58,9 @@ export async function createIsolatedDbContext(databaseUrlRaw: string): Promise<I
         truncatePipelineTables: async () => {
             await pool.query(
                 `TRUNCATE TABLE
-                    canonical_events,
-                    canonical_transactions,
-                    canonical_blocks,
-                    raw_blocks,
+                    events,
+                    transactions,
+                    blocks,
                     block_jobs,
                     chain_cursor,
                     worker_cursors

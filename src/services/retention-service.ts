@@ -2,11 +2,10 @@ import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
 import type {
     BlockJobsRepository,
-    CanonicalBlocksRepository,
-    CanonicalEventsRepository,
-    CanonicalTransactionsRepository,
     ChainCursorRepository,
-    RawBlocksRepository,
+    BlocksRepository,
+    EventsRepository,
+    TransactionsRepository,
 } from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import type { RetentionPurgeResult } from "../interfaces/pipeline.js";
@@ -17,10 +16,9 @@ export class RetentionService {
         private readonly config: RetentionWorkerConfig,
         private readonly cursorRepository: ChainCursorRepository,
         private readonly blockJobsRepository: BlockJobsRepository,
-        private readonly rawBlocksRepository: RawBlocksRepository,
-        private readonly canonicalBlocksRepository: CanonicalBlocksRepository,
-        private readonly canonicalTransactionsRepository: CanonicalTransactionsRepository,
-        private readonly canonicalEventsRepository: CanonicalEventsRepository,
+        private readonly blocksRepository: BlocksRepository,
+        private readonly transactionsRepository: TransactionsRepository,
+        private readonly eventsRepository: EventsRepository,
         private readonly transactionManager: TransactionManager,
         private readonly logger: Logger = noopLogger,
     ) {
@@ -35,44 +33,37 @@ export class RetentionService {
             if (cursor === null) {
                 return {
                     deletedBlockJobs: 0,
-                    deletedRawBlocks: 0,
-                    deletedCanonicalBlocks: 0,
-                    deletedCanonicalTransactions: 0,
-                    deletedCanonicalEvents: 0,
+                    deletedBlocks: 0,
+                    deletedTransactions: 0,
+                    deletedEvents: 0,
                 };
             }
             const purgeToBlock = cursor.lastCommittedBlock - depthBlocks;
             if (purgeToBlock < 0) {
                 return {
                     deletedBlockJobs: 0,
-                    deletedRawBlocks: 0,
-                    deletedCanonicalBlocks: 0,
-                    deletedCanonicalTransactions: 0,
-                    deletedCanonicalEvents: 0,
+                    deletedBlocks: 0,
+                    deletedTransactions: 0,
+                    deletedEvents: 0,
                 };
             }
 
-            const deletedBlockJobs = await this.blockJobsRepository.deleteUpToBlock(
+            const deletedBlockJobs = await this.blockJobsRepository.deleteAtOrBeforeBlockNumber(
                 chainId,
                 purgeToBlock,
                 transaction
             );
-            const deletedRawBlocks = await this.rawBlocksRepository.deleteUpToBlock(
+            const deletedBlocks = await this.blocksRepository.deleteAtOrBeforeBlockNumber(
                 chainId,
                 purgeToBlock,
                 transaction
             );
-            const deletedCanonicalBlocks = await this.canonicalBlocksRepository.deleteUpToBlock(
+            const deletedTransactions = await this.transactionsRepository.deleteAtOrBeforeBlockNumber(
                 chainId,
                 purgeToBlock,
                 transaction
             );
-            const deletedCanonicalTransactions = await this.canonicalTransactionsRepository.deleteUpToBlock(
-                chainId,
-                purgeToBlock,
-                transaction
-            );
-            const deletedCanonicalEvents = await this.canonicalEventsRepository.deleteUpToBlock(
+            const deletedEvents = await this.eventsRepository.deleteAtOrBeforeBlockNumber(
                 chainId,
                 purgeToBlock,
                 transaction
@@ -80,14 +71,12 @@ export class RetentionService {
 
             return {
                 deletedBlockJobs,
-                deletedRawBlocks,
-                deletedCanonicalBlocks,
-                deletedCanonicalTransactions,
-                deletedCanonicalEvents,
+                deletedBlocks,
+                deletedTransactions,
+                deletedEvents,
             };
         });
 
         this.logger.info("retention_purged", { chainId, depthBlocks, ...result });
     }
 }
-
