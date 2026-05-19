@@ -11,7 +11,7 @@ interface WorkerCursorRow {
     stream_type: StreamType;
     last_block_number: bigint | number | string;
     last_transaction_index: number;
-    last_log_index: number;
+    last_log_index: number | null;
     updated_at: Date | string;
 }
 
@@ -109,7 +109,7 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
                 streamType,
                 position.lastBlockNumber,
                 position.lastTransactionIndex,
-                position.lastLogIndex,
+                position.lastLogIndex ?? null,
             ]
         );
     }
@@ -137,7 +137,7 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
                 streamType,
                 position.lastBlockNumber,
                 position.lastTransactionIndex,
-                position.lastLogIndex,
+                position.lastLogIndex ?? null,
             ]
         );
 

@@ -40,7 +40,7 @@ test("get maps cursor row", async () => {
             stream_type: "tx",
             last_block_number: "12",
             last_transaction_index: 3,
-            last_log_index: -1,
+            last_log_index: null,
             updated_at: "2026-03-30T10:00:00.000Z",
         }],
         rowCount: 1,
@@ -54,7 +54,7 @@ test("get maps cursor row", async () => {
         position: {
             lastBlockNumber: 12,
             lastTransactionIndex: 3,
-            lastLogIndex: -1,
+            lastLogIndex: null,
         },
     });
 });
@@ -77,7 +77,7 @@ test("listByChain maps cursor rows", async () => {
                 stream_type: "tx",
                 last_block_number: "12",
                 last_transaction_index: 3,
-                last_log_index: -1,
+                last_log_index: null,
                 updated_at: "2026-03-30T10:01:00.000Z",
             },
         ],
@@ -104,7 +104,7 @@ test("listByChain maps cursor rows", async () => {
             position: {
                 lastBlockNumber: 12,
                 lastTransactionIndex: 3,
-                lastLogIndex: -1,
+                lastLogIndex: null,
             },
             updatedAt: new Date("2026-03-30T10:01:00.000Z"),
         },
@@ -132,4 +132,25 @@ test("insert and advance succeed when rows are present", async () => {
         lastTransactionIndex: 1,
         lastLogIndex: 2,
     })).resolves.toBeUndefined();
+});
+
+test("insert and advance use null for missing log index", async () => {
+    const query = jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 })
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 });
+    const repository = new PostgresWorkerCursorsRepository(createExecutor(query));
+
+    await repository.insert("worker-a", 1, "tx", {
+        lastBlockNumber: 0,
+        lastTransactionIndex: -1,
+    });
+    await repository.advance("worker-a", 1, "tx", {
+        lastBlockNumber: 10,
+        lastTransactionIndex: 1,
+    });
+
+    const calls = query.mock.calls as unknown as Array<[string, readonly unknown[]]>;
+    expect(calls[0]?.[1]).toEqual(["worker-a", 1, "tx", 0, -1, null]);
+    expect(calls[1]?.[1]).toEqual(["worker-a", 1, "tx", 10, 1, null]);
 });
