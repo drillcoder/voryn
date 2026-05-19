@@ -323,34 +323,34 @@ test("retryFailed returns zero when rowCount is null", async () => {
     await expect(repository.retryFailed(1, 10, 12)).resolves.toBe(0);
 });
 
-test("deleteUpToBlock returns number of deleted rows", async () => {
+test("deleteAtOrBeforeBlockNumber returns number of deleted rows", async () => {
     const query = jest.fn(async () => ({ rows: [], rowCount: 3 }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
-    await expect(repository.deleteUpToBlock(1, 10)).resolves.toBe(3);
+    await expect(repository.deleteAtOrBeforeBlockNumber(1, 10)).resolves.toBe(3);
 });
 
-test("deleteUpToBlock returns zero when rowCount is null", async () => {
+test("deleteAtOrBeforeBlockNumber returns zero when rowCount is null", async () => {
     const query = jest.fn(async () => ({ rows: [], rowCount: null }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
-    await expect(repository.deleteUpToBlock(1, 10)).resolves.toBe(0);
+    await expect(repository.deleteAtOrBeforeBlockNumber(1, 10)).resolves.toBe(0);
 });
 
-test("deleteAfterBlock deletes jobs after block number", async () => {
+test("deleteAfterBlockNumber deletes jobs after block number", async () => {
     const query = jest.fn(async () => ({ rows: [], rowCount: 4 }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
-    await expect(repository.deleteAfterBlock(1, 10)).resolves.toBe(4);
+    await expect(repository.deleteAfterBlockNumber(1, 10)).resolves.toBe(4);
 
     const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
     expect(calls[0]?.[0]).toContain("block_number > $2");
     expect(calls[0]?.[1]).toEqual([1, 10]);
 });
 
-test("deleteAfterBlock returns zero when rowCount is null", async () => {
+test("deleteAfterBlockNumber returns zero when rowCount is null", async () => {
     const query = jest.fn(async () => ({ rows: [], rowCount: null }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
-    await expect(repository.deleteAfterBlock(1, 10)).resolves.toBe(0);
+    await expect(repository.deleteAfterBlockNumber(1, 10)).resolves.toBe(0);
 });

@@ -290,7 +290,11 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
         return updated.rowCount ?? 0;
     }
 
-    async deleteUpToBlock(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number> {
+    async deleteAtOrBeforeBlockNumber(
+        chainId: ChainId,
+        blockNumber: BlockNumber,
+        transaction?: DbExecutor
+    ): Promise<number> {
         const executor = transaction ?? this.pool;
         const deleted = await executor.query(
             `DELETE FROM block_jobs WHERE chain_id = $1 AND block_number <= $2`,
@@ -300,7 +304,11 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
         return deleted.rowCount ?? 0;
     }
 
-    async deleteAfterBlock(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number> {
+    async deleteAfterBlockNumber(
+        chainId: ChainId,
+        blockNumber: BlockNumber,
+        transaction?: DbExecutor
+    ): Promise<number> {
         const executor = transaction ?? this.pool;
         const deleted = await executor.query(
             `DELETE FROM block_jobs WHERE chain_id = $1 AND block_number > $2`,

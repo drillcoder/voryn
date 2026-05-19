@@ -124,13 +124,12 @@ test("validatePostgresSchema passes when all required tables exist", async () =>
             rows: [
                 { table_name: "chain_cursor" },
                 { table_name: "block_jobs" },
-                { table_name: "raw_blocks" },
-                { table_name: "canonical_blocks" },
-                { table_name: "canonical_transactions" },
-                { table_name: "canonical_events" },
+                { table_name: "blocks" },
+                { table_name: "transactions" },
+                { table_name: "events" },
                 { table_name: "worker_cursors" },
             ],
-            rowCount: 7,
+            rowCount: 6,
         }),
     };
     const logger = createLogger();

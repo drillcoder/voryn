@@ -35,9 +35,8 @@ export * from "./postgres/leader-lock.js";
 export * from "./postgres/transaction-manager.js";
 
 export * from "./repositories/postgres/block-jobs-repository.js";
-export * from "./repositories/postgres/canonical-blocks-repository.js";
-export * from "./repositories/postgres/canonical-events-repository.js";
-export * from "./repositories/postgres/canonical-transactions-repository.js";
+export * from "./repositories/postgres/blocks-repository.js";
 export * from "./repositories/postgres/chain-cursor-repository.js";
-export * from "./repositories/postgres/raw-blocks-repository.js";
+export * from "./repositories/postgres/events-repository.js";
+export * from "./repositories/postgres/transactions-repository.js";
 export * from "./repositories/postgres/worker-cursors-repository.js";
