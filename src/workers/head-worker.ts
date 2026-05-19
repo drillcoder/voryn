@@ -3,14 +3,22 @@ import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
 import type { BlockSource } from "../interfaces/block-source.js";
-import type { BlockJobsRepository, ChainCursorRepository, RawBlocksRepository } from "../interfaces/repositories.js";
+import type {
+    BlockJobsRepository,
+    BlocksRepository,
+    ChainCursorRepository,
+    EventsRepository,
+    TransactionsRepository,
+} from "../interfaces/repositories.js";
 import type { HeadWorkerConfig } from "../interfaces/runtime.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../repositories/postgres/block-jobs-repository.js";
+import { PostgresBlocksRepository } from "../repositories/postgres/blocks-repository.js";
 import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cursor-repository.js";
-import { PostgresRawBlocksRepository } from "../repositories/postgres/raw-blocks-repository.js";
+import { PostgresEventsRepository } from "../repositories/postgres/events-repository.js";
+import { PostgresTransactionsRepository } from "../repositories/postgres/transactions-repository.js";
 import { HeadService } from "../services/head-service.js";
 import { HEAD_WORKER_LOCK_KEY_BASE } from "./worker-lock-keys.js";
 import { resolveDbDependencies, resolveEthersSource } from "../runtime/resolvers.js";
@@ -20,7 +28,9 @@ import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 export interface HeadWorkerDatabaseDependencies {
     chainCursorRepository: ChainCursorRepository;
     blockJobsRepository: BlockJobsRepository;
-    rawBlocksRepository: RawBlocksRepository;
+    blocksRepository: BlocksRepository;
+    transactionsRepository: TransactionsRepository;
+    eventsRepository: EventsRepository;
     transactionManager: TransactionManager;
     leaderLock: LeaderLock;
 }
@@ -38,7 +48,9 @@ export class HeadWorker extends SingletonPollingWorker {
             (pool: Pool): HeadWorkerDatabaseDependencies => ({
                 chainCursorRepository: new PostgresChainCursorRepository(pool),
                 blockJobsRepository: new PostgresBlockJobsRepository(pool),
-                rawBlocksRepository: new PostgresRawBlocksRepository(pool),
+                blocksRepository: new PostgresBlocksRepository(pool),
+                transactionsRepository: new PostgresTransactionsRepository(pool),
+                eventsRepository: new PostgresEventsRepository(pool),
                 transactionManager: new PostgresTransactionManager(pool),
                 leaderLock: new PostgresLeaderLock(pool, HEAD_WORKER_LOCK_KEY_BASE + BigInt(options.config.chainId)),
             })
@@ -48,7 +60,9 @@ export class HeadWorker extends SingletonPollingWorker {
             source,
             dependencies.chainCursorRepository,
             dependencies.blockJobsRepository,
-            dependencies.rawBlocksRepository,
+            dependencies.blocksRepository,
+            dependencies.transactionsRepository,
+            dependencies.eventsRepository,
             dependencies.transactionManager,
             options.logger
         );

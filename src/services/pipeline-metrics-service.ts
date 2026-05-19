@@ -2,15 +2,10 @@ import type { BlockSource } from "../interfaces/block-source.js";
 import type { ChainPipelineMetrics, PipelineMetricsConfig, PipelineReactionMetrics } from "../interfaces/metrics.js";
 import type {
     BlockJobsRepository,
-    CanonicalBlocksRepository,
-    CanonicalEventsRepository,
-    CanonicalTransactionsRepository,
+    BlocksRepository,
     ChainCursorRepository,
-    RawBlocksRepository,
     WorkerCursorsRepository,
 } from "../interfaces/repositories.js";
-import type { StreamType } from "../types/pipeline.js";
-import type { BlockNumber, ChainId } from "../types/chain.js";
 
 const FAILED_BLOCKS_LIMIT = 25;
 
@@ -20,10 +15,7 @@ export class PipelineMetricsService {
         private readonly source: BlockSource,
         private readonly chainCursorRepository: ChainCursorRepository,
         private readonly blockJobsRepository: BlockJobsRepository,
-        private readonly rawBlocksRepository: RawBlocksRepository,
-        private readonly canonicalBlocksRepository: CanonicalBlocksRepository,
-        private readonly canonicalTransactionsRepository: CanonicalTransactionsRepository,
-        private readonly canonicalEventsRepository: CanonicalEventsRepository,
+        private readonly blocksRepository: BlocksRepository,
         private readonly workerCursorsRepository: WorkerCursorsRepository,
     ) {
     }
@@ -31,11 +23,11 @@ export class PipelineMetricsService {
     async get(): Promise<ChainPipelineMetrics> {
         const observedAt = new Date();
         const { chainId } = this.config;
-        const [cursor, blockStatusCounts, failedBlocks, rawProgress, workerCursors, latestBlock] = await Promise.all([
+        const [cursor, blockStatusCounts, failedBlocks, blockProgress, workerCursors, latestBlock] = await Promise.all([
             this.chainCursorRepository.get(chainId),
             this.blockJobsRepository.getStatusCounts(chainId),
             this.blockJobsRepository.listFailedBlocks(chainId, FAILED_BLOCKS_LIMIT),
-            this.rawBlocksRepository.getProgress(chainId),
+            this.blocksRepository.getProgress(chainId),
             this.workerCursorsRepository.listByChain(chainId),
             this.source.getLatestBlock(chainId),
         ]);
@@ -44,30 +36,24 @@ export class PipelineMetricsService {
             throw new Error(`Chain cursor not found for chain ${String(chainId)}`);
         }
 
-        const reactions = await Promise.all(
-            workerCursors.map(async (workerCursor): Promise<PipelineReactionMetrics> => {
-                const targetSeq = await this.targetSeq(workerCursor.streamType);
-
-                return {
-                    workerName: workerCursor.workerName,
-                    streamType: workerCursor.streamType,
-                    processedSeq: workerCursor.lastSeq,
-                    targetSeq,
-                    lagSeq: targetSeq - workerCursor.lastSeq,
-                    secondsSinceProgress: secondsBetween(observedAt, workerCursor.updatedAt),
-                };
-            })
-        );
+        const reactions = workerCursors.map((workerCursor): PipelineReactionMetrics => ({
+            workerName: workerCursor.workerName,
+            streamType: workerCursor.streamType,
+            block: workerCursor.position.lastBlockNumber,
+            lagBlocks: Math.max(0, cursor.lastCommittedBlock - workerCursor.position.lastBlockNumber),
+            secondsSinceProgress: secondsBetween(observedAt, workerCursor.updatedAt),
+        }));
 
         const latestBlockNumber = latestBlock.number;
         const latestBlockTimestamp = latestBlock.timestamp;
 
-        const fetchBlockNumber = rawProgress?.block ?? null;
-        const fetchBlockTimestamp = rawProgress?.blockTimestamp ?? null;
+        const fetchBlockNumber = blockProgress?.block ?? null;
+        const fetchBlockTimestamp = blockProgress?.blockTimestamp ?? null;
         const fetchLagBlocks = fetchBlockNumber === null ? null : latestBlockNumber - fetchBlockNumber;
 
         const sequencerBlockNumber = cursor.lastCommittedBlock;
-        const sequencerBlockTimestamp = await this.getCanonicalBlockTimestamp(chainId, sequencerBlockNumber);
+        const sequencerBlock = await this.blocksRepository.get(chainId, sequencerBlockNumber);
+        const sequencerBlockTimestamp = sequencerBlock?.blockTimestamp ?? null;
         const sequencerLagBlocks = latestBlockNumber - sequencerBlockNumber;
 
         return {
@@ -97,28 +83,14 @@ export class PipelineMetricsService {
             },
             freshness: {
                 secondsSincePipelineUpdate: secondsBetween(observedAt, cursor.updatedAt),
-                secondsSinceFetch: rawProgress === null
+                secondsSinceFetch: blockProgress === null
                     ? null
-                    : secondsBetween(observedAt, rawProgress.updatedAt),
+                    : secondsBetween(observedAt, blockProgress.updatedAt),
             },
             blockStatusCounts,
             failedBlocks,
             reactions,
         };
-    }
-
-    private async targetSeq(streamType: StreamType): Promise<bigint> {
-        if (streamType === "event") {
-            return this.canonicalEventsRepository.maxSeq(this.config.chainId);
-        }
-
-        return this.canonicalTransactionsRepository.maxSeq(this.config.chainId);
-    }
-
-    private async getCanonicalBlockTimestamp(chainId: ChainId, blockNumber: BlockNumber): Promise<number | null> {
-        const block = await this.canonicalBlocksRepository.get(chainId, blockNumber);
-
-        return block?.timestamp ?? null;
     }
 }
 

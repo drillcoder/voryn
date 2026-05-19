@@ -1,6 +1,5 @@
 import type { BlockNumber, ChainId } from "../types/chain.js";
 import type { BlockJobStatus, StreamType } from "../types/pipeline.js";
-import type { WorkerCursorPosition } from "./pipeline.js";
 
 export type BlockJobStatusCounts = Record<BlockJobStatus, number>;
 
@@ -21,7 +20,7 @@ export interface BlockDataProgress {
 export interface PipelineReactionMetrics {
     workerName: string;
     streamType: StreamType;
-    processedPosition: WorkerCursorPosition;
+    block: BlockNumber;
     lagBlocks: number | null;
     secondsSinceProgress: number;
 }

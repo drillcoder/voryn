@@ -45,9 +45,8 @@ test("formats pipeline metrics as prometheus text", () => {
         reactions: [{
             workerName: "event-worker",
             streamType: "event",
-            processedSeq: 17n,
-            targetSeq: 20n,
-            lagSeq: 3n,
+            block: 97,
+            lagBlocks: 3,
             secondsSinceProgress: 9,
         }],
     };
@@ -98,15 +97,14 @@ test("formats pipeline metrics as prometheus text", () => {
             + "Unix timestamp when a recently failed block was last updated.",
         "# TYPE voryn_pipeline_failed_block_updated_timestamp_seconds gauge",
         "voryn_pipeline_failed_block_updated_timestamp_seconds{chain_id=\"7\",block=\"101\"} 1767225603",
-        "# HELP voryn_pipeline_reaction_processed_seq Last sequence processed by a reaction worker.",
-        "# TYPE voryn_pipeline_reaction_processed_seq gauge",
-        "voryn_pipeline_reaction_processed_seq{chain_id=\"7\",worker_name=\"event-worker\",stream_type=\"event\"} 17",
-        "# HELP voryn_pipeline_reaction_target_seq Latest sequence available for a reaction worker stream.",
-        "# TYPE voryn_pipeline_reaction_target_seq gauge",
-        "voryn_pipeline_reaction_target_seq{chain_id=\"7\",worker_name=\"event-worker\",stream_type=\"event\"} 20",
-        "# HELP voryn_pipeline_reaction_lag_seq Reaction worker sequence lag.",
-        "# TYPE voryn_pipeline_reaction_lag_seq gauge",
-        "voryn_pipeline_reaction_lag_seq{chain_id=\"7\",worker_name=\"event-worker\",stream_type=\"event\"} 3",
+        "# HELP voryn_pipeline_reaction_block Current block processed by a reaction worker.",
+        "# TYPE voryn_pipeline_reaction_block gauge",
+        "voryn_pipeline_reaction_block"
+            + "{chain_id=\"7\",worker_name=\"event-worker\",stream_type=\"event\"} 97",
+        "# HELP voryn_pipeline_reaction_lag_blocks Reaction worker block lag from the committed chain cursor.",
+        "# TYPE voryn_pipeline_reaction_lag_blocks gauge",
+        "voryn_pipeline_reaction_lag_blocks"
+            + "{chain_id=\"7\",worker_name=\"event-worker\",stream_type=\"event\"} 3",
         "# HELP voryn_pipeline_reaction_seconds_since_progress Seconds since a reaction worker cursor moved.",
         "# TYPE voryn_pipeline_reaction_seconds_since_progress gauge",
         "voryn_pipeline_reaction_seconds_since_progress"
@@ -116,42 +114,7 @@ test("formats pipeline metrics as prometheus text", () => {
 });
 
 test("omits nullable metrics when values are unknown", () => {
-    const metrics: ChainPipelineMetrics = {
-        chainId: 1,
-        observedAt: new Date("2026-01-01T00:00:00.000Z"),
-        latestBlock: 10,
-        stages: {
-            head: {
-                block: null,
-                lagBlocks: null,
-            },
-            fetch: {
-                block: null,
-                lagBlocks: null,
-            },
-            sequencer: {
-                block: null,
-                lagBlocks: null,
-            },
-        },
-        maxLag: {
-            blocks: null,
-            seconds: null,
-        },
-        freshness: {
-            secondsSincePipelineUpdate: null,
-            secondsSinceFetch: null,
-        },
-        blockStatusCounts: {
-            pending: 0,
-            fetching: 0,
-            fetched: 0,
-            committed: 0,
-            failed: 0,
-        },
-        failedBlocks: [],
-        reactions: [],
-    };
+    const metrics = createEmptyMetrics();
 
     const formatted = formatPipelineMetricsPrometheus(metrics);
 
@@ -164,31 +127,7 @@ test("omits nullable metrics when values are unknown", () => {
 
 test("omits failed block retry timestamp when retry date is unknown", () => {
     const metrics: ChainPipelineMetrics = {
-        chainId: 1,
-        observedAt: new Date("2026-01-01T00:00:00.000Z"),
-        latestBlock: 10,
-        stages: {
-            head: {
-                block: null,
-                lagBlocks: null,
-            },
-            fetch: {
-                block: null,
-                lagBlocks: null,
-            },
-            sequencer: {
-                block: null,
-                lagBlocks: null,
-            },
-        },
-        maxLag: {
-            blocks: null,
-            seconds: null,
-        },
-        freshness: {
-            secondsSincePipelineUpdate: null,
-            secondsSinceFetch: null,
-        },
+        ...createEmptyMetrics(),
         blockStatusCounts: {
             pending: 0,
             fetching: 0,
@@ -203,7 +142,6 @@ test("omits failed block retry timestamp when retry date is unknown", () => {
             nextRetryAt: null,
             updatedAt: new Date("2026-01-01T00:00:05.000Z"),
         }],
-        reactions: [],
     };
 
     const formatted = formatPipelineMetricsPrometheus(metrics);
@@ -215,8 +153,46 @@ test("omits failed block retry timestamp when retry date is unknown", () => {
     );
 });
 
+test("formats reaction block lag without cursor internals", () => {
+    const metrics: ChainPipelineMetrics = {
+        ...createEmptyMetrics(),
+        reactions: [{
+            workerName: "tx-worker",
+            streamType: "tx",
+            block: 9,
+            lagBlocks: 1,
+            secondsSinceProgress: 5,
+        }],
+    };
+
+    const formatted = formatPipelineMetricsPrometheus(metrics);
+
+    expect(formatted).toContain(
+        "voryn_pipeline_reaction_block{chain_id=\"1\",worker_name=\"tx-worker\",stream_type=\"tx\"} 9"
+    );
+    expect(formatted).not.toContain("voryn_pipeline_reaction_position_transaction_index{");
+    expect(formatted).not.toContain("voryn_pipeline_reaction_position_log_index{");
+});
+
 test("escapes label values", () => {
     const metrics: ChainPipelineMetrics = {
+        ...createEmptyMetrics(),
+        reactions: [{
+            workerName: "worker\"one\\two\nthree",
+            streamType: "tx",
+            block: 1,
+            lagBlocks: 1,
+            secondsSinceProgress: 5,
+        }],
+    };
+
+    expect(formatPipelineMetricsPrometheus(metrics)).toContain(
+        "worker_name=\"worker\\\"one\\\\two\\nthree\"",
+    );
+});
+
+function createEmptyMetrics(): ChainPipelineMetrics {
+    return {
         chainId: 1,
         observedAt: new Date("2026-01-01T00:00:00.000Z"),
         latestBlock: 10,
@@ -250,17 +226,6 @@ test("escapes label values", () => {
             failed: 0,
         },
         failedBlocks: [],
-        reactions: [{
-            workerName: "worker\"one\\two\nthree",
-            streamType: "tx",
-            processedSeq: 1n,
-            targetSeq: 2n,
-            lagSeq: 1n,
-            secondsSinceProgress: 5,
-        }],
+        reactions: [],
     };
-
-    expect(formatPipelineMetricsPrometheus(metrics)).toContain(
-        "worker_name=\"worker\\\"one\\\\two\\nthree\"",
-    );
-});
+}

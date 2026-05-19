@@ -17,8 +17,8 @@ const createBlockJobsRepository = (retryFailed: BlockJobsRepository["retryFailed
     }),
     listFailedBlocks: async () => [],
     retryFailed,
-    deleteUpToBlock: async () => 0,
-    deleteAfterBlock: async () => 0,
+    deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteAfterBlockNumber: async () => 0,
 });
 
 test("block job recovery service retries one failed block with fresh attempts", async () => {

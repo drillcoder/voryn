@@ -3,11 +3,8 @@ import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import { PipelineMetrics } from "../../../src/metrics/pipeline-metrics.js";
 import {
     createNoopBlockJobsRepository,
-    createNoopCanonicalBlocksRepository,
-    createNoopCanonicalEventsRepository,
-    createNoopCanonicalTransactionsRepository,
+    createNoopBlocksRepository,
     createNoopChainCursorRepository,
-    createNoopRawBlocksRepository,
     createNoopWorkerCursorsRepository,
 } from "../helpers/pipeline-test-helpers.js";
 import { asHash32 } from "../../../src/utils/hex.js";
@@ -46,10 +43,7 @@ test("pipeline metrics create wires service execution", async () => {
         overrides: {
             chainCursorRepository: createReadyChainCursorRepository(),
             blockJobsRepository: createNoopBlockJobsRepository(),
-            rawBlocksRepository: createNoopRawBlocksRepository(),
-            canonicalBlocksRepository: createNoopCanonicalBlocksRepository(),
-            canonicalTransactionsRepository: createNoopCanonicalTransactionsRepository(),
-            canonicalEventsRepository: createNoopCanonicalEventsRepository(),
+            blocksRepository: createNoopBlocksRepository(),
             workerCursorsRepository: createNoopWorkerCursorsRepository(),
         },
     });
@@ -88,10 +82,7 @@ test("pipeline metrics returns prometheus text", async () => {
         overrides: {
             chainCursorRepository: createReadyChainCursorRepository(),
             blockJobsRepository: createNoopBlockJobsRepository(),
-            rawBlocksRepository: createNoopRawBlocksRepository(),
-            canonicalBlocksRepository: createNoopCanonicalBlocksRepository(),
-            canonicalTransactionsRepository: createNoopCanonicalTransactionsRepository(),
-            canonicalEventsRepository: createNoopCanonicalEventsRepository(),
+            blocksRepository: createNoopBlocksRepository(),
             workerCursorsRepository: createNoopWorkerCursorsRepository(),
         },
     });

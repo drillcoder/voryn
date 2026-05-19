@@ -3,19 +3,13 @@ import type { BlockSource } from "../interfaces/block-source.js";
 import type { ChainPipelineMetrics, PipelineMetricsConfig } from "../interfaces/metrics.js";
 import type {
     BlockJobsRepository,
-    CanonicalBlocksRepository,
-    CanonicalEventsRepository,
-    CanonicalTransactionsRepository,
+    BlocksRepository,
     ChainCursorRepository,
-    RawBlocksRepository,
     WorkerCursorsRepository,
 } from "../interfaces/repositories.js";
 import { PostgresBlockJobsRepository } from "../repositories/postgres/block-jobs-repository.js";
-import { PostgresCanonicalBlocksRepository } from "../repositories/postgres/canonical-blocks-repository.js";
-import { PostgresCanonicalEventsRepository } from "../repositories/postgres/canonical-events-repository.js";
-import { PostgresCanonicalTransactionsRepository } from "../repositories/postgres/canonical-transactions-repository.js";
+import { PostgresBlocksRepository } from "../repositories/postgres/blocks-repository.js";
 import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cursor-repository.js";
-import { PostgresRawBlocksRepository } from "../repositories/postgres/raw-blocks-repository.js";
 import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker-cursors-repository.js";
 import { PipelineMetricsService } from "../services/pipeline-metrics-service.js";
 import { resolveDbDependencies, resolveEthersSource } from "../runtime/resolvers.js";
@@ -25,10 +19,7 @@ import { formatPipelineMetricsPrometheus } from "./prometheus.js";
 export interface PipelineMetricsDatabaseDependencies {
     chainCursorRepository: ChainCursorRepository;
     blockJobsRepository: BlockJobsRepository;
-    rawBlocksRepository: RawBlocksRepository;
-    canonicalBlocksRepository: CanonicalBlocksRepository;
-    canonicalTransactionsRepository: CanonicalTransactionsRepository;
-    canonicalEventsRepository: CanonicalEventsRepository;
+    blocksRepository: BlocksRepository;
     workerCursorsRepository: WorkerCursorsRepository;
 }
 
@@ -45,10 +36,7 @@ export class PipelineMetrics {
             (pool: Pool): PipelineMetricsDatabaseDependencies => ({
                 chainCursorRepository: new PostgresChainCursorRepository(pool),
                 blockJobsRepository: new PostgresBlockJobsRepository(pool),
-                rawBlocksRepository: new PostgresRawBlocksRepository(pool),
-                canonicalBlocksRepository: new PostgresCanonicalBlocksRepository(pool),
-                canonicalTransactionsRepository: new PostgresCanonicalTransactionsRepository(pool),
-                canonicalEventsRepository: new PostgresCanonicalEventsRepository(pool),
+                blocksRepository: new PostgresBlocksRepository(pool),
                 workerCursorsRepository: new PostgresWorkerCursorsRepository(pool),
             })
         );
@@ -57,10 +45,7 @@ export class PipelineMetrics {
             source,
             dependencies.chainCursorRepository,
             dependencies.blockJobsRepository,
-            dependencies.rawBlocksRepository,
-            dependencies.canonicalBlocksRepository,
-            dependencies.canonicalTransactionsRepository,
-            dependencies.canonicalEventsRepository,
+            dependencies.blocksRepository,
             dependencies.workerCursorsRepository,
         );
 

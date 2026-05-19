@@ -143,26 +143,18 @@ export function formatPipelineMetricsPrometheus(metrics: ChainPipelineMetrics): 
 
         addGauge(
             {
-                name: "voryn_pipeline_reaction_processed_seq",
-                help: "Last sequence processed by a reaction worker.",
+                name: "voryn_pipeline_reaction_block",
+                help: "Current block processed by a reaction worker.",
             },
-            reaction.processedSeq,
+            reaction.block,
             labels,
         );
         addGauge(
             {
-                name: "voryn_pipeline_reaction_target_seq",
-                help: "Latest sequence available for a reaction worker stream.",
+                name: "voryn_pipeline_reaction_lag_blocks",
+                help: "Reaction worker block lag from the committed chain cursor.",
             },
-            reaction.targetSeq,
-            labels,
-        );
-        addGauge(
-            {
-                name: "voryn_pipeline_reaction_lag_seq",
-                help: "Reaction worker sequence lag.",
-            },
-            reaction.lagSeq,
+            reaction.lagBlocks,
             labels,
         );
         addGauge(

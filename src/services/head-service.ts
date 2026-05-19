@@ -2,7 +2,13 @@ import type { BlockSource } from "../interfaces/block-source.js";
 import type { DbExecutor } from "../interfaces/db.js";
 import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
-import type { BlockJobsRepository, ChainCursorRepository, RawBlocksRepository } from "../interfaces/repositories.js";
+import type {
+    BlockJobsRepository,
+    BlocksRepository,
+    ChainCursorRepository,
+    EventsRepository,
+    TransactionsRepository,
+} from "../interfaces/repositories.js";
 import type { HeadWorkerConfig } from "../interfaces/runtime.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import type { BlockNumber, ChainId } from "../types/chain.js";
@@ -13,7 +19,9 @@ export class HeadService {
         private readonly source: BlockSource,
         private readonly chainCursorRepository: ChainCursorRepository,
         private readonly blockJobsRepository: BlockJobsRepository,
-        private readonly rawBlocksRepository: RawBlocksRepository,
+        private readonly blocksRepository: BlocksRepository,
+        private readonly transactionsRepository: TransactionsRepository,
+        private readonly eventsRepository: EventsRepository,
         private readonly transactionManager: TransactionManager,
         private readonly logger: Logger = noopLogger,
     ) {
@@ -124,8 +132,10 @@ export class HeadService {
                 rebaseTo,
                 transaction,
             );
-            await this.blockJobsRepository.deleteUpToBlock(chainId, rebaseTo, transaction);
-            await this.rawBlocksRepository.deleteUpToBlock(chainId, rebaseTo, transaction);
+            await this.eventsRepository.deleteAtOrBeforeBlockNumber(chainId, rebaseTo, transaction);
+            await this.transactionsRepository.deleteAtOrBeforeBlockNumber(chainId, rebaseTo, transaction);
+            await this.blocksRepository.deleteAtOrBeforeBlockNumber(chainId, rebaseTo, transaction);
+            await this.blockJobsRepository.deleteAtOrBeforeBlockNumber(chainId, rebaseTo, transaction);
 
             this.logger.info("chain_cursor_rebased", {
                 chainId,
