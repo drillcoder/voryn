@@ -18,9 +18,9 @@
   <a href="./README.ru.md">Russian documentation</a>
 </p>
 
-Voryn helps you build indexers that read blocks from EVM RPC, store normalized fetched data, commit the canonical chain in strict order, and run your application logic on transactions and events.
+Voryn helps you build indexers that read blocks from EVM RPC, store normalized fetched data, commit chain progress in strict order, and run your application logic on transactions and events.
 
-The library handles the boring but critical infrastructure: block queues, retries, cursors, singleton locks, reorg protection, retention, and metrics. You write business logic on top of canonical data.
+The library handles the boring but critical infrastructure: block queues, retries, cursors, singleton locks, reorg protection, retention, and metrics. You write business logic on top of committed data.
 
 ## Who it is for
 
@@ -29,17 +29,17 @@ Voryn is a good fit for teams building:
 - backends for DeFi, NFT, payments, wallets, and on-chain analytics;
 - event-driven services that react to contract logs;
 - pipelines that load blocks, transactions, and events into PostgreSQL;
-- custom indexers instead of hosted indexing services;
+- application-owned custom indexers;
 - multi-chain services where each chain needs isolated progress tracking.
 
-It is not the best fit if you only need a one-off `getLogs` script, a full query layer like a hosted indexer provides out of the box, or storage without PostgreSQL.
+Voryn focuses on durable PostgreSQL-backed indexing pipelines with application-owned storage and processing.
 
 ## What is included
 
 - **Ingestion pipeline**: `HeadWorker` enqueues blocks, `FetchWorker` downloads data, and `SequencerWorker` commits only the strict `N -> N+1` sequence.
-- **Reorg handling**: `parentHash` checks, common ancestor lookup, and rollback of non-canonical data.
+- **Reorg handling**: `parentHash` checks, common ancestor lookup, and rollback of replaced fetched data.
 - **Horizontal fetch scaling**: multiple fetch workers can safely share one PostgreSQL-backed queue.
-- **Durable reactions**: `EventReactionWorker` and `TransactionReactionWorker` read canonical streams by `seq` and maintain their own cursors.
+- **Durable reactions**: `EventReactionWorker` and `TransactionReactionWorker` read committed streams by block position and maintain their own cursors.
 - **Operational tools**: `RetentionWorker`, `PipelineMetrics`, `BlockJobRecovery`, `ConsoleLogger`, and a PostgreSQL schema helper.
 - **Replaceable pieces**: you can bring your own `BlockSource`, logger, repositories, transaction manager, or leader lock.
 
@@ -50,16 +50,18 @@ flowchart LR
     RPC["EVM RPC"] --> Head["HeadWorker"]
     Head --> Jobs["block_jobs"]
     Jobs --> Fetch["FetchWorker x N"]
-    Fetch --> Raw["raw_blocks"]
-    Raw --> Sequencer["SequencerWorker"]
-    Sequencer --> Blocks["canonical_blocks"]
-    Sequencer --> Txs["canonical_transactions"]
-    Sequencer --> Events["canonical_events"]
-    Txs --> TxReaction["TransactionReactionWorker"]
-    Events --> EventReaction["EventReactionWorker"]
+    Fetch --> Data["blocks / transactions / events"]
+    Data --> Sequencer["SequencerWorker"]
+    Jobs --> Sequencer
+    Sequencer --> Cursor["chain_cursor"]
+    Data --> Reactions["Reaction workers"]
+    Cursor --> Reactions
 ```
 
-`fetch` can be scaled horizontally. `head`, `sequencer`, `retention`, and reaction workers run as singleton processes through `LeaderLock`.
+- `Fetch` can be scaled horizontally. It writes normalized `blocks`, `transactions`, and `events`.
+- `Sequencer` validates order through block hashes, advances `chain_cursor`, and marks the matching
+`block_jobs` rows as committed.
+- `Head`, `Sequencer`, `Retention`, and Reaction workers run as singleton processes through `LeaderLock`.
 
 ## Installation
 
@@ -165,7 +167,7 @@ Full worker examples:
 
 ## Event and transaction reactions
 
-Reaction workers read only canonical committed data. Each `workerName` has its own durable cursor, so handlers can be restarted safely.
+Reaction workers read only committed data. Each `workerName` has its own durable cursor, so handlers can be restarted safely.
 
 ```ts
 import type { EventReactionHandler } from "@drillcoder/voryn";
@@ -256,7 +258,7 @@ The adapter validates chain id, hashes, addresses, `data` fields, transaction in
 Main exports:
 
 - workers: `HeadWorker`, `FetchWorker`, `SequencerWorker`, `RetentionWorker`, `EventReactionWorker`, `TransactionReactionWorker`;
-- data and reactions: `CanonicalTransaction`, `CanonicalEvent`, `EventReactionHandler`, `TransactionReactionHandler`;
+- data and reactions: `PipelineBlock`, `PipelineTransaction`, `PipelineEvent`, `EventReactionHandler`, `TransactionReactionHandler`;
 - infrastructure: `EthersBlockSource`, `ConsoleLogger`, `PostgresLeaderLock`, `PostgresTransactionManager`;
 - PostgreSQL repositories and schema helpers;
 - operational tools: `PipelineMetrics`, `BlockJobRecovery`.

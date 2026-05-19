@@ -18,9 +18,9 @@
   <a href="./README.md">English documentation</a>
 </p>
 
-Voryn помогает строить индексаторы, которые читают блоки из EVM RPC, сохраняют нормализованные скачанные данные, последовательно коммитят каноническую цепочку и запускают пользовательские обработчики по транзакциям и событиям.
+Voryn помогает строить индексаторы, которые читают блоки из EVM RPC, сохраняют нормализованные скачанные данные, последовательно коммитят прогресс цепочки и запускают пользовательские обработчики по транзакциям и событиям.
 
-Библиотека закрывает скучную, но критичную инфраструктуру: очереди блоков, ретраи, курсоры, singleton-locks, защиту от reorg, retention и метрики. Вы пишете бизнес-логику поверх уже канонических данных.
+Библиотека закрывает скучную, но критичную инфраструктуру: очереди блоков, ретраи, курсоры, singleton-locks, защиту от reorg, retention и метрики. Вы пишете бизнес-логику поверх уже закоммиченных данных.
 
 ## Для кого
 
@@ -29,17 +29,17 @@ Voryn подойдет командам, которые делают:
 - backend для DeFi, NFT, payments, wallets и on-chain analytics;
 - event-driven сервисы, которым нужно реагировать на логи контрактов;
 - пайплайны для загрузки блоков, транзакций и событий в PostgreSQL;
-- свои индексаторы вместо готовых hosted-решений;
+- собственные индексаторы с контролем хранения и обработки;
 - multi-chain сервисы, где прогресс каждой сети должен быть изолирован.
 
-Не лучший выбор, если нужен разовый скрипт `getLogs`, полноценный query layer как у hosted indexer из коробки или хранение без PostgreSQL.
+Voryn сфокусирован на надежных пайплайнах индексации с PostgreSQL, где хранение и обработка остаются на стороне приложения.
 
 ## Что внутри
 
 - **Ingestion pipeline**: `HeadWorker` ставит блоки в очередь, `FetchWorker` скачивает данные, `SequencerWorker` коммитит только строгую последовательность `N -> N+1`.
-- **Reorg handling**: проверка `parentHash`, поиск общего предка и откат неканонических данных.
+- **Reorg handling**: проверка `parentHash`, поиск общего предка и откат замененных скачанных данных.
 - **Horizontal fetch scaling**: несколько fetch-воркеров могут безопасно делить одну очередь через PostgreSQL.
-- **Durable reactions**: `EventReactionWorker` и `TransactionReactionWorker` читают канонические потоки по `seq` и ведут собственные курсоры.
+- **Durable reactions**: `EventReactionWorker` и `TransactionReactionWorker` читают закоммиченные потоки по позиции блока и ведут собственные курсоры.
 - **Operational tools**: `RetentionWorker`, `PipelineMetrics`, `BlockJobRecovery`, `ConsoleLogger`, PostgreSQL schema helper.
 - **Replaceable pieces**: можно подставить свой `BlockSource`, logger, repositories, transaction manager или leader lock.
 
@@ -50,16 +50,18 @@ flowchart LR
     RPC["EVM RPC"] --> Head["HeadWorker"]
     Head --> Jobs["block_jobs"]
     Jobs --> Fetch["FetchWorker x N"]
-    Fetch --> Raw["raw_blocks"]
-    Raw --> Sequencer["SequencerWorker"]
-    Sequencer --> Blocks["canonical_blocks"]
-    Sequencer --> Txs["canonical_transactions"]
-    Sequencer --> Events["canonical_events"]
-    Txs --> TxReaction["TransactionReactionWorker"]
-    Events --> EventReaction["EventReactionWorker"]
+    Fetch --> Data["blocks / transactions / events"]
+    Data --> Sequencer["SequencerWorker"]
+    Jobs --> Sequencer
+    Sequencer --> Cursor["chain_cursor"]
+    Data --> Reactions["Reaction workers"]
+    Cursor --> Reactions
 ```
 
-`fetch` можно масштабировать горизонтально. `head`, `sequencer`, `retention` и reaction-воркеры работают как singleton-процессы через `LeaderLock`.
+- `Fetch` можно масштабировать горизонтально. Он пишет нормализованные `blocks`, `transactions` и `events`.
+- `Sequencer` проверяет порядок через хеши блоков, двигает `chain_cursor` и помечает соответствующие строки
+`block_jobs` как committed.
+- `Head`, `Sequencer`, `Retention` и Reaction-воркеры работают как singleton-процессы через `LeaderLock`.
 
 ## Установка
 
@@ -165,7 +167,7 @@ await Promise.all([
 
 ## Реакции на события и транзакции
 
-Reaction-воркеры читают только канонически закоммиченные данные. Каждый `workerName` имеет свой durable cursor, поэтому обработчик можно безопасно перезапускать.
+Reaction-воркеры читают только закоммиченные данные. Каждый `workerName` имеет свой durable cursor, поэтому обработчик можно безопасно перезапускать.
 
 ```ts
 import type { EventReactionHandler } from "@drillcoder/voryn";
@@ -257,7 +259,7 @@ const source = new EthersBlockSource({
 Основные экспорты:
 
 - воркеры: `HeadWorker`, `FetchWorker`, `SequencerWorker`, `RetentionWorker`, `EventReactionWorker`, `TransactionReactionWorker`;
-- данные и реакции: `CanonicalTransaction`, `CanonicalEvent`, `EventReactionHandler`, `TransactionReactionHandler`;
+- данные и реакции: `PipelineBlock`, `PipelineTransaction`, `PipelineEvent`, `EventReactionHandler`, `TransactionReactionHandler`;
 - инфраструктура: `EthersBlockSource`, `ConsoleLogger`, `PostgresLeaderLock`, `PostgresTransactionManager`;
 - PostgreSQL-репозитории и schema helpers;
 - операционные инструменты: `PipelineMetrics`, `BlockJobRecovery`.

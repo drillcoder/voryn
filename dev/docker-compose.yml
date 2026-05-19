@@ -75,7 +75,7 @@ services:
       VORYN_FETCH_RETRY_MAX_DELAY_MS: ${VORYN_FETCH_RETRY_MAX_DELAY_MS:-}
     command: ["npm", "exec", "--", "tsx", "--tsconfig", "dev/tsconfig.json", "dev/fetch.ts"]
     restart: unless-stopped
-    scale: 10
+    scale: 1
 
   sequencer:
     <<: *worker-base
