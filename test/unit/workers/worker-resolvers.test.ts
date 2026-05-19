@@ -12,9 +12,10 @@ import { TransactionReactionWorker } from "../../../src/workers/transaction-reac
 import { buildReactionWorkerLockKey } from "../../../src/workers/worker-lock-keys.js";
 import {
     createNoopBlockJobsRepository,
-    createNoopCanonicalEventsRepository,
-    createNoopCanonicalTransactionsRepository,
-    createNoopRawBlocksRepository,
+    createNoopBlocksRepository,
+    createNoopChainCursorRepository,
+    createNoopEventsRepository,
+    createNoopTransactionsRepository,
     invokeTick,
     leaderLock,
     transactionManager,
@@ -65,7 +66,9 @@ test("fetch worker creates ethers source when only rpcUrl is provided", async ()
         rpcUrl: "http://127.0.0.1:8545",
         overrides: {
             blockJobsRepository: createNoopBlockJobsRepository(),
-            rawBlocksRepository: createNoopRawBlocksRepository(),
+            blocksRepository: createNoopBlocksRepository(),
+            transactionsRepository: createNoopTransactionsRepository(),
+            eventsRepository: createNoopEventsRepository(),
             transactionManager,
         },
     });
@@ -102,7 +105,8 @@ test("event reaction worker creates leader lock from worker identity", async () 
         handler: eventHandler,
         dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
         overrides: {
-            canonicalEventsRepository: createNoopCanonicalEventsRepository(),
+            chainCursorRepository: createNoopChainCursorRepository(),
+            eventsRepository: createNoopEventsRepository(),
             workerCursorsRepository,
         },
     });
@@ -180,7 +184,8 @@ test("event reaction worker uses override leader lock when provided with dbUrl",
         handler: eventHandler,
         dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
         overrides: {
-            canonicalEventsRepository: createNoopCanonicalEventsRepository(),
+            chainCursorRepository: createNoopChainCursorRepository(),
+            eventsRepository: createNoopEventsRepository(),
             workerCursorsRepository,
             leaderLock,
         },
@@ -198,7 +203,8 @@ test("transaction reaction worker creates leader lock from worker identity", asy
         handler: transactionHandler,
         dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
         overrides: {
-            transactionsRepository: createNoopCanonicalTransactionsRepository(),
+            chainCursorRepository: createNoopChainCursorRepository(),
+            transactionsRepository: createNoopTransactionsRepository(),
             workerCursorsRepository,
         },
     });

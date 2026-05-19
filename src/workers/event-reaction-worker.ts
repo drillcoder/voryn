@@ -3,10 +3,11 @@ import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
 import type { EventReactionHandler } from "../interfaces/reaction.js";
-import type { CanonicalEventsRepository, WorkerCursorsRepository } from "../interfaces/repositories.js";
+import type { ChainCursorRepository, EventsRepository, WorkerCursorsRepository } from "../interfaces/repositories.js";
 import type { ReactionWorkerConfig } from "../interfaces/runtime.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
-import { PostgresCanonicalEventsRepository } from "../repositories/postgres/canonical-events-repository.js";
+import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cursor-repository.js";
+import { PostgresEventsRepository } from "../repositories/postgres/events-repository.js";
 import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker-cursors-repository.js";
 import { EventReactionService } from "../services/event-reaction-service.js";
 import { resolveDbDependencies } from "../runtime/resolvers.js";
@@ -15,7 +16,8 @@ import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 import { buildReactionWorkerLockKey } from "./worker-lock-keys.js";
 
 export interface EventReactionWorkerDatabaseDependencies {
-    canonicalEventsRepository: CanonicalEventsRepository;
+    chainCursorRepository: ChainCursorRepository;
+    eventsRepository: EventsRepository;
     workerCursorsRepository: WorkerCursorsRepository;
     leaderLock: LeaderLock;
 }
@@ -31,7 +33,8 @@ export class EventReactionWorker extends SingletonPollingWorker {
         const { dependencies, dispose } = await resolveDbDependencies<EventReactionWorkerDatabaseDependencies>(
             options,
             (pool: Pool): EventReactionWorkerDatabaseDependencies => ({
-                canonicalEventsRepository: new PostgresCanonicalEventsRepository(pool),
+                chainCursorRepository: new PostgresChainCursorRepository(pool),
+                eventsRepository: new PostgresEventsRepository(pool),
                 workerCursorsRepository: new PostgresWorkerCursorsRepository(pool),
                 leaderLock: new PostgresLeaderLock(pool, buildReactionWorkerLockKey("event", options.config)),
             })
@@ -39,7 +42,8 @@ export class EventReactionWorker extends SingletonPollingWorker {
         const service = new EventReactionService(
             options.config,
             options.handler,
-            dependencies.canonicalEventsRepository,
+            dependencies.chainCursorRepository,
+            dependencies.eventsRepository,
             dependencies.workerCursorsRepository,
             options.logger
         );

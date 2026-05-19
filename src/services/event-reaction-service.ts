@@ -1,14 +1,16 @@
 import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
+import type { WorkerCursorPosition } from "../interfaces/pipeline.js";
 import type { EventReactionHandler } from "../interfaces/reaction.js";
-import type { CanonicalEventsRepository, WorkerCursorsRepository } from "../interfaces/repositories.js";
+import type { ChainCursorRepository, EventsRepository, WorkerCursorsRepository } from "../interfaces/repositories.js";
 import type { ReactionWorkerConfig } from "../interfaces/runtime.js";
 
 export class EventReactionService {
     constructor(
         private readonly config: ReactionWorkerConfig,
         private readonly handler: EventReactionHandler,
-        private readonly eventsRepository: CanonicalEventsRepository,
+        private readonly chainCursorRepository: ChainCursorRepository,
+        private readonly eventsRepository: EventsRepository,
         private readonly workerCursorsRepository: WorkerCursorsRepository,
         private readonly logger: Logger = noopLogger,
     ) {
@@ -17,14 +19,37 @@ export class EventReactionService {
     public async execute(): Promise<void> {
         const { workerName, chainId, batchSize } = this.config;
 
-        const cursor = await this.getOrCreateCursor(workerName, chainId);
-        const events = await this.eventsRepository.readFromSeq(chainId, cursor.lastSeq, batchSize);
-        let lastProcessedSeq: bigint | null = null;
+        const chainCursor = await this.chainCursorRepository.get(chainId);
+        if (chainCursor === null) {
+            throw new Error(`Chain cursor is missing for event reaction chain ${String(chainId)}`);
+        }
+
+        const cursor = await this.getOrCreateCursor(workerName, chainId, chainCursor.lastCommittedBlock);
+        if (cursor.lastLogIndex == null) {
+            throw new Error(
+                `Event worker cursor has no log index for worker "${workerName}", chain ${String(chainId)}`
+            );
+        }
+
+        const events = await this.eventsRepository.listAfterPosition(
+            chainId,
+            chainCursor.lastCommittedBlock,
+            cursor.lastBlockNumber,
+            cursor.lastTransactionIndex,
+            cursor.lastLogIndex,
+            batchSize
+        );
+        let lastProcessedPosition: WorkerCursorPosition | null = null;
 
         for (const event of events) {
             await this.handler.handle(event, { workerName });
-            await this.workerCursorsRepository.advance(workerName, chainId, "event", event.seq);
-            lastProcessedSeq = event.seq;
+            const position = {
+                lastBlockNumber: event.blockNumber,
+                lastTransactionIndex: event.transactionIndex,
+                lastLogIndex: event.index,
+            };
+            await this.workerCursorsRepository.advance(workerName, chainId, "event", position);
+            lastProcessedPosition = position;
         }
 
         if (events.length > 0) {
@@ -32,31 +57,32 @@ export class EventReactionService {
                 chainId,
                 workerName,
                 processed: events.length,
-                lastProcessedSeq: lastProcessedSeq?.toString(),
+                lastProcessedPosition,
             });
         } else {
-            this.logger.debug("event_reaction_tick_no_events", {
-                chainId,
-                workerName,
-            });
+            this.logger.debug("event_reaction_tick_no_events", { chainId, workerName });
         }
     }
 
-    private async getOrCreateCursor(workerName: string, chainId: number): Promise<{ lastSeq: bigint }> {
+    private async getOrCreateCursor(
+        workerName: string,
+        chainId: number,
+        initialBlockNumber: number
+    ): Promise<WorkerCursorPosition> {
         const current = await this.workerCursorsRepository.get(workerName, chainId, "event");
         if (current !== null) {
-            return { lastSeq: current.lastSeq };
+            return current.position;
         }
 
-        const initialSeq = await this.eventsRepository.maxSeq(chainId);
-        await this.workerCursorsRepository.insert(workerName, chainId, "event", initialSeq);
+        const initialPosition = {
+            lastBlockNumber: initialBlockNumber,
+            lastTransactionIndex: -1,
+            lastLogIndex: -1,
+        };
+        await this.workerCursorsRepository.insert(workerName, chainId, "event", initialPosition);
 
-        this.logger.info("worker_cursor_initialized", {
-            workerName,
-            chainId,
-            initialSeq: initialSeq.toString(),
-        });
+        this.logger.info("worker_cursor_initialized", { workerName, chainId, initialPosition });
 
-        return { lastSeq: initialSeq };
+        return initialPosition;
     }
 }

@@ -1,10 +1,11 @@
-import type { CanonicalTransactionsRepository, WorkerCursorsRepository } from "../../../src/interfaces/repositories.js";
 import type { TransactionReactionHandler } from "../../../src/interfaces/reaction.js";
 import type { ReactionWorkerConfig } from "../../../src/interfaces/runtime.js";
 import { TransactionReactionWorker } from "../../../src/workers/transaction-reaction-worker.js";
 import {
     ADDRESS,
-    createNoopCanonicalTransactionsRepository,
+    createNoopChainCursorRepository,
+    createNoopTransactionsRepository,
+    createNoopWorkerCursorsRepository,
     DATA,
     HASH_A,
     HASH_B,
@@ -14,7 +15,7 @@ import {
 } from "../helpers/pipeline-test-helpers.js";
 
 test("transaction reaction worker create wires service execution", async () => {
-    const handled: bigint[] = [];
+    const handled: Array<[number, number]> = [];
     const config: ReactionWorkerConfig = {
         chainId: 13,
         workerName: "tx-reaction",
@@ -23,52 +24,57 @@ test("transaction reaction worker create wires service execution", async () => {
     };
     const handler: TransactionReactionHandler = {
         handle: async (transaction) => {
-            handled.push(transaction.seq);
+            handled.push([transaction.blockNumber, transaction.index]);
         },
-    };
-    const workerCursorsRepository: WorkerCursorsRepository = {
-        get: async () => ({
-            workerName: "tx-reaction",
-            chainId: 13,
-            streamType: "tx",
-            lastSeq: 0n,
-            updatedAt: new Date(),
-        }),
-        listByChain: async () => [],
-        insert: async () => undefined,
-        advance: async () => undefined,
-    };
-    const canonicalTransactionsRepository: CanonicalTransactionsRepository = {
-        ...createNoopCanonicalTransactionsRepository(),
-        readFromSeq: async () => [
-            {
-                seq: 1n,
-                chainId: 13,
-                blockNumber: 1,
-                blockHash: HASH_A,
-                index: 0,
-                hash: HASH_B,
-                from: ADDRESS,
-                to: ADDRESS,
-                value: "1",
-                data: DATA,
-            },
-        ],
     };
 
     const worker = await TransactionReactionWorker.create({
         config,
         handler,
         overrides: {
-            transactionsRepository: canonicalTransactionsRepository,
-            workerCursorsRepository,
+            chainCursorRepository: {
+                ...createNoopChainCursorRepository(),
+                get: async () => ({
+                    chainId: 13,
+                    lastEnqueuedBlock: 1,
+                    lastCommittedBlock: 1,
+                    lastCommittedHash: HASH_A,
+                    updatedAt: new Date(),
+                }),
+            },
+            transactionsRepository: {
+                ...createNoopTransactionsRepository(),
+                listAfterPosition: async () => [
+                    {
+                        chainId: 13,
+                        blockNumber: 1,
+                        blockHash: HASH_A,
+                        index: 0,
+                        hash: HASH_B,
+                        from: ADDRESS,
+                        to: ADDRESS,
+                        value: "1",
+                        data: DATA,
+                    },
+                ],
+            },
+            workerCursorsRepository: {
+                ...createNoopWorkerCursorsRepository(),
+                get: async () => ({
+                    workerName: "tx-reaction",
+                    chainId: 13,
+                    streamType: "tx",
+                    position: { lastBlockNumber: 0, lastTransactionIndex: 0 },
+                    updatedAt: new Date(),
+                }),
+            },
             leaderLock,
         },
     });
 
     await invokeTick(worker);
 
-    expect(handled).toEqual([1n]);
+    expect(handled).toEqual([[1, 0]]);
     expect(invokeStartLogMeta(worker)).toEqual({
         chainId: 13,
         workerName: "tx-reaction",

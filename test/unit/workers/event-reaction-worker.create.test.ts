@@ -1,10 +1,11 @@
-import type { CanonicalEventsRepository, WorkerCursorsRepository } from "../../../src/interfaces/repositories.js";
 import type { EventReactionHandler } from "../../../src/interfaces/reaction.js";
 import type { ReactionWorkerConfig } from "../../../src/interfaces/runtime.js";
 import { EventReactionWorker } from "../../../src/workers/event-reaction-worker.js";
 import {
     ADDRESS,
-    createNoopCanonicalEventsRepository,
+    createNoopChainCursorRepository,
+    createNoopEventsRepository,
+    createNoopWorkerCursorsRepository,
     DATA,
     HASH_A,
     HASH_B,
@@ -14,7 +15,7 @@ import {
 } from "../helpers/pipeline-test-helpers.js";
 
 test("event reaction worker create wires service execution", async () => {
-    const handled: bigint[] = [];
+    const handled: Array<[number, number, number]> = [];
     const config: ReactionWorkerConfig = {
         chainId: 12,
         workerName: "event-reaction",
@@ -23,52 +24,57 @@ test("event reaction worker create wires service execution", async () => {
     };
     const handler: EventReactionHandler = {
         handle: async (event) => {
-            handled.push(event.seq);
+            handled.push([event.blockNumber, event.transactionIndex, event.index]);
         },
-    };
-    const workerCursorsRepository: WorkerCursorsRepository = {
-        get: async () => ({
-            workerName: "event-reaction",
-            chainId: 12,
-            streamType: "event",
-            lastSeq: 0n,
-            updatedAt: new Date(),
-        }),
-        listByChain: async () => [],
-        insert: async () => undefined,
-        advance: async () => undefined,
-    };
-    const canonicalEventsRepository: CanonicalEventsRepository = {
-        ...createNoopCanonicalEventsRepository(),
-        readFromSeq: async () => [
-            {
-                seq: 1n,
-                chainId: 12,
-                blockNumber: 1,
-                blockHash: HASH_A,
-                transactionIndex: 0,
-                transactionHash: HASH_B,
-                index: 0,
-                address: ADDRESS,
-                topics: [HASH_A],
-                data: DATA,
-            },
-        ],
     };
 
     const worker = await EventReactionWorker.create({
         config,
         handler,
         overrides: {
-            canonicalEventsRepository,
-            workerCursorsRepository,
+            chainCursorRepository: {
+                ...createNoopChainCursorRepository(),
+                get: async () => ({
+                    chainId: 12,
+                    lastEnqueuedBlock: 1,
+                    lastCommittedBlock: 1,
+                    lastCommittedHash: HASH_A,
+                    updatedAt: new Date(),
+                }),
+            },
+            eventsRepository: {
+                ...createNoopEventsRepository(),
+                listAfterPosition: async () => [
+                    {
+                        chainId: 12,
+                        blockNumber: 1,
+                        blockHash: HASH_A,
+                        transactionIndex: 0,
+                        transactionHash: HASH_B,
+                        index: 0,
+                        address: ADDRESS,
+                        topics: [HASH_A],
+                        data: DATA,
+                    },
+                ],
+            },
+            workerCursorsRepository: {
+                ...createNoopWorkerCursorsRepository(),
+                get: async () => ({
+                    workerName: "event-reaction",
+                    chainId: 12,
+                    streamType: "event",
+                    position: { lastBlockNumber: 0, lastTransactionIndex: 0, lastLogIndex: 0 },
+                    updatedAt: new Date(),
+                }),
+            },
             leaderLock,
         },
     });
 
     await invokeTick(worker);
 
-    expect(handled).toEqual([1n]);
+    expect(handled).toEqual([[1, 0, 0]]);
     expect(invokeStartLogMeta(worker)).toEqual({
         chainId: 12,
         workerName: "event-reaction",

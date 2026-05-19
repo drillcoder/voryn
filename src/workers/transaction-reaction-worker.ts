@@ -3,10 +3,15 @@ import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
 import type { TransactionReactionHandler } from "../interfaces/reaction.js";
-import type { CanonicalTransactionsRepository, WorkerCursorsRepository } from "../interfaces/repositories.js";
+import type {
+    ChainCursorRepository,
+    TransactionsRepository,
+    WorkerCursorsRepository,
+} from "../interfaces/repositories.js";
 import type { ReactionWorkerConfig } from "../interfaces/runtime.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
-import { PostgresCanonicalTransactionsRepository } from "../repositories/postgres/canonical-transactions-repository.js";
+import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cursor-repository.js";
+import { PostgresTransactionsRepository } from "../repositories/postgres/transactions-repository.js";
 import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker-cursors-repository.js";
 import { TransactionReactionService } from "../services/transaction-reaction-service.js";
 import { resolveDbDependencies } from "../runtime/resolvers.js";
@@ -15,7 +20,8 @@ import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 import { buildReactionWorkerLockKey } from "./worker-lock-keys.js";
 
 export interface TransactionReactionWorkerDatabaseDependencies {
-    transactionsRepository: CanonicalTransactionsRepository;
+    chainCursorRepository: ChainCursorRepository;
+    transactionsRepository: TransactionsRepository;
     workerCursorsRepository: WorkerCursorsRepository;
     leaderLock: LeaderLock;
 }
@@ -31,7 +37,8 @@ export class TransactionReactionWorker extends SingletonPollingWorker {
         const { dependencies, dispose } = await resolveDbDependencies<TransactionReactionWorkerDatabaseDependencies>(
             options,
             (pool: Pool): TransactionReactionWorkerDatabaseDependencies => ({
-                transactionsRepository: new PostgresCanonicalTransactionsRepository(pool),
+                chainCursorRepository: new PostgresChainCursorRepository(pool),
+                transactionsRepository: new PostgresTransactionsRepository(pool),
                 workerCursorsRepository: new PostgresWorkerCursorsRepository(pool),
                 leaderLock: new PostgresLeaderLock(pool, buildReactionWorkerLockKey("transaction", options.config)),
             })
@@ -39,6 +46,7 @@ export class TransactionReactionWorker extends SingletonPollingWorker {
         const service = new TransactionReactionService(
             options.config,
             options.handler,
+            dependencies.chainCursorRepository,
             dependencies.transactionsRepository,
             dependencies.workerCursorsRepository,
             options.logger,
