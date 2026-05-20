@@ -36,7 +36,19 @@ export class FetchService {
         let fetched = 0;
         let failed = 0;
 
+        this.logger.debug("fetch_tick_started", {
+            chainId,
+            instanceId: this.config.instanceId,
+            batchSize,
+            staleClaimedBefore,
+        });
+
         for (let index = 0; index < batchSize; index++) {
+            this.logger.debug("fetch_claim_started", {
+                chainId,
+                instanceId: this.config.instanceId,
+                batchIndex: index,
+            });
             const job = await this.blockJobsRepository.claimForFetch(
                 chainId,
                 this.config.instanceId,
@@ -44,12 +56,31 @@ export class FetchService {
             );
 
             if (job === null) {
+                this.logger.debug("fetch_claim_empty", {
+                    chainId,
+                    instanceId: this.config.instanceId,
+                    batchIndex: index,
+                });
                 break;
             }
             claimed += 1;
 
+            this.logger.debug("fetch_claim_completed", {
+                chainId,
+                instanceId: this.config.instanceId,
+                blockNumber: job.blockNumber,
+                batchIndex: index,
+            });
+
             try {
                 const fetchedBlock = await this.source.getBlockData(chainId, job.blockNumber);
+                this.logger.debug("fetch_block_data_load_completed", {
+                    chainId,
+                    instanceId: this.config.instanceId,
+                    blockNumber: job.blockNumber,
+                    transactionCount: fetchedBlock.transactions.length,
+                    eventCount: fetchedBlock.logs.length,
+                });
 
                 await this.transactionManager.run(async (transaction) => {
                     await this.blocksRepository.insert({
@@ -70,8 +101,22 @@ export class FetchService {
                         transaction
                     );
                 });
+                this.logger.debug("fetch_block_data_save_completed", {
+                    chainId,
+                    instanceId: this.config.instanceId,
+                    blockNumber: job.blockNumber,
+                    transactionCount: fetchedBlock.transactions.length,
+                    eventCount: fetchedBlock.logs.length,
+                });
                 fetched += 1;
             } catch (error) {
+                this.logger.debug("fetch_block_processing_failed", {
+                    chainId,
+                    instanceId: this.config.instanceId,
+                    blockNumber: job.blockNumber,
+                    error: asErrorMessage(error),
+                });
+
                 if (this.isClaimLostError(error)) {
                     this.logger.warn("fetch_claim_lost_before_mark_fetched", {
                         chainId,
@@ -90,6 +135,13 @@ export class FetchService {
                         asErrorMessage(error),
                         nextRetryAt,
                     );
+                    this.logger.debug("fetch_job_marked_failed", {
+                        chainId,
+                        instanceId: this.config.instanceId,
+                        blockNumber: job.blockNumber,
+                        attemptNumber: job.attempts + 1,
+                        nextRetryAt,
+                    });
                     failed += 1;
                 } catch (markError) {
                     if (this.isClaimLostError(markError)) {

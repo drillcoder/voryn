@@ -6,6 +6,7 @@ import type {
 } from "../../../src/interfaces/repositories.js";
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import type { DbExecutor } from "../../../src/interfaces/db.js";
+import type { Logger } from "../../../src/interfaces/logger.js";
 import type { TransactionManager } from "../../../src/interfaces/transaction-manager.js";
 import { FetchService } from "../../../src/services/fetch-service.js";
 import type { FetchServiceConfig } from "../../../src/services/fetch-service.js";
@@ -13,6 +14,7 @@ import { asHash32 } from "../../../src/utils/hex.js";
 
 const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 const HASH_B = asHash32("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+type LoggerMeta = Record<string, unknown>;
 
 const config: FetchServiceConfig = {
     chainId: 7,
@@ -102,6 +104,26 @@ const createSource = (getBlockData: BlockSource["getBlockData"]): BlockSource =>
     getBlockData,
 });
 
+const createLogger = (): {
+    logger: Logger;
+    debug: jest.Mock<unknown, [string, LoggerMeta?]>;
+    info: jest.Mock<unknown, [string, LoggerMeta?]>;
+} => {
+    const debug = jest.fn<unknown, [string, LoggerMeta?]>();
+    const info = jest.fn<unknown, [string, LoggerMeta?]>();
+
+    return {
+        logger: {
+            debug,
+            info,
+            warn: jest.fn<unknown, [string, LoggerMeta?]>(),
+            error: jest.fn<unknown, [string, LoggerMeta?]>(),
+        },
+        debug,
+        info,
+    };
+};
+
 test("fetch service stores fetched block data and marks job fetched", async () => {
     const savedBlocks: number[] = [];
     const savedTransactionCounts: number[] = [];
@@ -163,6 +185,65 @@ test("fetch service stores fetched block data and marks job fetched", async () =
     expect(savedEventCounts).toEqual([0]);
     expect(fetched).toEqual([12]);
     expect(staleThresholds[0]).toBeInstanceOf(Date);
+});
+
+test("fetch service writes debug logs for each fetch stage", async () => {
+    const { logger, debug, info } = createLogger();
+    const blockJobsRepository = createBlockJobsRepository({
+        claimForFetch: async () => ({
+            chainId: 7,
+            blockNumber: 12,
+            status: "pending",
+            attempts: 0,
+            nextRetryAt: null,
+            error: null,
+            claimedAt: new Date(),
+            updatedAt: new Date(),
+        }),
+    });
+
+    const worker = new FetchService(
+        config,
+        createSource(async () => blockPayload),
+        blockJobsRepository,
+        createBlocksRepository(),
+        createTransactionsRepository(),
+        createEventsRepository(),
+        createPassThroughManager(),
+        logger,
+    );
+
+    await worker.execute();
+
+    expect(debug).toHaveBeenCalledWith("fetch_tick_started", expect.objectContaining({
+        chainId: 7,
+        instanceId: "w1",
+        batchSize: 1,
+    }));
+    expect(debug).toHaveBeenCalledWith("fetch_claim_started", expect.objectContaining({
+        chainId: 7,
+        instanceId: "w1",
+    }));
+    expect(debug).toHaveBeenCalledWith("fetch_claim_completed", expect.objectContaining({
+        chainId: 7,
+        instanceId: "w1",
+        blockNumber: 12,
+    }));
+    expect(debug).toHaveBeenCalledWith("fetch_block_data_load_completed", expect.objectContaining({
+        blockNumber: 12,
+        transactionCount: 0,
+        eventCount: 0,
+    }));
+    expect(debug).toHaveBeenCalledWith("fetch_block_data_save_completed", expect.objectContaining({
+        blockNumber: 12,
+        transactionCount: 0,
+        eventCount: 0,
+    }));
+    expect(info).toHaveBeenCalledWith("fetch_tick_processed", expect.objectContaining({
+        claimed: 1,
+        fetched: 1,
+        failed: 0,
+    }));
 });
 
 test("fetch service marks failure with retry date", async () => {
