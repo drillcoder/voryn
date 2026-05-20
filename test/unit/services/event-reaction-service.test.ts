@@ -42,6 +42,7 @@ const createEventsRepository = (overrides: Partial<EventsRepository> = {}): Even
     listAfterPosition: async () => [],
     insertMany: async () => undefined,
     deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteByBlockNumber: async () => 0,
     deleteAfterBlockNumber: async () => 0,
     ...overrides,
 });

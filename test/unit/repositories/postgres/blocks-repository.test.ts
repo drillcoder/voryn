@@ -132,6 +132,24 @@ test("deleteAtOrBeforeBlockNumber returns zero when rowCount is null", async () 
     await expect(repository.deleteAtOrBeforeBlockNumber(1, 100)).resolves.toBe(0);
 });
 
+test("deleteByBlockNumber deletes one block number", async () => {
+    const query = jest.fn(async () => ({ rows: [], rowCount: 1 }));
+    const repository = new PostgresBlocksRepository(createExecutor(query));
+
+    await expect(repository.deleteByBlockNumber(1, 100)).resolves.toBe(1);
+
+    const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
+    expect(calls[0]?.[0]).toContain("block_number = $2");
+    expect(calls[0]?.[1]).toEqual([1, 100]);
+});
+
+test("deleteByBlockNumber returns zero when rowCount is null", async () => {
+    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const repository = new PostgresBlocksRepository(createExecutor(query));
+
+    await expect(repository.deleteByBlockNumber(1, 100)).resolves.toBe(0);
+});
+
 test("deleteAfterBlockNumber deletes rows after block number", async () => {
     const query = jest.fn(async () => ({ rows: [], rowCount: 3 }));
     const repository = new PostgresBlocksRepository(createExecutor(query));

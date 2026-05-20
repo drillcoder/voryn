@@ -99,6 +99,8 @@ export interface BlocksRepository {
 
     deleteAtOrBeforeBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 
+    deleteByBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
+
     deleteAfterBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 }
 
@@ -115,6 +117,8 @@ export interface TransactionsRepository {
     insertMany(transactions: PipelineTransaction[], transaction?: DbExecutor): Promise<void>;
 
     deleteAtOrBeforeBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
+
+    deleteByBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 
     deleteAfterBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 }
@@ -133,6 +137,8 @@ export interface EventsRepository {
     insertMany(events: PipelineEvent[], transaction?: DbExecutor): Promise<void>;
 
     deleteAtOrBeforeBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
+
+    deleteByBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 
     deleteAfterBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 }

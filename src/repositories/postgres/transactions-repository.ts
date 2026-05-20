@@ -109,6 +109,20 @@ export class PostgresTransactionsRepository implements TransactionsRepository {
         return deleted.rowCount ?? 0;
     }
 
+    async deleteByBlockNumber(
+        chainId: ChainId,
+        blockNumber: BlockNumber,
+        transaction?: DbExecutor
+    ): Promise<number> {
+        const executor = transaction ?? this.pool;
+        const deleted = await executor.query(
+            `DELETE FROM transactions WHERE chain_id = $1 AND block_number = $2`,
+            [chainId, blockNumber]
+        );
+
+        return deleted.rowCount ?? 0;
+    }
+
     async deleteAfterBlockNumber(
         chainId: ChainId,
         blockNumber: BlockNumber,

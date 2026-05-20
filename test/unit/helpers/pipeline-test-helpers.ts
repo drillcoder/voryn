@@ -117,6 +117,7 @@ export const createNoopBlocksRepository = (): BlocksRepository => ({
     get: async () => null,
     getProgress: async () => null,
     deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteByBlockNumber: async () => 0,
     deleteAfterBlockNumber: async () => 0,
 });
 
@@ -133,6 +134,7 @@ export const createNoopTransactionsRepository = (): TransactionsRepository => ({
     listAfterPosition: async () => [],
     insertMany: async () => undefined,
     deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteByBlockNumber: async () => 0,
     deleteAfterBlockNumber: async () => 0,
 });
 
@@ -140,6 +142,7 @@ export const createNoopEventsRepository = (): EventsRepository => ({
     listAfterPosition: async () => [],
     insertMany: async () => undefined,
     deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteByBlockNumber: async () => 0,
     deleteAfterBlockNumber: async () => 0,
 });
 

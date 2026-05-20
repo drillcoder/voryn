@@ -98,6 +98,7 @@ const createBlocksRepository = (overrides?: Partial<BlocksRepository>): BlocksRe
     get: async () => null,
     getProgress: async () => null,
     deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteByBlockNumber: async () => 0,
     deleteAfterBlockNumber: async () => 0,
     ...overrides,
 });
@@ -108,6 +109,7 @@ const createTransactionsRepository = (
     listAfterPosition: async () => [],
     insertMany: async () => undefined,
     deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteByBlockNumber: async () => 0,
     deleteAfterBlockNumber: async () => 0,
     ...overrides,
 });
@@ -116,6 +118,7 @@ const createEventsRepository = (overrides?: Partial<EventsRepository>): EventsRe
     listAfterPosition: async () => [],
     insertMany: async () => undefined,
     deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteByBlockNumber: async () => 0,
     deleteAfterBlockNumber: async () => 0,
     ...overrides,
 });
@@ -151,6 +154,7 @@ test("fetch service stores fetched block data and marks job fetched", async () =
     const savedBlocks: number[] = [];
     const savedTransactionCounts: number[] = [];
     const savedEventCounts: number[] = [];
+    const cleanupCalls: string[] = [];
     const fetched: number[] = [];
 
     const source = createSource(async () => blockPayload);
@@ -159,15 +163,27 @@ test("fetch service stores fetched block data and marks job fetched", async () =
         insert: async (block) => {
             savedBlocks.push(block.blockNumber);
         },
+        deleteByBlockNumber: async (_chainId, blockNumber) => {
+            cleanupCalls.push(`blocks:${String(blockNumber)}`);
+            return 0;
+        },
     });
     const transactionsRepository = createTransactionsRepository({
         insertMany: async (transactions) => {
             savedTransactionCounts.push(transactions.length);
         },
+        deleteByBlockNumber: async (_chainId, blockNumber) => {
+            cleanupCalls.push(`transactions:${String(blockNumber)}`);
+            return 0;
+        },
     });
     const eventsRepository = createEventsRepository({
         insertMany: async (events) => {
             savedEventCounts.push(events.length);
+        },
+        deleteByBlockNumber: async (_chainId, blockNumber) => {
+            cleanupCalls.push(`events:${String(blockNumber)}`);
+            return 0;
         },
     });
 
@@ -203,6 +219,7 @@ test("fetch service stores fetched block data and marks job fetched", async () =
 
     await worker.execute();
 
+    expect(cleanupCalls).toEqual(["events:12", "transactions:12", "blocks:12"]);
     expect(savedBlocks).toEqual([12]);
     expect(savedTransactionCounts).toEqual([0]);
     expect(savedEventCounts).toEqual([0]);

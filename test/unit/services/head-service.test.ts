@@ -44,6 +44,7 @@ const createBlocksRepository = (calls?: unknown[]): BlocksRepository => ({
         calls?.push(["deleteBlocksAtOrBefore", toBlock, tx]);
         return 0;
     },
+    deleteByBlockNumber: async () => 0,
     deleteAfterBlockNumber: async () => 0,
 });
 
@@ -54,6 +55,7 @@ const createTransactionsRepository = (calls?: unknown[]): TransactionsRepository
         calls?.push(["deleteTransactionsAtOrBefore", toBlock, tx]);
         return 0;
     },
+    deleteByBlockNumber: async () => 0,
     deleteAfterBlockNumber: async () => 0,
 });
 
@@ -64,6 +66,7 @@ const createEventsRepository = (calls?: unknown[]): EventsRepository => ({
         calls?.push(["deleteEventsAtOrBefore", toBlock, tx]);
         return 0;
     },
+    deleteByBlockNumber: async () => 0,
     deleteAfterBlockNumber: async () => 0,
 });
 

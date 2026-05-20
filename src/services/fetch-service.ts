@@ -138,6 +138,10 @@ export class FetchService {
             });
 
             await this.transactionManager.run(async (transaction) => {
+                await this.eventsRepository.deleteByBlockNumber(chainId, job.blockNumber, transaction);
+                await this.transactionsRepository.deleteByBlockNumber(chainId, job.blockNumber, transaction);
+                await this.blocksRepository.deleteByBlockNumber(chainId, job.blockNumber, transaction);
+
                 await this.blocksRepository.insert({
                     chainId,
                     blockNumber: job.blockNumber,

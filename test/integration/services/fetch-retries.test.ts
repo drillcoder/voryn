@@ -115,6 +115,80 @@ describe("integration services: fetch retries", () => {
         await expect(db.countRows("events")).resolves.toBe(1);
     });
 
+    test("fetch worker replaces orphan block events during retry", async () => {
+        const transactionManager = new PostgresTransactionManager(db.pool);
+        const blockJobsRepository = new PostgresBlockJobsRepository(db.pool);
+        const blocksRepository = new PostgresBlocksRepository(db.pool);
+        const transactionsRepository = new PostgresTransactionsRepository(db.pool);
+        const eventsRepository = new PostgresEventsRepository(db.pool);
+        const targetBlock = 205;
+        const payload = buildFetchedBlock(targetBlock, hashFromNumber(204));
+
+        await db.pool.query(
+            `INSERT INTO block_jobs
+             (chain_id, block_number, status, attempts, next_retry_at, claimed_by, claimed_at, error)
+             VALUES ($1, $2, 'failed', 9, NOW() - INTERVAL '1 second', NULL, NULL, $3)`,
+            [CHAIN_ID, targetBlock, "duplicate key value violates unique constraint \"events_pkey\""]
+        );
+        await eventsRepository.insertMany(payload.logs);
+
+        await expect(db.countRows("blocks", "block_number = 205")).resolves.toBe(0);
+        await expect(db.countRows("transactions", "block_number = 205")).resolves.toBe(0);
+        await expect(db.countRows("events", "block_number = 205")).resolves.toBe(1);
+
+        const source: BlockSource = {
+            async getLatestBlockNumber(): Promise<number> {
+                return targetBlock;
+            },
+            async getLatestBlock() {
+                return payload.block;
+            },
+            async getBlock() {
+                return payload.block;
+            },
+            async getBlockData(): Promise<FetchedBlock> {
+                return payload;
+            },
+        };
+
+        const service = new FetchService(
+            {
+                chainId: CHAIN_ID,
+                delayBetweenTicksMs: 1,
+                instanceId: FETCH_INSTANCE_ID,
+                fetchBatchSize: 1,
+                fetchConcurrency: 1,
+                fetchClaimTtlMs: 60_000,
+                retryMaxAttempts: 10,
+                retryBaseDelayMs: 10,
+                retryMaxDelayMs: 1_000,
+            },
+            source,
+            blockJobsRepository,
+            blocksRepository,
+            transactionsRepository,
+            eventsRepository,
+            transactionManager,
+        );
+
+        await service.execute();
+
+        const result = await db.pool.query<{ status: string; attempts: number; error: string | null }>(
+            `SELECT status, attempts, error
+             FROM block_jobs
+             WHERE chain_id = $1
+               AND block_number = $2`,
+            [CHAIN_ID, targetBlock]
+        );
+
+        expect(result.rows[0]?.status).toBe("fetched");
+        expect(result.rows[0]?.attempts).toBe(10);
+        expect(result.rows[0]?.error).toBeNull();
+        await expect(db.countRows("blocks", "block_number = 205")).resolves.toBe(1);
+        await expect(db.countRows("transactions", "block_number = 205")).resolves.toBe(1);
+        await expect(db.countRows("events", "block_number = 205")).resolves.toBe(1);
+    });
+
     test("fetch worker takes over stale fetching claims", async () => {
         const transactionManager = new PostgresTransactionManager(db.pool);
         const blockJobsRepository = new PostgresBlockJobsRepository(db.pool);

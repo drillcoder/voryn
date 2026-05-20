@@ -91,6 +91,7 @@ const createBlocksRepository = (deleted: number): BlocksRepository => ({
     get: async () => null,
     getProgress: async () => null,
     deleteAtOrBeforeBlockNumber: async () => deleted,
+    deleteByBlockNumber: async () => 0,
     deleteAfterBlockNumber: async () => 0,
 });
 
@@ -100,6 +101,7 @@ const createTransactionsRepository = (
     listAfterPosition: async () => [],
     insertMany: async () => undefined,
     deleteAtOrBeforeBlockNumber: async () => deleted,
+    deleteByBlockNumber: async () => 0,
     deleteAfterBlockNumber: async () => 0,
 });
 
@@ -107,6 +109,7 @@ const createEventsRepository = (deleted: number): EventsRepository => ({
     listAfterPosition: async () => [],
     insertMany: async () => undefined,
     deleteAtOrBeforeBlockNumber: async () => deleted,
+    deleteByBlockNumber: async () => 0,
     deleteAfterBlockNumber: async () => 0,
 });
 
