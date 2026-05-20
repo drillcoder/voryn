@@ -1,6 +1,6 @@
 {
 	"name": "@drillcoder/voryn",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"description": "TypeScript npm package based on ethers",
 	"type": "module",
 	"main": "./dist/index.js",
