@@ -6,6 +6,7 @@ import { ConsoleLogger, FetchWorker } from "@drillcoder/voryn";
     const chainId = 1;
     const delayBetweenTicksMs = 100;
     const fetchBatchSize = 10;
+    const fetchConcurrency = 1;
     const fetchClaimTtlMs = 125_000;
     const retryMaxAttempts = 10;
     const retryBaseDelayMs = 1_000;
@@ -16,6 +17,7 @@ import { ConsoleLogger, FetchWorker } from "@drillcoder/voryn";
         chainId,
         delayBetweenTicksMs,
         fetchBatchSize,
+        fetchConcurrency,
         fetchClaimTtlMs,
         retryMaxAttempts,
         retryBaseDelayMs,

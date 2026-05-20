@@ -95,6 +95,7 @@ describeLive("live rpc pipeline", () => {
                 delayBetweenTicksMs: 1,
                 instanceId: "fetch-instance-live-rpc",
                 fetchBatchSize: 1,
+                fetchConcurrency: 1,
                 fetchClaimTtlMs: 60_000,
                 retryMaxAttempts: 3,
                 retryBaseDelayMs: 10,

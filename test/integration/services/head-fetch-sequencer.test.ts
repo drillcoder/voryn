@@ -77,6 +77,7 @@ describe("integration services: head/fetch/sequencer", () => {
                 delayBetweenTicksMs: 1,
                 instanceId: FETCH_INSTANCE_ID,
                 fetchBatchSize: 10,
+                fetchConcurrency: 1,
                 fetchClaimTtlMs: 60_000,
                 retryMaxAttempts: 3,
                 retryBaseDelayMs: 10,

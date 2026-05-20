@@ -1,6 +1,7 @@
 import type { BlockSource } from "../interfaces/block-source.js";
 import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
+import type { BlockJob } from "../interfaces/pipeline.js";
 import type {
     BlockJobsRepository,
     BlocksRepository,
@@ -14,6 +15,15 @@ import { asErrorMessage } from "../utils/errors.js";
 export interface FetchServiceConfig extends FetchWorkerConfig {
     instanceId: string;
 }
+
+const fetchJobProcessingResult = {
+    fetched: "fetched",
+    failed: "failed",
+    claimLost: "claimLost",
+} as const;
+
+type FetchJobProcessingResult =
+    typeof fetchJobProcessingResult[keyof typeof fetchJobProcessingResult];
 
 export class FetchService {
     constructor(
@@ -31,15 +41,15 @@ export class FetchService {
     async execute(): Promise<void> {
         const chainId = this.config.chainId;
         const batchSize = Math.max(1, this.config.fetchBatchSize);
+        const concurrency = Math.max(1, this.config.fetchConcurrency);
         const staleClaimedBefore = new Date(Date.now() - Math.max(1, this.config.fetchClaimTtlMs));
-        let claimed = 0;
-        let fetched = 0;
-        let failed = 0;
+        const jobs: { job: BlockJob; batchIndex: number }[] = [];
 
         this.logger.debug("fetch_tick_started", {
             chainId,
             instanceId: this.config.instanceId,
             batchSize,
+            concurrency,
             staleClaimedBefore,
         });
 
@@ -63,7 +73,7 @@ export class FetchService {
                 });
                 break;
             }
-            claimed += 1;
+            jobs.push({ job, batchIndex: index });
 
             this.logger.debug("fetch_claim_completed", {
                 chainId,
@@ -71,101 +81,138 @@ export class FetchService {
                 blockNumber: job.blockNumber,
                 batchIndex: index,
             });
-
-            try {
-                const fetchedBlock = await this.source.getBlockData(chainId, job.blockNumber);
-                this.logger.debug("fetch_block_data_load_completed", {
-                    chainId,
-                    instanceId: this.config.instanceId,
-                    blockNumber: job.blockNumber,
-                    transactionCount: fetchedBlock.transactions.length,
-                    eventCount: fetchedBlock.logs.length,
-                });
-
-                await this.transactionManager.run(async (transaction) => {
-                    await this.blocksRepository.insert({
-                        chainId: chainId,
-                        blockNumber: job.blockNumber,
-                        blockHash: fetchedBlock.block.hash,
-                        parentHash: fetchedBlock.block.parentHash,
-                        blockTimestamp: fetchedBlock.block.timestamp,
-                        fetchedAt: new Date(),
-                    }, transaction);
-                    await this.transactionsRepository.insertMany(fetchedBlock.transactions, transaction);
-                    await this.eventsRepository.insertMany(fetchedBlock.logs, transaction);
-
-                    await this.blockJobsRepository.markFetched(
-                        chainId,
-                        job.blockNumber,
-                        this.config.instanceId,
-                        transaction
-                    );
-                });
-                this.logger.debug("fetch_block_data_save_completed", {
-                    chainId,
-                    instanceId: this.config.instanceId,
-                    blockNumber: job.blockNumber,
-                    transactionCount: fetchedBlock.transactions.length,
-                    eventCount: fetchedBlock.logs.length,
-                });
-                fetched += 1;
-            } catch (error) {
-                this.logger.debug("fetch_block_processing_failed", {
-                    chainId,
-                    instanceId: this.config.instanceId,
-                    blockNumber: job.blockNumber,
-                    error: asErrorMessage(error),
-                });
-
-                if (this.isClaimLostError(error)) {
-                    this.logger.warn("fetch_claim_lost_before_mark_fetched", {
-                        chainId,
-                        blockNumber: job.blockNumber,
-                        instanceId: this.config.instanceId,
-                    });
-                    continue;
-                }
-
-                const nextRetryAt = this.buildNextRetryAt(job.attempts + 1);
-                try {
-                    await this.blockJobsRepository.markFetchFailed(
-                        chainId,
-                        job.blockNumber,
-                        this.config.instanceId,
-                        asErrorMessage(error),
-                        nextRetryAt,
-                    );
-                    this.logger.debug("fetch_job_marked_failed", {
-                        chainId,
-                        instanceId: this.config.instanceId,
-                        blockNumber: job.blockNumber,
-                        attemptNumber: job.attempts + 1,
-                        nextRetryAt,
-                    });
-                    failed += 1;
-                } catch (markError) {
-                    if (this.isClaimLostError(markError)) {
-                        this.logger.warn("fetch_claim_lost_before_mark_failed", {
-                            chainId,
-                            blockNumber: job.blockNumber,
-                            instanceId: this.config.instanceId,
-                        });
-                        continue;
-                    }
-
-                    throw markError;
-                }
-            }
         }
 
-        if (claimed > 0) {
+        let fetched = 0;
+        let failed = 0;
+        let nextJobIndex = 0;
+        let firstError: Error | undefined;
+        const workerCount = Math.min(concurrency, jobs.length);
+        const workers = Array.from({ length: workerCount }, async () => {
+            try {
+                while (nextJobIndex < jobs.length) {
+                    const claimedJob = jobs[nextJobIndex];
+                    nextJobIndex += 1;
+                    const result = await this.processClaimedJob(claimedJob.job, claimedJob.batchIndex);
+
+                    if (result === fetchJobProcessingResult.fetched) {
+                        fetched += 1;
+                    } else if (result === fetchJobProcessingResult.failed) {
+                        failed += 1;
+                    }
+                }
+            } catch (error) {
+                firstError ??= new Error(asErrorMessage(error));
+            }
+        });
+
+        await Promise.all(workers);
+
+        if (firstError !== undefined) {
+            throw firstError;
+        }
+
+        if (jobs.length > 0) {
             this.logger.info("fetch_tick_processed", {
                 chainId,
                 instanceId: this.config.instanceId,
-                claimed,
+                claimed: jobs.length,
                 fetched,
                 failed,
             });
+        }
+    }
+
+    private async processClaimedJob(job: BlockJob, batchIndex: number): Promise<FetchJobProcessingResult> {
+        const chainId = this.config.chainId;
+
+        try {
+            const fetchedBlock = await this.source.getBlockData(chainId, job.blockNumber);
+            this.logger.debug("fetch_block_data_load_completed", {
+                chainId,
+                instanceId: this.config.instanceId,
+                blockNumber: job.blockNumber,
+                batchIndex,
+                transactionCount: fetchedBlock.transactions.length,
+                eventCount: fetchedBlock.logs.length,
+            });
+
+            await this.transactionManager.run(async (transaction) => {
+                await this.blocksRepository.insert({
+                    chainId,
+                    blockNumber: job.blockNumber,
+                    blockHash: fetchedBlock.block.hash,
+                    parentHash: fetchedBlock.block.parentHash,
+                    blockTimestamp: fetchedBlock.block.timestamp,
+                    fetchedAt: new Date(),
+                }, transaction);
+                await this.transactionsRepository.insertMany(fetchedBlock.transactions, transaction);
+                await this.eventsRepository.insertMany(fetchedBlock.logs, transaction);
+
+                await this.blockJobsRepository.markFetched(
+                    chainId,
+                    job.blockNumber,
+                    this.config.instanceId,
+                    transaction
+                );
+            });
+            this.logger.debug("fetch_block_data_save_completed", {
+                chainId,
+                instanceId: this.config.instanceId,
+                blockNumber: job.blockNumber,
+                batchIndex,
+                transactionCount: fetchedBlock.transactions.length,
+                eventCount: fetchedBlock.logs.length,
+            });
+            return fetchJobProcessingResult.fetched;
+        } catch (error) {
+            this.logger.debug("fetch_block_processing_failed", {
+                chainId,
+                instanceId: this.config.instanceId,
+                blockNumber: job.blockNumber,
+                batchIndex,
+                error: asErrorMessage(error),
+            });
+
+            if (this.isClaimLostError(error)) {
+                this.logger.warn("fetch_claim_lost_before_mark_fetched", {
+                    chainId,
+                    blockNumber: job.blockNumber,
+                    instanceId: this.config.instanceId,
+                });
+                return fetchJobProcessingResult.claimLost;
+            }
+
+            const nextRetryAt = this.buildNextRetryAt(job.attempts + 1);
+            try {
+                await this.blockJobsRepository.markFetchFailed(
+                    chainId,
+                    job.blockNumber,
+                    this.config.instanceId,
+                    asErrorMessage(error),
+                    nextRetryAt,
+                );
+                this.logger.debug("fetch_job_marked_failed", {
+                    chainId,
+                    instanceId: this.config.instanceId,
+                    blockNumber: job.blockNumber,
+                    batchIndex,
+                    attemptNumber: job.attempts + 1,
+                    nextRetryAt,
+                });
+                return fetchJobProcessingResult.failed;
+            } catch (markError) {
+                if (this.isClaimLostError(markError)) {
+                    this.logger.warn("fetch_claim_lost_before_mark_failed", {
+                        chainId,
+                        blockNumber: job.blockNumber,
+                        instanceId: this.config.instanceId,
+                    });
+                    return fetchJobProcessingResult.claimLost;
+                }
+
+                throw markError;
+            }
         }
     }
 

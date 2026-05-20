@@ -32,6 +32,7 @@ const fetchConfig: FetchWorkerConfig = {
     chainId: 1,
     delayBetweenTicksMs: 1000,
     fetchBatchSize: 1,
+    fetchConcurrency: 1,
     fetchClaimTtlMs: 1000,
     retryMaxAttempts: 3,
     retryBaseDelayMs: 100,

@@ -130,6 +130,7 @@ describe("e2e pipeline", () => {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
                 fetchBatchSize: 2,
+                fetchConcurrency: 1,
                 fetchClaimTtlMs: 60_000,
                 retryMaxAttempts: 3,
                 retryBaseDelayMs: 10,

@@ -89,6 +89,7 @@ export class FetchWorker extends PollingWorker {
             instanceId: this.config.instanceId,
             chainId: this.config.chainId,
             fetchBatchSize: this.config.fetchBatchSize,
+            fetchConcurrency: this.config.fetchConcurrency,
             fetchClaimTtlMs: this.config.fetchClaimTtlMs,
             retryMaxAttempts: this.config.retryMaxAttempts,
             retryBaseDelayMs: this.config.retryBaseDelayMs,

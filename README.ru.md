@@ -133,6 +133,7 @@ const fetch = await FetchWorker.create({
         chainId,
         delayBetweenTicksMs: 100,
         fetchBatchSize: 10,
+        fetchConcurrency: 2,
         fetchClaimTtlMs: 125_000,
         retryMaxAttempts: 10,
         retryBaseDelayMs: 1_000,

@@ -17,6 +17,7 @@ test("fetch worker create wires service execution", async () => {
         chainId: 1,
         delayBetweenTicksMs: 1000,
         fetchBatchSize: 1,
+        fetchConcurrency: 1,
         fetchClaimTtlMs: 1000,
         retryMaxAttempts: 3,
         retryBaseDelayMs: 100,
@@ -55,6 +56,7 @@ test("fetch worker create wires service execution", async () => {
     expect(startLogMeta).toMatchObject({
         chainId: 1,
         fetchBatchSize: 1,
+        fetchConcurrency: 1,
         fetchClaimTtlMs: 1000,
         retryMaxAttempts: 3,
         retryBaseDelayMs: 100,

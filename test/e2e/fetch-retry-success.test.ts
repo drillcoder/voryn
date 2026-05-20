@@ -71,6 +71,7 @@ describe("e2e fetch retry success", () => {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
                 fetchBatchSize: 1,
+                fetchConcurrency: 1,
                 fetchClaimTtlMs: 60_000,
                 retryMaxAttempts: 3,
                 retryBaseDelayMs: 1,

@@ -63,6 +63,7 @@ docker compose --env-file dev/.env -f dev/docker-compose.yml logs -f head fetch 
 - `VORYN_FETCH_RPC_URL` (`required`) — RPC URL для загрузки данных блоков.
 - `VORYN_FETCH_DELAY_BETWEEN_TICKS_MS` (`optional`, по умолчанию `100`) — задержка между тиками в миллисекундах.
 - `VORYN_FETCH_BATCH_SIZE` (`optional`, по умолчанию `10`) — максимум задач за один `tick`.
+- `VORYN_FETCH_CONCURRENCY` (`optional`, по умолчанию `1`) — максимум задач, которые `fetch` обрабатывает параллельно.
 - `VORYN_FETCH_CLAIM_TTL_MS` (`optional`, по умолчанию `125_000`) — TTL для `fetching`-задач; после TTL задача может быть пере-захвачена другим fetch-воркером.
 - `VORYN_FETCH_RETRY_MAX_ATTEMPTS` (`optional`, по умолчанию `10`) — максимум попыток загрузки.
 - `VORYN_FETCH_RETRY_BASE_DELAY_MS` (`optional`, по умолчанию `1_000`) — базовая задержка между ретраями.

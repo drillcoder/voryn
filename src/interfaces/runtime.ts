@@ -11,6 +11,7 @@ export interface FetchWorkerConfig {
     chainId: ChainId;
     delayBetweenTicksMs: number;
     fetchBatchSize: number;
+    fetchConcurrency: number;
     fetchClaimTtlMs: number;
     retryMaxAttempts: number;
     retryBaseDelayMs: number;

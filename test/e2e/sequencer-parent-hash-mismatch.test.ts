@@ -78,6 +78,7 @@ describe("e2e sequencer mismatch", () => {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
                 fetchBatchSize: 1,
+                fetchConcurrency: 1,
                 fetchClaimTtlMs: 60_000,
                 retryMaxAttempts: 3,
                 retryBaseDelayMs: 10,

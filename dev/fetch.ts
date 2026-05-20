@@ -8,6 +8,7 @@ async function run(): Promise<void> {
     const chainId = envNumber("VORYN_CHAIN_ID", "0");
     const delayBetweenTicksMs = envNumber("VORYN_FETCH_DELAY_BETWEEN_TICKS_MS", "100");
     const fetchBatchSize = envNumber("VORYN_FETCH_BATCH_SIZE", "10");
+    const fetchConcurrency = envNumber("VORYN_FETCH_CONCURRENCY", "1");
     const fetchClaimTtlMs = envNumber("VORYN_FETCH_CLAIM_TTL_MS", "125000");
     const retryMaxAttempts = envNumber("VORYN_FETCH_RETRY_MAX_ATTEMPTS", "10");
     const retryBaseDelayMs = envNumber("VORYN_FETCH_RETRY_BASE_DELAY_MS", "1000");
@@ -17,6 +18,7 @@ async function run(): Promise<void> {
         chainId,
         delayBetweenTicksMs,
         fetchBatchSize,
+        fetchConcurrency,
         fetchClaimTtlMs,
         retryMaxAttempts,
         retryBaseDelayMs,

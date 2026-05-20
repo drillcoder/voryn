@@ -21,6 +21,7 @@ const config: FetchServiceConfig = {
     delayBetweenTicksMs: 1000,
     instanceId: "w1",
     fetchBatchSize: 1,
+    fetchConcurrency: 1,
     fetchClaimTtlMs: 10_000,
     retryMaxAttempts: 4,
     retryBaseDelayMs: 100,
@@ -37,6 +38,28 @@ const blockPayload = {
     },
     transactions: [],
     logs: [],
+};
+
+interface Deferred {
+    promise: Promise<void>;
+    resolve: () => void;
+}
+
+const createDeferred = (): Deferred => {
+    let resolve: (() => void) | undefined;
+    const promise = new Promise<void>((complete) => {
+        resolve = complete;
+    });
+
+    if (resolve === undefined) {
+        throw new Error("Deferred resolver was not initialized");
+    }
+
+    return { promise, resolve };
+};
+
+const waitForAsyncWork = async (): Promise<void> => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
 };
 
 const createPassThroughManager = (): TransactionManager => {
@@ -244,6 +267,145 @@ test("fetch service writes debug logs for each fetch stage", async () => {
         fetched: 1,
         failed: 0,
     }));
+});
+
+test("fetch service reports claimed fetched and failed counts across batch", async () => {
+    const { logger, info } = createLogger();
+    const jobs = [12, 13, 14];
+    const failedBlocks: number[] = [];
+    const blockJobsRepository = createBlockJobsRepository({
+        claimForFetch: async () => {
+            const blockNumber = jobs.shift();
+
+            if (blockNumber === undefined) {
+                return null;
+            }
+
+            return {
+                chainId: 7,
+                blockNumber,
+                status: "pending",
+                attempts: 0,
+                nextRetryAt: null,
+                error: null,
+                claimedAt: new Date(),
+                updatedAt: new Date(),
+            };
+        },
+        markFetchFailed: async (_chainId, blockNumber) => {
+            failedBlocks.push(blockNumber);
+        },
+    });
+
+    const worker = new FetchService(
+        { ...config, fetchBatchSize: 3, fetchConcurrency: 2 },
+        createSource(async (_chainId, blockNumber) => {
+            if (blockNumber === 13) {
+                throw new Error("rpc unavailable");
+            }
+
+            return blockPayload;
+        }),
+        blockJobsRepository,
+        createBlocksRepository(),
+        createTransactionsRepository(),
+        createEventsRepository(),
+        createPassThroughManager(),
+        logger,
+    );
+
+    await worker.execute();
+
+    expect(failedBlocks).toEqual([13]);
+    expect(info).toHaveBeenCalledWith("fetch_tick_processed", expect.objectContaining({
+        claimed: 3,
+        fetched: 2,
+        failed: 1,
+    }));
+});
+
+test("fetch service processes claimed jobs concurrently up to configured limit", async () => {
+    const jobs = [12, 13, 14];
+    const blockers = new Map<number, Deferred>([
+        [12, createDeferred()],
+        [13, createDeferred()],
+        [14, createDeferred()],
+    ]);
+    const starts: number[] = [];
+    const claimCountsAtStart: number[] = [];
+    const fetchedBlocks: number[] = [];
+    let claims = 0;
+    let active = 0;
+    let maxActive = 0;
+
+    const blockJobsRepository = createBlockJobsRepository({
+        claimForFetch: async () => {
+            const blockNumber = jobs.shift();
+
+            if (blockNumber === undefined) {
+                return null;
+            }
+
+            claims += 1;
+            return {
+                chainId: 7,
+                blockNumber,
+                status: "pending",
+                attempts: 0,
+                nextRetryAt: null,
+                error: null,
+                claimedAt: new Date(),
+                updatedAt: new Date(),
+            };
+        },
+        markFetched: async (_chainId, blockNumber) => {
+            fetchedBlocks.push(blockNumber);
+        },
+    });
+
+    const worker = new FetchService(
+        { ...config, fetchBatchSize: 3, fetchConcurrency: 2 },
+        createSource(async (_chainId, blockNumber) => {
+            const blocker = blockers.get(blockNumber);
+
+            if (blocker === undefined) {
+                throw new Error(`Missing blocker for block ${String(blockNumber)}`);
+            }
+
+            starts.push(blockNumber);
+            claimCountsAtStart.push(claims);
+            active += 1;
+            maxActive = Math.max(maxActive, active);
+            await blocker.promise;
+            active -= 1;
+            return blockPayload;
+        }),
+        blockJobsRepository,
+        createBlocksRepository(),
+        createTransactionsRepository(),
+        createEventsRepository(),
+        createPassThroughManager(),
+    );
+
+    const executePromise = worker.execute();
+    await waitForAsyncWork();
+
+    expect(starts).toEqual([12, 13]);
+    expect(claimCountsAtStart).toEqual([3, 3]);
+    expect(active).toBe(2);
+
+    blockers.get(12)?.resolve();
+    await waitForAsyncWork();
+
+    expect(starts).toEqual([12, 13, 14]);
+    expect(active).toBe(2);
+
+    blockers.get(13)?.resolve();
+    blockers.get(14)?.resolve();
+    await executePromise;
+
+    expect(maxActive).toBe(2);
+    expect(fetchedBlocks).toEqual([12, 13, 14]);
 });
 
 test("fetch service marks failure with retry date", async () => {
