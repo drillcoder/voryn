@@ -13,7 +13,7 @@ import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cursor-repository.js";
 import { PostgresTransactionsRepository } from "../repositories/postgres/transactions-repository.js";
 import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker-cursors-repository.js";
-import { TransactionReactionService } from "../services/transaction-reaction-service.js";
+import { ReactionService } from "../services/reaction-service.js";
 import { resolveDbDependencies } from "../runtime/resolvers.js";
 import type { ReactionWorkerOptions } from "../runtime/types.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
@@ -43,27 +43,28 @@ export class TransactionReactionWorker extends SingletonPollingWorker {
                 leaderLock: new PostgresLeaderLock(pool, buildReactionWorkerLockKey("transaction", options.config)),
             })
         );
-        const service = new TransactionReactionService(
-            options.config,
-            options.handler,
-            dependencies.chainCursorRepository,
-            dependencies.transactionsRepository,
-            dependencies.workerCursorsRepository,
-            options.logger,
-        );
+        const service = new ReactionService({
+            config: options.config,
+            streamType: "transaction",
+            handler: options.handler,
+            chainCursorRepository: dependencies.chainCursorRepository,
+            transactionsRepository: dependencies.transactionsRepository,
+            workerCursorsRepository: dependencies.workerCursorsRepository,
+            logger: options.logger,
+        });
 
         return new TransactionReactionWorker(options.config, service, dependencies.leaderLock, dispose, options.logger);
     }
 
     private constructor(
         private readonly config: ReactionWorkerConfig,
-        private readonly service: TransactionReactionService,
+        private readonly service: ReactionService,
         leaderLock: LeaderLock,
         dispose?: () => Promise<void>,
         logger?: Logger,
     ) {
         super(
-            `reaction-tx:${String(config.chainId)}:${config.workerName}`,
+            `reaction-transaction:${String(config.chainId)}:${config.workerName}`,
             config.delayBetweenTicksMs,
             logger ?? noopLogger,
             leaderLock,

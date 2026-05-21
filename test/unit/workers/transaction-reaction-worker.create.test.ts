@@ -18,13 +18,16 @@ test("transaction reaction worker create wires service execution", async () => {
     const handled: Array<[number, number]> = [];
     const config: ReactionWorkerConfig = {
         chainId: 13,
-        workerName: "tx-reaction",
+        workerName: "transaction-reaction",
         delayBetweenTicksMs: 1000,
         batchSize: 10,
+        skipFlushInterval: 10,
     };
     const handler: TransactionReactionHandler = {
         handle: async (transaction) => {
             handled.push([transaction.blockNumber, transaction.index]);
+
+            return "processed";
         },
     };
 
@@ -61,9 +64,9 @@ test("transaction reaction worker create wires service execution", async () => {
             workerCursorsRepository: {
                 ...createNoopWorkerCursorsRepository(),
                 get: async () => ({
-                    workerName: "tx-reaction",
+                    workerName: "transaction-reaction",
                     chainId: 13,
-                    streamType: "tx",
+                    streamType: "transaction",
                     position: { lastBlockNumber: 0, lastTransactionIndex: 0 },
                     updatedAt: new Date(),
                 }),
@@ -77,7 +80,7 @@ test("transaction reaction worker create wires service execution", async () => {
     expect(handled).toEqual([[1, 0]]);
     expect(invokeStartLogMeta(worker)).toEqual({
         chainId: 13,
-        workerName: "tx-reaction",
+        workerName: "transaction-reaction",
         batchSize: 10,
     });
 });

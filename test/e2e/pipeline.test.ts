@@ -19,7 +19,7 @@ import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../integration/
 
 const DATABASE_URL = getRequiredDatabaseUrl();
 const REACTION_WORKER_EVENT = "reaction-event-e2e";
-const REACTION_WORKER_TX = "reaction-tx-e2e";
+const REACTION_WORKER_TRANSACTION = "reaction-transaction-e2e";
 
 describe("e2e pipeline", () => {
     let db: IsolatedDbContext;
@@ -64,13 +64,17 @@ describe("e2e pipeline", () => {
         const handledTransactions: string[] = [];
 
         const eventHandler: EventReactionHandler = {
-            async handle(event): Promise<void> {
+            async handle(event): Promise<"processed"> {
                 handledEvents.push(`${String(event.blockNumber)}:${String(event.index)}`);
+
+                return "processed";
             },
         };
-        const txHandler: TransactionReactionHandler = {
-            async handle(transaction): Promise<void> {
+        const transactionHandler: TransactionReactionHandler = {
+            async handle(transaction): Promise<"processed"> {
                 handledTransactions.push(`${String(transaction.blockNumber)}:${String(transaction.index)}`);
+
+                return "processed";
             },
         };
 
@@ -80,6 +84,7 @@ describe("e2e pipeline", () => {
                 delayBetweenTicksMs: 5,
                 workerName: REACTION_WORKER_EVENT,
                 batchSize: 2,
+                skipFlushInterval: 2,
             },
             handler: eventHandler,
             overrides: {
@@ -90,14 +95,15 @@ describe("e2e pipeline", () => {
             },
         });
 
-        const txWorker = await TransactionReactionWorker.create({
+        const transactionWorker = await TransactionReactionWorker.create({
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
-                workerName: REACTION_WORKER_TX,
+                workerName: REACTION_WORKER_TRANSACTION,
                 batchSize: 2,
+                skipFlushInterval: 2,
             },
-            handler: txHandler,
+            handler: transactionHandler,
             overrides: {
                 chainCursorRepository,
                 transactionsRepository,
@@ -183,7 +189,7 @@ describe("e2e pipeline", () => {
 
         try {
             await eventWorker.start();
-            await txWorker.start();
+            await transactionWorker.start();
             await headWorker.start();
             await fetchWorker.start();
             await sequencerWorker.start();
@@ -206,7 +212,7 @@ describe("e2e pipeline", () => {
             await fetchWorker.stop();
             await headWorker.stop();
             await eventWorker.stop();
-            await txWorker.stop();
+            await transactionWorker.stop();
 
             expect(handledEvents).toEqual(["10:0", "10:1", "11:0", "12:0", "12:1", "13:0"]);
             expect(handledTransactions).toEqual(["10:0", "10:1", "11:0", "12:0", "12:1", "13:0"]);
@@ -228,7 +234,7 @@ describe("e2e pipeline", () => {
         } finally {
             await Promise.all([
                 eventWorker.stop(),
-                txWorker.stop(),
+                transactionWorker.stop(),
                 headWorker.stop(),
                 fetchWorker.stop(),
                 sequencerWorker.stop(),

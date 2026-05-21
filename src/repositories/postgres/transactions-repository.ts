@@ -152,17 +152,17 @@ function mapTransaction(row: TransactionRow): PipelineTransaction {
     };
 }
 
-function buildTransactionInsertRowParams(tx: PipelineTransaction): readonly unknown[] {
+function buildTransactionInsertRowParams(transaction: PipelineTransaction): readonly unknown[] {
     return [
-        tx.chainId,
-        tx.blockNumber,
-        tx.blockHash,
-        tx.index,
-        tx.hash,
-        tx.from,
-        tx.to,
-        tx.value,
-        tx.data,
+        transaction.chainId,
+        transaction.blockNumber,
+        transaction.blockHash,
+        transaction.index,
+        transaction.hash,
+        transaction.from,
+        transaction.to,
+        transaction.value,
+        transaction.data,
     ];
 }
 

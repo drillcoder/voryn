@@ -35,4 +35,5 @@ export interface ReactionWorkerConfig {
     delayBetweenTicksMs: number;
     workerName: string;
     batchSize: number;
+    skipFlushInterval: number;
 }

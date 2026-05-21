@@ -129,23 +129,15 @@ The block processing pipeline consists of `HeadWorker`, `FetchService`, `Sequenc
 
 The reaction pipeline runs user logic over data within the committed position. Each reaction worker tracks its own cursor, so handlers can fail and catch up independently.
 
-### `EventReactionService`
+### `ReactionService`
 
-- Reads events from `events` in `(block_number, transaction_index, log_index)` order.
 - Reads `chain_cursor.last_committed_block` before reading and limits the query to that boundary.
-- Tracks progress in `worker_cursors` (`stream_type = event`).
-- The cursor stores the latest processed position: `last_block_number`, `last_transaction_index`, `last_log_index`.
+- Reads stream items in repository order: events use `(block_number, transaction_index, log_index)`, transactions use `(block_number, transaction_index)`.
+- Tracks progress in `worker_cursors` with `stream_type = event` or `stream_type = transaction`.
+- The event cursor stores `last_block_number`, `last_transaction_index`, `last_log_index`.
+- The transaction cursor stores `last_block_number`, `last_transaction_index`.
 - On the first run for a new `workerName`, initializes the cursor with the current committed position.
-- Calls the user-provided `EventReactionHandler`.
-
-### `TransactionReactionService`
-
-- Reads transactions from `transactions` in `(block_number, transaction_index)` order.
-- Reads `chain_cursor.last_committed_block` before reading and limits the query to that boundary.
-- Tracks progress in `worker_cursors` (`stream_type = tx`).
-- The cursor stores the latest processed position: `last_block_number`, `last_transaction_index`.
-- On the first run for a new `workerName`, initializes the cursor with the current committed position.
-- Calls the user-provided `TransactionReactionHandler`.
+- Calls the user-provided reaction handler and advances the cursor according to `"processed"` / `"skipped"` results.
 
 ## Operational Tools
 

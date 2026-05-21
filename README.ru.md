@@ -168,22 +168,25 @@ await Promise.all([
 
 ## Реакции на события и транзакции
 
-Reaction-воркеры читают только закоммиченные данные. Каждый `workerName` имеет свой durable cursor, поэтому обработчик можно безопасно перезапускать.
+Reaction-воркеры читают только закоммиченные данные. У каждого `workerName` есть свой сохраняемый курсор, поэтому
+обработчик можно безопасно перезапускать.
 
 ```ts
-import type { EventReactionHandler } from "@drillcoder/voryn";
+import type { EventReactionHandler, ReactionHandlerResult } from "@drillcoder/voryn";
 import { ConsoleLogger, EventReactionWorker } from "@drillcoder/voryn";
 
 const logger = new ConsoleLogger({ minLevel: "info" });
 
 const handler: EventReactionHandler = {
-    async handle(event): Promise<void> {
+    async handle(event): Promise<ReactionHandlerResult> {
         logger.info("event_received", {
             blockNumber: event.blockNumber,
             transactionHash: event.transactionHash,
             logIndex: event.index,
             address: event.address,
         });
+
+        return event.index === 10 ? "processed" : "skipped";
     },
 };
 
@@ -194,13 +197,22 @@ const worker = await EventReactionWorker.create({
     config: {
         chainId: 1,
         workerName: "contract-events",
-        delayBetweenTicksMs: 1_000,
-        batchSize: 250,
+        delayBetweenTicksMs: 500,
+        batchSize: 1000,
+        skipFlushInterval: 100,
     },
 });
 
 await worker.start();
 ```
+
+Обработчик может вернуть `"processed"` или `"skipped"`. Для `"processed"` курсор двигается сразу. `"skipped"`
+тоже считается безопасной позицией, но записи курсора группируются через `skipFlushInterval` и
+сохраняются в конце прохода или перед повторным выбросом ошибки обработчика.
+
+Обработчик может быть вызван повторно для того же элемента, если он упал до возврата результата или если воркер
+остановился до сохранения курсора для этого элемента. Поэтому побочные эффекты обработчика должны быть
+идемпотентными.
 
 Примеры:
 

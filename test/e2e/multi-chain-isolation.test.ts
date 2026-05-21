@@ -192,8 +192,8 @@ function withChainId(block: FetchedBlock, chainId: number): FetchedBlock {
             ...block.block,
             chainId,
         },
-        transactions: block.transactions.map((tx) => ({
-            ...tx,
+        transactions: block.transactions.map((transaction) => ({
+            ...transaction,
             chainId,
         })),
         logs: block.logs.map((log) => ({

@@ -3,14 +3,13 @@ import { PostgresChainCursorRepository } from "../../../src/repositories/postgre
 import { PostgresEventsRepository } from "../../../src/repositories/postgres/events-repository.js";
 import { PostgresTransactionsRepository } from "../../../src/repositories/postgres/transactions-repository.js";
 import { PostgresWorkerCursorsRepository } from "../../../src/repositories/postgres/worker-cursors-repository.js";
-import { EventReactionService } from "../../../src/services/event-reaction-service.js";
-import { TransactionReactionService } from "../../../src/services/transaction-reaction-service.js";
+import { ReactionService } from "../../../src/services/reaction-service.js";
 import {
     buildFetchedBlock,
     CHAIN_ID,
     hashFromNumber,
     REACTION_WORKER_EVENT,
-    REACTION_WORKER_TX,
+    REACTION_WORKER_TRANSACTION,
 } from "../helpers/fixtures.js";
 import type { IsolatedDbContext } from "../helpers/test-db.js";
 import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../helpers/test-db.js";
@@ -56,64 +55,76 @@ describe("integration services: reaction", () => {
             { lastBlockNumber: 499, lastTransactionIndex: -1, lastLogIndex: -1 }
         );
         await workerCursorsRepository.insert(
-            REACTION_WORKER_TX,
+            REACTION_WORKER_TRANSACTION,
             CHAIN_ID,
-            "tx",
+            "transaction",
             { lastBlockNumber: 499, lastTransactionIndex: -1 }
         );
 
         const eventHandler: EventReactionHandler = {
-            async handle(event): Promise<void> {
+            async handle(event): Promise<"processed"> {
                 handledEventIndexes.push(event.index);
+
+                return "processed";
             },
         };
-        const txHandler: TransactionReactionHandler = {
-            async handle(transaction): Promise<void> {
+        const transactionHandler: TransactionReactionHandler = {
+            async handle(transaction): Promise<"processed"> {
                 handledTxIndexes.push(transaction.index);
+
+                return "processed";
             },
         };
 
-        const eventService = new EventReactionService(
-            {
+        const eventService = new ReactionService({
+            config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 1,
                 workerName: REACTION_WORKER_EVENT,
                 batchSize: 2,
+                skipFlushInterval: 2,
             },
-            eventHandler,
+            streamType: "event",
+            handler: eventHandler,
             chainCursorRepository,
             eventsRepository,
             workerCursorsRepository,
-        );
-        const txService = new TransactionReactionService(
-            {
+        });
+        const transactionService = new ReactionService({
+            config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 1,
-                workerName: REACTION_WORKER_TX,
+                workerName: REACTION_WORKER_TRANSACTION,
                 batchSize: 2,
+                skipFlushInterval: 2,
             },
-            txHandler,
+            streamType: "transaction",
+            handler: transactionHandler,
             chainCursorRepository,
             transactionsRepository,
             workerCursorsRepository,
-        );
+        });
 
         await eventService.execute();
         await eventService.execute();
-        await txService.execute();
-        await txService.execute();
+        await transactionService.execute();
+        await transactionService.execute();
 
         expect(handledEventIndexes).toEqual([0, 1, 2]);
         expect(handledTxIndexes).toEqual([0, 1, 2]);
 
         const eventCursor = await workerCursorsRepository.get(REACTION_WORKER_EVENT, CHAIN_ID, "event");
-        const txCursor = await workerCursorsRepository.get(REACTION_WORKER_TX, CHAIN_ID, "tx");
+        const transactionCursor = await workerCursorsRepository.get(
+            REACTION_WORKER_TRANSACTION,
+            CHAIN_ID,
+            "transaction"
+        );
         expect(eventCursor?.position).toEqual({
             lastBlockNumber: 500,
             lastTransactionIndex: 2,
             lastLogIndex: 2,
         });
-        expect(txCursor?.position).toEqual({
+        expect(transactionCursor?.position).toEqual({
             lastBlockNumber: 500,
             lastTransactionIndex: 2,
             lastLogIndex: null,

@@ -9,7 +9,7 @@ import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cursor-repository.js";
 import { PostgresEventsRepository } from "../repositories/postgres/events-repository.js";
 import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker-cursors-repository.js";
-import { EventReactionService } from "../services/event-reaction-service.js";
+import { ReactionService } from "../services/reaction-service.js";
 import { resolveDbDependencies } from "../runtime/resolvers.js";
 import type { ReactionWorkerOptions } from "../runtime/types.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
@@ -39,21 +39,22 @@ export class EventReactionWorker extends SingletonPollingWorker {
                 leaderLock: new PostgresLeaderLock(pool, buildReactionWorkerLockKey("event", options.config)),
             })
         );
-        const service = new EventReactionService(
-            options.config,
-            options.handler,
-            dependencies.chainCursorRepository,
-            dependencies.eventsRepository,
-            dependencies.workerCursorsRepository,
-            options.logger
-        );
+        const service = new ReactionService({
+            config: options.config,
+            streamType: "event",
+            handler: options.handler,
+            chainCursorRepository: dependencies.chainCursorRepository,
+            eventsRepository: dependencies.eventsRepository,
+            workerCursorsRepository: dependencies.workerCursorsRepository,
+            logger: options.logger,
+        });
 
         return new EventReactionWorker(options.config, service, dependencies.leaderLock, dispose, options.logger);
     }
 
     private constructor(
         private readonly config: ReactionWorkerConfig,
-        private readonly service: EventReactionService,
+        private readonly service: ReactionService,
         leaderLock: LeaderLock,
         dispose?: () => Promise<void>,
         logger?: Logger,

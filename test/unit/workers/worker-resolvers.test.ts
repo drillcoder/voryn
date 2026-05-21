@@ -44,14 +44,15 @@ const reactionConfig: ReactionWorkerConfig = {
     workerName: "reaction-worker",
     delayBetweenTicksMs: 1000,
     batchSize: 10,
+    skipFlushInterval: 10,
 };
 
 const eventHandler: EventReactionHandler = {
-    handle: async () => undefined,
+    handle: async () => "processed",
 };
 
 const transactionHandler: TransactionReactionHandler = {
-    handle: async () => undefined,
+    handle: async () => "processed",
 };
 
 const workerCursorsRepository: WorkerCursorsRepository = {

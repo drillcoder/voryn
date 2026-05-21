@@ -71,9 +71,9 @@ test("pipeline metrics service maps pipeline stages and reaction block lag", asy
                 updatedAt: new Date("2026-01-01T00:00:01.000Z"),
             },
             {
-                workerName: "tx-worker",
+                workerName: "transaction-worker",
                 chainId: 1,
-                streamType: "tx",
+                streamType: "transaction",
                 position: {
                     lastBlockNumber: 95,
                     lastTransactionIndex: 2,
@@ -135,8 +135,8 @@ test("pipeline metrics service maps pipeline stages and reaction block lag", asy
                 secondsSinceProgress: 9,
             },
             {
-                workerName: "tx-worker",
-                streamType: "tx",
+                workerName: "transaction-worker",
+                streamType: "transaction",
                 block: 95,
                 lagBlocks: 5,
                 secondsSinceProgress: 8,

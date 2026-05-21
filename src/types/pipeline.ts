@@ -1,4 +1,4 @@
-export type StreamType = "event" | "tx";
+export type StreamType = "event" | "transaction";
 
 export type BlockJobStatus =
     | "pending"

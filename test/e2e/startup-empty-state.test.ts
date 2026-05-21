@@ -45,13 +45,13 @@ describe("e2e startup from empty state", () => {
         const source = createMapBlockSource(20, [latestBlock]);
 
         const eventHandler: EventReactionHandler = {
-            async handle(): Promise<void> {
-                return undefined;
+            async handle(): Promise<"processed"> {
+                return "processed";
             },
         };
-        const txHandler: TransactionReactionHandler = {
-            async handle(): Promise<void> {
-                return undefined;
+        const transactionHandler: TransactionReactionHandler = {
+            async handle(): Promise<"processed"> {
+                return "processed";
             },
         };
 
@@ -69,7 +69,13 @@ describe("e2e startup from empty state", () => {
             },
         });
         const eventWorker = await EventReactionWorker.create({
-            config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, workerName: "reaction-event-startup", batchSize: 5 },
+            config: {
+                chainId: CHAIN_ID,
+                delayBetweenTicksMs: 5,
+                workerName: "reaction-event-startup",
+                batchSize: 5,
+                skipFlushInterval: 5,
+            },
             handler: eventHandler,
             overrides: {
                 chainCursorRepository,
@@ -78,9 +84,15 @@ describe("e2e startup from empty state", () => {
                 leaderLock: new PostgresLeaderLock(db.pool, 31_300_002n),
             },
         });
-        const txWorker = await TransactionReactionWorker.create({
-            config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, workerName: "reaction-tx-startup", batchSize: 5 },
-            handler: txHandler,
+        const transactionWorker = await TransactionReactionWorker.create({
+            config: {
+                chainId: CHAIN_ID,
+                delayBetweenTicksMs: 5,
+                workerName: "reaction-transaction-startup",
+                batchSize: 5,
+                skipFlushInterval: 5,
+            },
+            handler: transactionHandler,
             overrides: {
                 chainCursorRepository,
                 transactionsRepository,
@@ -92,7 +104,7 @@ describe("e2e startup from empty state", () => {
         try {
             await headWorker.start();
             await eventWorker.start();
-            await txWorker.start();
+            await transactionWorker.start();
 
             await waitFor(async () => {
                 const chainCursor = await chainCursorRepository.get(CHAIN_ID);
@@ -101,8 +113,12 @@ describe("e2e startup from empty state", () => {
                 }
 
                 const eventCursor = await workerCursorsRepository.get("reaction-event-startup", CHAIN_ID, "event");
-                const txCursor = await workerCursorsRepository.get("reaction-tx-startup", CHAIN_ID, "tx");
-                return eventCursor !== null && txCursor !== null;
+                const transactionCursor = await workerCursorsRepository.get(
+                    "reaction-transaction-startup",
+                    CHAIN_ID,
+                    "transaction"
+                );
+                return eventCursor !== null && transactionCursor !== null;
             });
 
             const chainCursor = await chainCursorRepository.get(CHAIN_ID);
@@ -111,20 +127,24 @@ describe("e2e startup from empty state", () => {
             expect(chainCursor?.lastCommittedHash).toBe(latestBlock.block.hash);
 
             const eventCursor = await workerCursorsRepository.get("reaction-event-startup", CHAIN_ID, "event");
-            const txCursor = await workerCursorsRepository.get("reaction-tx-startup", CHAIN_ID, "tx");
+            const transactionCursor = await workerCursorsRepository.get(
+                "reaction-transaction-startup",
+                CHAIN_ID,
+                "transaction"
+            );
             expect(eventCursor?.position).toEqual({
                 lastBlockNumber: 20,
                 lastTransactionIndex: -1,
                 lastLogIndex: -1,
             });
-            expect(txCursor?.position).toEqual({
+            expect(transactionCursor?.position).toEqual({
                 lastBlockNumber: 20,
                 lastTransactionIndex: -1,
                 lastLogIndex: null,
             });
             await expect(db.countRows("block_jobs")).resolves.toBe(0);
         } finally {
-            await stopWorkers([headWorker, eventWorker, txWorker]);
+            await stopWorkers([headWorker, eventWorker, transactionWorker]);
         }
     });
 });

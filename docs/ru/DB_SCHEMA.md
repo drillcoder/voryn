@@ -82,10 +82,10 @@
 
 - `worker_name` (`TEXT`): имя воркера.
 - `chain_id` (`INT`): сеть.
-- `stream_type` (`TEXT`): тип потока, `event` или `tx`.
+- `stream_type` (`TEXT`): тип потока, `event` или `transaction`.
 - `last_block_number` (`BIGINT`): номер последнего обработанного блока.
 - `last_transaction_index` (`INT`): индекс последней обработанной транзакции.
-- `last_log_index` (`INT`, nullable): индекс последнего обработанного лога. Используется для `event`, для `tx` остается `NULL`.
+- `last_log_index` (`INT`, nullable): индекс последнего обработанного лога. Используется для `event`, для `transaction` остается `NULL`.
 - `updated_at` (`TIMESTAMPTZ`): время последнего обновления курсора.
 
 Ключи:

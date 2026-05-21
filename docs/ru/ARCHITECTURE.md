@@ -127,25 +127,17 @@ Voryn — каркас индексатора для EVM-сетей.
 
 ## Reaction-контур
 
-Reaction-контур запускает пользовательскую логику по данным в пределах committed-позиции. Каждый reaction-воркер ведет свой cursor, поэтому обработчики могут падать и догонять поток независимо друг от друга.
+Reaction-контур запускает пользовательскую логику по данным в пределах committed-позиции. Каждый reaction-воркер ведет свой курсор, поэтому обработчики могут падать и догонять поток независимо друг от друга.
 
-### `EventReactionService`
+### `ReactionService`
 
-- Читает события из `events` в порядке `(block_number, transaction_index, log_index)`.
 - Перед чтением берет `chain_cursor.last_committed_block` и ограничивает выборку этой границей.
-- Ведет прогресс в `worker_cursors` (`stream_type = event`).
-- Cursor хранит последнюю обработанную позицию: `last_block_number`, `last_transaction_index`, `last_log_index`.
-- При первом запуске нового `workerName` инициализирует cursor текущей committed-позицией.
-- Вызывает пользовательский `EventReactionHandler`.
-
-### `TransactionReactionService`
-
-- Читает транзакции из `transactions` в порядке `(block_number, transaction_index)`.
-- Перед чтением берет `chain_cursor.last_committed_block` и ограничивает выборку этой границей.
-- Ведет прогресс в `worker_cursors` (`stream_type = tx`).
-- Cursor хранит последнюю обработанную позицию: `last_block_number`, `last_transaction_index`.
-- При первом запуске нового `workerName` инициализирует cursor текущей committed-позицией.
-- Вызывает пользовательский `TransactionReactionHandler`.
+- Читает элементы потока в порядке репозитория: события идут по `(block_number, transaction_index, log_index)`, транзакции - по `(block_number, transaction_index)`.
+- Ведет прогресс в `worker_cursors` с `stream_type = event` или `stream_type = transaction`.
+- Курсор событий хранит `last_block_number`, `last_transaction_index`, `last_log_index`.
+- Курсор транзакций хранит `last_block_number`, `last_transaction_index`.
+- При первом запуске нового `workerName` инициализирует курсор текущей committed-позицией.
+- Вызывает пользовательский reaction handler и двигает курсор по результатам `"processed"` / `"skipped"`.
 
 ## Операционные инструменты
 

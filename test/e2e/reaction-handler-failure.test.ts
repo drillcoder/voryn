@@ -49,13 +49,15 @@ describe("e2e reaction handler failure", () => {
         let failures = 0;
 
         const handler: EventReactionHandler = {
-            async handle(event): Promise<void> {
+            async handle(event): Promise<"processed"> {
                 if (event.index === 1 && failures === 0) {
                     failures += 1;
                     throw new Error("handler temporary failure");
                 }
 
                 handled.push(event.index);
+
+                return "processed";
             },
         };
 
@@ -65,6 +67,7 @@ describe("e2e reaction handler failure", () => {
                 delayBetweenTicksMs: 5,
                 workerName: "reaction-event-failure",
                 batchSize: 2,
+                skipFlushInterval: 2,
             },
             handler,
             overrides: {

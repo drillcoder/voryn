@@ -168,22 +168,25 @@ Full worker examples:
 
 ## Event and transaction reactions
 
-Reaction workers read only committed data. Each `workerName` has its own durable cursor, so handlers can be restarted safely.
+Reaction workers read only committed data. Each `workerName` has its own persisted cursor, so handlers can be
+restarted safely.
 
 ```ts
-import type { EventReactionHandler } from "@drillcoder/voryn";
+import type { EventReactionHandler, ReactionHandlerResult } from "@drillcoder/voryn";
 import { ConsoleLogger, EventReactionWorker } from "@drillcoder/voryn";
 
 const logger = new ConsoleLogger({ minLevel: "info" });
 
 const handler: EventReactionHandler = {
-    async handle(event): Promise<void> {
+    async handle(event): Promise<ReactionHandlerResult> {
         logger.info("event_received", {
             blockNumber: event.blockNumber,
             transactionHash: event.transactionHash,
             logIndex: event.index,
             address: event.address,
         });
+
+        return event.index === 10 ? "processed" : "skipped";
     },
 };
 
@@ -194,13 +197,21 @@ const worker = await EventReactionWorker.create({
     config: {
         chainId: 1,
         workerName: "contract-events",
-        delayBetweenTicksMs: 1_000,
-        batchSize: 250,
+        delayBetweenTicksMs: 500,
+        batchSize: 1000,
+        skipFlushInterval: 100,
     },
 });
 
 await worker.start();
 ```
+
+Handlers may return `"processed"` or `"skipped"`. Processed items advance the worker cursor immediately. Skipped
+items are safe to advance too, but their cursor writes are batched by `skipFlushInterval` and flushed at
+the end of the tick or before rethrowing a handler error.
+
+A handler can be called more than once for the same item if it fails before returning a result, or if the worker
+stops before the cursor write for the item is persisted. Keep handler side effects idempotent.
 
 Examples:
 

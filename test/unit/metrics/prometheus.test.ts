@@ -157,8 +157,8 @@ test("formats reaction block lag without cursor internals", () => {
     const metrics: ChainPipelineMetrics = {
         ...createEmptyMetrics(),
         reactions: [{
-            workerName: "tx-worker",
-            streamType: "tx",
+            workerName: "transaction-worker",
+            streamType: "transaction",
             block: 9,
             lagBlocks: 1,
             secondsSinceProgress: 5,
@@ -168,7 +168,7 @@ test("formats reaction block lag without cursor internals", () => {
     const formatted = formatPipelineMetricsPrometheus(metrics);
 
     expect(formatted).toContain(
-        "voryn_pipeline_reaction_block{chain_id=\"1\",worker_name=\"tx-worker\",stream_type=\"tx\"} 9"
+        "voryn_pipeline_reaction_block{chain_id=\"1\",worker_name=\"transaction-worker\",stream_type=\"transaction\"} 9"
     );
     expect(formatted).not.toContain("voryn_pipeline_reaction_position_transaction_index{");
     expect(formatted).not.toContain("voryn_pipeline_reaction_position_log_index{");
@@ -179,7 +179,7 @@ test("escapes label values", () => {
         ...createEmptyMetrics(),
         reactions: [{
             workerName: "worker\"one\\two\nthree",
-            streamType: "tx",
+            streamType: "transaction",
             block: 1,
             lagBlocks: 1,
             secondsSinceProgress: 5,

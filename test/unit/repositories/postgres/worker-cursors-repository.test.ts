@@ -7,7 +7,7 @@ test("get returns null when worker cursor is missing", async () => {
     const query = jest.fn(async () => ({ rows: [], rowCount: 0 }));
     const repository = new PostgresWorkerCursorsRepository(createExecutor(query));
 
-    await expect(repository.get("worker-a", 1, "tx")).resolves.toBeNull();
+    await expect(repository.get("worker-a", 1, "transaction")).resolves.toBeNull();
 });
 
 test("advance throws if cursor does not exist", async () => {
@@ -37,7 +37,7 @@ test("get maps cursor row", async () => {
         rows: [{
             worker_name: "worker-a",
             chain_id: 1,
-            stream_type: "tx",
+            stream_type: "transaction",
             last_block_number: "12",
             last_transaction_index: 3,
             last_log_index: null,
@@ -47,10 +47,10 @@ test("get maps cursor row", async () => {
     }));
     const repository = new PostgresWorkerCursorsRepository(createExecutor(query));
 
-    await expect(repository.get("worker-a", 1, "tx")).resolves.toMatchObject({
+    await expect(repository.get("worker-a", 1, "transaction")).resolves.toMatchObject({
         workerName: "worker-a",
         chainId: 1,
-        streamType: "tx",
+        streamType: "transaction",
         position: {
             lastBlockNumber: 12,
             lastTransactionIndex: 3,
@@ -74,7 +74,7 @@ test("listByChain maps cursor rows", async () => {
             {
                 worker_name: "tx-worker",
                 chain_id: 1,
-                stream_type: "tx",
+                stream_type: "transaction",
                 last_block_number: "12",
                 last_transaction_index: 3,
                 last_log_index: null,
@@ -100,7 +100,7 @@ test("listByChain maps cursor rows", async () => {
         {
             workerName: "tx-worker",
             chainId: 1,
-            streamType: "tx",
+            streamType: "transaction",
             position: {
                 lastBlockNumber: 12,
                 lastTransactionIndex: 3,
@@ -141,16 +141,16 @@ test("insert and advance use null for missing log index", async () => {
         .mockResolvedValueOnce({ rows: [], rowCount: 1 });
     const repository = new PostgresWorkerCursorsRepository(createExecutor(query));
 
-    await repository.insert("worker-a", 1, "tx", {
+    await repository.insert("worker-a", 1, "transaction", {
         lastBlockNumber: 0,
         lastTransactionIndex: -1,
     });
-    await repository.advance("worker-a", 1, "tx", {
+    await repository.advance("worker-a", 1, "transaction", {
         lastBlockNumber: 10,
         lastTransactionIndex: 1,
     });
 
     const calls = query.mock.calls as unknown as Array<[string, readonly unknown[]]>;
-    expect(calls[0]?.[1]).toEqual(["worker-a", 1, "tx", 0, -1, null]);
-    expect(calls[1]?.[1]).toEqual(["worker-a", 1, "tx", 10, 1, null]);
+    expect(calls[0]?.[1]).toEqual(["worker-a", 1, "transaction", 0, -1, null]);
+    expect(calls[1]?.[1]).toEqual(["worker-a", 1, "transaction", 10, 1, null]);
 });

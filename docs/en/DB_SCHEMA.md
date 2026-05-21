@@ -82,10 +82,10 @@ Reaction cursors tracked separately for each stream.
 
 - `worker_name` (`TEXT`): worker name.
 - `chain_id` (`INT`): network.
-- `stream_type` (`TEXT`): stream type, `event` or `tx`.
+- `stream_type` (`TEXT`): stream type, `event` or `transaction`.
 - `last_block_number` (`BIGINT`): latest processed block number.
 - `last_transaction_index` (`INT`): latest processed transaction index.
-- `last_log_index` (`INT`, nullable): latest processed log index. Used for `event`; remains `NULL` for `tx`.
+- `last_log_index` (`INT`, nullable): latest processed log index. Used for `event`; remains `NULL` for `transaction`.
 - `updated_at` (`TIMESTAMPTZ`): last cursor update time.
 
 Keys:

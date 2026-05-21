@@ -64,13 +64,17 @@ describe("e2e idempotency", () => {
         const firstTxHandled: string[] = [];
 
         const firstEventHandler: EventReactionHandler = {
-            async handle(event): Promise<void> {
+            async handle(event): Promise<"processed"> {
                 firstEventHandled.push(`${String(event.blockNumber)}:${String(event.index)}`);
+
+                return "processed";
             },
         };
         const firstTxHandler: TransactionReactionHandler = {
-            async handle(transaction): Promise<void> {
+            async handle(transaction): Promise<"processed"> {
                 firstTxHandled.push(`${String(transaction.blockNumber)}:${String(transaction.index)}`);
+
+                return "processed";
             },
         };
 
@@ -106,13 +110,17 @@ describe("e2e idempotency", () => {
             const secondEventHandled: string[] = [];
             const secondTxHandled: string[] = [];
             const secondEventHandler: EventReactionHandler = {
-                async handle(event): Promise<void> {
+                async handle(event): Promise<"processed"> {
                     secondEventHandled.push(`${String(event.blockNumber)}:${String(event.index)}`);
+
+                    return "processed";
                 },
             };
             const secondTxHandler: TransactionReactionHandler = {
-                async handle(transaction): Promise<void> {
+                async handle(transaction): Promise<"processed"> {
                     secondTxHandled.push(`${String(transaction.blockNumber)}:${String(transaction.index)}`);
+
+                    return "processed";
                 },
             };
 
@@ -157,14 +165,14 @@ async function createWorkerSet(
     eventsRepository: PostgresEventsRepository,
     workerCursorsRepository: PostgresWorkerCursorsRepository,
     eventHandler: EventReactionHandler,
-    txHandler: TransactionReactionHandler,
+    transactionHandler: TransactionReactionHandler,
     workerSuffix: string,
 ): Promise<{
     head: HeadWorker;
     fetch: FetchWorker;
     sequencer: SequencerWorker;
     event: EventReactionWorker;
-    tx: TransactionReactionWorker;
+    transaction: TransactionReactionWorker;
     all: readonly [HeadWorker, FetchWorker, SequencerWorker, EventReactionWorker, TransactionReactionWorker];
 }> {
     const head = await HeadWorker.create({
@@ -185,7 +193,7 @@ async function createWorkerSet(
             chainId: CHAIN_ID,
             delayBetweenTicksMs: 5,
             fetchBatchSize: 2,
-                fetchConcurrency: 1,
+            fetchConcurrency: 1,
             fetchClaimTtlMs: 60_000,
             retryMaxAttempts: 3,
             retryBaseDelayMs: 10,
@@ -219,6 +227,7 @@ async function createWorkerSet(
             delayBetweenTicksMs: 5,
             workerName: `reaction-event-${workerSuffix}`,
             batchSize: 2,
+            skipFlushInterval: 2,
         },
         handler: eventHandler,
         overrides: {
@@ -228,14 +237,15 @@ async function createWorkerSet(
             leaderLock: createLeaderLock(),
         },
     });
-    const tx = await TransactionReactionWorker.create({
+    const transaction = await TransactionReactionWorker.create({
         config: {
             chainId: CHAIN_ID,
             delayBetweenTicksMs: 5,
-            workerName: `reaction-tx-${workerSuffix}`,
+            workerName: `reaction-transaction-${workerSuffix}`,
             batchSize: 2,
+            skipFlushInterval: 2,
         },
-        handler: txHandler,
+        handler: transactionHandler,
         overrides: {
             chainCursorRepository,
             transactionsRepository,
@@ -249,8 +259,8 @@ async function createWorkerSet(
         fetch,
         sequencer,
         event,
-        tx,
-        all: [head, fetch, sequencer, event, tx],
+        transaction,
+        all: [head, fetch, sequencer, event, transaction],
     };
 }
 
@@ -259,10 +269,10 @@ async function startPipeline(workers: {
     fetch: FetchWorker;
     sequencer: SequencerWorker;
     event: EventReactionWorker;
-    tx: TransactionReactionWorker;
+    transaction: TransactionReactionWorker;
 }): Promise<void> {
     await workers.event.start();
-    await workers.tx.start();
+    await workers.transaction.start();
     await workers.head.start();
     await workers.fetch.start();
     await workers.sequencer.start();

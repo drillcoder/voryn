@@ -6,7 +6,7 @@ import { asAddress, asHash32, asHexData } from "../../../src/utils/hex.js";
 export const CHAIN_ID = 1;
 export const FETCH_INSTANCE_ID = "fetch-instance-int";
 export const REACTION_WORKER_EVENT = "reaction-event-int";
-export const REACTION_WORKER_TX = "reaction-tx-int";
+export const REACTION_WORKER_TRANSACTION = "reaction-transaction-int";
 
 const ADDRESS_A = asAddress("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 const ADDRESS_B = asAddress("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
@@ -66,10 +66,10 @@ export function createMapBlockSource(
 export function buildFetchedBlock(
     blockNumber: number,
     parentHash: ReturnType<typeof asHash32>,
-    txAndLogCount = 1
+    transactionAndLogCount = 1
 ): FetchedBlock {
     const blockHash = hashFromNumber(blockNumber);
-    const transactions = Array.from({ length: txAndLogCount }, (_, index) => ({
+    const transactions = Array.from({ length: transactionAndLogCount }, (_, index) => ({
         chainId: CHAIN_ID,
         blockNumber,
         blockHash,
@@ -80,7 +80,7 @@ export function buildFetchedBlock(
         value: String(100 + index),
         data: asHexData("0x1234"),
     }));
-    const logs = Array.from({ length: txAndLogCount }, (_, index) => ({
+    const logs = Array.from({ length: transactionAndLogCount }, (_, index) => ({
         chainId: CHAIN_ID,
         blockNumber,
         blockHash,
