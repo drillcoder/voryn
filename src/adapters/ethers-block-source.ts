@@ -38,7 +38,7 @@ export interface EthersProviderLike {
 }
 
 export interface EthersBlockSourceDeps {
-    provider: EthersProviderLike;
+    providers: ReadonlyMap<ChainId, EthersProviderLike>;
     validateProviderChainId?: boolean;
 }
 
@@ -110,7 +110,10 @@ export class EthersBlockSource implements BlockSource {
     }
 
     private async getProvider(chainId: ChainId): Promise<EthersProviderLike> {
-        const provider = this.deps.provider;
+        const provider = this.deps.providers.get(chainId);
+        if (provider === undefined) {
+            throw new Error(`provider not found for chain ${String(chainId)}`);
+        }
 
         if (!this.deps.validateProviderChainId || this.checkedProviderChainIds.has(chainId)) {
             return provider;

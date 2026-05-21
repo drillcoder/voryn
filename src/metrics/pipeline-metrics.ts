@@ -30,7 +30,7 @@ export type CreatePipelineMetricsOptions =
 
 export class PipelineMetrics {
     static async create(options: CreatePipelineMetricsOptions): Promise<PipelineMetrics> {
-        const source = resolveEthersSource(options);
+        const source = resolveEthersSource(options.config.chainId, options);
         const { dependencies, dispose } = await resolveDbDependencies<PipelineMetricsDatabaseDependencies>(
             options,
             (pool: Pool): PipelineMetricsDatabaseDependencies => ({

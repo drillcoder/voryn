@@ -66,7 +66,7 @@ describeLive("live rpc pipeline", () => {
         const eventsRepository = new PostgresEventsRepository(db.pool);
 
         const source = new EthersBlockSource({
-            provider: new JsonRpcProvider(rpcUrl),
+            providers: new Map([[chainId, new JsonRpcProvider(rpcUrl)]]),
             validateProviderChainId: true,
         });
 

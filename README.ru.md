@@ -258,11 +258,16 @@ await metrics.close();
 import { JsonRpcProvider } from "ethers";
 import { EthersBlockSource } from "@drillcoder/voryn";
 
+const chainId = 1;
+const provider = new JsonRpcProvider("https://rpc.example.org");
+
 const source = new EthersBlockSource({
-    provider: new JsonRpcProvider("https://rpc.example.org"),
+    providers: new Map([[chainId, provider]]),
     validateProviderChainId: true,
 });
 ```
+
+Ключ в `providers` — это `chainId`. На этом этапе одна сеть использует один provider.
 
 Адаптер валидирует chain id, хеши, адреса, `data`-поля, индексы транзакций и соответствие номера блока. Для другого источника данных достаточно реализовать интерфейс `BlockSource`.
 

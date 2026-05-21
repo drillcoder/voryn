@@ -17,6 +17,21 @@ const createProviderMock = (): jest.Mocked<EthersProviderLike> => ({
     getLogs: jest.fn(),
 });
 
+const createSource = (
+    provider: EthersProviderLike,
+    options: Omit<
+        ConstructorParameters<typeof EthersBlockSource>[0],
+        "providers"
+    > = {}
+): EthersBlockSource => new EthersBlockSource({
+    providers: new Map([
+        [1, provider],
+        [7, provider],
+        [42, provider],
+    ]),
+    ...options,
+});
+
 test("maps latest block, transactions and logs from ethers provider", async () => {
     const blockCalls: Array<{ blockNumber: number; prefetchTxs?: boolean }> = [];
     const logCalls: Array<{ fromBlock: number; toBlock: number }> = [];
@@ -69,9 +84,7 @@ test("maps latest block, transactions and logs from ethers provider", async () =
         return [log];
     });
 
-    const source = new EthersBlockSource({
-        provider,
-    });
+    const source = createSource(provider);
 
     await expect(source.getLatestBlockNumber(7)).resolves.toBe(120);
 
@@ -160,9 +173,7 @@ test("falls back to getTransaction when prefetched transactions are unavailable"
     });
     provider.getLogs.mockResolvedValue([]);
 
-    const source = new EthersBlockSource({
-        provider,
-    });
+    const source = createSource(provider);
 
     await expect(source.getBlockData(1, 55)).resolves.toMatchObject({
         block: {
@@ -201,11 +212,19 @@ test("reads latest block number from a single provider", async () => {
     const provider = createProviderMock();
     provider.getBlockNumber.mockResolvedValue(999);
 
-    const source = new EthersBlockSource({
-        provider,
-    });
+    const source = createSource(provider);
 
     await expect(source.getLatestBlockNumber(42)).resolves.toBe(999);
+});
+
+test("throws when provider is missing for chain", async () => {
+    const source = new EthersBlockSource({
+        providers: new Map(),
+    });
+
+    await expect(source.getLatestBlockNumber(42)).rejects.toThrow(
+        "provider not found for chain 42"
+    );
 });
 
 test("reads block without prefetching transactions", async () => {
@@ -219,9 +238,7 @@ test("reads block without prefetching transactions", async () => {
         prefetchedTransactions: [],
     });
 
-    const source = new EthersBlockSource({
-        provider,
-    });
+    const source = createSource(provider);
 
     await expect(source.getBlock(7, 55)).resolves.toMatchObject({
         chainId: 7,
@@ -245,9 +262,7 @@ test("reads latest block without validating requested number", async () => {
         prefetchedTransactions: [],
     });
 
-    const source = new EthersBlockSource({
-        provider,
-    });
+    const source = createSource(provider);
 
     await expect(source.getLatestBlock(7)).resolves.toMatchObject({
         chainId: 7,
@@ -265,9 +280,7 @@ test("throws when block is missing", async () => {
     provider.getNetwork.mockResolvedValue({ chainId: 7n });
     provider.getBlock.mockResolvedValue(null);
 
-    const source = new EthersBlockSource({
-        provider,
-    });
+    const source = createSource(provider);
 
     await expect(source.getBlockData(7, 42)).rejects.toThrow(
         "block not found for chain 7 at number 42"
@@ -278,9 +291,7 @@ test("throws when requested block is missing", async () => {
     const provider = createProviderMock();
     provider.getBlock.mockResolvedValue(null);
 
-    const source = new EthersBlockSource({
-        provider,
-    });
+    const source = createSource(provider);
 
     await expect(source.getBlock(7, 42)).rejects.toThrow(
         "block not found for chain 7 at 42"
@@ -298,9 +309,7 @@ test("throws when requested block number mismatches", async () => {
         prefetchedTransactions: [],
     });
 
-    const source = new EthersBlockSource({
-        provider,
-    });
+    const source = createSource(provider);
 
     await expect(source.getBlock(7, 42)).rejects.toThrow(
         "block number mismatch for chain 7: expected 42, got 43"
@@ -318,9 +327,7 @@ test("throws when requested block hash is missing", async () => {
         prefetchedTransactions: [],
     });
 
-    const source = new EthersBlockSource({
-        provider,
-    });
+    const source = createSource(provider);
 
     await expect(source.getBlock(7, 42)).rejects.toThrow(
         "block hash is missing for chain 7 at number 42"
@@ -351,9 +358,7 @@ test("throws on log block hash mismatch", async () => {
     provider.getBlock.mockResolvedValue(block);
     provider.getLogs.mockResolvedValue([log]);
 
-    const source = new EthersBlockSource({
-        provider,
-    });
+    const source = createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
         "log block hash mismatch for chain 7 block 9"
@@ -370,10 +375,7 @@ test("validates provider network chain id when enabled", async () => {
         return 1;
     });
 
-    const source = new EthersBlockSource({
-        provider,
-        validateProviderChainId: true,
-    });
+    const source = createSource(provider, { validateProviderChainId: true });
 
     await expect(source.getLatestBlockNumber(1)).rejects.toThrow(
         "provider chain mismatch for chain 1: got 10"
@@ -386,10 +388,7 @@ test("caches successful provider chain validation", async () => {
     provider.getNetwork.mockResolvedValue({ chainId: 1n });
     provider.getBlockNumber.mockResolvedValue(123);
 
-    const source = new EthersBlockSource({
-        provider,
-        validateProviderChainId: true,
-    });
+    const source = createSource(provider, { validateProviderChainId: true });
 
     await expect(source.getLatestBlockNumber(1)).resolves.toBe(123);
     await expect(source.getLatestBlockNumber(1)).resolves.toBe(123);
@@ -410,9 +409,7 @@ test("throws when block hash is missing", async () => {
         prefetchedTransactions: [],
     });
 
-    const source = new EthersBlockSource({
-        provider,
-    });
+    const source = createSource(provider);
 
     await expect(source.getBlockData(7, 21)).rejects.toThrow(
         "block hash is missing for chain 7 at number 21"
@@ -431,9 +428,7 @@ test("throws when block number mismatches requested number", async () => {
         prefetchedTransactions: [],
     });
 
-    const source = new EthersBlockSource({
-        provider,
-    });
+    const source = createSource(provider);
 
     await expect(source.getBlockData(7, 21)).rejects.toThrow(
         "block number mismatch for chain 7: expected 21, got 22"
@@ -459,9 +454,7 @@ test("throws when fallback transaction is not found", async () => {
     provider.getTransaction.mockResolvedValue(null);
     provider.getLogs.mockResolvedValue([]);
 
-    const source = new EthersBlockSource({
-        provider,
-    });
+    const source = createSource(provider);
 
     await expect(source.getBlockData(1, 55)).rejects.toThrow(
         `transaction not found for chain 1 block 55 hash ${transactionHash}`
@@ -491,9 +484,7 @@ test("throws on transaction chain id mismatch", async () => {
     });
     provider.getLogs.mockResolvedValue([]);
 
-    const source = new EthersBlockSource({
-        provider,
-    });
+    const source = createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
         "transaction chain id mismatch for chain 7 block 9"
@@ -523,9 +514,7 @@ test("allows transaction with null chain id", async () => {
     });
     provider.getLogs.mockResolvedValue([]);
 
-    const source = new EthersBlockSource({
-        provider,
-    });
+    const source = createSource(provider);
 
     await expect(source.getBlockData(7, 9)).resolves.toMatchObject({
         block: {
@@ -570,9 +559,7 @@ test("throws on transaction block number mismatch", async () => {
     });
     provider.getLogs.mockResolvedValue([]);
 
-    const source = new EthersBlockSource({
-        provider,
-    });
+    const source = createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
         "transaction block number mismatch for chain 7 block 9"
@@ -602,9 +589,7 @@ test("throws on transaction block hash mismatch", async () => {
     });
     provider.getLogs.mockResolvedValue([]);
 
-    const source = new EthersBlockSource({
-        provider,
-    });
+    const source = createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
         "transaction block hash mismatch for chain 7 block 9"
@@ -634,9 +619,7 @@ test("throws on negative transaction index", async () => {
     });
     provider.getLogs.mockResolvedValue([]);
 
-    const source = new EthersBlockSource({
-        provider,
-    });
+    const source = createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
         "transaction index is invalid for chain 7 block 9"
@@ -666,9 +649,7 @@ test("throws on non-integer transaction index", async () => {
     });
     provider.getLogs.mockResolvedValue([]);
 
-    const source = new EthersBlockSource({
-        provider,
-    });
+    const source = createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
         "transaction index is invalid for chain 7 block 9"
@@ -697,9 +678,7 @@ test("throws on log block number mismatch", async () => {
         data: "0x",
     }]);
 
-    const source = new EthersBlockSource({
-        provider,
-    });
+    const source = createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
         "log block number mismatch for chain 7 block 9"
@@ -728,9 +707,7 @@ test("throws on invalid log transaction index", async () => {
         data: "0x",
     }]);
 
-    const source = new EthersBlockSource({
-        provider,
-    });
+    const source = createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
         "log transaction index is invalid for chain 7 block 9"
@@ -759,9 +736,7 @@ test("throws on invalid log index", async () => {
         data: "0x",
     }]);
 
-    const source = new EthersBlockSource({
-        provider,
-    });
+    const source = createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
         "log index is invalid for chain 7 block 9"

@@ -37,7 +37,7 @@ export type CreateFetchWorkerOptions =
 
 export class FetchWorker extends PollingWorker {
     static async create(options: CreateFetchWorkerOptions): Promise<FetchWorker> {
-        const source = resolveEthersSource(options);
+        const source = resolveEthersSource(options.config.chainId, options);
         const config: FetchServiceConfig = {
             ...options.config,
             instanceId: randomUUID(),

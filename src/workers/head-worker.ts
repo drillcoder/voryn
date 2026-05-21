@@ -42,7 +42,7 @@ export type CreateHeadWorkerOptions =
 
 export class HeadWorker extends SingletonPollingWorker {
     static async create(options: CreateHeadWorkerOptions): Promise<HeadWorker> {
-        const source = resolveEthersSource(options);
+        const source = resolveEthersSource(options.config.chainId, options);
         const { dependencies, dispose } = await resolveDbDependencies<HeadWorkerDatabaseDependencies>(
             options,
             (pool: Pool): HeadWorkerDatabaseDependencies => ({

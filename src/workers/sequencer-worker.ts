@@ -42,7 +42,7 @@ export type CreateSequencerWorkerOptions =
 
 export class SequencerWorker extends SingletonPollingWorker {
     static async create(options: CreateSequencerWorkerOptions): Promise<SequencerWorker> {
-        const source = resolveEthersSource(options);
+        const source = resolveEthersSource(options.config.chainId, options);
         const { dependencies, dispose } = await resolveDbDependencies<SequencerWorkerDatabaseDependencies>(
             options,
             (pool: Pool): SequencerWorkerDatabaseDependencies => ({

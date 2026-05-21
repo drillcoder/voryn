@@ -6,15 +6,19 @@ import { validatePostgresSchema } from "../postgres/schema.js";
 import type { BlockSource } from "../interfaces/block-source.js";
 import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
+import type { ChainId } from "../types/chain.js";
 import type { ResolveDbDependenciesResult, RuntimeDbOptions, RuntimeSourceOptions } from "./types.js";
 
-export function resolveEthersSource(options: RuntimeSourceOptions<BlockSource>): BlockSource {
+export function resolveEthersSource(
+    chainId: ChainId,
+    options: RuntimeSourceOptions<BlockSource>
+): BlockSource {
     if (options.source !== undefined) {
         return options.source;
     }
 
     return new EthersBlockSource({
-        provider: new JsonRpcProvider(options.rpcUrl),
+        providers: new Map([[chainId, new JsonRpcProvider(options.rpcUrl)]]),
         validateProviderChainId: true,
     });
 }

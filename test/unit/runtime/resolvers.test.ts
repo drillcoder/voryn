@@ -37,11 +37,12 @@ test("resolveEthersSource returns provided source", () => {
         },
     };
 
-    expect(resolveEthersSource({ source })).toBe(source);
+    expect(resolveEthersSource(1, { source })).toBe(source);
 });
 
 test("resolveEthersSource creates ethers source from rpcUrl", () => {
-    expect(resolveEthersSource({ rpcUrl: "http://127.0.0.1:8545" })).toBeInstanceOf(EthersBlockSource);
+    expect(resolveEthersSource(1, { rpcUrl: "http://127.0.0.1:8545" }))
+        .toBeInstanceOf(EthersBlockSource);
 });
 
 test("resolveDbDependencies returns overrides without dbUrl", async () => {
