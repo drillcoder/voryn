@@ -2,26 +2,26 @@ import type { EventReactionHandler, ReactionHandlerResult } from "@drillcoder/vo
 import { ConsoleLogger, EventReactionWorker } from "@drillcoder/voryn";
 
 (async () => {
-    const dbUrl = "postgres://user:pass@localhost:5432/voryn";
-    const chainId = 1;
-    const workerName = "event-reaction-worker";
-    const delayBetweenTicksMs = 500;
-    const batchSize = 1000;
-    const skipFlushInterval = 100;
-
+    const config = {
+        chainId: 1,
+        delayBetweenTicksMs: 500,
+        workerName: "event-reaction-worker",
+        batchSize: 1000,
+        skipFlushInterval: 100,
+    };
     const logger = new ConsoleLogger({ minLevel: "info" });
-    const config = { chainId, delayBetweenTicksMs, workerName, batchSize, skipFlushInterval };
+    const dbUrl = "postgres://user:pass@localhost:5432/voryn";
 
     const handler: EventReactionHandler = {
         async handle(event): Promise<ReactionHandlerResult> {
             logger.info("event_received", {
-                chainId,
+                chainId: config.chainId,
                 blockNumber: event.blockNumber,
                 transactionHash: event.transactionHash,
                 logIndex: event.index,
             });
 
-            return event.index === 10 ? 'processed' : 'skipped';
+            return event.index === 10 ? "processed" : "skipped";
         },
     };
 

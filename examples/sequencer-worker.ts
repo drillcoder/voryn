@@ -1,14 +1,14 @@
 import { ConsoleLogger, SequencerWorker } from "@drillcoder/voryn";
 
 (async () => {
+    const config = {
+        chainId: 1,
+        delayBetweenTicksMs: 100,
+        maxBlocksPerTick: 10,
+    };
+    const logger = new ConsoleLogger({ minLevel: "info" });
     const dbUrl = "postgres://user:pass@localhost:5432/voryn";
     const rpcUrl = "https://rpc.example.org";
-    const chainId = 1;
-    const delayBetweenTicksMs = 100;
-    const maxBlocksPerTick = 10;
-
-    const logger = new ConsoleLogger({ minLevel: "info" });
-    const config = { chainId, delayBetweenTicksMs, maxBlocksPerTick };
 
     const worker = await SequencerWorker.create({ config, logger, dbUrl, rpcUrl });
 

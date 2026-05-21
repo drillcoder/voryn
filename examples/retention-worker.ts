@@ -1,13 +1,13 @@
 import { ConsoleLogger, RetentionWorker } from "@drillcoder/voryn";
 
 (async () => {
-    const dbUrl = "postgres://user:pass@localhost:5432/voryn";
-    const chainId = 1;
-    const delayBetweenTicksMs = 60_000;
-    const retentionDepthBlocks = 65_000;
-
+    const config = {
+        chainId: 1,
+        delayBetweenTicksMs: 60_000,
+        retentionDepthBlocks: 65_000,
+    };
     const logger = new ConsoleLogger({ minLevel: "info" });
-    const config = { chainId, delayBetweenTicksMs, retentionDepthBlocks };
+    const dbUrl = "postgres://user:pass@localhost:5432/voryn";
 
     const worker = await RetentionWorker.create({ config, logger, dbUrl });
 

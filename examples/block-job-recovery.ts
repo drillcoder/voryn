@@ -1,16 +1,17 @@
 import { BlockJobRecovery, ConsoleLogger } from "@drillcoder/voryn";
 
 (async () => {
+    const config = {
+        chainId: 1,
+    };
+    const logger = new ConsoleLogger({ minLevel: "info" });
     const dbUrl = "postgres://user:pass@localhost:5432/voryn";
-    const chainId = 1;
+
+    const recovery = await BlockJobRecovery.create({ config, logger, dbUrl });
+
     const blockNumber = 123;
     const fromBlock = 124;
     const toBlock = 130;
-
-    const logger = new ConsoleLogger({ minLevel: "info" });
-    const config = { chainId };
-
-    const recovery = await BlockJobRecovery.create({ config, logger, dbUrl });
 
     try {
         const singleBlockResult = await recovery.retryFailedBlock(blockNumber);

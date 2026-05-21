@@ -1,12 +1,12 @@
 import { ConsoleLogger, PipelineMetrics } from "@drillcoder/voryn";
 
 (async () => {
+    const config = {
+        chainId: 1,
+    };
+    const logger = new ConsoleLogger({ minLevel: "info" });
     const dbUrl = "postgres://user:pass@localhost:5432/voryn";
     const rpcUrl = "https://rpc.example.org";
-    const chainId = 1;
-
-    const logger = new ConsoleLogger({ minLevel: "info" });
-    const config = { chainId };
 
     const metrics = await PipelineMetrics.create({ config, logger, dbUrl, rpcUrl });
 
