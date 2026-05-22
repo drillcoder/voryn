@@ -39,6 +39,7 @@ test("sequencer worker create wires service execution", async () => {
     };
 
     const worker = await SequencerWorker.create({
+        logLevel: "error",
         config,
         source,
         overrides: {

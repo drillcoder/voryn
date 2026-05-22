@@ -1,14 +1,17 @@
-import { ConsoleLogger, PipelineMetrics } from "@drillcoder/voryn";
+import type { CreatePipelineMetricsOptions } from "@drillcoder/voryn";
+import { PipelineMetrics } from "@drillcoder/voryn";
 
 (async () => {
-    const config = {
-        chainId: 1,
+    const options: CreatePipelineMetricsOptions = {
+        config: {
+            chainId: 1,
+        },
+        logLevel: "info",
+        dbUrl: "postgres://user:pass@localhost:5432/voryn",
+        rpcUrl: "https://rpc.example.org",
     };
-    const logger = new ConsoleLogger({ minLevel: "info" });
-    const dbUrl = "postgres://user:pass@localhost:5432/voryn";
-    const rpcUrl = "https://rpc.example.org";
 
-    const metrics = await PipelineMetrics.create({ config, logger, dbUrl, rpcUrl });
+    const metrics = await PipelineMetrics.create(options);
 
     try {
         const snapshot = await metrics.get();

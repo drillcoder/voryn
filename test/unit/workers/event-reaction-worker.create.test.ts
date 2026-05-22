@@ -23,15 +23,14 @@ test("event reaction worker create wires service execution", async () => {
         batchSize: 10,
         skipFlushInterval: 10,
     };
-    const handler: EventReactionHandler = {
-        handle: async (event) => {
-            handled.push([event.blockNumber, event.transactionIndex, event.index]);
+    const handler: EventReactionHandler = async (event) => {
+        handled.push([event.blockNumber, event.transactionIndex, event.index]);
 
-            return "processed";
-        },
+        return "processed";
     };
 
     const worker = await EventReactionWorker.create({
+        logLevel: "error",
         config,
         handler,
         overrides: {
@@ -93,11 +92,10 @@ test("event reaction worker throws when cursor has no log index", async () => {
         batchSize: 10,
         skipFlushInterval: 10,
     };
-    const handler: EventReactionHandler = {
-        handle: async () => "processed",
-    };
+    const handler: EventReactionHandler = async () => "processed";
 
     const worker = await EventReactionWorker.create({
+        logLevel: "error",
         config,
         handler,
         overrides: {

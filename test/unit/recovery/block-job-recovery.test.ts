@@ -27,6 +27,7 @@ test("block job recovery create wires retry execution", async () => {
         retryFailed,
     };
     const recovery = await BlockJobRecovery.create({
+        logLevel: "error",
         config: { chainId: 7 },
         overrides: { blockJobsRepository },
     });
@@ -46,6 +47,7 @@ test("block job recovery retries one block", async () => {
         retryFailed,
     };
     const recovery = await BlockJobRecovery.create({
+        logLevel: "error",
         config: { chainId: 7 },
         overrides: { blockJobsRepository },
     });
@@ -62,6 +64,7 @@ test("block job recovery merges db defaults with overrides and returns disposer"
     const blockJobsRepository = createNoopBlockJobsRepository();
     const endSpy = jest.spyOn(Pool.prototype, "end");
     const recovery = await BlockJobRecovery.create({
+        logLevel: "error",
         config: { chainId: 7 },
         dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
         overrides: {
@@ -82,6 +85,7 @@ test("block job recovery merges db defaults with overrides and returns disposer"
 test("block job recovery builds postgres repository by default with db url", async () => {
     const endSpy = jest.spyOn(Pool.prototype, "end");
     const recovery = await BlockJobRecovery.create({
+        logLevel: "error",
         config: { chainId: 7 },
         dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
     });

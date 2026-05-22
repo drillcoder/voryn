@@ -111,12 +111,10 @@ test("reaction service reads committed events by cursor and advances processed p
     const service = new ReactionService({
         config,
         streamType: "event",
-        handler: {
-            handle: async (event) => {
+        handler: async (event) => {
                 handled.push([event.blockNumber, event.transactionIndex, event.index]);
 
                 return "processed";
-            },
         },
         chainCursorRepository: createChainCursorRepository(),
         workerCursorsRepository: createWorkerCursorsRepository(
@@ -155,7 +153,7 @@ test("reaction service batches skipped transaction cursor advances", async () =>
     const service = new ReactionService({
         config: { ...config, skipFlushInterval: 2 },
         streamType: "transaction",
-        handler: { handle: async () => "skipped" },
+        handler: async () => "skipped" ,
         chainCursorRepository: createChainCursorRepository(),
         workerCursorsRepository: createWorkerCursorsRepository(
             { lastBlockNumber: 99, lastTransactionIndex: 1 },
@@ -188,11 +186,9 @@ test("reaction service advances processed transaction immediately after skipped"
     const service = new ReactionService({
         config,
         streamType: "transaction",
-        handler: {
-            handle: async (transaction) => transaction.index === 0
-                ? "skipped"
-                : "processed",
-        },
+        handler: async (transaction) => transaction.index === 0
+            ? "skipped"
+            : "processed",
         chainCursorRepository: createChainCursorRepository(),
         workerCursorsRepository: createWorkerCursorsRepository(
             { lastBlockNumber: 99, lastTransactionIndex: 1 },
@@ -223,14 +219,12 @@ test("reaction service flushes skipped transaction position before handler failu
     const service = new ReactionService({
         config,
         streamType: "transaction",
-        handler: {
-            handle: async (transaction) => {
+        handler: async (transaction) => {
                 if (transaction.index === 1) {
                     throw new Error("handler failed");
                 }
 
                 return "skipped";
-            },
         },
         chainCursorRepository: createChainCursorRepository(),
         workerCursorsRepository: createWorkerCursorsRepository(
@@ -263,7 +257,7 @@ test("reaction service creates event cursor at current committed block when miss
     const service = new ReactionService({
         config,
         streamType: "event",
-        handler: { handle: async () => "processed" },
+        handler: async () => "processed" ,
         chainCursorRepository: createChainCursorRepository(22),
         workerCursorsRepository: createWorkerCursorsRepository(null, "event", {
             insert: async (_workerName, _chainId, _streamType, position) => {
@@ -293,7 +287,7 @@ test("reaction service creates transaction cursor at current committed block whe
     const service = new ReactionService({
         config,
         streamType: "transaction",
-        handler: { handle: async () => "processed" },
+        handler: async () => "processed" ,
         chainCursorRepository: createChainCursorRepository(33),
         workerCursorsRepository: createWorkerCursorsRepository(null, "transaction", {
             insert: async (_workerName, _chainId, _streamType, position) => {
@@ -321,7 +315,7 @@ test("reaction service throws when chain cursor is missing", async () => {
     const service = new ReactionService({
         config,
         streamType: "event",
-        handler: { handle: async () => "processed" },
+        handler: async () => "processed" ,
         chainCursorRepository: createChainCursorRepository(null),
         workerCursorsRepository: createWorkerCursorsRepository(
             { lastBlockNumber: 1, lastTransactionIndex: 0, lastLogIndex: 0 }
@@ -336,7 +330,7 @@ test("reaction service reports transaction stream when transaction chain cursor 
     const service = new ReactionService({
         config,
         streamType: "transaction",
-        handler: { handle: async () => "processed" },
+        handler: async () => "processed" ,
         chainCursorRepository: createChainCursorRepository(null),
         workerCursorsRepository: createWorkerCursorsRepository(
             { lastBlockNumber: 1, lastTransactionIndex: 0 },
@@ -352,7 +346,7 @@ test("reaction service validates event cursor before listing items", async () =>
     const service = new ReactionService({
         config,
         streamType: "event",
-        handler: { handle: async () => "processed" },
+        handler: async () => "processed" ,
         chainCursorRepository: createChainCursorRepository(),
         workerCursorsRepository: createWorkerCursorsRepository(
             { lastBlockNumber: 1, lastTransactionIndex: 0, lastLogIndex: null }

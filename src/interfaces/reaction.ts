@@ -6,10 +6,12 @@ export interface ReactionContext {
     workerName: string;
 }
 
-export interface EventReactionHandler {
-    handle(event: PipelineEvent, context: ReactionContext): Promise<ReactionHandlerResult>;
-}
+export type EventReactionHandler = (
+    event: PipelineEvent,
+    context: ReactionContext
+) => Promise<ReactionHandlerResult>;
 
-export interface TransactionReactionHandler {
-    handle(transaction: PipelineTransaction, context: ReactionContext): Promise<ReactionHandlerResult>;
-}
+export type TransactionReactionHandler = (
+    transaction: PipelineTransaction,
+    context: ReactionContext
+) => Promise<ReactionHandlerResult>;

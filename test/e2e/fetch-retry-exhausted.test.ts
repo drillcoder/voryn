@@ -53,6 +53,7 @@ describe("e2e fetch retry exhausted", () => {
         const source = createAlwaysFailingBlockSource(10, block10);
 
         const headWorker = await HeadWorker.create({
+            logLevel: "error",
             config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
             source,
             overrides: {
@@ -66,6 +67,7 @@ describe("e2e fetch retry exhausted", () => {
             },
         });
         const fetchWorker = await FetchWorker.create({
+            logLevel: "error",
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,

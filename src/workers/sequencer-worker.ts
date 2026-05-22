@@ -1,6 +1,5 @@
 import type { Pool } from "pg";
 import type { Logger } from "../interfaces/logger.js";
-import { noopLogger } from "../interfaces/logger.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
 import type {
     BlockJobsRepository,
@@ -20,7 +19,7 @@ import { PostgresEventsRepository } from "../repositories/postgres/events-reposi
 import { PostgresTransactionsRepository } from "../repositories/postgres/transactions-repository.js";
 import { SequencerService } from "../services/sequencer-service.js";
 import { SEQUENCER_WORKER_LOCK_KEY_BASE } from "./worker-lock-keys.js";
-import { resolveDbDependencies, resolveEthersSource } from "../runtime/resolvers.js";
+import { resolveDbDependencies, resolveEthersSource, resolveLogger } from "../runtime/resolvers.js";
 import type { RuntimeBaseOptions, RuntimeDbOptions, RuntimeSourceOptions } from "../runtime/types.js";
 import type { BlockSource } from "../interfaces/block-source.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
@@ -42,9 +41,11 @@ export type CreateSequencerWorkerOptions =
 
 export class SequencerWorker extends SingletonPollingWorker {
     static async create(options: CreateSequencerWorkerOptions): Promise<SequencerWorker> {
+        const logger = resolveLogger(options);
         const source = resolveEthersSource(options.config.chainId, options);
         const { dependencies, dispose } = await resolveDbDependencies<SequencerWorkerDatabaseDependencies>(
             options,
+            logger,
             (pool: Pool): SequencerWorkerDatabaseDependencies => ({
                 chainCursorRepository: new PostgresChainCursorRepository(pool),
                 blocksRepository: new PostgresBlocksRepository(pool),
@@ -67,23 +68,23 @@ export class SequencerWorker extends SingletonPollingWorker {
             dependencies.eventsRepository,
             dependencies.blockJobsRepository,
             dependencies.transactionManager,
-            options.logger,
+            logger,
         );
 
-        return new SequencerWorker(options.config, service, dependencies.leaderLock, dispose, options.logger);
+        return new SequencerWorker(options.config, service, dependencies.leaderLock, logger, dispose);
     }
 
     private constructor(
         private readonly config: SequencerWorkerConfig,
         private readonly service: SequencerService,
         leaderLock: LeaderLock,
+        logger: Logger,
         dispose?: () => Promise<void>,
-        logger?: Logger,
     ) {
         super(
             `sequencer:${String(config.chainId)}`,
             config.delayBetweenTicksMs,
-            logger ?? noopLogger,
+            logger,
             leaderLock,
             dispose
         );

@@ -1,21 +1,24 @@
-import { ConsoleLogger, FetchWorker } from "@drillcoder/voryn";
+import type { CreateFetchWorkerOptions } from "@drillcoder/voryn";
+import { FetchWorker } from "@drillcoder/voryn";
 
 (async () => {
-    const config = {
-        chainId: 1,
-        delayBetweenTicksMs: 100,
-        fetchBatchSize: 10,
-        fetchConcurrency: 1,
-        fetchClaimTtlMs: 125_000,
-        retryMaxAttempts: 10,
-        retryBaseDelayMs: 1_000,
-        retryMaxDelayMs: 10_000,
+    const options: CreateFetchWorkerOptions = {
+        config: {
+            chainId: 1,
+            delayBetweenTicksMs: 100,
+            fetchBatchSize: 10,
+            fetchConcurrency: 1,
+            fetchClaimTtlMs: 125_000,
+            retryMaxAttempts: 10,
+            retryBaseDelayMs: 1_000,
+            retryMaxDelayMs: 10_000,
+        },
+        logLevel: "info",
+        dbUrl: "postgres://user:pass@localhost:5432/voryn",
+        rpcUrl: "https://rpc.example.org",
     };
-    const logger = new ConsoleLogger({ minLevel: "info" });
-    const dbUrl = "postgres://user:pass@localhost:5432/voryn";
-    const rpcUrl = "https://rpc.example.org";
 
-    const worker = await FetchWorker.create({ config, logger, dbUrl, rpcUrl });
+    const worker = await FetchWorker.create(options);
 
     const shutdown = async (): Promise<void> => {
         await worker.stop();

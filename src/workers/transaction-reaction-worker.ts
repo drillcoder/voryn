@@ -1,6 +1,5 @@
 import type { Pool } from "pg";
 import type { Logger } from "../interfaces/logger.js";
-import { noopLogger } from "../interfaces/logger.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
 import type { TransactionReactionHandler } from "../interfaces/reaction.js";
 import type {
@@ -14,7 +13,7 @@ import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cu
 import { PostgresTransactionsRepository } from "../repositories/postgres/transactions-repository.js";
 import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker-cursors-repository.js";
 import { ReactionService } from "../services/reaction-service.js";
-import { resolveDbDependencies } from "../runtime/resolvers.js";
+import { resolveDbDependencies, resolveLogger } from "../runtime/resolvers.js";
 import type { ReactionWorkerOptions } from "../runtime/types.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 import { buildReactionWorkerLockKey } from "./worker-lock-keys.js";
@@ -34,8 +33,10 @@ export type CreateTransactionReactionWorkerOptions = ReactionWorkerOptions<
 
 export class TransactionReactionWorker extends SingletonPollingWorker {
     static async create(options: CreateTransactionReactionWorkerOptions): Promise<TransactionReactionWorker> {
+        const logger = resolveLogger(options);
         const { dependencies, dispose } = await resolveDbDependencies<TransactionReactionWorkerDatabaseDependencies>(
             options,
+            logger,
             (pool: Pool): TransactionReactionWorkerDatabaseDependencies => ({
                 chainCursorRepository: new PostgresChainCursorRepository(pool),
                 transactionsRepository: new PostgresTransactionsRepository(pool),
@@ -50,23 +51,23 @@ export class TransactionReactionWorker extends SingletonPollingWorker {
             chainCursorRepository: dependencies.chainCursorRepository,
             transactionsRepository: dependencies.transactionsRepository,
             workerCursorsRepository: dependencies.workerCursorsRepository,
-            logger: options.logger,
+            logger,
         });
 
-        return new TransactionReactionWorker(options.config, service, dependencies.leaderLock, dispose, options.logger);
+        return new TransactionReactionWorker(options.config, service, dependencies.leaderLock, logger, dispose);
     }
 
     private constructor(
         private readonly config: ReactionWorkerConfig,
         private readonly service: ReactionService,
         leaderLock: LeaderLock,
+        logger: Logger,
         dispose?: () => Promise<void>,
-        logger?: Logger,
     ) {
         super(
             `reaction-transaction:${String(config.chainId)}:${config.workerName}`,
             config.delayBetweenTicksMs,
-            logger ?? noopLogger,
+            logger,
             leaderLock,
             dispose
         );

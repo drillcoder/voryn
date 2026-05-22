@@ -26,6 +26,7 @@ test("pipeline metrics merges db defaults with overrides and returns disposer", 
     const blockJobsRepository = createNoopBlockJobsRepository();
     const endSpy = jest.spyOn(Pool.prototype, "end");
     const metrics = await PipelineMetrics.create({
+        logLevel: "error",
         config,
         source: {
             getLatestBlockNumber: async () => 0,

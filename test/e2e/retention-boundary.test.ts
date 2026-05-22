@@ -54,6 +54,7 @@ describe("e2e retention boundary", () => {
         const source = createMapBlockSource(13, [block10, block11, block12, block13]);
 
         const headWorker = await HeadWorker.create({
+            logLevel: "error",
             config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
             source,
             overrides: {
@@ -67,6 +68,7 @@ describe("e2e retention boundary", () => {
             },
         });
         const fetchWorker = await FetchWorker.create({
+            logLevel: "error",
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
@@ -87,6 +89,7 @@ describe("e2e retention boundary", () => {
             },
         });
         const sequencerWorker = await SequencerWorker.create({
+            logLevel: "error",
             config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 2 },
             source,
             overrides: {
@@ -100,6 +103,7 @@ describe("e2e retention boundary", () => {
             },
         });
         const retentionWorker = await RetentionWorker.create({
+            logLevel: "error",
             config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, retentionDepthBlocks: 2 },
             overrides: {
                 chainCursorRepository,

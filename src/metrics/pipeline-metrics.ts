@@ -12,7 +12,7 @@ import { PostgresBlocksRepository } from "../repositories/postgres/blocks-reposi
 import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cursor-repository.js";
 import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker-cursors-repository.js";
 import { PipelineMetricsService } from "../services/pipeline-metrics-service.js";
-import { resolveDbDependencies, resolveEthersSource } from "../runtime/resolvers.js";
+import { resolveDbDependencies, resolveEthersSource, resolveLogger } from "../runtime/resolvers.js";
 import type { RuntimeBaseOptions, RuntimeDbOptions, RuntimeSourceOptions } from "../runtime/types.js";
 import { formatPipelineMetricsPrometheus } from "./prometheus.js";
 
@@ -30,9 +30,11 @@ export type CreatePipelineMetricsOptions =
 
 export class PipelineMetrics {
     static async create(options: CreatePipelineMetricsOptions): Promise<PipelineMetrics> {
+        const logger = resolveLogger(options);
         const source = resolveEthersSource(options.config.chainId, options);
         const { dependencies, dispose } = await resolveDbDependencies<PipelineMetricsDatabaseDependencies>(
             options,
+            logger,
             (pool: Pool): PipelineMetricsDatabaseDependencies => ({
                 chainCursorRepository: new PostgresChainCursorRepository(pool),
                 blockJobsRepository: new PostgresBlockJobsRepository(pool),

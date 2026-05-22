@@ -23,15 +23,14 @@ test("transaction reaction worker create wires service execution", async () => {
         batchSize: 10,
         skipFlushInterval: 10,
     };
-    const handler: TransactionReactionHandler = {
-        handle: async (transaction) => {
-            handled.push([transaction.blockNumber, transaction.index]);
+    const handler: TransactionReactionHandler = async (transaction) => {
+        handled.push([transaction.blockNumber, transaction.index]);
 
-            return "processed";
-        },
+        return "processed";
     };
 
     const worker = await TransactionReactionWorker.create({
+        logLevel: "error",
         config,
         handler,
         overrides: {

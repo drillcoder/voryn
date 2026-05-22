@@ -1,16 +1,19 @@
-import { ConsoleLogger, SequencerWorker } from "@drillcoder/voryn";
+import type { CreateSequencerWorkerOptions } from "@drillcoder/voryn";
+import { SequencerWorker } from "@drillcoder/voryn";
 
 (async () => {
-    const config = {
-        chainId: 1,
-        delayBetweenTicksMs: 100,
-        maxBlocksPerTick: 10,
+    const options: CreateSequencerWorkerOptions = {
+        config: {
+            chainId: 1,
+            delayBetweenTicksMs: 100,
+            maxBlocksPerTick: 10,
+        },
+        logLevel: "info",
+        dbUrl: "postgres://user:pass@localhost:5432/voryn",
+        rpcUrl: "https://rpc.example.org",
     };
-    const logger = new ConsoleLogger({ minLevel: "info" });
-    const dbUrl = "postgres://user:pass@localhost:5432/voryn";
-    const rpcUrl = "https://rpc.example.org";
 
-    const worker = await SequencerWorker.create({ config, logger, dbUrl, rpcUrl });
+    const worker = await SequencerWorker.create(options);
 
     const shutdown = async (): Promise<void> => {
         await worker.stop();

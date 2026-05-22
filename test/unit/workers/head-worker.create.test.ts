@@ -35,6 +35,7 @@ test("head worker create wires service execution", async () => {
     };
 
     const worker = await HeadWorker.create({
+        logLevel: "error",
         config,
         source,
         overrides: {

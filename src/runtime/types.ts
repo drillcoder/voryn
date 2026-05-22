@@ -1,9 +1,13 @@
 import type { Logger } from "../interfaces/logger.js";
+import type { LogLevel } from "../loggers/console-logger.js";
 
-export interface RuntimeBaseOptions<TConfig> {
+export type RuntimeBaseOptions<TConfig> = RuntimeLoggerOptions & {
     config: TConfig;
-    logger?: Logger;
-}
+};
+
+export type RuntimeLoggerOptions =
+    | { logger: Logger; logLevel?: never }
+    | { logger?: never; logLevel: LogLevel };
 
 export type RuntimeSourceOptions<TSource> =
     | { source: TSource; rpcUrl?: never }

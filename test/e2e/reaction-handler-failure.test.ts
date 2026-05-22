@@ -48,20 +48,19 @@ describe("e2e reaction handler failure", () => {
         const handled: number[] = [];
         let failures = 0;
 
-        const handler: EventReactionHandler = {
-            async handle(event): Promise<"processed"> {
-                if (event.index === 1 && failures === 0) {
-                    failures += 1;
-                    throw new Error("handler temporary failure");
-                }
+        const handler: EventReactionHandler = async (event): Promise<"processed"> => {
+            if (event.index === 1 && failures === 0) {
+                failures += 1;
+                throw new Error("handler temporary failure");
+            }
 
-                handled.push(event.index);
+            handled.push(event.index);
 
-                return "processed";
-            },
+            return "processed";
         };
 
         const worker = await EventReactionWorker.create({
+            logLevel: "error",
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,

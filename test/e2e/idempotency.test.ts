@@ -63,19 +63,15 @@ describe("e2e idempotency", () => {
         const firstEventHandled: string[] = [];
         const firstTxHandled: string[] = [];
 
-        const firstEventHandler: EventReactionHandler = {
-            async handle(event): Promise<"processed"> {
-                firstEventHandled.push(`${String(event.blockNumber)}:${String(event.index)}`);
+        const firstEventHandler: EventReactionHandler = async (event): Promise<"processed"> => {
+            firstEventHandled.push(`${String(event.blockNumber)}:${String(event.index)}`);
 
-                return "processed";
-            },
+            return "processed";
         };
-        const firstTxHandler: TransactionReactionHandler = {
-            async handle(transaction): Promise<"processed"> {
-                firstTxHandled.push(`${String(transaction.blockNumber)}:${String(transaction.index)}`);
+        const firstTxHandler: TransactionReactionHandler = async (transaction): Promise<"processed"> => {
+            firstTxHandled.push(`${String(transaction.blockNumber)}:${String(transaction.index)}`);
 
-                return "processed";
-            },
+            return "processed";
         };
 
         const firstRunWorkers = await createWorkerSet(
@@ -109,19 +105,15 @@ describe("e2e idempotency", () => {
 
             const secondEventHandled: string[] = [];
             const secondTxHandled: string[] = [];
-            const secondEventHandler: EventReactionHandler = {
-                async handle(event): Promise<"processed"> {
-                    secondEventHandled.push(`${String(event.blockNumber)}:${String(event.index)}`);
+            const secondEventHandler: EventReactionHandler = async (event): Promise<"processed"> => {
+                secondEventHandled.push(`${String(event.blockNumber)}:${String(event.index)}`);
 
-                    return "processed";
-                },
+                return "processed";
             };
-            const secondTxHandler: TransactionReactionHandler = {
-                async handle(transaction): Promise<"processed"> {
-                    secondTxHandled.push(`${String(transaction.blockNumber)}:${String(transaction.index)}`);
+            const secondTxHandler: TransactionReactionHandler = async (transaction): Promise<"processed"> => {
+                secondTxHandled.push(`${String(transaction.blockNumber)}:${String(transaction.index)}`);
 
-                    return "processed";
-                },
+                return "processed";
             };
 
             const secondRunWorkers = await createWorkerSet(
@@ -176,6 +168,7 @@ async function createWorkerSet(
     all: readonly [HeadWorker, FetchWorker, SequencerWorker, EventReactionWorker, TransactionReactionWorker];
 }> {
     const head = await HeadWorker.create({
+        logLevel: "error",
         config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
         source,
         overrides: {
@@ -189,6 +182,7 @@ async function createWorkerSet(
         },
     });
     const fetch = await FetchWorker.create({
+        logLevel: "error",
         config: {
             chainId: CHAIN_ID,
             delayBetweenTicksMs: 5,
@@ -209,6 +203,7 @@ async function createWorkerSet(
         },
     });
     const sequencer = await SequencerWorker.create({
+        logLevel: "error",
         config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 2 },
         source,
         overrides: {
@@ -222,6 +217,7 @@ async function createWorkerSet(
         },
     });
     const event = await EventReactionWorker.create({
+        logLevel: "error",
         config: {
             chainId: CHAIN_ID,
             delayBetweenTicksMs: 5,
@@ -238,6 +234,7 @@ async function createWorkerSet(
         },
     });
     const transaction = await TransactionReactionWorker.create({
+        logLevel: "error",
         config: {
             chainId: CHAIN_ID,
             delayBetweenTicksMs: 5,

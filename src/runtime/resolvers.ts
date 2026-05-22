@@ -5,9 +5,22 @@ import { EthersBlockSource } from "../adapters/ethers-block-source.js";
 import { validatePostgresSchema } from "../postgres/schema.js";
 import type { BlockSource } from "../interfaces/block-source.js";
 import type { Logger } from "../interfaces/logger.js";
-import { noopLogger } from "../interfaces/logger.js";
+import { ConsoleLogger } from "../loggers/console-logger.js";
 import type { ChainId } from "../types/chain.js";
-import type { ResolveDbDependenciesResult, RuntimeDbOptions, RuntimeSourceOptions } from "./types.js";
+import type {
+    ResolveDbDependenciesResult,
+    RuntimeDbOptions,
+    RuntimeLoggerOptions,
+    RuntimeSourceOptions,
+} from "./types.js";
+
+export function resolveLogger(options: RuntimeLoggerOptions): Logger {
+    if (options.logger !== undefined) {
+        return options.logger;
+    }
+
+    return new ConsoleLogger({ minLevel: options.logLevel });
+}
 
 export function resolveEthersSource(
     chainId: ChainId,
@@ -24,14 +37,15 @@ export function resolveEthersSource(
 }
 
 export async function resolveDbDependencies<TDependencies extends object>(
-    options: RuntimeDbOptions<TDependencies> & { logger?: Logger },
+    options: RuntimeDbOptions<TDependencies>,
+    logger: Logger,
     buildDefaults: (pool: Pool) => TDependencies
 ): Promise<ResolveDbDependenciesResult<TDependencies>> {
     if (options.dbUrl !== undefined) {
         const pool = new PostgresPool({ connectionString: options.dbUrl });
 
         try {
-            await validatePostgresSchema({ pool, logger: options.logger ?? noopLogger });
+            await validatePostgresSchema({ pool, logger });
 
             const defaults = buildDefaults(pool);
 

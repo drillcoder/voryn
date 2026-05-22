@@ -1,13 +1,16 @@
-import { BlockJobRecovery, ConsoleLogger } from "@drillcoder/voryn";
+import type { CreateBlockJobRecoveryOptions } from "@drillcoder/voryn";
+import { BlockJobRecovery } from "@drillcoder/voryn";
 
 (async () => {
-    const config = {
-        chainId: 1,
+    const options: CreateBlockJobRecoveryOptions = {
+        config: {
+            chainId: 1,
+        },
+        logLevel: "info",
+        dbUrl: "postgres://user:pass@localhost:5432/voryn",
     };
-    const logger = new ConsoleLogger({ minLevel: "info" });
-    const dbUrl = "postgres://user:pass@localhost:5432/voryn";
 
-    const recovery = await BlockJobRecovery.create({ config, logger, dbUrl });
+    const recovery = await BlockJobRecovery.create(options);
 
     const blockNumber = 123;
     const fromBlock = 124;

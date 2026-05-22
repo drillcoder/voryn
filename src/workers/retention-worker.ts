@@ -1,6 +1,5 @@
 import type { Pool } from "pg";
 import type { Logger } from "../interfaces/logger.js";
-import { noopLogger } from "../interfaces/logger.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
 import type {
     BlockJobsRepository,
@@ -20,7 +19,7 @@ import { PostgresEventsRepository } from "../repositories/postgres/events-reposi
 import { PostgresTransactionsRepository } from "../repositories/postgres/transactions-repository.js";
 import { RetentionService } from "../services/retention-service.js";
 import { RETENTION_WORKER_LOCK_KEY_BASE } from "./worker-lock-keys.js";
-import { resolveDbDependencies } from "../runtime/resolvers.js";
+import { resolveDbDependencies, resolveLogger } from "../runtime/resolvers.js";
 import type { RuntimeBaseOptions, RuntimeDbOptions } from "../runtime/types.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
@@ -40,8 +39,10 @@ export type CreateRetentionWorkerOptions =
 
 export class RetentionWorker extends SingletonPollingWorker {
     static async create(options: CreateRetentionWorkerOptions): Promise<RetentionWorker> {
+        const logger = resolveLogger(options);
         const { dependencies, dispose } = await resolveDbDependencies<RetentionWorkerDatabaseDependencies>(
             options,
+            logger,
             (pool: Pool): RetentionWorkerDatabaseDependencies => ({
                 chainCursorRepository: new PostgresChainCursorRepository(pool),
                 blockJobsRepository: new PostgresBlockJobsRepository(pool),
@@ -63,23 +64,23 @@ export class RetentionWorker extends SingletonPollingWorker {
             dependencies.transactionsRepository,
             dependencies.eventsRepository,
             dependencies.transactionManager,
-            options.logger,
+            logger,
         );
 
-        return new RetentionWorker(options.config, service, dependencies.leaderLock, dispose, options.logger);
+        return new RetentionWorker(options.config, service, dependencies.leaderLock, logger, dispose);
     }
 
     private constructor(
         private readonly config: RetentionWorkerConfig,
         private readonly service: RetentionService,
         leaderLock: LeaderLock,
+        logger: Logger,
         dispose?: () => Promise<void>,
-        logger?: Logger,
     ) {
         super(
             `retention:${String(config.chainId)}`,
             config.delayBetweenTicksMs,
-            logger ?? noopLogger,
+            logger,
             leaderLock,
             dispose
         );

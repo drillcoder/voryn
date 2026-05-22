@@ -2,7 +2,7 @@ import type { Pool } from "pg";
 
 import type { BlockJobsRepository } from "../interfaces/repositories.js";
 import { PostgresBlockJobsRepository } from "../repositories/postgres/block-jobs-repository.js";
-import { resolveDbDependencies } from "../runtime/resolvers.js";
+import { resolveDbDependencies, resolveLogger } from "../runtime/resolvers.js";
 import type { RuntimeBaseOptions, RuntimeDbOptions } from "../runtime/types.js";
 import type { BlockNumber } from "../types/chain.js";
 import type { BlockJobRecoveryConfig, RetryFailedBlockJobsResult } from "../services/block-job-recovery-service.js";
@@ -18,8 +18,10 @@ export type CreateBlockJobRecoveryOptions =
 
 export class BlockJobRecovery {
     static async create(options: CreateBlockJobRecoveryOptions): Promise<BlockJobRecovery> {
+        const logger = resolveLogger(options);
         const { dependencies, dispose } = await resolveDbDependencies<BlockJobRecoveryDatabaseDependencies>(
             options,
+            logger,
             (pool: Pool): BlockJobRecoveryDatabaseDependencies => ({
                 blockJobsRepository: new PostgresBlockJobsRepository(pool),
             })
@@ -27,7 +29,7 @@ export class BlockJobRecovery {
         const service = new BlockJobRecoveryService(
             options.config,
             dependencies.blockJobsRepository,
-            options.logger,
+            logger,
         );
 
         return new BlockJobRecovery(service, dispose);

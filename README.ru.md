@@ -106,29 +106,26 @@ await pool.end();
 Минимальный ingestion-контур состоит из `head`, `fetch` и `sequencer`. В продакшене их обычно запускают отдельными процессами или контейнерами.
 
 ```ts
-import { ConsoleLogger, FetchWorker, HeadWorker, SequencerWorker } from "@drillcoder/voryn";
+import { FetchWorker, HeadWorker, SequencerWorker } from "@drillcoder/voryn";
 
 const dbUrl = "postgres://user:pass@localhost:5432/voryn";
 const rpcUrl = "https://rpc.example.org";
 const chainId = 1;
-const logger = new ConsoleLogger({ minLevel: "info" });
+const logLevel = "info";
 
-const head = await HeadWorker.create({
-    dbUrl,
-    rpcUrl,
-    logger,
+const headOptions = {
     config: {
         chainId,
         delayBetweenTicksMs: 1_000,
         confirmations: 12,
         depthBlocks: 65_000,
     },
-});
-
-const fetch = await FetchWorker.create({
+    logLevel,
     dbUrl,
     rpcUrl,
-    logger,
+};
+
+const fetchOptions = {
     config: {
         chainId,
         delayBetweenTicksMs: 100,
@@ -139,18 +136,25 @@ const fetch = await FetchWorker.create({
         retryBaseDelayMs: 1_000,
         retryMaxDelayMs: 10_000,
     },
-});
-
-const sequencer = await SequencerWorker.create({
+    logLevel,
     dbUrl,
     rpcUrl,
-    logger,
+};
+
+const sequencerOptions = {
     config: {
         chainId,
         delayBetweenTicksMs: 100,
         maxBlocksPerTick: 10,
     },
-});
+    logLevel,
+    dbUrl,
+    rpcUrl,
+};
+
+const head = await HeadWorker.create(headOptions);
+const fetch = await FetchWorker.create(fetchOptions);
+const sequencer = await SequencerWorker.create(sequencerOptions);
 
 await Promise.all([
     head.start(),
@@ -172,28 +176,24 @@ Reaction-воркеры читают только закоммиченные д�
 обработчик можно безопасно перезапускать.
 
 ```ts
-import type { EventReactionHandler, ReactionHandlerResult } from "@drillcoder/voryn";
-import { ConsoleLogger, EventReactionWorker } from "@drillcoder/voryn";
+import type { CreateEventReactionWorkerOptions, EventReactionHandler, ReactionHandlerResult } from "@drillcoder/voryn";
+import { EventReactionWorker } from "@drillcoder/voryn";
 
-const logger = new ConsoleLogger({ minLevel: "info" });
+const dbUrl = "postgres://user:pass@localhost:5432/voryn";
+const logLevel = "info";
 
-const handler: EventReactionHandler = {
-    async handle(event): Promise<ReactionHandlerResult> {
-        logger.info("event_received", {
-            blockNumber: event.blockNumber,
-            transactionHash: event.transactionHash,
-            logIndex: event.index,
-            address: event.address,
-        });
+const handler: EventReactionHandler = async (event): Promise<ReactionHandlerResult> => {
+    console.info("event_received", {
+        blockNumber: event.blockNumber,
+        transactionHash: event.transactionHash,
+        logIndex: event.index,
+        address: event.address,
+    });
 
-        return event.index === 10 ? "processed" : "skipped";
-    },
+    return event.index === 10 ? "processed" : "skipped";
 };
 
-const worker = await EventReactionWorker.create({
-    dbUrl: "postgres://user:pass@localhost:5432/voryn",
-    logger,
-    handler,
+const options: CreateEventReactionWorkerOptions = {
     config: {
         chainId: 1,
         workerName: "contract-events",
@@ -201,7 +201,12 @@ const worker = await EventReactionWorker.create({
         batchSize: 1000,
         skipFlushInterval: 100,
     },
-});
+    logLevel,
+    dbUrl,
+    handler,
+};
+
+const worker = await EventReactionWorker.create(options);
 
 await worker.start();
 ```
@@ -259,6 +264,7 @@ import { JsonRpcProvider } from "ethers";
 import { EthersBlockSource } from "@drillcoder/voryn";
 
 const chainId = 1;
+const logLevel = "info";
 const provider = new JsonRpcProvider("https://rpc.example.org");
 
 const source = new EthersBlockSource({

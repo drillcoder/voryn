@@ -37,6 +37,7 @@ test("fetch worker create wires service execution", async () => {
     };
 
     const worker = await FetchWorker.create({
+        logLevel: "error",
         config,
         source,
         overrides: {

@@ -79,7 +79,7 @@ export class ReactionService {
                     lastTransactionIndex: event.transactionIndex,
                     lastLogIndex: event.index,
                 }),
-                (event, context) => options.handler.handle(event, context)
+                options.handler
             );
 
             return;
@@ -98,7 +98,7 @@ export class ReactionService {
                 lastBlockNumber: transaction.blockNumber,
                 lastTransactionIndex: transaction.index,
             }),
-            (transaction, context) => options.handler.handle(transaction, context)
+            options.handler
         );
     }
 

@@ -38,6 +38,7 @@ test("pipeline metrics create wires service execution", async () => {
         },
     };
     const metrics = await PipelineMetrics.create({
+        logLevel: "error",
         config,
         source,
         overrides: {
@@ -77,6 +78,7 @@ test("pipeline metrics returns prometheus text", async () => {
         },
     };
     const metrics = await PipelineMetrics.create({
+        logLevel: "error",
         config,
         source,
         overrides: {

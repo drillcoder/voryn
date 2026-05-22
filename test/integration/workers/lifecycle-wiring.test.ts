@@ -49,6 +49,7 @@ describe("integration workers: lifecycle and wiring", () => {
         const transactionManager = new PostgresTransactionManager(db.pool);
 
         const worker = await FetchWorker.create({
+            logLevel: "error",
             config: {
                 chainId: 1,
                 delayBetweenTicksMs: 1,
@@ -81,6 +82,7 @@ describe("integration workers: lifecycle and wiring", () => {
         const transactionManager = new PostgresTransactionManager(db.pool);
 
         const worker = await FetchWorker.create({
+            logLevel: "error",
             config: {
                 chainId: 1,
                 delayBetweenTicksMs: 1,
@@ -120,6 +122,7 @@ describe("integration workers: lifecycle and wiring", () => {
         const lockB = new PostgresLeaderLock(db.pool, 91_000_001n);
 
         const workerA = await HeadWorker.create({
+            logLevel: "error",
             config: {
                 chainId: 1,
                 confirmations: 10,
@@ -138,6 +141,7 @@ describe("integration workers: lifecycle and wiring", () => {
             },
         });
         const workerB = await HeadWorker.create({
+            logLevel: "error",
             config: {
                 chainId: 1,
                 confirmations: 10,

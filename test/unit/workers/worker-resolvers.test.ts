@@ -1,5 +1,6 @@
 import { EthersBlockSource } from "../../../src/adapters/ethers-block-source.js";
 import type { LeaderLock } from "../../../src/interfaces/leader-lock.js";
+import { ConsoleLogger } from "../../../src/loggers/console-logger.js";
 import { PostgresLeaderLock } from "../../../src/postgres/leader-lock.js";
 import { validatePostgresSchema } from "../../../src/postgres/schema.js";
 import type { FetchService } from "../../../src/services/fetch-service.js";
@@ -47,13 +48,9 @@ const reactionConfig: ReactionWorkerConfig = {
     skipFlushInterval: 10,
 };
 
-const eventHandler: EventReactionHandler = {
-    handle: async () => "processed",
-};
+const eventHandler: EventReactionHandler = async () => "processed";
 
-const transactionHandler: TransactionReactionHandler = {
-    handle: async () => "processed",
-};
+const transactionHandler: TransactionReactionHandler = async () => "processed";
 
 const workerCursorsRepository: WorkerCursorsRepository = {
     get: async () => null,
@@ -64,6 +61,7 @@ const workerCursorsRepository: WorkerCursorsRepository = {
 
 test("fetch worker creates ethers source when only rpcUrl is provided", async () => {
     const worker = await FetchWorker.create({
+        logLevel: "error",
         config: fetchConfig,
         rpcUrl: "http://127.0.0.1:8545",
         overrides: {
@@ -80,9 +78,35 @@ test("fetch worker creates ethers source when only rpcUrl is provided", async ()
     expect(validatePostgresSchema).not.toHaveBeenCalled();
 });
 
+test("fetch worker creates default logger with min level", async () => {
+    const worker = await FetchWorker.create({
+        config: fetchConfig,
+        rpcUrl: "http://127.0.0.1:8545",
+        logLevel: "warn",
+        overrides: {
+            blockJobsRepository: createNoopBlockJobsRepository(),
+            blocksRepository: createNoopBlocksRepository(),
+            transactionsRepository: createNoopTransactionsRepository(),
+            eventsRepository: createNoopEventsRepository(),
+            transactionManager,
+        },
+    });
+    const workerLogger = Reflect.get(worker, "logger") as unknown;
+    const service = Reflect.get(worker, "service") as FetchService;
+    const serviceLogger = Reflect.get(service, "logger") as unknown;
+
+    expect(workerLogger).toBeInstanceOf(ConsoleLogger);
+    if (!(workerLogger instanceof ConsoleLogger)) {
+        throw new Error("Expected worker logger to be ConsoleLogger");
+    }
+    expect(Reflect.get(workerLogger, "minLevel")).toBe("warn");
+    expect(serviceLogger).toBe(workerLogger);
+});
+
 test("fetch worker merges db defaults with overrides and returns disposer", async () => {
     const claimForFetch = jest.fn(async () => null);
     const worker = await FetchWorker.create({
+        logLevel: "error",
         config: fetchConfig,
         rpcUrl: "http://127.0.0.1:8545",
         dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
@@ -103,6 +127,7 @@ test("fetch worker merges db defaults with overrides and returns disposer", asyn
 
 test("event reaction worker creates leader lock from worker identity", async () => {
     const worker = await EventReactionWorker.create({
+        logLevel: "error",
         config: reactionConfig,
         handler: eventHandler,
         dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
@@ -122,6 +147,7 @@ test("event reaction worker creates leader lock from worker identity", async () 
 
 test("head worker with dbUrl returns singleton lock and disposer", async () => {
     const worker = await HeadWorker.create({
+        logLevel: "error",
         config: {
             chainId: 7,
             confirmations: 1,
@@ -143,6 +169,7 @@ test("head worker with dbUrl returns singleton lock and disposer", async () => {
 
 test("sequencer worker with dbUrl returns singleton lock and disposer", async () => {
     const worker = await SequencerWorker.create({
+        logLevel: "error",
         config: {
             chainId: 7,
             delayBetweenTicksMs: 1000,
@@ -163,6 +190,7 @@ test("sequencer worker with dbUrl returns singleton lock and disposer", async ()
 
 test("retention worker with dbUrl returns singleton lock and disposer", async () => {
     const worker = await RetentionWorker.create({
+        logLevel: "error",
         config: {
             chainId: 7,
             delayBetweenTicksMs: 1000,
@@ -182,6 +210,7 @@ test("retention worker with dbUrl returns singleton lock and disposer", async ()
 
 test("event reaction worker uses override leader lock when provided with dbUrl", async () => {
     const worker = await EventReactionWorker.create({
+        logLevel: "error",
         config: reactionConfig,
         handler: eventHandler,
         dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
@@ -201,6 +230,7 @@ test("event reaction worker uses override leader lock when provided with dbUrl",
 
 test("transaction reaction worker creates leader lock from worker identity", async () => {
     const worker = await TransactionReactionWorker.create({
+        logLevel: "error",
         config: reactionConfig,
         handler: transactionHandler,
         dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",

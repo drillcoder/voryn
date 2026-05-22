@@ -61,19 +61,15 @@ describe("integration services: reaction", () => {
             { lastBlockNumber: 499, lastTransactionIndex: -1 }
         );
 
-        const eventHandler: EventReactionHandler = {
-            async handle(event): Promise<"processed"> {
-                handledEventIndexes.push(event.index);
+        const eventHandler: EventReactionHandler = async (event): Promise<"processed"> => {
+            handledEventIndexes.push(event.index);
 
-                return "processed";
-            },
+            return "processed";
         };
-        const transactionHandler: TransactionReactionHandler = {
-            async handle(transaction): Promise<"processed"> {
-                handledTxIndexes.push(transaction.index);
+        const transactionHandler: TransactionReactionHandler = async (transaction): Promise<"processed"> => {
+            handledTxIndexes.push(transaction.index);
 
-                return "processed";
-            },
+            return "processed";
         };
 
         const eventService = new ReactionService({

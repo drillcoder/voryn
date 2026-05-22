@@ -63,6 +63,7 @@ describe("e2e concurrent fetch workers", () => {
         const source = createMapBlockSource(16, blocks);
 
         const headWorker = await HeadWorker.create({
+            logLevel: "error",
             config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
             source,
             overrides: {
@@ -76,6 +77,7 @@ describe("e2e concurrent fetch workers", () => {
             },
         });
         const fetchWorkerA = await FetchWorker.create({
+            logLevel: "error",
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
@@ -96,6 +98,7 @@ describe("e2e concurrent fetch workers", () => {
             },
         });
         const fetchWorkerB = await FetchWorker.create({
+            logLevel: "error",
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
@@ -116,6 +119,7 @@ describe("e2e concurrent fetch workers", () => {
             },
         });
         const sequencerWorker = await SequencerWorker.create({
+            logLevel: "error",
             config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 3 },
             source,
             overrides: {

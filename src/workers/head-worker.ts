@@ -1,6 +1,5 @@
 import type { Pool } from "pg";
 import type { Logger } from "../interfaces/logger.js";
-import { noopLogger } from "../interfaces/logger.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
 import type { BlockSource } from "../interfaces/block-source.js";
 import type {
@@ -21,7 +20,7 @@ import { PostgresEventsRepository } from "../repositories/postgres/events-reposi
 import { PostgresTransactionsRepository } from "../repositories/postgres/transactions-repository.js";
 import { HeadService } from "../services/head-service.js";
 import { HEAD_WORKER_LOCK_KEY_BASE } from "./worker-lock-keys.js";
-import { resolveDbDependencies, resolveEthersSource } from "../runtime/resolvers.js";
+import { resolveDbDependencies, resolveEthersSource, resolveLogger } from "../runtime/resolvers.js";
 import type { RuntimeBaseOptions, RuntimeDbOptions, RuntimeSourceOptions } from "../runtime/types.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
@@ -42,9 +41,11 @@ export type CreateHeadWorkerOptions =
 
 export class HeadWorker extends SingletonPollingWorker {
     static async create(options: CreateHeadWorkerOptions): Promise<HeadWorker> {
+        const logger = resolveLogger(options);
         const source = resolveEthersSource(options.config.chainId, options);
         const { dependencies, dispose } = await resolveDbDependencies<HeadWorkerDatabaseDependencies>(
             options,
+            logger,
             (pool: Pool): HeadWorkerDatabaseDependencies => ({
                 chainCursorRepository: new PostgresChainCursorRepository(pool),
                 blockJobsRepository: new PostgresBlockJobsRepository(pool),
@@ -64,23 +65,23 @@ export class HeadWorker extends SingletonPollingWorker {
             dependencies.transactionsRepository,
             dependencies.eventsRepository,
             dependencies.transactionManager,
-            options.logger
+            logger
         );
 
-        return new HeadWorker(options.config, service, dependencies.leaderLock, dispose, options.logger);
+        return new HeadWorker(options.config, service, dependencies.leaderLock, logger, dispose);
     }
 
     private constructor(
         private readonly config: HeadWorkerConfig,
         private readonly service: HeadService,
         leaderLock: LeaderLock,
+        logger: Logger,
         dispose?: () => Promise<void>,
-        logger?: Logger,
     ) {
         super(
             `head:${String(config.chainId)}`,
             config.delayBetweenTicksMs,
-            logger ?? noopLogger,
+            logger,
             leaderLock,
             dispose
         );

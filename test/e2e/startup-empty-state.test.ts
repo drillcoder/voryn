@@ -44,18 +44,11 @@ describe("e2e startup from empty state", () => {
         const latestBlock = buildFetchedBlock(20, hashFromNumber(19), 0);
         const source = createMapBlockSource(20, [latestBlock]);
 
-        const eventHandler: EventReactionHandler = {
-            async handle(): Promise<"processed"> {
-                return "processed";
-            },
-        };
-        const transactionHandler: TransactionReactionHandler = {
-            async handle(): Promise<"processed"> {
-                return "processed";
-            },
-        };
+        const eventHandler: EventReactionHandler = async (): Promise<"processed"> => "processed";
+        const transactionHandler: TransactionReactionHandler = async (): Promise<"processed"> => "processed";
 
         const headWorker = await HeadWorker.create({
+            logLevel: "error",
             config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
             source,
             overrides: {
@@ -69,6 +62,7 @@ describe("e2e startup from empty state", () => {
             },
         });
         const eventWorker = await EventReactionWorker.create({
+            logLevel: "error",
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
@@ -85,6 +79,7 @@ describe("e2e startup from empty state", () => {
             },
         });
         const transactionWorker = await TransactionReactionWorker.create({
+            logLevel: "error",
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,

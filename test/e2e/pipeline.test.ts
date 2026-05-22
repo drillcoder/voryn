@@ -63,22 +63,19 @@ describe("e2e pipeline", () => {
         const handledEvents: string[] = [];
         const handledTransactions: string[] = [];
 
-        const eventHandler: EventReactionHandler = {
-            async handle(event): Promise<"processed"> {
-                handledEvents.push(`${String(event.blockNumber)}:${String(event.index)}`);
+        const eventHandler: EventReactionHandler = async (event): Promise<"processed"> => {
+            handledEvents.push(`${String(event.blockNumber)}:${String(event.index)}`);
 
-                return "processed";
-            },
+            return "processed";
         };
-        const transactionHandler: TransactionReactionHandler = {
-            async handle(transaction): Promise<"processed"> {
-                handledTransactions.push(`${String(transaction.blockNumber)}:${String(transaction.index)}`);
+        const transactionHandler: TransactionReactionHandler = async (transaction): Promise<"processed"> => {
+            handledTransactions.push(`${String(transaction.blockNumber)}:${String(transaction.index)}`);
 
-                return "processed";
-            },
+            return "processed";
         };
 
         const eventWorker = await EventReactionWorker.create({
+            logLevel: "error",
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
@@ -96,6 +93,7 @@ describe("e2e pipeline", () => {
         });
 
         const transactionWorker = await TransactionReactionWorker.create({
+            logLevel: "error",
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
@@ -113,6 +111,7 @@ describe("e2e pipeline", () => {
         });
 
         const headWorker = await HeadWorker.create({
+            logLevel: "error",
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
@@ -132,6 +131,7 @@ describe("e2e pipeline", () => {
         });
 
         const fetchWorker = await FetchWorker.create({
+            logLevel: "error",
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
@@ -153,6 +153,7 @@ describe("e2e pipeline", () => {
         });
 
         const sequencerWorker = await SequencerWorker.create({
+            logLevel: "error",
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
@@ -171,6 +172,7 @@ describe("e2e pipeline", () => {
         });
 
         const retentionWorker = await RetentionWorker.create({
+            logLevel: "error",
             config: {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 5,
