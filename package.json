@@ -25,6 +25,7 @@
 		"test:e2e": "jest --config dev/jest.config.js test/e2e",
 		"test:live-rpc": "jest --config dev/jest.config.js test/live-rpc",
 		"test:coverage": "jest --config dev/jest.config.js --coverage",
+		"test:unit:coverage": "jest --config dev/jest.config.js test/unit --coverage",
 		"test:watch": "jest --config dev/jest.config.js --watch",
 		"lint": "eslint --config dev/eslint.config.js .",
 		"lint:fix": "npm run lint -- --fix",
