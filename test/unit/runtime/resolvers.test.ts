@@ -2,7 +2,12 @@ import { Pool } from "pg";
 import { EthersBlockSource } from "../../../src/adapters/ethers-block-source.js";
 import { ConsoleLogger } from "../../../src/loggers/console-logger.js";
 import { validatePostgresSchema } from "../../../src/postgres/schema.js";
-import { resolveDbDependencies, resolveEthersSource, resolveLogger } from "../../../src/runtime/resolvers.js";
+import {
+    resolveDbDependencies,
+    resolveEthersSource,
+    resolveEthersSources,
+    resolveLogger,
+} from "../../../src/runtime/resolvers.js";
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import type { Logger } from "../../../src/interfaces/logger.js";
 
@@ -46,12 +51,57 @@ test("resolveEthersSource returns provided source", () => {
         },
     };
 
-    expect(resolveEthersSource(1, { source })).toBe(source);
+    expect(resolveEthersSource({ source })).toBe(source);
 });
 
 test("resolveEthersSource creates ethers source from rpcUrl", () => {
-    expect(resolveEthersSource(1, { rpcUrl: "http://127.0.0.1:8545" }))
+    expect(resolveEthersSource({ chain: { chainId: 1, rpcUrl: "http://127.0.0.1:8545" } }))
         .toBeInstanceOf(EthersBlockSource);
+});
+
+test("resolveEthersSources creates multi-chain ethers source", () => {
+    expect(resolveEthersSources({
+        chains: [
+            { chainId: 1, rpcUrl: "http://127.0.0.1:8545" },
+            { chainId: 56, rpcUrl: "http://127.0.0.1:8546" },
+        ],
+    })).toBeInstanceOf(EthersBlockSource);
+});
+
+test("resolveEthersSources returns provided source", () => {
+    const source: BlockSource = {
+        getLatestBlockNumber: async () => 0,
+        getLatestBlock: async () => {
+            throw new Error("not expected");
+        },
+        getBlock: async () => {
+            throw new Error("not expected");
+        },
+        getBlockData: async () => {
+            throw new Error("not expected");
+        },
+    };
+
+    expect(resolveEthersSources({ source })).toBe(source);
+});
+
+test.each([
+    [{ chains: [] }, "Ethers source chains config must not be empty"],
+    [
+        {
+            chains: [
+                { chainId: 1, rpcUrl: "http://127.0.0.1:8545" },
+                { chainId: 1, rpcUrl: "http://127.0.0.1:8546" },
+            ],
+        },
+        "Ethers source chain id is duplicated: 1",
+    ],
+    [
+        { chains: [{ chainId: 1, rpcUrl: "" }] },
+        "Ethers source rpcUrl is empty for chain 1",
+    ],
+])("resolveEthersSources rejects invalid chains", (config, expectedError) => {
+    expect(() => resolveEthersSources(config)).toThrow(expectedError);
 });
 
 test("resolveLogger returns provided logger", () => {

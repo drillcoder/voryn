@@ -146,6 +146,7 @@ Reaction-контур запускает пользовательскую лог
 - Читает `latestBlock` из `BlockSource`.
 - Возвращает lag стадий `head`, `fetch`, `sequencer`.
 - Показывает свежесть cursor/fetch, счетчики `block_jobs`, список failed-блоков и lag reaction-воркеров по позициям.
+- Собирает все настроенные сети в один snapshot и один Prometheus document.
 
 ### `BlockJobRecovery`
 

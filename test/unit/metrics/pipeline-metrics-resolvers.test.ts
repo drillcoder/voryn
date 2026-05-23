@@ -4,16 +4,13 @@ import type { BlockJobsRepository } from "../../../src/interfaces/repositories.j
 import { PipelineMetrics } from "../../../src/metrics/pipeline-metrics.js";
 import { validatePostgresSchema } from "../../../src/postgres/schema.js";
 import { createNoopBlockJobsRepository } from "../helpers/pipeline-test-helpers.js";
-import { asHash32 } from "../../../src/utils/hex.js";
-
-const HASH = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
 jest.mock("../../../src/postgres/schema.js", () => ({
     validatePostgresSchema: jest.fn(async () => undefined),
 }));
 
 const config: PipelineMetricsConfig = {
-    chainId: 7,
+    chains: [{ chainId: 7, rpcUrl: "http://127.0.0.1:8545" }],
 };
 
 interface PipelineMetricsInternals {
@@ -28,26 +25,6 @@ test("pipeline metrics merges db defaults with overrides and returns disposer", 
     const metrics = await PipelineMetrics.create({
         logLevel: "error",
         config,
-        source: {
-            getLatestBlockNumber: async () => 0,
-            getLatestBlock: async () => ({
-                chainId: 7,
-                number: 0,
-                hash: HASH,
-                parentHash: HASH,
-                timestamp: 0,
-            }),
-            getBlock: async () => ({
-                chainId: 7,
-                number: 0,
-                hash: HASH,
-                parentHash: HASH,
-                timestamp: 0,
-            }),
-            getBlockData: async () => {
-                throw new Error("not expected");
-            },
-        },
         dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
         overrides: {
             blockJobsRepository,

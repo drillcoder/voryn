@@ -232,12 +232,15 @@ await worker.start();
 import { PipelineMetrics } from "@drillcoder/voryn";
 
 const dbUrl = "postgres://user:pass@localhost:5432/voryn";
-const rpcUrl = "https://rpc.example.org";
 
 const metrics = await PipelineMetrics.create({
     dbUrl,
-    rpcUrl,
-    config: { chainId: 1 },
+    config: {
+        chains: [
+            { chainId: 1, rpcUrl: "https://mainnet-rpc.example.org" },
+            { chainId: 56, rpcUrl: "https://bsc-rpc.example.org" },
+        ],
+    },
 });
 
 const snapshot = await metrics.get();
@@ -245,8 +248,8 @@ const prometheusText = await metrics.getPrometheus();
 await metrics.close();
 ```
 
-- `get()` возвращает снимок состояния пайплайна как объект.
-- `getPrometheus()` возвращает метрики в Prometheus text exposition format. Его можно отдавать из своего `/metrics` endpoint.
+- `get()` возвращает один агрегированный снимок с массивом `chains`.
+- `getPrometheus()` возвращает один Prometheus text document для всех настроенных сетей. Его можно отдавать из своего `/metrics` endpoint.
 
 Для ручного возврата failed-блоков в обработку есть `BlockJobRecovery`.
 

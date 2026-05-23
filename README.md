@@ -231,12 +231,15 @@ Examples:
 import { PipelineMetrics } from "@drillcoder/voryn";
 
 const dbUrl = "postgres://user:pass@localhost:5432/voryn";
-const rpcUrl = "https://rpc.example.org";
 
 const metrics = await PipelineMetrics.create({
     dbUrl,
-    rpcUrl,
-    config: { chainId: 1 },
+    config: {
+        chains: [
+            { chainId: 1, rpcUrl: "https://mainnet-rpc.example.org" },
+            { chainId: 56, rpcUrl: "https://bsc-rpc.example.org" },
+        ],
+    },
 });
 
 const snapshot = await metrics.get();
@@ -244,8 +247,8 @@ const prometheusText = await metrics.getPrometheus();
 await metrics.close();
 ```
 
-- `get()` returns the pipeline snapshot as an object.
-- `getPrometheus()` returns Prometheus text exposition format. Serve it from your own `/metrics` endpoint.
+- `get()` returns one aggregate snapshot with a `chains` array.
+- `getPrometheus()` returns one Prometheus text document for all configured chains. Serve it from your own `/metrics` endpoint.
 
 Use `BlockJobRecovery` to manually put failed blocks back into processing.
 

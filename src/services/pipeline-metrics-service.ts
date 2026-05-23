@@ -1,11 +1,17 @@
 import type { BlockSource } from "../interfaces/block-source.js";
-import type { ChainPipelineMetrics, PipelineMetricsConfig, PipelineReactionMetrics } from "../interfaces/metrics.js";
+import type {
+    ChainPipelineMetrics,
+    PipelineMetricsConfig,
+    PipelineMetricsResult,
+    PipelineReactionMetrics,
+} from "../interfaces/metrics.js";
 import type {
     BlockJobsRepository,
     BlocksRepository,
     ChainCursorRepository,
     WorkerCursorsRepository,
 } from "../interfaces/repositories.js";
+import type { ChainId } from "../types/chain.js";
 
 const FAILED_BLOCKS_LIMIT = 25;
 
@@ -20,9 +26,16 @@ export class PipelineMetricsService {
     ) {
     }
 
-    async get(): Promise<ChainPipelineMetrics> {
+    async get(): Promise<PipelineMetricsResult> {
         const observedAt = new Date();
-        const { chainId } = this.config;
+        const chains = await Promise.all(
+            this.config.chains.map((chain) => this.getChain(chain.chainId, observedAt))
+        );
+
+        return { observedAt, chains };
+    }
+
+    private async getChain(chainId: ChainId, observedAt: Date): Promise<ChainPipelineMetrics> {
         const [cursor, blockStatusCounts, failedBlocks, blockProgress, workerCursors, latestBlock] = await Promise.all([
             this.chainCursorRepository.get(chainId),
             this.blockJobsRepository.getStatusCounts(chainId),

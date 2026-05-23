@@ -1,4 +1,5 @@
-import type { ChainPipelineMetrics } from "../interfaces/metrics.js";
+import type { ChainPipelineMetrics, PipelineMetricsResult } from "../interfaces/metrics.js";
+import type { ChainId } from "../types/chain.js";
 
 type PrometheusMetricValue = bigint | number;
 
@@ -7,11 +8,12 @@ interface PrometheusMetricDefinition {
     help: string;
 }
 
-export function formatPipelineMetricsPrometheus(metrics: ChainPipelineMetrics): string {
+export function formatPipelineMetricsPrometheus(metrics: PipelineMetricsResult): string {
     const lines: string[] = [];
     const emittedDefinitions = new Set<string>();
 
     const addGauge = (
+        chainId: ChainId,
         definition: PrometheusMetricDefinition,
         value: PrometheusMetricValue | null,
         labels: Record<string, string> = {},
@@ -21,12 +23,29 @@ export function formatPipelineMetricsPrometheus(metrics: ChainPipelineMetrics): 
         }
 
         emitDefinition(lines, emittedDefinitions, definition);
-        const formattedLabels = formatLabels({ chain_id: String(metrics.chainId), ...labels });
+        const formattedLabels = formatLabels({ chain_id: String(chainId), ...labels });
 
         lines.push(`${definition.name}${formattedLabels} ${formatValue(value)}`);
     };
 
+    for (const chainMetrics of metrics.chains) {
+        addPipelineMetricsGauges(chainMetrics, addGauge);
+    }
+
+    return `${lines.join("\n")}\n`;
+}
+
+function addPipelineMetricsGauges(
+    metrics: ChainPipelineMetrics,
+    addGauge: (
+        chainId: ChainId,
+        definition: PrometheusMetricDefinition,
+        value: PrometheusMetricValue | null,
+        labels?: Record<string, string>,
+    ) => void,
+): void {
     addGauge(
+        metrics.chainId,
         {
             name: "voryn_pipeline_observed_timestamp_seconds",
             help: "Unix timestamp when the pipeline metrics snapshot was observed.",
@@ -34,6 +53,7 @@ export function formatPipelineMetricsPrometheus(metrics: ChainPipelineMetrics): 
         dateToUnixSeconds(metrics.observedAt),
     );
     addGauge(
+        metrics.chainId,
         {
             name: "voryn_pipeline_latest_block",
             help: "Latest block reported by the chain block source.",
@@ -47,6 +67,7 @@ export function formatPipelineMetricsPrometheus(metrics: ChainPipelineMetrics): 
         ["sequencer", metrics.stages.sequencer],
     ] as const) {
         addGauge(
+            metrics.chainId,
             {
                 name: "voryn_pipeline_stage_block",
                 help: "Current block processed by a pipeline stage.",
@@ -55,6 +76,7 @@ export function formatPipelineMetricsPrometheus(metrics: ChainPipelineMetrics): 
             { stage },
         );
         addGauge(
+            metrics.chainId,
             {
                 name: "voryn_pipeline_stage_lag_blocks",
                 help: "Pipeline stage lag from the latest block.",
@@ -64,6 +86,7 @@ export function formatPipelineMetricsPrometheus(metrics: ChainPipelineMetrics): 
         );
     }
     addGauge(
+        metrics.chainId,
         {
             name: "voryn_pipeline_max_lag_blocks",
             help: "Maximum pipeline lag from fetch and sequencer stages.",
@@ -71,6 +94,7 @@ export function formatPipelineMetricsPrometheus(metrics: ChainPipelineMetrics): 
         metrics.maxLag.blocks,
     );
     addGauge(
+        metrics.chainId,
         {
             name: "voryn_pipeline_max_lag_seconds",
             help: "Maximum pipeline lag in seconds from fetch and sequencer stages.",
@@ -79,6 +103,7 @@ export function formatPipelineMetricsPrometheus(metrics: ChainPipelineMetrics): 
     );
 
     addGauge(
+        metrics.chainId,
         {
             name: "voryn_pipeline_freshness_seconds",
             help: "Seconds since the last pipeline progress timestamp.",
@@ -87,6 +112,7 @@ export function formatPipelineMetricsPrometheus(metrics: ChainPipelineMetrics): 
         { source: "pipeline_update" },
     );
     addGauge(
+        metrics.chainId,
         {
             name: "voryn_pipeline_freshness_seconds",
             help: "Seconds since the last pipeline progress timestamp.",
@@ -97,6 +123,7 @@ export function formatPipelineMetricsPrometheus(metrics: ChainPipelineMetrics): 
 
     for (const status of ["pending", "fetching", "fetched", "committed", "failed"] as const) {
         addGauge(
+            metrics.chainId,
             {
                 name: "voryn_pipeline_block_jobs",
                 help: "Number of block jobs by status.",
@@ -110,6 +137,7 @@ export function formatPipelineMetricsPrometheus(metrics: ChainPipelineMetrics): 
         const labels = { block: String(failedBlock.block) };
 
         addGauge(
+            metrics.chainId,
             {
                 name: "voryn_pipeline_failed_block_attempts",
                 help: "Fetch attempts for recently failed blocks.",
@@ -118,6 +146,7 @@ export function formatPipelineMetricsPrometheus(metrics: ChainPipelineMetrics): 
             labels,
         );
         addGauge(
+            metrics.chainId,
             {
                 name: "voryn_pipeline_failed_block_next_retry_timestamp_seconds",
                 help: "Unix timestamp when a recently failed block can be retried.",
@@ -126,6 +155,7 @@ export function formatPipelineMetricsPrometheus(metrics: ChainPipelineMetrics): 
             labels,
         );
         addGauge(
+            metrics.chainId,
             {
                 name: "voryn_pipeline_failed_block_updated_timestamp_seconds",
                 help: "Unix timestamp when a recently failed block was last updated.",
@@ -142,6 +172,7 @@ export function formatPipelineMetricsPrometheus(metrics: ChainPipelineMetrics): 
         };
 
         addGauge(
+            metrics.chainId,
             {
                 name: "voryn_pipeline_reaction_block",
                 help: "Current block processed by a reaction worker.",
@@ -150,6 +181,7 @@ export function formatPipelineMetricsPrometheus(metrics: ChainPipelineMetrics): 
             labels,
         );
         addGauge(
+            metrics.chainId,
             {
                 name: "voryn_pipeline_reaction_lag_blocks",
                 help: "Reaction worker block lag from the committed chain cursor.",
@@ -158,6 +190,7 @@ export function formatPipelineMetricsPrometheus(metrics: ChainPipelineMetrics): 
             labels,
         );
         addGauge(
+            metrics.chainId,
             {
                 name: "voryn_pipeline_reaction_seconds_since_progress",
                 help: "Seconds since a reaction worker cursor moved.",
@@ -166,8 +199,6 @@ export function formatPipelineMetricsPrometheus(metrics: ChainPipelineMetrics): 
             labels,
         );
     }
-
-    return `${lines.join("\n")}\n`;
 }
 
 function emitDefinition(

@@ -1,4 +1,4 @@
-import type { ChainPipelineMetrics } from "../../../src/interfaces/metrics.js";
+import type { ChainPipelineMetrics, PipelineMetricsResult } from "../../../src/interfaces/metrics.js";
 import { formatPipelineMetricsPrometheus } from "../../../src/metrics/prometheus.js";
 
 test("formats pipeline metrics as prometheus text", () => {
@@ -51,7 +51,7 @@ test("formats pipeline metrics as prometheus text", () => {
         }],
     };
 
-    expect(formatPipelineMetricsPrometheus(metrics)).toBe([
+    expect(formatPipelineMetricsPrometheus(createSnapshot([metrics]))).toBe([
         "# HELP voryn_pipeline_observed_timestamp_seconds "
             + "Unix timestamp when the pipeline metrics snapshot was observed.",
         "# TYPE voryn_pipeline_observed_timestamp_seconds gauge",
@@ -116,7 +116,7 @@ test("formats pipeline metrics as prometheus text", () => {
 test("omits nullable metrics when values are unknown", () => {
     const metrics = createEmptyMetrics();
 
-    const formatted = formatPipelineMetricsPrometheus(metrics);
+    const formatted = formatPipelineMetricsPrometheus(createSnapshot([metrics]));
 
     expect(formatted).not.toContain("voryn_pipeline_stage_block{");
     expect(formatted).not.toContain("voryn_pipeline_stage_lag_blocks{");
@@ -144,7 +144,7 @@ test("omits failed block retry timestamp when retry date is unknown", () => {
         }],
     };
 
-    const formatted = formatPipelineMetricsPrometheus(metrics);
+    const formatted = formatPipelineMetricsPrometheus(createSnapshot([metrics]));
 
     expect(formatted).toContain("voryn_pipeline_failed_block_attempts{chain_id=\"1\",block=\"11\"} 2");
     expect(formatted).not.toContain("voryn_pipeline_failed_block_next_retry_timestamp_seconds{");
@@ -165,7 +165,7 @@ test("formats reaction block lag without cursor internals", () => {
         }],
     };
 
-    const formatted = formatPipelineMetricsPrometheus(metrics);
+    const formatted = formatPipelineMetricsPrometheus(createSnapshot([metrics]));
 
     expect(formatted).toContain(
         "voryn_pipeline_reaction_block{chain_id=\"1\",worker_name=\"transaction-worker\",stream_type=\"transaction\"} 9"
@@ -186,7 +186,7 @@ test("escapes label values", () => {
         }],
     };
 
-    expect(formatPipelineMetricsPrometheus(metrics)).toContain(
+    expect(formatPipelineMetricsPrometheus(createSnapshot([metrics]))).toContain(
         "worker_name=\"worker\\\"one\\\\two\\nthree\"",
     );
 });
@@ -195,9 +195,24 @@ test("formats bigint metric values", () => {
     const metrics = createEmptyMetrics();
     Object.defineProperty(metrics, "latestBlock", { value: 10n });
 
-    expect(formatPipelineMetricsPrometheus(metrics)).toContain(
+    expect(formatPipelineMetricsPrometheus(createSnapshot([metrics]))).toContain(
         "voryn_pipeline_latest_block{chain_id=\"1\"} 10"
     );
+});
+
+test("formats many chain metrics with shared prometheus metadata", () => {
+    const formatted = formatPipelineMetricsPrometheus(createSnapshot([
+        createEmptyMetrics(),
+        {
+            ...createEmptyMetrics(),
+            chainId: 2,
+            latestBlock: 20,
+        },
+    ]));
+
+    expect(formatted).toContain("voryn_pipeline_latest_block{chain_id=\"1\"} 10");
+    expect(formatted).toContain("voryn_pipeline_latest_block{chain_id=\"2\"} 20");
+    expect(formatted.match(/# TYPE voryn_pipeline_latest_block gauge/g)).toHaveLength(1);
 });
 
 function createEmptyMetrics(): ChainPipelineMetrics {
@@ -236,5 +251,12 @@ function createEmptyMetrics(): ChainPipelineMetrics {
         },
         failedBlocks: [],
         reactions: [],
+    };
+}
+
+function createSnapshot(chains: ChainPipelineMetrics[]): PipelineMetricsResult {
+    return {
+        observedAt: new Date("2026-01-01T00:00:00.000Z"),
+        chains,
     };
 }

@@ -146,6 +146,7 @@ The reaction pipeline runs user logic over data within the committed position. E
 - Reads `latestBlock` from `BlockSource`.
 - Returns lag for the `head`, `fetch`, and `sequencer` stages.
 - Shows cursor/fetch freshness, `block_jobs` counters, failed blocks, and reaction worker lag by position.
+- Collects all configured chains into one snapshot and one Prometheus document.
 
 ### `BlockJobRecovery`
 

@@ -1,6 +1,5 @@
 import type { Pool } from "pg";
-import type { BlockSource } from "../interfaces/block-source.js";
-import type { ChainPipelineMetrics, PipelineMetricsConfig } from "../interfaces/metrics.js";
+import type { PipelineMetricsConfig, PipelineMetricsResult } from "../interfaces/metrics.js";
 import type {
     BlockJobsRepository,
     BlocksRepository,
@@ -12,8 +11,8 @@ import { PostgresBlocksRepository } from "../repositories/postgres/blocks-reposi
 import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cursor-repository.js";
 import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker-cursors-repository.js";
 import { PipelineMetricsService } from "../services/pipeline-metrics-service.js";
-import { resolveDbDependencies, resolveEthersSource, resolveLogger } from "../runtime/resolvers.js";
-import type { RuntimeBaseOptions, RuntimeDbOptions, RuntimeSourceOptions } from "../runtime/types.js";
+import { resolveDbDependencies, resolveEthersSources, resolveLogger } from "../runtime/resolvers.js";
+import type { RuntimeBaseOptions, RuntimeDbOptions } from "../runtime/types.js";
 import { formatPipelineMetricsPrometheus } from "./prometheus.js";
 
 export interface PipelineMetricsDatabaseDependencies {
@@ -25,13 +24,12 @@ export interface PipelineMetricsDatabaseDependencies {
 
 export type CreatePipelineMetricsOptions =
     RuntimeBaseOptions<PipelineMetricsConfig>
-    & RuntimeSourceOptions<BlockSource>
     & RuntimeDbOptions<PipelineMetricsDatabaseDependencies>;
 
 export class PipelineMetrics {
     static async create(options: CreatePipelineMetricsOptions): Promise<PipelineMetrics> {
         const logger = resolveLogger(options);
-        const source = resolveEthersSource(options.config.chainId, options);
+        const source = resolveEthersSources({ chains: options.config.chains });
         const { dependencies, dispose } = await resolveDbDependencies<PipelineMetricsDatabaseDependencies>(
             options,
             logger,
@@ -60,7 +58,7 @@ export class PipelineMetrics {
     ) {
     }
 
-    async get(): Promise<ChainPipelineMetrics> {
+    async get(): Promise<PipelineMetricsResult> {
         return this.service.get();
     }
 

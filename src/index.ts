@@ -11,6 +11,7 @@ export * from "./interfaces/pipeline.js";
 export * from "./interfaces/reaction.js";
 export * from "./interfaces/repositories.js";
 export * from "./interfaces/runtime.js";
+export * from "./interfaces/source-config.js";
 export * from "./interfaces/transaction-manager.js";
 export * from "./interfaces/worker-lifecycle.js";
 

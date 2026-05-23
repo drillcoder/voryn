@@ -23,7 +23,7 @@ afterEach(() => {
 
 test("pipeline metrics service maps pipeline stages and reaction block lag", async () => {
     const service = new PipelineMetricsService(
-        { chainId: 1 },
+        { chains: [{ chainId: 1, rpcUrl: "http://127.0.0.1:8545" }] },
         createSource(120, 300),
         createChainCursorRepository({
             chainId: 1,
@@ -87,67 +87,70 @@ test("pipeline metrics service maps pipeline stages and reaction block lag", asy
     const snapshot = await service.get();
 
     expect(snapshot).toEqual({
-        chainId: 1,
         observedAt: NOW,
-        latestBlock: 120,
-        stages: {
-            head: {
-                block: 110,
-                lagBlocks: 10,
+        chains: [{
+            chainId: 1,
+            observedAt: NOW,
+            latestBlock: 120,
+            stages: {
+                head: {
+                    block: 110,
+                    lagBlocks: 10,
+                },
+                fetch: {
+                    block: 104,
+                    lagBlocks: 16,
+                },
+                sequencer: {
+                    block: 100,
+                    lagBlocks: 20,
+                },
             },
-            fetch: {
-                block: 104,
-                lagBlocks: 16,
+            maxLag: {
+                blocks: 20,
+                seconds: 80,
             },
-            sequencer: {
-                block: 100,
-                lagBlocks: 20,
+            freshness: {
+                secondsSincePipelineUpdate: 6,
+                secondsSinceFetch: 3,
             },
-        },
-        maxLag: {
-            blocks: 20,
-            seconds: 80,
-        },
-        freshness: {
-            secondsSincePipelineUpdate: 6,
-            secondsSinceFetch: 3,
-        },
-        blockStatusCounts: {
-            pending: 1,
-            fetching: 2,
-            fetched: 3,
-            committed: 4,
-            failed: 5,
-        },
-        failedBlocks: [{
-            block: 101,
-            attempts: 4,
-            error: "rpc timeout",
-            nextRetryAt: new Date("2026-01-01T00:00:30.000Z"),
-            updatedAt: new Date("2026-01-01T00:00:03.000Z"),
+            blockStatusCounts: {
+                pending: 1,
+                fetching: 2,
+                fetched: 3,
+                committed: 4,
+                failed: 5,
+            },
+            failedBlocks: [{
+                block: 101,
+                attempts: 4,
+                error: "rpc timeout",
+                nextRetryAt: new Date("2026-01-01T00:00:30.000Z"),
+                updatedAt: new Date("2026-01-01T00:00:03.000Z"),
+            }],
+            reactions: [
+                {
+                    workerName: "event-worker",
+                    streamType: "event",
+                    block: 97,
+                    lagBlocks: 3,
+                    secondsSinceProgress: 9,
+                },
+                {
+                    workerName: "transaction-worker",
+                    streamType: "transaction",
+                    block: 95,
+                    lagBlocks: 5,
+                    secondsSinceProgress: 8,
+                },
+            ],
         }],
-        reactions: [
-            {
-                workerName: "event-worker",
-                streamType: "event",
-                block: 97,
-                lagBlocks: 3,
-                secondsSinceProgress: 9,
-            },
-            {
-                workerName: "transaction-worker",
-                streamType: "transaction",
-                block: 95,
-                lagBlocks: 5,
-                secondsSinceProgress: 8,
-            },
-        ],
     });
 });
 
 test("pipeline metrics service throws when chain cursor is missing", async () => {
     const service = new PipelineMetricsService(
-        { chainId: 1 },
+        { chains: [{ chainId: 1, rpcUrl: "http://127.0.0.1:8545" }] },
         createSource(10),
         createChainCursorRepository(null),
         createBlockJobsRepository(createEmptyBlockStatusCounts()),
@@ -160,7 +163,7 @@ test("pipeline metrics service throws when chain cursor is missing", async () =>
 
 test("pipeline metrics service keeps fetch progress null when no block data exists", async () => {
     const service = new PipelineMetricsService(
-        { chainId: 1 },
+        { chains: [{ chainId: 1, rpcUrl: "http://127.0.0.1:8545" }] },
         createSource(60),
         createChainCursorRepository({
             chainId: 1,
@@ -180,8 +183,9 @@ test("pipeline metrics service keeps fetch progress null when no block data exis
     );
 
     const snapshot = await service.get();
+    const [chainMetrics] = snapshot.chains;
 
-    expect(snapshot.stages).toEqual({
+    expect(chainMetrics.stages).toEqual({
         head: {
             block: 55,
             lagBlocks: 5,
@@ -195,11 +199,11 @@ test("pipeline metrics service keeps fetch progress null when no block data exis
             lagBlocks: 10,
         },
     });
-    expect(snapshot.freshness).toEqual({
+    expect(chainMetrics.freshness).toEqual({
         secondsSincePipelineUpdate: 0,
         secondsSinceFetch: null,
     });
-    expect(snapshot.maxLag).toEqual({
+    expect(chainMetrics.maxLag).toEqual({
         blocks: 10,
         seconds: 100,
     });
@@ -207,7 +211,7 @@ test("pipeline metrics service keeps fetch progress null when no block data exis
 
 test("pipeline metrics service clamps future freshness and reaction timestamps to zero seconds", async () => {
     const service = new PipelineMetricsService(
-        { chainId: 1 },
+        { chains: [{ chainId: 1, rpcUrl: "http://127.0.0.1:8545" }] },
         createSource(10),
         createChainCursorRepository({
             chainId: 1,
@@ -243,12 +247,13 @@ test("pipeline metrics service clamps future freshness and reaction timestamps t
     );
 
     const snapshot = await service.get();
+    const [chainMetrics] = snapshot.chains;
 
-    expect(snapshot.freshness).toEqual({
+    expect(chainMetrics.freshness).toEqual({
         secondsSincePipelineUpdate: 0,
         secondsSinceFetch: 0,
     });
-    expect(snapshot.reactions).toEqual([
+    expect(chainMetrics.reactions).toEqual([
         expect.objectContaining({
             workerName: "event-worker",
             lagBlocks: 0,
