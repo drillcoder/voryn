@@ -13,13 +13,13 @@ import { EventReactionWorker } from "@drillcoder/voryn";
         return event.index === 10 ? "processed" : "skipped";
     };
     const options: CreateEventReactionWorkerOptions = {
+        dbUrl: "postgres://user:pass@localhost:5432/voryn",
+        logLevel: "info",
         chainId: 1,
         delayBetweenTicksMs: 500,
         workerName: "event-reaction-worker",
         batchSize: 1000,
         skipFlushInterval: 100,
-        logLevel: "info",
-        dbUrl: "postgres://user:pass@localhost:5432/voryn",
         handler,
     };
 

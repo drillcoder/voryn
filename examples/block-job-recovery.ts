@@ -3,19 +3,19 @@ import { BlockJobRecovery } from "@drillcoder/voryn";
 
 (async () => {
     const options: CreateBlockJobRecoveryOptions = {
-        chainId: 1,
-        logLevel: "info",
         dbUrl: "postgres://user:pass@localhost:5432/voryn",
+        logLevel: "info",
+        chainId: 1,
     };
 
     const recovery = await BlockJobRecovery.create(options);
 
-    const blockNumber = 123;
-    const fromBlock = 124;
-    const toBlock = 130;
-
     try {
+        const blockNumber = 123;
         const singleBlockResult = await recovery.retryFailedBlock(blockNumber);
+
+        const fromBlock = 124;
+        const toBlock = 130;
         const rangeResult = await recovery.retryFailedRange(fromBlock, toBlock);
 
         console.log(JSON.stringify({ singleBlockResult, rangeResult }, null, 2));

@@ -17,13 +17,13 @@ import { TransactionReactionWorker } from "@drillcoder/voryn";
         return transaction.index === 10 ? "processed" : "skipped";
     };
     const options: CreateTransactionReactionWorkerOptions = {
+        dbUrl: "postgres://user:pass@localhost:5432/voryn",
+        logLevel: "info",
         chainId: 1,
         delayBetweenTicksMs: 500,
         workerName: "transaction-reaction-worker",
         batchSize: 500,
         skipFlushInterval: 100,
-        logLevel: "info",
-        dbUrl: "postgres://user:pass@localhost:5432/voryn",
         handler,
     };
 

@@ -1,19 +1,20 @@
+import type { CreateHeadWorkerOptions } from "../src/index.js";
 import { HeadWorker } from "../src/index.js";
 import { createDevLogger, envNumber, envValue, runWithErrorHandling, runWorkerLifecycle } from "./runtime.js";
 
 async function run(): Promise<void> {
-    const logger = createDevLogger();
-    const dbUrl = envValue("DATABASE_URL", "");
-    const rpcUrl = envValue("VORYN_HEAD_RPC_URL", "");
-    const chainId = envNumber("VORYN_CHAIN_ID", "0");
-    const delayBetweenTicksMs = envNumber("VORYN_HEAD_DELAY_BETWEEN_TICKS_MS", "1000");
-    const confirmations = envNumber("VORYN_HEAD_CONFIRMATIONS", "0");
-    const depthBlocks = envNumber("VORYN_HEAD_DEPTH_BLOCKS", "65000");
+    const options: CreateHeadWorkerOptions = {
+        dbUrl: envValue("DATABASE_URL", ""),
+        logger: createDevLogger(),
+        chainId: envNumber("VORYN_CHAIN_ID", "0"),
+        rpcUrl: envValue("VORYN_HEAD_RPC_URL", ""),
+        delayBetweenTicksMs: envNumber("VORYN_HEAD_DELAY_BETWEEN_TICKS_MS", "1000"),
+        confirmations: envNumber("VORYN_HEAD_CONFIRMATIONS", "0"),
+        depthBlocks: envNumber("VORYN_HEAD_DEPTH_BLOCKS", "65000"),
+    };
+    const worker = await HeadWorker.create(options);
 
-    const config = { chainId, delayBetweenTicksMs, confirmations, depthBlocks };
-    const worker = await HeadWorker.create({ ...config, logger, dbUrl, rpcUrl });
-
-    await runWorkerLifecycle("head", worker, logger);
+    await runWorkerLifecycle("head", worker, createDevLogger());
 }
 
 runWithErrorHandling("head", run);

@@ -3,7 +3,10 @@ import { FetchWorker } from "@drillcoder/voryn";
 
 (async () => {
     const options: CreateFetchWorkerOptions = {
+        dbUrl: "postgres://user:pass@localhost:5432/voryn",
+        logLevel: "info",
         chainId: 1,
+        rpcUrl: "https://rpc.example.org",
         delayBetweenTicksMs: 100,
         fetchBatchSize: 10,
         fetchConcurrency: 1,
@@ -11,9 +14,6 @@ import { FetchWorker } from "@drillcoder/voryn";
         retryMaxAttempts: 10,
         retryBaseDelayMs: 1_000,
         retryMaxDelayMs: 10_000,
-        logLevel: "info",
-        dbUrl: "postgres://user:pass@localhost:5432/voryn",
-        rpcUrl: "https://rpc.example.org",
     };
 
     const worker = await FetchWorker.create(options);

@@ -1,18 +1,19 @@
+import type { CreateBlockJobRecoveryOptions } from "../src/index.js";
 import { BlockJobRecovery } from "../src/index.js";
 import { createDevLogger, envNumber, envValue, runWithErrorHandling } from "./runtime.js";
 
 async function run(): Promise<void> {
-    const logger = createDevLogger();
-    const dbUrl = envValue("DATABASE_URL", "");
-    const chainId = envNumber("VORYN_CHAIN_ID", "0");
-    const blockNumber = envOptionalNumber("VORYN_RECOVERY_BLOCK");
-    const fromBlock = envOptionalNumber("VORYN_RECOVERY_FROM_BLOCK");
-    const toBlock = envOptionalNumber("VORYN_RECOVERY_TO_BLOCK");
-
-    const config = { chainId };
-    const recovery = await BlockJobRecovery.create({ ...config, logger, dbUrl });
+    const options: CreateBlockJobRecoveryOptions = {
+        dbUrl: envValue("DATABASE_URL", ""),
+        logger: createDevLogger(),
+        chainId: envNumber("VORYN_CHAIN_ID", "0"),
+    };
+    const recovery = await BlockJobRecovery.create(options);
 
     try {
+        const blockNumber = envOptionalNumber("VORYN_RECOVERY_BLOCK");
+        const fromBlock = envOptionalNumber("VORYN_RECOVERY_FROM_BLOCK");
+        const toBlock = envOptionalNumber("VORYN_RECOVERY_TO_BLOCK");
         if (blockNumber !== null && (fromBlock !== null || toBlock !== null)) {
             throw new Error(
                 "Set either VORYN_RECOVERY_BLOCK or VORYN_RECOVERY_FROM_BLOCK/VORYN_RECOVERY_TO_BLOCK"

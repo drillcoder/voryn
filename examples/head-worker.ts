@@ -3,13 +3,13 @@ import { HeadWorker } from "@drillcoder/voryn";
 
 (async () => {
     const options: CreateHeadWorkerOptions = {
+        dbUrl: "postgres://user:pass@localhost:5432/voryn",
+        logLevel: "info",
         chainId: 1,
+        rpcUrl: "https://rpc.example.org",
         delayBetweenTicksMs: 1_000,
         confirmations: 0,
         depthBlocks: 65_000,
-        logLevel: "info",
-        dbUrl: "postgres://user:pass@localhost:5432/voryn",
-        rpcUrl: "https://rpc.example.org",
     };
 
     const worker = await HeadWorker.create(options);

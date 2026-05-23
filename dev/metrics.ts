@@ -1,13 +1,15 @@
+import type { CreatePipelineMetricsOptions } from "../src/index.js";
 import { PipelineMetrics } from "../src/index.js";
 import { createDevLogger, envNumber, envValue, runWithErrorHandling } from "./runtime.js";
 
 async function run(): Promise<void> {
-    const logger = createDevLogger();
-    const dbUrl = envValue("DATABASE_URL", "");
-    const rpcUrl = envValue("VORYN_METRICS_RPC_URL", "");
-    const chainId = envNumber("VORYN_CHAIN_ID", "0");
-
-    const metrics = await PipelineMetrics.create({ chainIds: [chainId], rpcUrls: [rpcUrl], logger, dbUrl });
+    const options: CreatePipelineMetricsOptions = {
+        dbUrl: envValue("DATABASE_URL", ""),
+        logger: createDevLogger(),
+        chainIds: [envNumber("VORYN_CHAIN_ID", "0")],
+        rpcUrls: [envValue("VORYN_METRICS_RPC_URL", "")],
+    };
+    const metrics = await PipelineMetrics.create(options);
 
     try {
         const snapshot = await metrics.get();
