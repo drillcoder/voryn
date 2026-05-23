@@ -7,7 +7,6 @@ import type { BlockSource } from "../interfaces/block-source.js";
 import type { EthersSourceConfig, EthersSourcesConfig } from "../interfaces/source-config.js";
 import type { Logger } from "../interfaces/logger.js";
 import { ConsoleLogger } from "../loggers/console-logger.js";
-import type { ChainId } from "../types/chain.js";
 import type { ResolveDbDependenciesResult, RuntimeDbOptions, RuntimeLoggerOptions } from "./types.js";
 
 export function resolveLogger(options: RuntimeLoggerOptions): Logger {
@@ -18,7 +17,7 @@ export function resolveLogger(options: RuntimeLoggerOptions): Logger {
     return new ConsoleLogger({ minLevel: options.logLevel });
 }
 
-export function resolveEthersSource(config: EthersSourceConfig): BlockSource {
+export async function resolveEthersSource(config: EthersSourceConfig): Promise<BlockSource> {
     if (config.source !== undefined) {
         return config.source;
     }
@@ -26,7 +25,7 @@ export function resolveEthersSource(config: EthersSourceConfig): BlockSource {
     return resolveEthersSources({ chains: [config.chain] });
 }
 
-export function resolveEthersSources(config: EthersSourcesConfig): BlockSource {
+export async function resolveEthersSources(config: EthersSourcesConfig): Promise<BlockSource> {
     if (config.source !== undefined) {
         return config.source;
     }
@@ -37,28 +36,17 @@ export function resolveEthersSources(config: EthersSourcesConfig): BlockSource {
         throw new Error("Ethers source chains config must not be empty");
     }
 
-    const seenChainIds = new Set<ChainId>();
-
     for (const chain of chains) {
         if (!Number.isInteger(chain.chainId) || chain.chainId <= 0) {
             throw new Error(`Ethers source chain id is invalid: ${String(chain.chainId)}`);
         }
-
-        if (seenChainIds.has(chain.chainId)) {
-            throw new Error(`Ethers source chain id is duplicated: ${String(chain.chainId)}`);
-        }
-
-        seenChainIds.add(chain.chainId);
 
         if (chain.rpcUrl.trim() === "") {
             throw new Error(`Ethers source rpcUrl is empty for chain ${String(chain.chainId)}`);
         }
     }
 
-    return new EthersBlockSource({
-        providers: new Map(chains.map((chain) => [chain.chainId, new JsonRpcProvider(chain.rpcUrl)])),
-        validateProviderChainId: true,
-    });
+    return EthersBlockSource.create(chains.map((chain) => new JsonRpcProvider(chain.rpcUrl)));
 }
 
 export async function resolveDbDependencies<TDependencies extends object>(

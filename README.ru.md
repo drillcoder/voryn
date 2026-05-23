@@ -266,19 +266,14 @@ await metrics.close();
 import { JsonRpcProvider } from "ethers";
 import { EthersBlockSource } from "@drillcoder/voryn";
 
-const chainId = 1;
-const logLevel = "info";
 const provider = new JsonRpcProvider("https://rpc.example.org");
 
-const source = new EthersBlockSource({
-    providers: new Map([[chainId, provider]]),
-    validateProviderChainId: true,
-});
+const source = await EthersBlockSource.create([provider]);
 ```
 
-Ключ в `providers` — это `chainId`. На этом этапе одна сеть использует один provider.
+Передайте по одному provider-у на каждую сеть.
 
-Адаптер валидирует chain id, хеши, адреса, `data`-поля, индексы транзакций и соответствие номера блока. Для другого источника данных достаточно реализовать интерфейс `BlockSource`.
+Адаптер валидирует хеши, адреса, `data`-поля, индексы транзакций и соответствие номера блока. Для другого источника данных достаточно реализовать интерфейс `BlockSource`.
 
 ## Публичный API
 

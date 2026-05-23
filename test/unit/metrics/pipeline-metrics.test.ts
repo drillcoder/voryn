@@ -93,7 +93,7 @@ test("pipeline metrics returns prometheus text for all configured chains", async
 test.each([
     [{ chains: [] }, "Ethers source chains config must not be empty"],
     [
-        { chains: [{ chainId: 7, rpcUrl: "http://127.0.0.1/7" }, { chainId: 7, rpcUrl: "http://127.0.0.1/8" }] },
+        { chains: [{ chainId: 7, rpcUrl: "http://127.0.0.1/7" }, { chainId: 8, rpcUrl: "http://127.0.0.1/7" }] },
         "Ethers source chain id is duplicated: 7",
     ],
     [

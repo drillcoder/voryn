@@ -265,19 +265,14 @@ Voryn includes an adapter for `ethers` v6:
 import { JsonRpcProvider } from "ethers";
 import { EthersBlockSource } from "@drillcoder/voryn";
 
-const chainId = 1;
-const logLevel = "info";
 const provider = new JsonRpcProvider("https://rpc.example.org");
 
-const source = new EthersBlockSource({
-    providers: new Map([[chainId, provider]]),
-    validateProviderChainId: true,
-});
+const source = await EthersBlockSource.create([provider]);
 ```
 
-The key in `providers` is the `chainId`. At this stage, each chain uses one provider.
+Pass one provider per chain.
 
-The adapter validates chain id, hashes, addresses, `data` fields, transaction indexes, and block number consistency. To use another data source, implement the `BlockSource` interface.
+The adapter validates hashes, addresses, `data` fields, transaction indexes, and block number consistency. To use another data source, implement the `BlockSource` interface.
 
 ## Public API
 

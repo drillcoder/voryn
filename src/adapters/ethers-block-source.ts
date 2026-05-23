@@ -2,6 +2,7 @@ import type { Block, Log, Provider, TransactionResponse } from "ethers";
 import type { BlockSource } from "../interfaces/block-source.js";
 import type { BlockNumber, ChainId, HashHex } from "../types/chain.js";
 import type { ChainBlock, ChainLog, ChainTransaction, FetchedBlock } from "../interfaces/chain.js";
+import { asChainId } from "../utils/chain.js";
 import { asAddress, asHash32, asHexData } from "../utils/hex.js";
 
 export type EthersNetworkLike = Pick<Awaited<ReturnType<Provider["getNetwork"]>>, "chainId">;
@@ -37,38 +38,52 @@ export interface EthersProviderLike {
     getLogs(filter: { fromBlock: BlockNumber; toBlock: BlockNumber }): Promise<EthersLogLike[]>;
 }
 
-export interface EthersBlockSourceDeps {
-    providers: ReadonlyMap<ChainId, EthersProviderLike>;
-    validateProviderChainId?: boolean;
-}
-
 export class EthersBlockSource implements BlockSource {
-    private readonly checkedProviderChainIds = new Set<ChainId>();
+    private constructor(private readonly providers: ReadonlyMap<ChainId, EthersProviderLike>) {
+    }
 
-    constructor(private readonly deps: EthersBlockSourceDeps) {
+    static async create(providers: readonly EthersProviderLike[]): Promise<EthersBlockSource> {
+        if (providers.length === 0) {
+            throw new Error("Ethers source providers config must not be empty");
+        }
+
+        const mappedProviders = new Map<ChainId, EthersProviderLike>();
+
+        for (const provider of providers) {
+            const network = await provider.getNetwork();
+            const chainId = asChainId(network.chainId, "Ethers source chain id");
+
+            if (mappedProviders.has(chainId)) {
+                throw new Error(`Ethers source chain id is duplicated: ${String(chainId)}`);
+            }
+
+            mappedProviders.set(chainId, provider);
+        }
+
+        return new EthersBlockSource(mappedProviders);
     }
 
     async getLatestBlockNumber(chainId: ChainId): Promise<BlockNumber> {
-        const provider = await this.getProvider(chainId);
+        const provider = this.getProvider(chainId);
         return provider.getBlockNumber();
     }
 
     async getLatestBlock(chainId: ChainId): Promise<ChainBlock> {
-        const provider = await this.getProvider(chainId);
+        const provider = this.getProvider(chainId);
         const block = await provider.getBlock("latest", false);
 
         return this.mapBlock(chainId, block, "latest");
     }
 
     async getBlock(chainId: ChainId, blockNumber: BlockNumber): Promise<ChainBlock> {
-        const provider = await this.getProvider(chainId);
+        const provider = this.getProvider(chainId);
         const block = await provider.getBlock(blockNumber, false);
 
         return this.mapBlock(chainId, block, blockNumber);
     }
 
     async getBlockData(chainId: ChainId, blockNumber: BlockNumber): Promise<FetchedBlock> {
-        const provider = await this.getProvider(chainId);
+        const provider = this.getProvider(chainId);
         const block = await provider.getBlock(blockNumber, true);
 
         if (!block) {
@@ -109,24 +124,12 @@ export class EthersBlockSource implements BlockSource {
         };
     }
 
-    private async getProvider(chainId: ChainId): Promise<EthersProviderLike> {
-        const provider = this.deps.providers.get(chainId);
+    private getProvider(chainId: ChainId): EthersProviderLike {
+        const provider = this.providers.get(chainId);
         if (provider === undefined) {
             throw new Error(`provider not found for chain ${String(chainId)}`);
         }
 
-        if (!this.deps.validateProviderChainId || this.checkedProviderChainIds.has(chainId)) {
-            return provider;
-        }
-
-        const network = await provider.getNetwork();
-        if (network.chainId !== BigInt(chainId)) {
-            throw new Error(
-                `provider chain mismatch for chain ${String(chainId)}: got ${network.chainId.toString()}`
-            );
-        }
-
-        this.checkedProviderChainIds.add(chainId);
         return provider;
     }
 

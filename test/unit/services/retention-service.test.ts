@@ -187,3 +187,17 @@ test("retention service logs zero deletions when purge block is negative", async
         deletedEvents: 0,
     });
 });
+
+test("retention service uses noop logger by default", async () => {
+    const worker = new RetentionService(
+        config,
+        createCursorRepository(),
+        createBlockJobsRepository(0),
+        createBlocksRepository(0),
+        createTransactionsRepository(0),
+        createEventsRepository(0),
+        createPassThroughManager(),
+    );
+
+    await expect(worker.execute()).resolves.toBeUndefined();
+});

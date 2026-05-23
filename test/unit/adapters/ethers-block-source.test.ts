@@ -17,20 +17,14 @@ const createProviderMock = (): jest.Mocked<EthersProviderLike> => ({
     getLogs: jest.fn(),
 });
 
-const createSource = (
-    provider: EthersProviderLike,
-    options: Omit<
-        ConstructorParameters<typeof EthersBlockSource>[0],
-        "providers"
-    > = {}
-): EthersBlockSource => new EthersBlockSource({
-    providers: new Map([
-        [1, provider],
-        [7, provider],
-        [42, provider],
-    ]),
-    ...options,
-});
+const createSource = async (
+    provider: jest.Mocked<EthersProviderLike>,
+    chainId = 7n,
+): Promise<EthersBlockSource> => {
+    provider.getNetwork.mockResolvedValue({ chainId });
+
+    return EthersBlockSource.create([provider]);
+};
 
 test("maps latest block, transactions and logs from ethers provider", async () => {
     const blockCalls: Array<{ blockNumber: number; prefetchTxs?: boolean }> = [];
@@ -84,7 +78,7 @@ test("maps latest block, transactions and logs from ethers provider", async () =
         return [log];
     });
 
-    const source = createSource(provider);
+    const source = await createSource(provider);
 
     await expect(source.getLatestBlockNumber(7)).resolves.toBe(120);
 
@@ -173,7 +167,7 @@ test("falls back to getTransaction when prefetched transactions are unavailable"
     });
     provider.getLogs.mockResolvedValue([]);
 
-    const source = createSource(provider);
+    const source = await createSource(provider, 1n);
 
     await expect(source.getBlockData(1, 55)).resolves.toMatchObject({
         block: {
@@ -212,18 +206,57 @@ test("reads latest block number from a single provider", async () => {
     const provider = createProviderMock();
     provider.getBlockNumber.mockResolvedValue(999);
 
-    const source = createSource(provider);
+    const source = await createSource(provider, 42n);
 
     await expect(source.getLatestBlockNumber(42)).resolves.toBe(999);
 });
 
 test("throws when provider is missing for chain", async () => {
-    const source = new EthersBlockSource({
-        providers: new Map(),
-    });
+    const provider = createProviderMock();
+    const source = await createSource(provider);
 
     await expect(source.getLatestBlockNumber(42)).rejects.toThrow(
         "provider not found for chain 42"
+    );
+});
+
+test("creates source by detecting provider chain ids", async () => {
+    const providerA = createProviderMock();
+    providerA.getNetwork.mockResolvedValue({ chainId: 1n });
+    providerA.getBlockNumber.mockResolvedValue(100);
+    const providerB = createProviderMock();
+    providerB.getNetwork.mockResolvedValue({ chainId: 56n });
+    providerB.getBlockNumber.mockResolvedValue(200);
+
+    const source = await EthersBlockSource.create([providerA, providerB]);
+
+    await expect(source.getLatestBlockNumber(1)).resolves.toBe(100);
+    await expect(source.getLatestBlockNumber(56)).resolves.toBe(200);
+});
+
+test("rejects empty provider list", async () => {
+    await expect(EthersBlockSource.create([])).rejects.toThrow(
+        "Ethers source providers config must not be empty"
+    );
+});
+
+test("rejects duplicated detected chain ids", async () => {
+    const providerA = createProviderMock();
+    providerA.getNetwork.mockResolvedValue({ chainId: 1n });
+    const providerB = createProviderMock();
+    providerB.getNetwork.mockResolvedValue({ chainId: 1n });
+
+    await expect(EthersBlockSource.create([providerA, providerB])).rejects.toThrow(
+        "Ethers source chain id is duplicated: 1"
+    );
+});
+
+test("rejects invalid detected chain id", async () => {
+    const provider = createProviderMock();
+    provider.getNetwork.mockResolvedValue({ chainId: 0n });
+
+    await expect(EthersBlockSource.create([provider])).rejects.toThrow(
+        "Ethers source chain id is invalid: 0"
     );
 });
 
@@ -238,7 +271,7 @@ test("reads block without prefetching transactions", async () => {
         prefetchedTransactions: [],
     });
 
-    const source = createSource(provider);
+    const source = await createSource(provider);
 
     await expect(source.getBlock(7, 55)).resolves.toMatchObject({
         chainId: 7,
@@ -262,7 +295,7 @@ test("reads latest block without validating requested number", async () => {
         prefetchedTransactions: [],
     });
 
-    const source = createSource(provider);
+    const source = await createSource(provider);
 
     await expect(source.getLatestBlock(7)).resolves.toMatchObject({
         chainId: 7,
@@ -280,7 +313,7 @@ test("throws when block is missing", async () => {
     provider.getNetwork.mockResolvedValue({ chainId: 7n });
     provider.getBlock.mockResolvedValue(null);
 
-    const source = createSource(provider);
+    const source = await createSource(provider);
 
     await expect(source.getBlockData(7, 42)).rejects.toThrow(
         "block not found for chain 7 at number 42"
@@ -291,7 +324,7 @@ test("throws when requested block is missing", async () => {
     const provider = createProviderMock();
     provider.getBlock.mockResolvedValue(null);
 
-    const source = createSource(provider);
+    const source = await createSource(provider);
 
     await expect(source.getBlock(7, 42)).rejects.toThrow(
         "block not found for chain 7 at 42"
@@ -309,7 +342,7 @@ test("throws when requested block number mismatches", async () => {
         prefetchedTransactions: [],
     });
 
-    const source = createSource(provider);
+    const source = await createSource(provider);
 
     await expect(source.getBlock(7, 42)).rejects.toThrow(
         "block number mismatch for chain 7: expected 42, got 43"
@@ -327,7 +360,7 @@ test("throws when requested block hash is missing", async () => {
         prefetchedTransactions: [],
     });
 
-    const source = createSource(provider);
+    const source = await createSource(provider);
 
     await expect(source.getBlock(7, 42)).rejects.toThrow(
         "block hash is missing for chain 7 at number 42"
@@ -358,43 +391,11 @@ test("throws on log block hash mismatch", async () => {
     provider.getBlock.mockResolvedValue(block);
     provider.getLogs.mockResolvedValue([log]);
 
-    const source = createSource(provider);
+    const source = await createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
         "log block hash mismatch for chain 7 block 9"
     );
-});
-
-test("validates provider network chain id when enabled", async () => {
-    let getBlockNumberCalled = false;
-
-    const provider = createProviderMock();
-    provider.getNetwork.mockResolvedValue({ chainId: 10n });
-    provider.getBlockNumber.mockImplementation(async () => {
-        getBlockNumberCalled = true;
-        return 1;
-    });
-
-    const source = createSource(provider, { validateProviderChainId: true });
-
-    await expect(source.getLatestBlockNumber(1)).rejects.toThrow(
-        "provider chain mismatch for chain 1: got 10"
-    );
-    expect(getBlockNumberCalled).toBe(false);
-});
-
-test("caches successful provider chain validation", async () => {
-    const provider = createProviderMock();
-    provider.getNetwork.mockResolvedValue({ chainId: 1n });
-    provider.getBlockNumber.mockResolvedValue(123);
-
-    const source = createSource(provider, { validateProviderChainId: true });
-
-    await expect(source.getLatestBlockNumber(1)).resolves.toBe(123);
-    await expect(source.getLatestBlockNumber(1)).resolves.toBe(123);
-
-    expect(provider.getNetwork.mock.calls).toHaveLength(1);
-    expect(provider.getBlockNumber.mock.calls).toHaveLength(2);
 });
 
 test("throws when block hash is missing", async () => {
@@ -409,7 +410,7 @@ test("throws when block hash is missing", async () => {
         prefetchedTransactions: [],
     });
 
-    const source = createSource(provider);
+    const source = await createSource(provider);
 
     await expect(source.getBlockData(7, 21)).rejects.toThrow(
         "block hash is missing for chain 7 at number 21"
@@ -428,7 +429,7 @@ test("throws when block number mismatches requested number", async () => {
         prefetchedTransactions: [],
     });
 
-    const source = createSource(provider);
+    const source = await createSource(provider);
 
     await expect(source.getBlockData(7, 21)).rejects.toThrow(
         "block number mismatch for chain 7: expected 21, got 22"
@@ -454,7 +455,7 @@ test("throws when fallback transaction is not found", async () => {
     provider.getTransaction.mockResolvedValue(null);
     provider.getLogs.mockResolvedValue([]);
 
-    const source = createSource(provider);
+    const source = await createSource(provider, 1n);
 
     await expect(source.getBlockData(1, 55)).rejects.toThrow(
         `transaction not found for chain 1 block 55 hash ${transactionHash}`
@@ -484,7 +485,7 @@ test("throws on transaction chain id mismatch", async () => {
     });
     provider.getLogs.mockResolvedValue([]);
 
-    const source = createSource(provider);
+    const source = await createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
         "transaction chain id mismatch for chain 7 block 9"
@@ -514,7 +515,7 @@ test("allows transaction with null chain id", async () => {
     });
     provider.getLogs.mockResolvedValue([]);
 
-    const source = createSource(provider);
+    const source = await createSource(provider);
 
     await expect(source.getBlockData(7, 9)).resolves.toMatchObject({
         block: {
@@ -559,7 +560,7 @@ test("throws on transaction block number mismatch", async () => {
     });
     provider.getLogs.mockResolvedValue([]);
 
-    const source = createSource(provider);
+    const source = await createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
         "transaction block number mismatch for chain 7 block 9"
@@ -589,7 +590,7 @@ test("throws on transaction block hash mismatch", async () => {
     });
     provider.getLogs.mockResolvedValue([]);
 
-    const source = createSource(provider);
+    const source = await createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
         "transaction block hash mismatch for chain 7 block 9"
@@ -619,7 +620,7 @@ test("throws on negative transaction index", async () => {
     });
     provider.getLogs.mockResolvedValue([]);
 
-    const source = createSource(provider);
+    const source = await createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
         "transaction index is invalid for chain 7 block 9"
@@ -649,7 +650,7 @@ test("throws on non-integer transaction index", async () => {
     });
     provider.getLogs.mockResolvedValue([]);
 
-    const source = createSource(provider);
+    const source = await createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
         "transaction index is invalid for chain 7 block 9"
@@ -678,7 +679,7 @@ test("throws on log block number mismatch", async () => {
         data: "0x",
     }]);
 
-    const source = createSource(provider);
+    const source = await createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
         "log block number mismatch for chain 7 block 9"
@@ -707,7 +708,7 @@ test("throws on invalid log transaction index", async () => {
         data: "0x",
     }]);
 
-    const source = createSource(provider);
+    const source = await createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
         "log transaction index is invalid for chain 7 block 9"
@@ -736,7 +737,7 @@ test("throws on invalid log index", async () => {
         data: "0x",
     }]);
 
-    const source = createSource(provider);
+    const source = await createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
         "log index is invalid for chain 7 block 9"
