@@ -1,17 +1,10 @@
+import type { BlockSource } from "../interfaces/block-source.js";
 import type { Logger } from "../interfaces/logger.js";
 import type { LogLevel } from "../loggers/console-logger.js";
-
-export type RuntimeBaseOptions<TConfig> = RuntimeLoggerOptions & {
-    config: TConfig;
-};
 
 export type RuntimeLoggerOptions =
     | { logger: Logger; logLevel?: never }
     | { logger?: never; logLevel: LogLevel };
-
-export type RuntimeSourceOptions<TSource> =
-    | { source: TSource; rpcUrl?: never }
-    | { source?: never; rpcUrl: string };
 
 export interface ResolveDbDependenciesResult<TDependencies extends object> {
     dependencies: TDependencies;
@@ -28,7 +21,22 @@ export type RuntimeDbOptions<TDependencies extends object> =
         overrides: TDependencies;
     };
 
-export type ReactionWorkerOptions<TConfig, THandler, TDependencies extends object> =
-    RuntimeBaseOptions<TConfig>
-    & RuntimeDbOptions<TDependencies>
-    & { handler: THandler };
+export type SingleSourceOptions =
+    | {
+        source: BlockSource;
+        rpcUrl?: never;
+    }
+    | {
+        source?: never;
+        rpcUrl: string;
+    };
+
+export type MultiSourceOptions =
+    | {
+        source: BlockSource;
+        rpcUrls?: never;
+    }
+    | {
+        source?: never;
+        rpcUrls: readonly string[];
+    };

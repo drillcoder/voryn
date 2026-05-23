@@ -1,5 +1,4 @@
 import type { BlockNumber, ChainId } from "../types/chain.js";
-import type { EthersSourceChainConfig } from "./source-config.js";
 import type { BlockJobStatus, StreamType } from "../types/pipeline.js";
 
 export type BlockJobStatusCounts = Record<BlockJobStatus, number>;
@@ -62,8 +61,4 @@ export interface ChainPipelineMetrics {
 export interface PipelineMetricsResult {
     observedAt: Date;
     chains: ChainPipelineMetrics[];
-}
-
-export interface PipelineMetricsConfig {
-    chains: readonly EthersSourceChainConfig[];
 }

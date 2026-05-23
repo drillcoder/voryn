@@ -9,7 +9,7 @@ async function run(): Promise<void> {
     const retentionDepthBlocks = envNumber("VORYN_RETENTION_DEPTH_BLOCKS", "65000");
 
     const config = { chainId, delayBetweenTicksMs, retentionDepthBlocks };
-    const worker = await RetentionWorker.create({ config, logger, dbUrl });
+    const worker = await RetentionWorker.create({ ...config, logger, dbUrl });
 
     await runWorkerLifecycle("retention", worker, logger);
 }

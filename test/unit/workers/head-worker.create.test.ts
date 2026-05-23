@@ -1,5 +1,5 @@
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
-import type { HeadWorkerConfig } from "../../../src/interfaces/runtime.js";
+import type { HeadWorkerOptions } from "../../../src/interfaces/runtime.js";
 import { HeadWorker } from "../../../src/workers/head-worker.js";
 import {
     createNoopBlockJobsRepository,
@@ -15,7 +15,7 @@ import {
 
 test("head worker create wires service execution", async () => {
     const getLatestBlockNumber = jest.fn(async () => 0);
-    const config: HeadWorkerConfig = {
+    const config: HeadWorkerOptions = {
         chainId: 7,
         confirmations: 1,
         delayBetweenTicksMs: 1000,
@@ -36,7 +36,7 @@ test("head worker create wires service execution", async () => {
 
     const worker = await HeadWorker.create({
         logLevel: "error",
-        config,
+        ...config,
         source,
         overrides: {
             chainCursorRepository: createNoopChainCursorRepository(),

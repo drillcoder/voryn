@@ -3,16 +3,14 @@ import { FetchWorker } from "@drillcoder/voryn";
 
 (async () => {
     const options: CreateFetchWorkerOptions = {
-        config: {
-            chainId: 1,
-            delayBetweenTicksMs: 100,
-            fetchBatchSize: 10,
-            fetchConcurrency: 1,
-            fetchClaimTtlMs: 125_000,
-            retryMaxAttempts: 10,
-            retryBaseDelayMs: 1_000,
-            retryMaxDelayMs: 10_000,
-        },
+        chainId: 1,
+        delayBetweenTicksMs: 100,
+        fetchBatchSize: 10,
+        fetchConcurrency: 1,
+        fetchClaimTtlMs: 125_000,
+        retryMaxAttempts: 10,
+        retryBaseDelayMs: 1_000,
+        retryMaxDelayMs: 10_000,
         logLevel: "info",
         dbUrl: "postgres://user:pass@localhost:5432/voryn",
         rpcUrl: "https://rpc.example.org",

@@ -10,7 +10,7 @@ import type {
     TransactionsRepository,
 } from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
-import type { SequencerWorkerConfig } from "../interfaces/runtime.js";
+import type { SequencerWorkerOptions } from "../interfaces/runtime.js";
 import type { BlockNumber, ChainId, HashHex } from "../types/chain.js";
 
 interface CommonAncestor {
@@ -20,7 +20,7 @@ interface CommonAncestor {
 
 export class SequencerService {
     constructor(
-        private readonly config: SequencerWorkerConfig,
+        private readonly config: SequencerWorkerOptions,
         private readonly source: BlockSource,
         private readonly chainCursorRepository: ChainCursorRepository,
         private readonly blocksRepository: BlocksRepository,

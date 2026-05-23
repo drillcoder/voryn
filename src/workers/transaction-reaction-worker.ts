@@ -7,14 +7,14 @@ import type {
     TransactionsRepository,
     WorkerCursorsRepository,
 } from "../interfaces/repositories.js";
-import type { ReactionWorkerConfig } from "../interfaces/runtime.js";
+import type { ReactionWorkerOptions } from "../interfaces/runtime.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cursor-repository.js";
 import { PostgresTransactionsRepository } from "../repositories/postgres/transactions-repository.js";
 import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker-cursors-repository.js";
 import { ReactionService } from "../services/reaction-service.js";
 import { resolveDbDependencies, resolveLogger } from "../runtime/resolvers.js";
-import type { ReactionWorkerOptions } from "../runtime/types.js";
+import type { RuntimeDbOptions, RuntimeLoggerOptions } from "../runtime/types.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 import { buildReactionWorkerLockKey } from "./worker-lock-keys.js";
 
@@ -25,15 +25,22 @@ export interface TransactionReactionWorkerDatabaseDependencies {
     leaderLock: LeaderLock;
 }
 
-export type CreateTransactionReactionWorkerOptions = ReactionWorkerOptions<
-    ReactionWorkerConfig,
-    TransactionReactionHandler,
-    TransactionReactionWorkerDatabaseDependencies
->;
+export type CreateTransactionReactionWorkerOptions =
+    RuntimeLoggerOptions
+    & ReactionWorkerOptions
+    & RuntimeDbOptions<TransactionReactionWorkerDatabaseDependencies>
+    & { handler: TransactionReactionHandler };
 
 export class TransactionReactionWorker extends SingletonPollingWorker {
     static async create(options: CreateTransactionReactionWorkerOptions): Promise<TransactionReactionWorker> {
         const logger = resolveLogger(options);
+        const config: ReactionWorkerOptions = {
+            chainId: options.chainId,
+            delayBetweenTicksMs: options.delayBetweenTicksMs,
+            workerName: options.workerName,
+            batchSize: options.batchSize,
+            skipFlushInterval: options.skipFlushInterval,
+        };
         const { dependencies, dispose } = await resolveDbDependencies<TransactionReactionWorkerDatabaseDependencies>(
             options,
             logger,
@@ -41,11 +48,11 @@ export class TransactionReactionWorker extends SingletonPollingWorker {
                 chainCursorRepository: new PostgresChainCursorRepository(pool),
                 transactionsRepository: new PostgresTransactionsRepository(pool),
                 workerCursorsRepository: new PostgresWorkerCursorsRepository(pool),
-                leaderLock: new PostgresLeaderLock(pool, buildReactionWorkerLockKey("transaction", options.config)),
+                leaderLock: new PostgresLeaderLock(pool, buildReactionWorkerLockKey("transaction", config)),
             })
         );
         const service = new ReactionService({
-            config: options.config,
+            config,
             streamType: "transaction",
             handler: options.handler,
             chainCursorRepository: dependencies.chainCursorRepository,
@@ -54,11 +61,11 @@ export class TransactionReactionWorker extends SingletonPollingWorker {
             logger,
         });
 
-        return new TransactionReactionWorker(options.config, service, dependencies.leaderLock, logger, dispose);
+        return new TransactionReactionWorker(config, service, dependencies.leaderLock, logger, dispose);
     }
 
     private constructor(
-        private readonly config: ReactionWorkerConfig,
+        private readonly config: ReactionWorkerOptions,
         private readonly service: ReactionService,
         leaderLock: LeaderLock,
         logger: Logger,

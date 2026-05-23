@@ -50,16 +50,14 @@ describe("integration workers: lifecycle and wiring", () => {
 
         const worker = await FetchWorker.create({
             logLevel: "error",
-            config: {
-                chainId: 1,
-                delayBetweenTicksMs: 1,
-                fetchBatchSize: 1,
-                fetchConcurrency: 1,
-                fetchClaimTtlMs: 10_000,
-                retryMaxAttempts: 3,
-                retryBaseDelayMs: 10,
-                retryMaxDelayMs: 1000,
-            },
+            chainId: 1,
+            delayBetweenTicksMs: 1,
+            fetchBatchSize: 1,
+            fetchConcurrency: 1,
+            fetchClaimTtlMs: 10_000,
+            retryMaxAttempts: 3,
+            retryBaseDelayMs: 10,
+            retryMaxDelayMs: 1000,
             source: idleSource,
             overrides: {
                 blockJobsRepository,
@@ -83,16 +81,14 @@ describe("integration workers: lifecycle and wiring", () => {
 
         const worker = await FetchWorker.create({
             logLevel: "error",
-            config: {
-                chainId: 1,
-                delayBetweenTicksMs: 1,
-                fetchBatchSize: 1,
-                fetchConcurrency: 1,
-                fetchClaimTtlMs: 10_000,
-                retryMaxAttempts: 3,
-                retryBaseDelayMs: 10,
-                retryMaxDelayMs: 1000,
-            },
+            chainId: 1,
+            delayBetweenTicksMs: 1,
+            fetchBatchSize: 1,
+            fetchConcurrency: 1,
+            fetchClaimTtlMs: 10_000,
+            retryMaxAttempts: 3,
+            retryBaseDelayMs: 10,
+            retryMaxDelayMs: 1000,
             source: idleSource,
             overrides: {
                 blockJobsRepository,
@@ -123,12 +119,10 @@ describe("integration workers: lifecycle and wiring", () => {
 
         const workerA = await HeadWorker.create({
             logLevel: "error",
-            config: {
-                chainId: 1,
-                confirmations: 10,
-                delayBetweenTicksMs: 1,
-                depthBlocks: 64,
-            },
+            chainId: 1,
+            confirmations: 10,
+            delayBetweenTicksMs: 1,
+            depthBlocks: 64,
             source: idleSource,
             overrides: {
                 chainCursorRepository,
@@ -142,12 +136,10 @@ describe("integration workers: lifecycle and wiring", () => {
         });
         const workerB = await HeadWorker.create({
             logLevel: "error",
-            config: {
-                chainId: 1,
-                confirmations: 10,
-                delayBetweenTicksMs: 1,
-                depthBlocks: 64,
-            },
+            chainId: 1,
+            confirmations: 10,
+            delayBetweenTicksMs: 1,
+            depthBlocks: 64,
             source: idleSource,
             overrides: {
                 chainCursorRepository,

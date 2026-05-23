@@ -10,7 +10,7 @@ import type {
     EventsRepository,
     TransactionsRepository,
 } from "../../../src/interfaces/repositories.js";
-import type { SequencerWorkerConfig } from "../../../src/interfaces/runtime.js";
+import type { SequencerWorkerOptions } from "../../../src/interfaces/runtime.js";
 import type { TransactionManager } from "../../../src/interfaces/transaction-manager.js";
 import type { BlockNumber, ChainId, HashHex } from "../../../src/types/chain.js";
 import { SequencerService } from "../../../src/services/sequencer-service.js";
@@ -165,7 +165,7 @@ const createService = (options: {
     eventsRepository?: EventsRepository;
     blockJobsRepository?: BlockJobsRepository;
     transactionManager: TransactionManager;
-    config?: Partial<SequencerWorkerConfig>;
+    config?: Partial<SequencerWorkerOptions>;
     logger?: Logger;
 }): SequencerService => new SequencerService(
     {

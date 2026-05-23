@@ -55,7 +55,7 @@ describe("e2e retention boundary", () => {
 
         const headWorker = await HeadWorker.create({
             logLevel: "error",
-            config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
+             chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 ,
             source,
             overrides: {
                 chainCursorRepository,
@@ -69,16 +69,14 @@ describe("e2e retention boundary", () => {
         });
         const fetchWorker = await FetchWorker.create({
             logLevel: "error",
-            config: {
-                chainId: CHAIN_ID,
-                delayBetweenTicksMs: 5,
-                fetchBatchSize: 2,
-                fetchConcurrency: 1,
-                fetchClaimTtlMs: 60_000,
-                retryMaxAttempts: 3,
-                retryBaseDelayMs: 10,
-                retryMaxDelayMs: 100,
-            },
+            chainId: CHAIN_ID,
+            delayBetweenTicksMs: 5,
+            fetchBatchSize: 2,
+            fetchConcurrency: 1,
+            fetchClaimTtlMs: 60_000,
+            retryMaxAttempts: 3,
+            retryBaseDelayMs: 10,
+            retryMaxDelayMs: 100,
             source,
             overrides: {
                 blockJobsRepository,
@@ -90,7 +88,7 @@ describe("e2e retention boundary", () => {
         });
         const sequencerWorker = await SequencerWorker.create({
             logLevel: "error",
-            config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 2 },
+             chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 2 ,
             source,
             overrides: {
                 chainCursorRepository,
@@ -104,7 +102,7 @@ describe("e2e retention boundary", () => {
         });
         const retentionWorker = await RetentionWorker.create({
             logLevel: "error",
-            config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, retentionDepthBlocks: 2 },
+             chainId: CHAIN_ID, delayBetweenTicksMs: 5, retentionDepthBlocks: 2 ,
             overrides: {
                 chainCursorRepository,
                 blockJobsRepository,

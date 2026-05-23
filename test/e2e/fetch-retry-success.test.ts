@@ -55,7 +55,7 @@ describe("e2e fetch retry success", () => {
 
         const headWorker = await HeadWorker.create({
             logLevel: "error",
-            config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
+             chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 ,
             source,
             overrides: {
                 chainCursorRepository,
@@ -69,16 +69,14 @@ describe("e2e fetch retry success", () => {
         });
         const fetchWorker = await FetchWorker.create({
             logLevel: "error",
-            config: {
-                chainId: CHAIN_ID,
-                delayBetweenTicksMs: 5,
-                fetchBatchSize: 1,
-                fetchConcurrency: 1,
-                fetchClaimTtlMs: 60_000,
-                retryMaxAttempts: 3,
-                retryBaseDelayMs: 1,
-                retryMaxDelayMs: 1,
-            },
+            chainId: CHAIN_ID,
+            delayBetweenTicksMs: 5,
+            fetchBatchSize: 1,
+            fetchConcurrency: 1,
+            fetchClaimTtlMs: 60_000,
+            retryMaxAttempts: 3,
+            retryBaseDelayMs: 1,
+            retryMaxDelayMs: 1,
             source,
             overrides: {
                 blockJobsRepository,
@@ -90,7 +88,7 @@ describe("e2e fetch retry success", () => {
         });
         const sequencerWorker = await SequencerWorker.create({
             logLevel: "error",
-            config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 1 },
+             chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 1 ,
             source,
             overrides: {
                 chainCursorRepository,

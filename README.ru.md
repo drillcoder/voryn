@@ -114,39 +114,33 @@ const chainId = 1;
 const logLevel = "info";
 
 const headOptions = {
-    config: {
-        chainId,
-        delayBetweenTicksMs: 1_000,
-        confirmations: 12,
-        depthBlocks: 65_000,
-    },
+    chainId,
+    delayBetweenTicksMs: 1_000,
+    confirmations: 12,
+    depthBlocks: 65_000,
     logLevel,
     dbUrl,
     rpcUrl,
 };
 
 const fetchOptions = {
-    config: {
-        chainId,
-        delayBetweenTicksMs: 100,
-        fetchBatchSize: 10,
-        fetchConcurrency: 2,
-        fetchClaimTtlMs: 125_000,
-        retryMaxAttempts: 10,
-        retryBaseDelayMs: 1_000,
-        retryMaxDelayMs: 10_000,
-    },
+    chainId,
+    delayBetweenTicksMs: 100,
+    fetchBatchSize: 10,
+    fetchConcurrency: 2,
+    fetchClaimTtlMs: 125_000,
+    retryMaxAttempts: 10,
+    retryBaseDelayMs: 1_000,
+    retryMaxDelayMs: 10_000,
     logLevel,
     dbUrl,
     rpcUrl,
 };
 
 const sequencerOptions = {
-    config: {
-        chainId,
-        delayBetweenTicksMs: 100,
-        maxBlocksPerTick: 10,
-    },
+    chainId,
+    delayBetweenTicksMs: 100,
+    maxBlocksPerTick: 10,
     logLevel,
     dbUrl,
     rpcUrl,
@@ -194,13 +188,11 @@ const handler: EventReactionHandler = async (event): Promise<ReactionHandlerResu
 };
 
 const options: CreateEventReactionWorkerOptions = {
-    config: {
-        chainId: 1,
-        workerName: "contract-events",
-        delayBetweenTicksMs: 500,
-        batchSize: 1000,
-        skipFlushInterval: 100,
-    },
+    chainId: 1,
+    workerName: "contract-events",
+    delayBetweenTicksMs: 500,
+    batchSize: 1000,
+    skipFlushInterval: 100,
     logLevel,
     dbUrl,
     handler,
@@ -235,12 +227,11 @@ const dbUrl = "postgres://user:pass@localhost:5432/voryn";
 
 const metrics = await PipelineMetrics.create({
     dbUrl,
-    config: {
-        chains: [
-            { chainId: 1, rpcUrl: "https://mainnet-rpc.example.org" },
-            { chainId: 56, rpcUrl: "https://bsc-rpc.example.org" },
-        ],
-    },
+    chainIds: [1, 56],
+    rpcUrls: [
+        "https://mainnet-rpc.example.org",
+        "https://bsc-rpc.example.org",
+    ],
 });
 
 const snapshot = await metrics.get();

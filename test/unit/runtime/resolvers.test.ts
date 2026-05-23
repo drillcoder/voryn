@@ -4,8 +4,8 @@ import { ConsoleLogger } from "../../../src/loggers/console-logger.js";
 import { validatePostgresSchema } from "../../../src/postgres/schema.js";
 import {
     resolveDbDependencies,
-    resolveEthersSource,
-    resolveEthersSources,
+    resolveSingleBlockSource,
+    resolveMultiBlockSource,
     resolveLogger,
 } from "../../../src/runtime/resolvers.js";
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
@@ -43,7 +43,7 @@ afterEach(() => {
     jest.mocked(validatePostgresSchema).mockReset();
 });
 
-test("resolveEthersSource returns provided source", async () => {
+test("resolveSingleBlockSource returns provided source", async () => {
     const source: BlockSource = {
         getLatestBlockNumber: async () => 0,
         getLatestBlock: async () => {
@@ -57,24 +57,24 @@ test("resolveEthersSource returns provided source", async () => {
         },
     };
 
-    await expect(resolveEthersSource({ source })).resolves.toBe(source);
+    await expect(resolveSingleBlockSource({ source })).resolves.toBe(source);
 });
 
-test("resolveEthersSource creates ethers source from rpcUrl", async () => {
-    await expect(resolveEthersSource({ chain: { chainId: 1, rpcUrl: "http://127.0.0.1/1" } }))
+test("resolveSingleBlockSource creates ethers source from rpcUrl", async () => {
+    await expect(resolveSingleBlockSource({ rpcUrl: "http://127.0.0.1/1" }))
         .resolves.toBeInstanceOf(EthersBlockSource);
 });
 
-test("resolveEthersSources creates multi-chain ethers source", async () => {
-    await expect(resolveEthersSources({
-        chains: [
-            { chainId: 1, rpcUrl: "http://127.0.0.1/1" },
-            { chainId: 56, rpcUrl: "http://127.0.0.1/56" },
+test("resolveMultiBlockSource creates multi-chain ethers source", async () => {
+    await expect(resolveMultiBlockSource({
+        rpcUrls: [
+            "http://127.0.0.1/1",
+            "http://127.0.0.1/56",
         ],
     })).resolves.toBeInstanceOf(EthersBlockSource);
 });
 
-test("resolveEthersSources returns provided source", async () => {
+test("resolveMultiBlockSource returns provided source", async () => {
     const source: BlockSource = {
         getLatestBlockNumber: async () => 0,
         getLatestBlock: async () => {
@@ -88,30 +88,21 @@ test("resolveEthersSources returns provided source", async () => {
         },
     };
 
-    await expect(resolveEthersSources({ source })).resolves.toBe(source);
+    await expect(resolveMultiBlockSource({ source })).resolves.toBe(source);
 });
 
 test.each([
-    [{ chains: [] }, "Ethers source chains config must not be empty"],
+    [{ rpcUrls: [] }, "Ethers source rpcUrls config must not be empty"],
     [
-        { chains: [{ chainId: 0, rpcUrl: "http://127.0.0.1/0" }] },
-        "Ethers source chain id is invalid: 0",
-    ],
-    [
-        {
-            chains: [
-                { chainId: 1, rpcUrl: "http://127.0.0.1/1" },
-                { chainId: 56, rpcUrl: "http://127.0.0.1/1" },
-            ],
-        },
+        { rpcUrls: ["http://127.0.0.1/1", "http://127.0.0.1/1"] },
         "Ethers source chain id is duplicated: 1",
     ],
     [
-        { chains: [{ chainId: 1, rpcUrl: "" }] },
-        "Ethers source rpcUrl is empty for chain 1",
+        { rpcUrls: [""] },
+        "Ethers source rpcUrl is empty",
     ],
-])("resolveEthersSources rejects invalid chains", async (config, expectedError) => {
-    await expect(resolveEthersSources(config)).rejects.toThrow(expectedError);
+])("resolveMultiBlockSource rejects invalid rpc urls", async (config, expectedError) => {
+    await expect(resolveMultiBlockSource(config)).rejects.toThrow(expectedError);
 });
 
 test("resolveLogger returns provided logger", () => {

@@ -1,5 +1,4 @@
 import { Pool } from "pg";
-import type { PipelineMetricsConfig } from "../../../src/interfaces/metrics.js";
 import type { BlockJobsRepository } from "../../../src/interfaces/repositories.js";
 import { PipelineMetrics } from "../../../src/metrics/pipeline-metrics.js";
 import { validatePostgresSchema } from "../../../src/postgres/schema.js";
@@ -31,8 +30,8 @@ jest.mock("../../../src/postgres/schema.js", () => ({
     validatePostgresSchema: jest.fn(async () => undefined),
 }));
 
-const config: PipelineMetricsConfig = {
-    chains: [{ chainId: 7, rpcUrl: "http://127.0.0.1:8545" }],
+const options = {
+    chainIds: [7],
 };
 
 interface PipelineMetricsInternals {
@@ -46,7 +45,8 @@ test("pipeline metrics merges db defaults with overrides and returns disposer", 
     const endSpy = jest.spyOn(Pool.prototype, "end");
     const metrics = await PipelineMetrics.create({
         logLevel: "error",
-        config,
+        ...options,
+        rpcUrls: ["http://127.0.0.1:8545"],
         dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
         overrides: {
             blockJobsRepository,

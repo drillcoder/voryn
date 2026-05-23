@@ -9,11 +9,11 @@ import type {
 } from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import type { RetentionPurgeResult } from "../interfaces/pipeline.js";
-import type { RetentionWorkerConfig } from "../interfaces/runtime.js";
+import type { RetentionWorkerOptions } from "../interfaces/runtime.js";
 
 export class RetentionService {
     constructor(
-        private readonly config: RetentionWorkerConfig,
+        private readonly config: RetentionWorkerOptions,
         private readonly cursorRepository: ChainCursorRepository,
         private readonly blockJobsRepository: BlockJobsRepository,
         private readonly blocksRepository: BlocksRepository,

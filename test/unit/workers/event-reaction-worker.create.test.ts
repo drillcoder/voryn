@@ -1,5 +1,5 @@
 import type { EventReactionHandler } from "../../../src/interfaces/reaction.js";
-import type { ReactionWorkerConfig } from "../../../src/interfaces/runtime.js";
+import type { ReactionWorkerOptions } from "../../../src/interfaces/runtime.js";
 import { EventReactionWorker } from "../../../src/workers/event-reaction-worker.js";
 import {
     ADDRESS,
@@ -16,7 +16,7 @@ import {
 
 test("event reaction worker create wires service execution", async () => {
     const handled: Array<[number, number, number]> = [];
-    const config: ReactionWorkerConfig = {
+    const config: ReactionWorkerOptions = {
         chainId: 12,
         workerName: "event-reaction",
         delayBetweenTicksMs: 1000,
@@ -31,7 +31,7 @@ test("event reaction worker create wires service execution", async () => {
 
     const worker = await EventReactionWorker.create({
         logLevel: "error",
-        config,
+        ...config,
         handler,
         overrides: {
             chainCursorRepository: {
@@ -85,7 +85,7 @@ test("event reaction worker create wires service execution", async () => {
 });
 
 test("event reaction worker throws when cursor has no log index", async () => {
-    const config: ReactionWorkerConfig = {
+    const config: ReactionWorkerOptions = {
         chainId: 12,
         workerName: "event-reaction",
         delayBetweenTicksMs: 1000,
@@ -96,7 +96,7 @@ test("event reaction worker throws when cursor has no log index", async () => {
 
     const worker = await EventReactionWorker.create({
         logLevel: "error",
-        config,
+        ...config,
         handler,
         overrides: {
             chainCursorRepository: {

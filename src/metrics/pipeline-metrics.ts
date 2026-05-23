@@ -1,5 +1,5 @@
 import type { Pool } from "pg";
-import type { PipelineMetricsConfig, PipelineMetricsResult } from "../interfaces/metrics.js";
+import type { PipelineMetricsResult } from "../interfaces/metrics.js";
 import type {
     BlockJobsRepository,
     BlocksRepository,
@@ -11,8 +11,11 @@ import { PostgresBlocksRepository } from "../repositories/postgres/blocks-reposi
 import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cursor-repository.js";
 import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker-cursors-repository.js";
 import { PipelineMetricsService } from "../services/pipeline-metrics-service.js";
-import { resolveDbDependencies, resolveEthersSources, resolveLogger } from "../runtime/resolvers.js";
-import type { RuntimeBaseOptions, RuntimeDbOptions } from "../runtime/types.js";
+import type { PipelineMetricsServiceConfig } from "../services/pipeline-metrics-service.js";
+import { resolveDbDependencies, resolveMultiBlockSource, resolveLogger } from "../runtime/resolvers.js";
+import type { RuntimeDbOptions, RuntimeLoggerOptions } from "../runtime/types.js";
+import type { MultiSourceOptions } from "../runtime/types.js";
+import type { ChainId } from "../types/chain.js";
 import { formatPipelineMetricsPrometheus } from "./prometheus.js";
 
 export interface PipelineMetricsDatabaseDependencies {
@@ -23,13 +26,21 @@ export interface PipelineMetricsDatabaseDependencies {
 }
 
 export type CreatePipelineMetricsOptions =
-    RuntimeBaseOptions<PipelineMetricsConfig>
+    RuntimeLoggerOptions
+    & {
+        chainIds: readonly ChainId[];
+    }
+    & MultiSourceOptions
     & RuntimeDbOptions<PipelineMetricsDatabaseDependencies>;
 
 export class PipelineMetrics {
     static async create(options: CreatePipelineMetricsOptions): Promise<PipelineMetrics> {
         const logger = resolveLogger(options);
-        const source = await resolveEthersSources({ chains: options.config.chains });
+        validatePipelineMetricsOptions(options);
+        const source = await resolveMultiBlockSource(options);
+        const config: PipelineMetricsServiceConfig = {
+            chainIds: options.chainIds,
+        };
         const { dependencies, dispose } = await resolveDbDependencies<PipelineMetricsDatabaseDependencies>(
             options,
             logger,
@@ -41,7 +52,7 @@ export class PipelineMetrics {
             })
         );
         const service = new PipelineMetricsService(
-            options.config,
+            config,
             source,
             dependencies.chainCursorRepository,
             dependencies.blockJobsRepository,
@@ -68,5 +79,29 @@ export class PipelineMetrics {
 
     async close(): Promise<void> {
         await this.dispose?.();
+    }
+}
+
+function validatePipelineMetricsOptions(options: CreatePipelineMetricsOptions): void {
+    if (options.chainIds.length === 0) {
+        throw new Error("Pipeline metrics chainIds config must not be empty");
+    }
+
+    const seenChainIds = new Set<number>();
+
+    for (const chainId of options.chainIds) {
+        if (!Number.isInteger(chainId) || chainId <= 0) {
+            throw new Error(`Pipeline metrics chain id is invalid: ${String(chainId)}`);
+        }
+
+        if (seenChainIds.has(chainId)) {
+            throw new Error(`Pipeline metrics chain id is duplicated: ${String(chainId)}`);
+        }
+
+        seenChainIds.add(chainId);
+    }
+
+    if (options.rpcUrls !== undefined && options.chainIds.length !== options.rpcUrls.length) {
+        throw new Error("Pipeline metrics chainIds and rpcUrls configs must have the same length");
     }
 }

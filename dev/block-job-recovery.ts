@@ -10,7 +10,7 @@ async function run(): Promise<void> {
     const toBlock = envOptionalNumber("VORYN_RECOVERY_TO_BLOCK");
 
     const config = { chainId };
-    const recovery = await BlockJobRecovery.create({ config, logger, dbUrl });
+    const recovery = await BlockJobRecovery.create({ ...config, logger, dbUrl });
 
     try {
         if (blockNumber !== null && (fromBlock !== null || toBlock !== null)) {

@@ -1,17 +1,17 @@
 import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import type { Logger } from "../interfaces/logger.js";
-import type { FetchWorkerConfig } from "../interfaces/runtime.js";
+import type { FetchWorkerOptions } from "../interfaces/runtime.js";
 import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../repositories/postgres/block-jobs-repository.js";
 import { PostgresBlocksRepository } from "../repositories/postgres/blocks-repository.js";
 import { PostgresEventsRepository } from "../repositories/postgres/events-repository.js";
 import { PostgresTransactionsRepository } from "../repositories/postgres/transactions-repository.js";
-import { FetchService } from "../services/fetch-service.js";
 import type { FetchServiceConfig } from "../services/fetch-service.js";
-import { resolveDbDependencies, resolveEthersSource, resolveLogger } from "../runtime/resolvers.js";
+import { FetchService } from "../services/fetch-service.js";
+import { resolveDbDependencies, resolveLogger, resolveSingleBlockSource } from "../runtime/resolvers.js";
 import { PollingWorker } from "./polling-worker.js";
-import type { RuntimeBaseOptions, RuntimeDbOptions, RuntimeSourceOptions } from "../runtime/types.js";
+import type { RuntimeDbOptions, RuntimeLoggerOptions, SingleSourceOptions } from "../runtime/types.js";
 import type {
     BlockJobsRepository,
     BlocksRepository,
@@ -19,7 +19,6 @@ import type {
     TransactionsRepository,
 } from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
-import type { BlockSource } from "../interfaces/block-source.js";
 
 export interface FetchWorkerDatabaseDependencies {
     blockJobsRepository: BlockJobsRepository;
@@ -30,18 +29,24 @@ export interface FetchWorkerDatabaseDependencies {
 }
 
 export type CreateFetchWorkerOptions =
-    RuntimeBaseOptions<FetchWorkerConfig>
-    & RuntimeSourceOptions<BlockSource>
+    RuntimeLoggerOptions
+    & FetchWorkerOptions
+    & SingleSourceOptions
     & RuntimeDbOptions<FetchWorkerDatabaseDependencies>;
 
 export class FetchWorker extends PollingWorker {
     static async create(options: CreateFetchWorkerOptions): Promise<FetchWorker> {
         const logger = resolveLogger(options);
-        const source = await resolveEthersSource(options.source !== undefined
-            ? { source: options.source }
-            : { chain: { chainId: options.config.chainId, rpcUrl: options.rpcUrl } });
+        const source = await resolveSingleBlockSource(options);
         const config: FetchServiceConfig = {
-            ...options.config,
+            chainId: options.chainId,
+            delayBetweenTicksMs: options.delayBetweenTicksMs,
+            fetchBatchSize: options.fetchBatchSize,
+            fetchConcurrency: options.fetchConcurrency,
+            fetchClaimTtlMs: options.fetchClaimTtlMs,
+            retryMaxAttempts: options.retryMaxAttempts,
+            retryBaseDelayMs: options.retryBaseDelayMs,
+            retryMaxDelayMs: options.retryMaxDelayMs,
             instanceId: randomUUID(),
         };
         const { dependencies, dispose } = await resolveDbDependencies<FetchWorkerDatabaseDependencies>(

@@ -13,11 +13,11 @@ import type {
     TransactionsRepository,
     WorkerCursorsRepository,
 } from "../interfaces/repositories.js";
-import type { ReactionWorkerConfig } from "../interfaces/runtime.js";
+import type { ReactionWorkerOptions } from "../interfaces/runtime.js";
 import type { StreamType } from "../types/pipeline.js";
 
 interface ReactionServiceBaseOptions<TStreamType extends StreamType> {
-    config: ReactionWorkerConfig;
+    config: ReactionWorkerOptions;
     streamType: TStreamType;
     chainCursorRepository: ChainCursorRepository;
     workerCursorsRepository: WorkerCursorsRepository;

@@ -42,16 +42,17 @@ jest.mock("ethers", () => {
 const HASH = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
 const config = {
-    chains: [
-        { chainId: 7, rpcUrl: "http://127.0.0.1/7" },
-        { chainId: 8, rpcUrl: "http://127.0.0.1/8" },
+    chainIds: [7, 8],
+    rpcUrls: [
+        "http://127.0.0.1/7",
+        "http://127.0.0.1/8",
     ],
 };
 
 test("pipeline metrics create wires aggregate service execution", async () => {
     const metrics = await PipelineMetrics.create({
         logLevel: "error",
-        config,
+        ...config,
         overrides: {
             chainCursorRepository: createReadyChainCursorRepository(),
             blockJobsRepository: createNoopBlockJobsRepository(),
@@ -71,7 +72,7 @@ test("pipeline metrics create wires aggregate service execution", async () => {
 test("pipeline metrics returns prometheus text for all configured chains", async () => {
     const metrics = await PipelineMetrics.create({
         logLevel: "error",
-        config,
+        ...config,
         overrides: {
             chainCursorRepository: createReadyChainCursorRepository(),
             blockJobsRepository: createNoopBlockJobsRepository(),
@@ -91,19 +92,27 @@ test("pipeline metrics returns prometheus text for all configured chains", async
 });
 
 test.each([
-    [{ chains: [] }, "Ethers source chains config must not be empty"],
+    [{ chainIds: [], rpcUrls: [] }, "Pipeline metrics chainIds config must not be empty"],
     [
-        { chains: [{ chainId: 7, rpcUrl: "http://127.0.0.1/7" }, { chainId: 8, rpcUrl: "http://127.0.0.1/7" }] },
-        "Ethers source chain id is duplicated: 7",
+        { chainIds: [7, 8], rpcUrls: ["http://127.0.0.1/7"] },
+        "Pipeline metrics chainIds and rpcUrls configs must have the same length",
     ],
     [
-        { chains: [{ chainId: 7, rpcUrl: " " }] },
-        "Ethers source rpcUrl is empty for chain 7",
+        { chainIds: [7, 7], rpcUrls: ["http://127.0.0.1/7", "http://127.0.0.1/8"] },
+        "Pipeline metrics chain id is duplicated: 7",
     ],
-])("pipeline metrics rejects invalid chains config", async (invalidConfig, expectedError) => {
+    [
+        { chainIds: [0], rpcUrls: ["http://127.0.0.1/7"] },
+        "Pipeline metrics chain id is invalid: 0",
+    ],
+    [
+        { chainIds: [7], rpcUrls: [" "] },
+        "Ethers source rpcUrl is empty",
+    ],
+])("pipeline metrics rejects invalid source config", async (invalidConfig, expectedError) => {
     await expect(PipelineMetrics.create({
         logLevel: "error",
-        config: invalidConfig,
+        ...invalidConfig,
         overrides: {
             chainCursorRepository: createReadyChainCursorRepository(),
             blockJobsRepository: createNoopBlockJobsRepository(),

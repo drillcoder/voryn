@@ -49,7 +49,7 @@ describe("e2e startup from empty state", () => {
 
         const headWorker = await HeadWorker.create({
             logLevel: "error",
-            config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
+             chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 ,
             source,
             overrides: {
                 chainCursorRepository,
@@ -63,13 +63,11 @@ describe("e2e startup from empty state", () => {
         });
         const eventWorker = await EventReactionWorker.create({
             logLevel: "error",
-            config: {
-                chainId: CHAIN_ID,
-                delayBetweenTicksMs: 5,
-                workerName: "reaction-event-startup",
-                batchSize: 5,
-                skipFlushInterval: 5,
-            },
+            chainId: CHAIN_ID,
+            delayBetweenTicksMs: 5,
+            workerName: "reaction-event-startup",
+            batchSize: 5,
+            skipFlushInterval: 5,
             handler: eventHandler,
             overrides: {
                 chainCursorRepository,
@@ -80,13 +78,11 @@ describe("e2e startup from empty state", () => {
         });
         const transactionWorker = await TransactionReactionWorker.create({
             logLevel: "error",
-            config: {
-                chainId: CHAIN_ID,
-                delayBetweenTicksMs: 5,
-                workerName: "reaction-transaction-startup",
-                batchSize: 5,
-                skipFlushInterval: 5,
-            },
+            chainId: CHAIN_ID,
+            delayBetweenTicksMs: 5,
+            workerName: "reaction-transaction-startup",
+            batchSize: 5,
+            skipFlushInterval: 5,
             handler: transactionHandler,
             overrides: {
                 chainCursorRepository,

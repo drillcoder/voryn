@@ -9,7 +9,7 @@ import type {
     TransactionsRepository,
 } from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
-import type { SequencerWorkerConfig } from "../interfaces/runtime.js";
+import type { SequencerWorkerOptions } from "../interfaces/runtime.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../repositories/postgres/block-jobs-repository.js";
@@ -19,9 +19,8 @@ import { PostgresEventsRepository } from "../repositories/postgres/events-reposi
 import { PostgresTransactionsRepository } from "../repositories/postgres/transactions-repository.js";
 import { SequencerService } from "../services/sequencer-service.js";
 import { SEQUENCER_WORKER_LOCK_KEY_BASE } from "./worker-lock-keys.js";
-import { resolveDbDependencies, resolveEthersSource, resolveLogger } from "../runtime/resolvers.js";
-import type { RuntimeBaseOptions, RuntimeDbOptions, RuntimeSourceOptions } from "../runtime/types.js";
-import type { BlockSource } from "../interfaces/block-source.js";
+import { resolveDbDependencies, resolveLogger, resolveSingleBlockSource } from "../runtime/resolvers.js";
+import type { RuntimeDbOptions, RuntimeLoggerOptions, SingleSourceOptions } from "../runtime/types.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
 export interface SequencerWorkerDatabaseDependencies {
@@ -35,16 +34,20 @@ export interface SequencerWorkerDatabaseDependencies {
 }
 
 export type CreateSequencerWorkerOptions =
-    RuntimeBaseOptions<SequencerWorkerConfig>
-    & RuntimeSourceOptions<BlockSource>
+    RuntimeLoggerOptions
+    & SequencerWorkerOptions
+    & SingleSourceOptions
     & RuntimeDbOptions<SequencerWorkerDatabaseDependencies>;
 
 export class SequencerWorker extends SingletonPollingWorker {
     static async create(options: CreateSequencerWorkerOptions): Promise<SequencerWorker> {
         const logger = resolveLogger(options);
-        const source = await resolveEthersSource(options.source !== undefined
-            ? { source: options.source }
-            : { chain: { chainId: options.config.chainId, rpcUrl: options.rpcUrl } });
+        const source = await resolveSingleBlockSource(options);
+        const config: SequencerWorkerOptions = {
+            chainId: options.chainId,
+            delayBetweenTicksMs: options.delayBetweenTicksMs,
+            maxBlocksPerTick: options.maxBlocksPerTick,
+        };
         const { dependencies, dispose } = await resolveDbDependencies<SequencerWorkerDatabaseDependencies>(
             options,
             logger,
@@ -57,12 +60,12 @@ export class SequencerWorker extends SingletonPollingWorker {
                 transactionManager: new PostgresTransactionManager(pool),
                 leaderLock: new PostgresLeaderLock(
                     pool,
-                    SEQUENCER_WORKER_LOCK_KEY_BASE + BigInt(options.config.chainId)
+                    SEQUENCER_WORKER_LOCK_KEY_BASE + BigInt(config.chainId)
                 ),
             })
         );
         const service = new SequencerService(
-            options.config,
+            config,
             source,
             dependencies.chainCursorRepository,
             dependencies.blocksRepository,
@@ -73,11 +76,11 @@ export class SequencerWorker extends SingletonPollingWorker {
             logger,
         );
 
-        return new SequencerWorker(options.config, service, dependencies.leaderLock, logger, dispose);
+        return new SequencerWorker(config, service, dependencies.leaderLock, logger, dispose);
     }
 
     private constructor(
-        private readonly config: SequencerWorkerConfig,
+        private readonly config: SequencerWorkerOptions,
         private readonly service: SequencerService,
         leaderLock: LeaderLock,
         logger: Logger,

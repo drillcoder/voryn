@@ -6,10 +6,9 @@ import type {
 import { TransactionReactionWorker } from "@drillcoder/voryn";
 
 (async () => {
-    const chainId = 1;
     const handler: TransactionReactionHandler = async (transaction): Promise<ReactionHandlerResult> => {
         console.info("transaction_received", {
-            chainId,
+            chainId: transaction.chainId,
             blockNumber: transaction.blockNumber,
             hash: transaction.hash,
             transactionIndex: transaction.index,
@@ -18,13 +17,11 @@ import { TransactionReactionWorker } from "@drillcoder/voryn";
         return transaction.index === 10 ? "processed" : "skipped";
     };
     const options: CreateTransactionReactionWorkerOptions = {
-        config: {
-            chainId,
-            delayBetweenTicksMs: 500,
-            workerName: "transaction-reaction-worker",
-            batchSize: 500,
-            skipFlushInterval: 100,
-        },
+        chainId: 1,
+        delayBetweenTicksMs: 500,
+        workerName: "transaction-reaction-worker",
+        batchSize: 500,
+        skipFlushInterval: 100,
         logLevel: "info",
         dbUrl: "postgres://user:pass@localhost:5432/voryn",
         handler,

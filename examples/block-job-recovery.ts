@@ -3,9 +3,7 @@ import { BlockJobRecovery } from "@drillcoder/voryn";
 
 (async () => {
     const options: CreateBlockJobRecoveryOptions = {
-        config: {
-            chainId: 1,
-        },
+        chainId: 1,
         logLevel: "info",
         dbUrl: "postgres://user:pass@localhost:5432/voryn",
     };

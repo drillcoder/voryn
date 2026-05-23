@@ -8,11 +8,11 @@ import type {
     EventsRepository,
     TransactionsRepository,
 } from "../interfaces/repositories.js";
-import type { FetchWorkerConfig } from "../interfaces/runtime.js";
+import type { FetchWorkerOptions } from "../interfaces/runtime.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import { asErrorMessage } from "../utils/errors.js";
 
-export interface FetchServiceConfig extends FetchWorkerConfig {
+export interface FetchServiceConfig extends FetchWorkerOptions {
     instanceId: string;
 }
 

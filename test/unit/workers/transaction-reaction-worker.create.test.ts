@@ -1,5 +1,5 @@
 import type { TransactionReactionHandler } from "../../../src/interfaces/reaction.js";
-import type { ReactionWorkerConfig } from "../../../src/interfaces/runtime.js";
+import type { ReactionWorkerOptions } from "../../../src/interfaces/runtime.js";
 import { TransactionReactionWorker } from "../../../src/workers/transaction-reaction-worker.js";
 import {
     ADDRESS,
@@ -16,7 +16,7 @@ import {
 
 test("transaction reaction worker create wires service execution", async () => {
     const handled: Array<[number, number]> = [];
-    const config: ReactionWorkerConfig = {
+    const config: ReactionWorkerOptions = {
         chainId: 13,
         workerName: "transaction-reaction",
         delayBetweenTicksMs: 1000,
@@ -31,7 +31,7 @@ test("transaction reaction worker create wires service execution", async () => {
 
     const worker = await TransactionReactionWorker.create({
         logLevel: "error",
-        config,
+        ...config,
         handler,
         overrides: {
             chainCursorRepository: {

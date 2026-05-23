@@ -3,14 +3,11 @@ import { PipelineMetrics } from "@drillcoder/voryn";
 
 (async () => {
     const options: CreatePipelineMetricsOptions = {
-        config: {
-            chains: [
-                {
-                    chainId: 1,
-                    rpcUrl: "https://rpc.example.org",
-                },
-            ],
-        },
+        chainIds: [1, 56],
+        rpcUrls: [
+            "https://mainnet-rpc.example.org",
+            "https://bsc-rpc.example.org",
+        ],
         logLevel: "info",
         dbUrl: "postgres://user:pass@localhost:5432/voryn",
     };

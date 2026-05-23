@@ -5,7 +5,7 @@ import type {
     TransactionsRepository,
     WorkerCursorsRepository,
 } from "../../../src/interfaces/repositories.js";
-import type { ReactionWorkerConfig } from "../../../src/interfaces/runtime.js";
+import type { ReactionWorkerOptions } from "../../../src/interfaces/runtime.js";
 import { ReactionService } from "../../../src/services/reaction-service.js";
 import type { StreamType } from "../../../src/types/pipeline.js";
 import { asAddress, asHash32, asHexData } from "../../../src/utils/hex.js";
@@ -15,7 +15,7 @@ const HASH_B = asHash32("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 const ADDRESS = asAddress("0x1111111111111111111111111111111111111111");
 const DATA = asHexData("0x01");
 
-const config: ReactionWorkerConfig = {
+const config: ReactionWorkerOptions = {
     chainId: 5,
     workerName: "reaction-handler",
     delayBetweenTicksMs: 1000,
@@ -153,7 +153,7 @@ test("reaction service batches skipped transaction cursor advances", async () =>
     const service = new ReactionService({
         config: { ...config, skipFlushInterval: 2 },
         streamType: "transaction",
-        handler: async () => "skipped" ,
+        handler: async () => "skipped",
         chainCursorRepository: createChainCursorRepository(),
         workerCursorsRepository: createWorkerCursorsRepository(
             { lastBlockNumber: 99, lastTransactionIndex: 1 },

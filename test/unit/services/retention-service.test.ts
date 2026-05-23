@@ -1,6 +1,6 @@
 import type { DbExecutor } from "../../../src/interfaces/db.js";
 import type { Logger } from "../../../src/interfaces/logger.js";
-import type { RetentionWorkerConfig } from "../../../src/interfaces/runtime.js";
+import type { RetentionWorkerOptions } from "../../../src/interfaces/runtime.js";
 import type {
     BlockJobsRepository,
     BlocksRepository,
@@ -14,7 +14,7 @@ import { asHash32 } from "../../../src/utils/hex.js";
 
 const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
-const config: RetentionWorkerConfig = {
+const config: RetentionWorkerOptions = {
     chainId: 1,
     delayBetweenTicksMs: 1000,
     retentionDepthBlocks: 42,

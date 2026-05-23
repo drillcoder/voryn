@@ -169,7 +169,7 @@ async function createWorkerSet(
 }> {
     const head = await HeadWorker.create({
         logLevel: "error",
-        config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 },
+         chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 ,
         source,
         overrides: {
             chainCursorRepository,
@@ -183,16 +183,14 @@ async function createWorkerSet(
     });
     const fetch = await FetchWorker.create({
         logLevel: "error",
-        config: {
-            chainId: CHAIN_ID,
-            delayBetweenTicksMs: 5,
-            fetchBatchSize: 2,
-            fetchConcurrency: 1,
-            fetchClaimTtlMs: 60_000,
-            retryMaxAttempts: 3,
-            retryBaseDelayMs: 10,
-            retryMaxDelayMs: 100,
-        },
+        chainId: CHAIN_ID,
+        delayBetweenTicksMs: 5,
+        fetchBatchSize: 2,
+        fetchConcurrency: 1,
+        fetchClaimTtlMs: 60_000,
+        retryMaxAttempts: 3,
+        retryBaseDelayMs: 10,
+        retryMaxDelayMs: 100,
         source,
         overrides: {
             blockJobsRepository,
@@ -204,7 +202,7 @@ async function createWorkerSet(
     });
     const sequencer = await SequencerWorker.create({
         logLevel: "error",
-        config: { chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 2 },
+         chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 2 ,
         source,
         overrides: {
             chainCursorRepository,
@@ -218,13 +216,11 @@ async function createWorkerSet(
     });
     const event = await EventReactionWorker.create({
         logLevel: "error",
-        config: {
-            chainId: CHAIN_ID,
-            delayBetweenTicksMs: 5,
-            workerName: `reaction-event-${workerSuffix}`,
-            batchSize: 2,
-            skipFlushInterval: 2,
-        },
+        chainId: CHAIN_ID,
+        delayBetweenTicksMs: 5,
+        workerName: `reaction-event-${workerSuffix}`,
+        batchSize: 2,
+        skipFlushInterval: 2,
         handler: eventHandler,
         overrides: {
             chainCursorRepository,
@@ -235,13 +231,11 @@ async function createWorkerSet(
     });
     const transaction = await TransactionReactionWorker.create({
         logLevel: "error",
-        config: {
-            chainId: CHAIN_ID,
-            delayBetweenTicksMs: 5,
-            workerName: `reaction-transaction-${workerSuffix}`,
-            batchSize: 2,
-            skipFlushInterval: 2,
-        },
+        chainId: CHAIN_ID,
+        delayBetweenTicksMs: 5,
+        workerName: `reaction-transaction-${workerSuffix}`,
+        batchSize: 2,
+        skipFlushInterval: 2,
         handler: transactionHandler,
         overrides: {
             chainCursorRepository,

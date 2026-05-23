@@ -1,10 +1,5 @@
 import type { BlockSource } from "../interfaces/block-source.js";
-import type {
-    ChainPipelineMetrics,
-    PipelineMetricsConfig,
-    PipelineMetricsResult,
-    PipelineReactionMetrics,
-} from "../interfaces/metrics.js";
+import type { ChainPipelineMetrics, PipelineMetricsResult, PipelineReactionMetrics } from "../interfaces/metrics.js";
 import type {
     BlockJobsRepository,
     BlocksRepository,
@@ -15,9 +10,13 @@ import type { ChainId } from "../types/chain.js";
 
 const FAILED_BLOCKS_LIMIT = 25;
 
+export interface PipelineMetricsServiceConfig {
+    chainIds: readonly ChainId[];
+}
+
 export class PipelineMetricsService {
     constructor(
-        private readonly config: PipelineMetricsConfig,
+        private readonly config: PipelineMetricsServiceConfig,
         private readonly source: BlockSource,
         private readonly chainCursorRepository: ChainCursorRepository,
         private readonly blockJobsRepository: BlockJobsRepository,
@@ -29,7 +28,7 @@ export class PipelineMetricsService {
     async get(): Promise<PipelineMetricsResult> {
         const observedAt = new Date();
         const chains = await Promise.all(
-            this.config.chains.map((chain) => this.getChain(chain.chainId, observedAt))
+            this.config.chainIds.map((chainId) => this.getChain(chainId, observedAt))
         );
 
         return { observedAt, chains };

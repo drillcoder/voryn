@@ -1,5 +1,5 @@
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
-import type { FetchWorkerConfig } from "../../../src/interfaces/runtime.js";
+import type { FetchWorkerOptions } from "../../../src/interfaces/runtime.js";
 import { FetchWorker } from "../../../src/workers/fetch-worker.js";
 import {
     createNoopBlockJobsRepository,
@@ -13,7 +13,7 @@ import {
 
 test("fetch worker create wires service execution", async () => {
     const claimForFetch = jest.fn(async () => null);
-    const config: FetchWorkerConfig = {
+    const config: FetchWorkerOptions = {
         chainId: 1,
         delayBetweenTicksMs: 1000,
         fetchBatchSize: 1,
@@ -38,7 +38,7 @@ test("fetch worker create wires service execution", async () => {
 
     const worker = await FetchWorker.create({
         logLevel: "error",
-        config,
+        ...config,
         source,
         overrides: {
             blockJobsRepository: { ...createNoopBlockJobsRepository(), claimForFetch },

@@ -3,13 +3,13 @@ import type { Logger } from "../interfaces/logger.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
 import type {
     BlockJobsRepository,
-    ChainCursorRepository,
     BlocksRepository,
+    ChainCursorRepository,
     EventsRepository,
     TransactionsRepository,
 } from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
-import type { RetentionWorkerConfig } from "../interfaces/runtime.js";
+import type { RetentionWorkerOptions } from "../interfaces/runtime.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../repositories/postgres/block-jobs-repository.js";
@@ -20,7 +20,7 @@ import { PostgresTransactionsRepository } from "../repositories/postgres/transac
 import { RetentionService } from "../services/retention-service.js";
 import { RETENTION_WORKER_LOCK_KEY_BASE } from "./worker-lock-keys.js";
 import { resolveDbDependencies, resolveLogger } from "../runtime/resolvers.js";
-import type { RuntimeBaseOptions, RuntimeDbOptions } from "../runtime/types.js";
+import type { RuntimeDbOptions, RuntimeLoggerOptions } from "../runtime/types.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
 export interface RetentionWorkerDatabaseDependencies {
@@ -34,12 +34,18 @@ export interface RetentionWorkerDatabaseDependencies {
 }
 
 export type CreateRetentionWorkerOptions =
-    RuntimeBaseOptions<RetentionWorkerConfig>
+    RuntimeLoggerOptions
+    & RetentionWorkerOptions
     & RuntimeDbOptions<RetentionWorkerDatabaseDependencies>;
 
 export class RetentionWorker extends SingletonPollingWorker {
     static async create(options: CreateRetentionWorkerOptions): Promise<RetentionWorker> {
         const logger = resolveLogger(options);
+        const config: RetentionWorkerOptions = {
+            chainId: options.chainId,
+            delayBetweenTicksMs: options.delayBetweenTicksMs,
+            retentionDepthBlocks: options.retentionDepthBlocks,
+        };
         const { dependencies, dispose } = await resolveDbDependencies<RetentionWorkerDatabaseDependencies>(
             options,
             logger,
@@ -52,12 +58,12 @@ export class RetentionWorker extends SingletonPollingWorker {
                 transactionManager: new PostgresTransactionManager(pool),
                 leaderLock: new PostgresLeaderLock(
                     pool,
-                    RETENTION_WORKER_LOCK_KEY_BASE + BigInt(options.config.chainId)
+                    RETENTION_WORKER_LOCK_KEY_BASE + BigInt(config.chainId)
                 ),
             })
         );
         const service = new RetentionService(
-            options.config,
+            config,
             dependencies.chainCursorRepository,
             dependencies.blockJobsRepository,
             dependencies.blocksRepository,
@@ -67,11 +73,11 @@ export class RetentionWorker extends SingletonPollingWorker {
             logger,
         );
 
-        return new RetentionWorker(options.config, service, dependencies.leaderLock, logger, dispose);
+        return new RetentionWorker(config, service, dependencies.leaderLock, logger, dispose);
     }
 
     private constructor(
-        private readonly config: RetentionWorkerConfig,
+        private readonly config: RetentionWorkerOptions,
         private readonly service: RetentionService,
         leaderLock: LeaderLock,
         logger: Logger,

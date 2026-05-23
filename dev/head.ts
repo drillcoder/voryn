@@ -11,7 +11,7 @@ async function run(): Promise<void> {
     const depthBlocks = envNumber("VORYN_HEAD_DEPTH_BLOCKS", "65000");
 
     const config = { chainId, delayBetweenTicksMs, confirmations, depthBlocks };
-    const worker = await HeadWorker.create({ config, logger, dbUrl, rpcUrl });
+    const worker = await HeadWorker.create({ ...config, logger, dbUrl, rpcUrl });
 
     await runWorkerLifecycle("head", worker, logger);
 }

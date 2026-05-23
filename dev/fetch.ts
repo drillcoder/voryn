@@ -24,7 +24,7 @@ async function run(): Promise<void> {
         retryBaseDelayMs,
         retryMaxDelayMs,
     };
-    const worker = await FetchWorker.create({ config, logger, dbUrl, rpcUrl });
+    const worker = await FetchWorker.create({ ...config, logger, dbUrl, rpcUrl });
 
     await runWorkerLifecycle("fetch", worker, logger);
 }

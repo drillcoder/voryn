@@ -2,10 +2,9 @@ import type { CreateEventReactionWorkerOptions, EventReactionHandler, ReactionHa
 import { EventReactionWorker } from "@drillcoder/voryn";
 
 (async () => {
-    const chainId = 1;
     const handler: EventReactionHandler = async (event): Promise<ReactionHandlerResult> => {
         console.info("event_received", {
-            chainId,
+            chainId: event.chainId,
             blockNumber: event.blockNumber,
             transactionHash: event.transactionHash,
             logIndex: event.index,
@@ -14,13 +13,11 @@ import { EventReactionWorker } from "@drillcoder/voryn";
         return event.index === 10 ? "processed" : "skipped";
     };
     const options: CreateEventReactionWorkerOptions = {
-        config: {
-            chainId,
-            delayBetweenTicksMs: 500,
-            workerName: "event-reaction-worker",
-            batchSize: 1000,
-            skipFlushInterval: 100,
-        },
+        chainId: 1,
+        delayBetweenTicksMs: 500,
+        workerName: "event-reaction-worker",
+        batchSize: 1000,
+        skipFlushInterval: 100,
         logLevel: "info",
         dbUrl: "postgres://user:pass@localhost:5432/voryn",
         handler,

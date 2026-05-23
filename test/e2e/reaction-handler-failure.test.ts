@@ -61,13 +61,11 @@ describe("e2e reaction handler failure", () => {
 
         const worker = await EventReactionWorker.create({
             logLevel: "error",
-            config: {
-                chainId: CHAIN_ID,
-                delayBetweenTicksMs: 5,
-                workerName: "reaction-event-failure",
-                batchSize: 2,
-                skipFlushInterval: 2,
-            },
+            chainId: CHAIN_ID,
+            delayBetweenTicksMs: 5,
+            workerName: "reaction-event-failure",
+            batchSize: 2,
+            skipFlushInterval: 2,
             handler,
             overrides: {
                 chainCursorRepository,

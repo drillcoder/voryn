@@ -1,4 +1,4 @@
-import type { SequencerWorkerConfig } from "../../../src/interfaces/runtime.js";
+import type { SequencerWorkerOptions } from "../../../src/interfaces/runtime.js";
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import { SequencerWorker } from "../../../src/workers/sequencer-worker.js";
 import {
@@ -16,7 +16,7 @@ import {
 
 test("sequencer worker create wires service execution", async () => {
     const getCursor = jest.fn(async () => null);
-    const config: SequencerWorkerConfig = {
+    const config: SequencerWorkerOptions = {
         chainId: 10,
         delayBetweenTicksMs: 1000,
         maxBlocksPerTick: 1,
@@ -40,7 +40,7 @@ test("sequencer worker create wires service execution", async () => {
 
     const worker = await SequencerWorker.create({
         logLevel: "error",
-        config,
+        ...config,
         source,
         overrides: {
             chainCursorRepository: { ...createNoopChainCursorRepository(), get: getCursor },

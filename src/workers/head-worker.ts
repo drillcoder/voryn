@@ -1,7 +1,6 @@
 import type { Pool } from "pg";
 import type { Logger } from "../interfaces/logger.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
-import type { BlockSource } from "../interfaces/block-source.js";
 import type {
     BlockJobsRepository,
     BlocksRepository,
@@ -9,7 +8,7 @@ import type {
     EventsRepository,
     TransactionsRepository,
 } from "../interfaces/repositories.js";
-import type { HeadWorkerConfig } from "../interfaces/runtime.js";
+import type { HeadWorkerOptions } from "../interfaces/runtime.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
@@ -20,8 +19,8 @@ import { PostgresEventsRepository } from "../repositories/postgres/events-reposi
 import { PostgresTransactionsRepository } from "../repositories/postgres/transactions-repository.js";
 import { HeadService } from "../services/head-service.js";
 import { HEAD_WORKER_LOCK_KEY_BASE } from "./worker-lock-keys.js";
-import { resolveDbDependencies, resolveEthersSource, resolveLogger } from "../runtime/resolvers.js";
-import type { RuntimeBaseOptions, RuntimeDbOptions, RuntimeSourceOptions } from "../runtime/types.js";
+import { resolveDbDependencies, resolveLogger, resolveSingleBlockSource } from "../runtime/resolvers.js";
+import type { RuntimeDbOptions, RuntimeLoggerOptions, SingleSourceOptions } from "../runtime/types.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
 export interface HeadWorkerDatabaseDependencies {
@@ -35,16 +34,21 @@ export interface HeadWorkerDatabaseDependencies {
 }
 
 export type CreateHeadWorkerOptions =
-    RuntimeBaseOptions<HeadWorkerConfig>
-    & RuntimeSourceOptions<BlockSource>
+    RuntimeLoggerOptions
+    & HeadWorkerOptions
+    & SingleSourceOptions
     & RuntimeDbOptions<HeadWorkerDatabaseDependencies>;
 
 export class HeadWorker extends SingletonPollingWorker {
     static async create(options: CreateHeadWorkerOptions): Promise<HeadWorker> {
         const logger = resolveLogger(options);
-        const source = await resolveEthersSource(options.source !== undefined
-            ? { source: options.source }
-            : { chain: { chainId: options.config.chainId, rpcUrl: options.rpcUrl } });
+        const source = await resolveSingleBlockSource(options);
+        const config: HeadWorkerOptions = {
+            chainId: options.chainId,
+            delayBetweenTicksMs: options.delayBetweenTicksMs,
+            confirmations: options.confirmations,
+            depthBlocks: options.depthBlocks,
+        };
         const { dependencies, dispose } = await resolveDbDependencies<HeadWorkerDatabaseDependencies>(
             options,
             logger,
@@ -55,11 +59,11 @@ export class HeadWorker extends SingletonPollingWorker {
                 transactionsRepository: new PostgresTransactionsRepository(pool),
                 eventsRepository: new PostgresEventsRepository(pool),
                 transactionManager: new PostgresTransactionManager(pool),
-                leaderLock: new PostgresLeaderLock(pool, HEAD_WORKER_LOCK_KEY_BASE + BigInt(options.config.chainId)),
+                leaderLock: new PostgresLeaderLock(pool, HEAD_WORKER_LOCK_KEY_BASE + BigInt(config.chainId)),
             })
         );
         const service = new HeadService(
-            options.config,
+            config,
             source,
             dependencies.chainCursorRepository,
             dependencies.blockJobsRepository,
@@ -70,11 +74,11 @@ export class HeadWorker extends SingletonPollingWorker {
             logger
         );
 
-        return new HeadWorker(options.config, service, dependencies.leaderLock, logger, dispose);
+        return new HeadWorker(config, service, dependencies.leaderLock, logger, dispose);
     }
 
     private constructor(
-        private readonly config: HeadWorkerConfig,
+        private readonly config: HeadWorkerOptions,
         private readonly service: HeadService,
         leaderLock: LeaderLock,
         logger: Logger,

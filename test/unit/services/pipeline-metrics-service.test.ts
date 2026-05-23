@@ -23,7 +23,7 @@ afterEach(() => {
 
 test("pipeline metrics service maps pipeline stages and reaction block lag", async () => {
     const service = new PipelineMetricsService(
-        { chains: [{ chainId: 1, rpcUrl: "http://127.0.0.1:8545" }] },
+        { chainIds: [1] },
         createSource(120, 300),
         createChainCursorRepository({
             chainId: 1,
@@ -150,7 +150,7 @@ test("pipeline metrics service maps pipeline stages and reaction block lag", asy
 
 test("pipeline metrics service throws when chain cursor is missing", async () => {
     const service = new PipelineMetricsService(
-        { chains: [{ chainId: 1, rpcUrl: "http://127.0.0.1:8545" }] },
+        { chainIds: [1] },
         createSource(10),
         createChainCursorRepository(null),
         createBlockJobsRepository(createEmptyBlockStatusCounts()),
@@ -163,7 +163,7 @@ test("pipeline metrics service throws when chain cursor is missing", async () =>
 
 test("pipeline metrics service keeps fetch progress null when no block data exists", async () => {
     const service = new PipelineMetricsService(
-        { chains: [{ chainId: 1, rpcUrl: "http://127.0.0.1:8545" }] },
+        { chainIds: [1] },
         createSource(60),
         createChainCursorRepository({
             chainId: 1,
@@ -211,7 +211,7 @@ test("pipeline metrics service keeps fetch progress null when no block data exis
 
 test("pipeline metrics service clamps future freshness and reaction timestamps to zero seconds", async () => {
     const service = new PipelineMetricsService(
-        { chains: [{ chainId: 1, rpcUrl: "http://127.0.0.1:8545" }] },
+        { chainIds: [1] },
         createSource(10),
         createChainCursorRepository({
             chainId: 1,

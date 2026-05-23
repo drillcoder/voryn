@@ -1,13 +1,13 @@
 import type { ChainId } from "../types/chain.js";
 
-export interface HeadWorkerConfig {
+export interface HeadWorkerOptions {
     chainId: ChainId;
     delayBetweenTicksMs: number;
     confirmations: number;
     depthBlocks: number;
 }
 
-export interface FetchWorkerConfig {
+export interface FetchWorkerOptions {
     chainId: ChainId;
     delayBetweenTicksMs: number;
     fetchBatchSize: number;
@@ -18,19 +18,19 @@ export interface FetchWorkerConfig {
     retryMaxDelayMs: number;
 }
 
-export interface SequencerWorkerConfig {
+export interface SequencerWorkerOptions {
     chainId: ChainId;
     delayBetweenTicksMs: number;
     maxBlocksPerTick: number;
 }
 
-export interface RetentionWorkerConfig {
+export interface RetentionWorkerOptions {
     chainId: ChainId;
     delayBetweenTicksMs: number;
     retentionDepthBlocks: number;
 }
 
-export interface ReactionWorkerConfig {
+export interface ReactionWorkerOptions {
     chainId: ChainId;
     delayBetweenTicksMs: number;
     workerName: string;
