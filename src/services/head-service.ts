@@ -9,13 +9,15 @@ import type {
     EventsRepository,
     TransactionsRepository,
 } from "../interfaces/repositories.js";
-import type { HeadWorkerOptions } from "../interfaces/runtime.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
+import type { HeadWorkerOptions } from "../runtime/types.js";
 import type { BlockNumber, ChainId } from "../types/chain.js";
+
+export type HeadServiceConfig = HeadWorkerOptions;
 
 export class HeadService {
     constructor(
-        private readonly config: HeadWorkerOptions,
+        private readonly config: HeadServiceConfig,
         private readonly source: BlockSource,
         private readonly chainCursorRepository: ChainCursorRepository,
         private readonly blockJobsRepository: BlockJobsRepository,

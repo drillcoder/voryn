@@ -5,7 +5,7 @@ import type {
     TransactionsRepository,
     WorkerCursorsRepository,
 } from "../../../src/interfaces/repositories.js";
-import type { ReactionWorkerOptions } from "../../../src/interfaces/runtime.js";
+import type { ReactionServiceConfig } from "../../../src/services/reaction-service.js";
 import { ReactionService } from "../../../src/services/reaction-service.js";
 import type { StreamType } from "../../../src/types/pipeline.js";
 import { asAddress, asHash32, asHexData } from "../../../src/utils/hex.js";
@@ -15,7 +15,7 @@ const HASH_B = asHash32("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 const ADDRESS = asAddress("0x1111111111111111111111111111111111111111");
 const DATA = asHexData("0x01");
 
-const config: ReactionWorkerOptions = {
+const config: ReactionServiceConfig = {
     chainId: 5,
     workerName: "reaction-handler",
     delayBetweenTicksMs: 1000,

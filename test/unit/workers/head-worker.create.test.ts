@@ -1,5 +1,5 @@
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
-import type { HeadWorkerOptions } from "../../../src/interfaces/runtime.js";
+import type { HeadWorkerOptions } from "../../../src/runtime/types.js";
 import { HeadWorker } from "../../../src/workers/head-worker.js";
 import {
     createNoopBlockJobsRepository,

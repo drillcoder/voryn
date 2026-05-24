@@ -1,4 +1,4 @@
-import type { RetentionWorkerOptions } from "../../../src/interfaces/runtime.js";
+import type { RetentionWorkerOptions } from "../../../src/runtime/types.js";
 import { RetentionWorker } from "../../../src/workers/retention-worker.js";
 import {
     createNoopBlockJobsRepository,

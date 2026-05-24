@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import type { Logger } from "../interfaces/logger.js";
-import type { FetchWorkerOptions } from "../interfaces/runtime.js";
+import type { FetchWorkerOptions } from "../runtime/types.js";
 import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../repositories/postgres/block-jobs-repository.js";
 import { PostgresBlocksRepository } from "../repositories/postgres/blocks-repository.js";
@@ -38,17 +38,6 @@ export class FetchWorker extends PollingWorker {
     static async create(options: CreateFetchWorkerOptions): Promise<FetchWorker> {
         const logger = resolveLogger(options);
         const source = await resolveSingleBlockSource(options);
-        const config: FetchServiceConfig = {
-            chainId: options.chainId,
-            delayBetweenTicksMs: options.delayBetweenTicksMs,
-            fetchBatchSize: options.fetchBatchSize,
-            fetchConcurrency: options.fetchConcurrency,
-            fetchClaimTtlMs: options.fetchClaimTtlMs,
-            retryMaxAttempts: options.retryMaxAttempts,
-            retryBaseDelayMs: options.retryBaseDelayMs,
-            retryMaxDelayMs: options.retryMaxDelayMs,
-            instanceId: randomUUID(),
-        };
         const { dependencies, dispose } = await resolveDbDependencies<FetchWorkerDatabaseDependencies>(
             options,
             logger,
@@ -60,29 +49,40 @@ export class FetchWorker extends PollingWorker {
                 transactionManager: new PostgresTransactionManager(pool),
             })
         );
+        const serviceConfig: FetchServiceConfig = {
+            chainId: options.chainId,
+            delayBetweenTicksMs: options.delayBetweenTicksMs,
+            fetchBatchSize: options.fetchBatchSize,
+            fetchConcurrency: options.fetchConcurrency,
+            fetchClaimTtlMs: options.fetchClaimTtlMs,
+            retryMaxAttempts: options.retryMaxAttempts,
+            retryBaseDelayMs: options.retryBaseDelayMs,
+            retryMaxDelayMs: options.retryMaxDelayMs,
+            instanceId: randomUUID(),
+        };
         const service = new FetchService(
-            config,
+            serviceConfig,
             source,
             dependencies.blockJobsRepository,
             dependencies.blocksRepository,
             dependencies.transactionsRepository,
             dependencies.eventsRepository,
             dependencies.transactionManager,
-            logger
+            logger,
         );
 
-        return new FetchWorker(config, service, logger, dispose);
+        return new FetchWorker(serviceConfig, service, logger, dispose);
     }
 
     private constructor(
-        private readonly config: FetchServiceConfig,
+        private readonly serviceConfig: FetchServiceConfig,
         private readonly service: FetchService,
         logger: Logger,
         dispose?: () => Promise<void>,
     ) {
         super(
-            `fetch:${String(config.chainId)}:${config.instanceId}`,
-            config.delayBetweenTicksMs,
+            `fetch:${String(serviceConfig.chainId)}:${serviceConfig.instanceId}`,
+            serviceConfig.delayBetweenTicksMs,
             logger,
             dispose
         );
@@ -94,14 +94,14 @@ export class FetchWorker extends PollingWorker {
 
     protected override buildStartLogMeta(): Record<string, unknown> {
         return {
-            instanceId: this.config.instanceId,
-            chainId: this.config.chainId,
-            fetchBatchSize: this.config.fetchBatchSize,
-            fetchConcurrency: this.config.fetchConcurrency,
-            fetchClaimTtlMs: this.config.fetchClaimTtlMs,
-            retryMaxAttempts: this.config.retryMaxAttempts,
-            retryBaseDelayMs: this.config.retryBaseDelayMs,
-            retryMaxDelayMs: this.config.retryMaxDelayMs,
+            instanceId: this.serviceConfig.instanceId,
+            chainId: this.serviceConfig.chainId,
+            fetchBatchSize: this.serviceConfig.fetchBatchSize,
+            fetchConcurrency: this.serviceConfig.fetchConcurrency,
+            fetchClaimTtlMs: this.serviceConfig.fetchClaimTtlMs,
+            retryMaxAttempts: this.serviceConfig.retryMaxAttempts,
+            retryBaseDelayMs: this.serviceConfig.retryBaseDelayMs,
+            retryMaxDelayMs: this.serviceConfig.retryMaxDelayMs,
         };
     }
 }

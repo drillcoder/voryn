@@ -1,4 +1,4 @@
-import type { SequencerWorkerOptions } from "../../../src/interfaces/runtime.js";
+import type { SequencerWorkerOptions } from "../../../src/runtime/types.js";
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import { SequencerWorker } from "../../../src/workers/sequencer-worker.js";
 import {

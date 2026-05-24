@@ -13,9 +13,8 @@ import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker
 import { PipelineMetricsService } from "../services/pipeline-metrics-service.js";
 import type { PipelineMetricsServiceConfig } from "../services/pipeline-metrics-service.js";
 import { resolveDbDependencies, resolveMultiBlockSource, resolveLogger } from "../runtime/resolvers.js";
-import type { RuntimeDbOptions, RuntimeLoggerOptions } from "../runtime/types.js";
+import type { PipelineMetricsOptions, RuntimeDbOptions, RuntimeLoggerOptions } from "../runtime/types.js";
 import type { MultiSourceOptions } from "../runtime/types.js";
-import type { ChainId } from "../types/chain.js";
 import { formatPipelineMetricsPrometheus } from "./prometheus.js";
 
 export interface PipelineMetricsDatabaseDependencies {
@@ -27,9 +26,7 @@ export interface PipelineMetricsDatabaseDependencies {
 
 export type CreatePipelineMetricsOptions =
     RuntimeLoggerOptions
-    & {
-        chainIds: readonly ChainId[];
-    }
+    & PipelineMetricsOptions
     & MultiSourceOptions
     & RuntimeDbOptions<PipelineMetricsDatabaseDependencies>;
 
@@ -38,7 +35,7 @@ export class PipelineMetrics {
         const logger = resolveLogger(options);
         validatePipelineMetricsOptions(options);
         const source = await resolveMultiBlockSource(options);
-        const config: PipelineMetricsServiceConfig = {
+        const serviceConfig: PipelineMetricsServiceConfig = {
             chainIds: options.chainIds,
         };
         const { dependencies, dispose } = await resolveDbDependencies<PipelineMetricsDatabaseDependencies>(
@@ -52,7 +49,7 @@ export class PipelineMetrics {
             })
         );
         const service = new PipelineMetricsService(
-            config,
+            serviceConfig,
             source,
             dependencies.chainCursorRepository,
             dependencies.blockJobsRepository,

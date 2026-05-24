@@ -8,7 +8,7 @@ import type {
     EventsRepository,
     TransactionsRepository,
 } from "../interfaces/repositories.js";
-import type { HeadWorkerOptions } from "../interfaces/runtime.js";
+import type { HeadWorkerOptions } from "../runtime/types.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
@@ -17,6 +17,7 @@ import { PostgresBlocksRepository } from "../repositories/postgres/blocks-reposi
 import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cursor-repository.js";
 import { PostgresEventsRepository } from "../repositories/postgres/events-repository.js";
 import { PostgresTransactionsRepository } from "../repositories/postgres/transactions-repository.js";
+import type { HeadServiceConfig } from "../services/head-service.js";
 import { HeadService } from "../services/head-service.js";
 import { HEAD_WORKER_LOCK_KEY_BASE } from "./worker-lock-keys.js";
 import { resolveDbDependencies, resolveLogger, resolveSingleBlockSource } from "../runtime/resolvers.js";
@@ -43,7 +44,7 @@ export class HeadWorker extends SingletonPollingWorker {
     static async create(options: CreateHeadWorkerOptions): Promise<HeadWorker> {
         const logger = resolveLogger(options);
         const source = await resolveSingleBlockSource(options);
-        const config: HeadWorkerOptions = {
+        const serviceConfig: HeadServiceConfig = {
             chainId: options.chainId,
             delayBetweenTicksMs: options.delayBetweenTicksMs,
             confirmations: options.confirmations,
@@ -59,11 +60,11 @@ export class HeadWorker extends SingletonPollingWorker {
                 transactionsRepository: new PostgresTransactionsRepository(pool),
                 eventsRepository: new PostgresEventsRepository(pool),
                 transactionManager: new PostgresTransactionManager(pool),
-                leaderLock: new PostgresLeaderLock(pool, HEAD_WORKER_LOCK_KEY_BASE + BigInt(config.chainId)),
+                leaderLock: new PostgresLeaderLock(pool, HEAD_WORKER_LOCK_KEY_BASE + BigInt(serviceConfig.chainId)),
             })
         );
         const service = new HeadService(
-            config,
+            serviceConfig,
             source,
             dependencies.chainCursorRepository,
             dependencies.blockJobsRepository,
@@ -71,22 +72,22 @@ export class HeadWorker extends SingletonPollingWorker {
             dependencies.transactionsRepository,
             dependencies.eventsRepository,
             dependencies.transactionManager,
-            logger
+            logger,
         );
 
-        return new HeadWorker(config, service, dependencies.leaderLock, logger, dispose);
+        return new HeadWorker(serviceConfig, service, dependencies.leaderLock, logger, dispose);
     }
 
     private constructor(
-        private readonly config: HeadWorkerOptions,
+        private readonly serviceConfig: HeadServiceConfig,
         private readonly service: HeadService,
         leaderLock: LeaderLock,
         logger: Logger,
         dispose?: () => Promise<void>,
     ) {
         super(
-            `head:${String(config.chainId)}`,
-            config.delayBetweenTicksMs,
+            `head:${String(serviceConfig.chainId)}`,
+            serviceConfig.delayBetweenTicksMs,
             logger,
             leaderLock,
             dispose
@@ -99,9 +100,9 @@ export class HeadWorker extends SingletonPollingWorker {
 
     protected override buildStartLogMeta(): Record<string, unknown> {
         return {
-            chainId: this.config.chainId,
-            confirmations: this.config.confirmations,
-            depthBlocks: this.config.depthBlocks,
+            chainId: this.serviceConfig.chainId,
+            confirmations: this.serviceConfig.confirmations,
+            depthBlocks: this.serviceConfig.depthBlocks,
         };
     }
 }

@@ -1,5 +1,5 @@
 import type { TransactionReactionHandler } from "../../../src/interfaces/reaction.js";
-import type { ReactionWorkerOptions } from "../../../src/interfaces/runtime.js";
+import type { ReactionWorkerOptions } from "../../../src/runtime/types.js";
 import { TransactionReactionWorker } from "../../../src/workers/transaction-reaction-worker.js";
 import {
     ADDRESS,

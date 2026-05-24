@@ -1,5 +1,5 @@
 import type { EventReactionHandler } from "../../../src/interfaces/reaction.js";
-import type { ReactionWorkerOptions } from "../../../src/interfaces/runtime.js";
+import type { ReactionWorkerOptions } from "../../../src/runtime/types.js";
 import { EventReactionWorker } from "../../../src/workers/event-reaction-worker.js";
 import {
     ADDRESS,

@@ -1,11 +1,10 @@
 import type { Logger } from "../interfaces/logger.js";
-import { noopLogger } from "../interfaces/logger.js";
 import type { BlockJobsRepository } from "../interfaces/repositories.js";
+import type { BlockJobRecoveryOptions } from "../runtime/types.js";
 import type { BlockNumber, ChainId } from "../types/chain.js";
+import { noopLogger } from "../interfaces/logger.js";
 
-export interface BlockJobRecoveryOptions {
-    chainId: ChainId;
-}
+export type BlockJobRecoveryServiceConfig = BlockJobRecoveryOptions;
 
 export interface RetryFailedBlockJobsResult {
     chainId: ChainId;
@@ -16,7 +15,7 @@ export interface RetryFailedBlockJobsResult {
 
 export class BlockJobRecoveryService {
     constructor(
-        private readonly config: BlockJobRecoveryOptions,
+        private readonly config: BlockJobRecoveryServiceConfig,
         private readonly blockJobsRepository: BlockJobsRepository,
         private readonly logger: Logger = noopLogger,
     ) {

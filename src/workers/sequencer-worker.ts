@@ -9,7 +9,7 @@ import type {
     TransactionsRepository,
 } from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
-import type { SequencerWorkerOptions } from "../interfaces/runtime.js";
+import type { SequencerWorkerOptions } from "../runtime/types.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../repositories/postgres/block-jobs-repository.js";
@@ -17,6 +17,7 @@ import { PostgresBlocksRepository } from "../repositories/postgres/blocks-reposi
 import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cursor-repository.js";
 import { PostgresEventsRepository } from "../repositories/postgres/events-repository.js";
 import { PostgresTransactionsRepository } from "../repositories/postgres/transactions-repository.js";
+import type { SequencerServiceConfig } from "../services/sequencer-service.js";
 import { SequencerService } from "../services/sequencer-service.js";
 import { SEQUENCER_WORKER_LOCK_KEY_BASE } from "./worker-lock-keys.js";
 import { resolveDbDependencies, resolveLogger, resolveSingleBlockSource } from "../runtime/resolvers.js";
@@ -43,7 +44,7 @@ export class SequencerWorker extends SingletonPollingWorker {
     static async create(options: CreateSequencerWorkerOptions): Promise<SequencerWorker> {
         const logger = resolveLogger(options);
         const source = await resolveSingleBlockSource(options);
-        const config: SequencerWorkerOptions = {
+        const serviceConfig: SequencerServiceConfig = {
             chainId: options.chainId,
             delayBetweenTicksMs: options.delayBetweenTicksMs,
             maxBlocksPerTick: options.maxBlocksPerTick,
@@ -60,12 +61,12 @@ export class SequencerWorker extends SingletonPollingWorker {
                 transactionManager: new PostgresTransactionManager(pool),
                 leaderLock: new PostgresLeaderLock(
                     pool,
-                    SEQUENCER_WORKER_LOCK_KEY_BASE + BigInt(config.chainId)
+                    SEQUENCER_WORKER_LOCK_KEY_BASE + BigInt(serviceConfig.chainId)
                 ),
             })
         );
         const service = new SequencerService(
-            config,
+            serviceConfig,
             source,
             dependencies.chainCursorRepository,
             dependencies.blocksRepository,
@@ -76,19 +77,19 @@ export class SequencerWorker extends SingletonPollingWorker {
             logger,
         );
 
-        return new SequencerWorker(config, service, dependencies.leaderLock, logger, dispose);
+        return new SequencerWorker(serviceConfig, service, dependencies.leaderLock, logger, dispose);
     }
 
     private constructor(
-        private readonly config: SequencerWorkerOptions,
+        private readonly serviceConfig: SequencerServiceConfig,
         private readonly service: SequencerService,
         leaderLock: LeaderLock,
         logger: Logger,
         dispose?: () => Promise<void>,
     ) {
         super(
-            `sequencer:${String(config.chainId)}`,
-            config.delayBetweenTicksMs,
+            `sequencer:${String(serviceConfig.chainId)}`,
+            serviceConfig.delayBetweenTicksMs,
             logger,
             leaderLock,
             dispose
@@ -101,8 +102,8 @@ export class SequencerWorker extends SingletonPollingWorker {
 
     protected override buildStartLogMeta(): Record<string, unknown> {
         return {
-            chainId: this.config.chainId,
-            maxBlocksPerTick: this.config.maxBlocksPerTick,
+            chainId: this.serviceConfig.chainId,
+            maxBlocksPerTick: this.serviceConfig.maxBlocksPerTick,
         };
     }
 }

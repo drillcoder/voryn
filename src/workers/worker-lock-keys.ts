@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { ReactionWorkerOptions } from "../interfaces/runtime.js";
+import type { ReactionWorkerOptions } from "../runtime/types.js";
 
 export const HEAD_WORKER_LOCK_KEY_BASE = 10_000_000n;
 export const SEQUENCER_WORKER_LOCK_KEY_BASE = 20_000_000n;

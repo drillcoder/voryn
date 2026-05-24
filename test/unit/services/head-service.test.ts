@@ -8,7 +8,7 @@ import type {
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import type { DbExecutor } from "../../../src/interfaces/db.js";
 import type { TransactionManager } from "../../../src/interfaces/transaction-manager.js";
-import type { HeadWorkerOptions } from "../../../src/interfaces/runtime.js";
+import type { HeadServiceConfig } from "../../../src/services/head-service.js";
 import { HeadService } from "../../../src/services/head-service.js";
 import { asHash32 } from "../../../src/utils/hex.js";
 
@@ -16,7 +16,7 @@ const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 const HASH_B = asHash32("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
 const HASH_C = asHash32("0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc");
 
-const config: HeadWorkerOptions = {
+const config: HeadServiceConfig = {
     chainId: 1,
     confirmations: 2,
     delayBetweenTicksMs: 1000,
