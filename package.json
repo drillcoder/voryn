@@ -18,19 +18,19 @@
 	"scripts": {
 		"build": "rm -rf dist && tsc && mkdir -p dist/sql && cp src/sql/postgres-schema.sql dist/sql/postgres-schema.sql",
 		"build-test": "tsc -p test/tsconfig.json",
-		"db:apply-sql": "tsx --tsconfig dev/tsconfig.json dev/apply-sql.ts",
-		"test": "jest --config dev/jest.config.js",
-		"test:unit": "jest --config dev/jest.config.js test/unit",
+		"lint": "eslint --config dev/eslint.config.js .",
+		"lint:fix": "npm run lint -- --fix",
+		"test:all": "jest --config dev/jest.config.js",
+		"test": "jest --config dev/jest.config.js test/unit",
 		"test:integration": "jest --config dev/jest.config.js test/integration",
 		"test:e2e": "jest --config dev/jest.config.js test/e2e",
 		"test:live-rpc": "jest --config dev/jest.config.js test/live-rpc",
-		"test:coverage": "jest --config dev/jest.config.js --coverage",
 		"test:unit:coverage": "jest --config dev/jest.config.js test/unit --coverage",
+		"test:coverage": "jest --config dev/jest.config.js --coverage",
 		"test:watch": "jest --config dev/jest.config.js --watch",
-		"lint": "eslint --config dev/eslint.config.js .",
-		"lint:fix": "npm run lint -- --fix",
 		"prepublishOnly": "npm run build",
-		"pack:dry-run": "npm pack --dry-run"
+		"pack:dry-run": "npm pack --dry-run",
+		"db:apply-sql": "tsx --tsconfig dev/tsconfig.json dev/apply-sql.ts"
 	},
 	"keywords": [
 		"ethers",

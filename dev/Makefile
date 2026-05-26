@@ -7,7 +7,7 @@ TOOLS_RUN := $(COMPOSE) run --rm tools
 .PHONY: \
 	init ingestion-up ingestion-restart ingestion-stop \
 	db-up db-restart db-stop down \
-	install build lint test db-init lint-fix test-coverage test-unit-coverage test-watch test-e2e test-live-rpc
+	install build lint test test-all db-init lint-fix test-coverage test-unit-coverage test-watch test-integration test-e2e test-live-rpc
 
 # Инициализация.
 init: install build db-init
@@ -60,13 +60,29 @@ build-test:
 lint:
 	$(TOOLS_RUN) npm run lint
 
-# Запустить тесты.
-test:
-	$(TOOLS_RUN) npm test
-
 # Автоисправления линтера.
 lint-fix:
 	$(TOOLS_RUN) npm run lint:fix
+
+# Запустить все тесты.
+test-all:
+	$(TOOLS_RUN) npm run test:all
+
+# Запустить unit-тесты.
+test:
+	$(TOOLS_RUN) npm test
+
+# Integration-тесты.
+test-integration:
+	$(TOOLS_RUN) npm run test:integration
+
+# E2E-тесты.
+test-e2e:
+	$(TOOLS_RUN) npm run test:e2e
+
+# Live RPC-тесты.
+test-live-rpc:
+	$(TOOLS_RUN) npm run test:live-rpc
 
 # Тесты с покрытием.
 test-coverage:
