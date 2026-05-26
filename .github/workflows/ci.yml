@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+    env:
+      VORYN_TEST_RPC_URL: ${{ secrets.VORYN_TEST_RPC_URL }}
+      VORYN_TEST_CHAIN_ID: ${{ secrets.VORYN_TEST_CHAIN_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare environment
+        run: cp dev/.env.example dev/.env
+
+      - name: Install dependencies
+        run: make install
+
+      - name: Start database
+        run: make db-up
+
+      - name: Build package
+        run: make build
+
+      - name: Build tests
+        run: make build-test
+
+      - name: Lint
+        run: make lint
+
+      - name: Unit tests
+        run: make test
+
+      - name: Coverage
+        run: make test-coverage
+
+      - name: Unit coverage
+        run: make test-unit-coverage
+
+      - name: Check live RPC secrets
+        run: |
+          if [ -z "$VORYN_TEST_RPC_URL" ]; then
+            echo "VORYN_TEST_RPC_URL secret is required"
+            exit 1
+          fi
+          if [ -z "$VORYN_TEST_CHAIN_ID" ]; then
+            echo "VORYN_TEST_CHAIN_ID secret is required"
+            exit 1
+          fi
+
+      - name: Live RPC tests
+        run: make test-live-rpc
+
+      - name: Clean up
+        if: always()
+        run: make down
