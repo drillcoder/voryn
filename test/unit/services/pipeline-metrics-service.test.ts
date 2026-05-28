@@ -310,7 +310,7 @@ function createBlockJobsRepository(
         getStatusCounts: async () => counts,
         listFailedBlocks: async (_chainId, limit) => failedBlocks.slice(0, limit),
         retryFailed: async () => 0,
-        deleteAtOrBeforeBlockNumber: async () => 0,
+        deleteBlockNumberRange: async () => 0,
         deleteAfterBlockNumber: async () => 0,
     };
 }
@@ -331,7 +331,8 @@ function createBlocksRepository(options: {
             return createBlock(blockNumber, timestamp);
         },
         getProgress: async () => options.progress,
-        deleteAtOrBeforeBlockNumber: async () => 0,
+        getOldestBlockNumber: async () => null,
+        deleteBlockNumberRange: async () => 0,
         deleteByBlockNumber: async () => 0,
         deleteAfterBlockNumber: async () => 0,
     };

@@ -27,7 +27,6 @@ describe("integration services: retention", () => {
     });
 
     test("retention worker purges only blocks older than retention depth", async () => {
-        const transactionManager = new PostgresTransactionManager(db.pool);
         const chainCursorRepository = new PostgresChainCursorRepository(db.pool);
         const blockJobsRepository = new PostgresBlockJobsRepository(db.pool);
         const blocksRepository = new PostgresBlocksRepository(db.pool);
@@ -56,18 +55,13 @@ describe("integration services: retention", () => {
             await eventsRepository.insertMany(payload.logs);
         }
 
-        const service = new RetentionService(
-            {
-                chainId: CHAIN_ID,
-                delayBetweenTicksMs: 1,
-                retentionDepthBlocks: 3,
-            },
+        const service = createRetentionService(
+            db,
             chainCursorRepository,
             blockJobsRepository,
             blocksRepository,
             transactionsRepository,
             eventsRepository,
-            transactionManager,
         );
 
         await service.execute();
@@ -81,4 +75,103 @@ describe("integration services: retention", () => {
         await expect(db.countRows("transactions", "block_number = 8")).resolves.toBe(1);
         await expect(db.countRows("events", "block_number = 8")).resolves.toBe(1);
     });
+
+    test("retention worker skips purge when oldest block is after purge boundary", async () => {
+        const chainCursorRepository = new PostgresChainCursorRepository(db.pool);
+        const blockJobsRepository = new PostgresBlockJobsRepository(db.pool);
+        const blocksRepository = new PostgresBlocksRepository(db.pool);
+        const transactionsRepository = new PostgresTransactionsRepository(db.pool);
+        const eventsRepository = new PostgresEventsRepository(db.pool);
+
+        await chainCursorRepository.insert({
+            chainId: CHAIN_ID,
+            lastEnqueuedBlock: 10,
+            lastCommittedBlock: 10,
+            lastCommittedHash: hashFromNumber(10),
+        });
+        await blockJobsRepository.enqueueRange(CHAIN_ID, 6, 8);
+
+        const payload = buildFetchedBlock(8, hashFromNumber(7));
+        await blocksRepository.insert({
+            chainId: CHAIN_ID,
+            blockNumber: 8,
+            blockHash: payload.block.hash,
+            parentHash: payload.block.parentHash,
+            blockTimestamp: payload.block.timestamp,
+            fetchedAt: new Date(),
+        });
+        await transactionsRepository.insertMany(payload.transactions);
+        await eventsRepository.insertMany(payload.logs);
+
+        const service = createRetentionService(
+            db,
+            chainCursorRepository,
+            blockJobsRepository,
+            blocksRepository,
+            transactionsRepository,
+            eventsRepository,
+        );
+
+        await service.execute();
+
+        await expect(db.countRows("block_jobs")).resolves.toBe(3);
+        await expect(db.countRows("blocks")).resolves.toBe(1);
+        await expect(db.countRows("transactions")).resolves.toBe(1);
+        await expect(db.countRows("events")).resolves.toBe(1);
+    });
+
+    test("retention worker keeps block jobs when oldest block is missing", async () => {
+        const chainCursorRepository = new PostgresChainCursorRepository(db.pool);
+        const blockJobsRepository = new PostgresBlockJobsRepository(db.pool);
+        const blocksRepository = new PostgresBlocksRepository(db.pool);
+        const transactionsRepository = new PostgresTransactionsRepository(db.pool);
+        const eventsRepository = new PostgresEventsRepository(db.pool);
+
+        await chainCursorRepository.insert({
+            chainId: CHAIN_ID,
+            lastEnqueuedBlock: 10,
+            lastCommittedBlock: 10,
+            lastCommittedHash: hashFromNumber(10),
+        });
+        await blockJobsRepository.enqueueRange(CHAIN_ID, 6, 8);
+
+        const service = createRetentionService(
+            db,
+            chainCursorRepository,
+            blockJobsRepository,
+            blocksRepository,
+            transactionsRepository,
+            eventsRepository,
+        );
+
+        await service.execute();
+
+        await expect(db.countRows("block_jobs")).resolves.toBe(3);
+        await expect(db.countRows("blocks")).resolves.toBe(0);
+        await expect(db.countRows("transactions")).resolves.toBe(0);
+        await expect(db.countRows("events")).resolves.toBe(0);
+    });
 });
+
+function createRetentionService(
+    dbContext: IsolatedDbContext,
+    chainCursorRepository: PostgresChainCursorRepository,
+    blockJobsRepository: PostgresBlockJobsRepository,
+    blocksRepository: PostgresBlocksRepository,
+    transactionsRepository: PostgresTransactionsRepository,
+    eventsRepository: PostgresEventsRepository,
+): RetentionService {
+    return new RetentionService(
+        {
+            chainId: CHAIN_ID,
+            delayBetweenTicksMs: 1,
+            retentionDepthBlocks: 3,
+        },
+        chainCursorRepository,
+        blockJobsRepository,
+        blocksRepository,
+        transactionsRepository,
+        eventsRepository,
+        new PostgresTransactionManager(dbContext.pool),
+    );
+}

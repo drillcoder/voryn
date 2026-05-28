@@ -120,11 +120,31 @@ test("insertMany writes one batch for small input", async () => {
     expect(calls[0]?.[1]).toEqual([1, 10, HASH_A, 0, TX_HASH, FROM, null, "1", DATA]);
 });
 
-test("deleteAtOrBeforeBlockNumber returns zero when rowCount is null", async () => {
+test("deleteBlockNumberRange deletes transactions in block number range", async () => {
+    const query = jest.fn(async () => ({ rows: [], rowCount: 2 }));
+    const repository = new PostgresTransactionsRepository(createExecutor(query));
+
+    await expect(repository.deleteBlockNumberRange(1, 10, 12)).resolves.toBe(2);
+
+    const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
+    expect(calls[0]?.[0]).toContain("block_number BETWEEN $2 AND $3");
+    expect(calls[0]?.[1]).toEqual([1, 10, 12]);
+});
+
+test("deleteBlockNumberRange skips query when range is empty", async () => {
+    const query = jest.fn();
+    const repository = new PostgresTransactionsRepository(createExecutor(query));
+
+    await expect(repository.deleteBlockNumberRange(1, 12, 10)).resolves.toBe(0);
+
+    expect(query).not.toHaveBeenCalled();
+});
+
+test("deleteBlockNumberRange returns zero when rowCount is null", async () => {
     const query = jest.fn(async () => ({ rows: [], rowCount: null }));
     const repository = new PostgresTransactionsRepository(createExecutor(query));
 
-    await expect(repository.deleteAtOrBeforeBlockNumber(1, 10)).resolves.toBe(0);
+    await expect(repository.deleteBlockNumberRange(1, 10, 12)).resolves.toBe(0);
 });
 
 test("deleteByBlockNumber deletes transactions for one block", async () => {

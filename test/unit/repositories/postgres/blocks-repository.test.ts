@@ -118,18 +118,55 @@ test("getProgress throws when progress row is malformed", async () => {
     await expect(repository.getProgress(1)).rejects.toThrow("Fetched block time is missing for chain 1");
 });
 
-test("deleteAtOrBeforeBlockNumber returns deleted rows", async () => {
+test("getOldestBlockNumber maps oldest block", async () => {
+    const query = jest.fn(async () => ({
+        rows: [{ oldest_block: "42" }],
+        rowCount: 1,
+    }));
+    const repository = new PostgresBlocksRepository(createExecutor(query));
+
+    await expect(repository.getOldestBlockNumber(1)).resolves.toBe(42);
+
+    const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
+    expect(calls[0]?.[0]).toContain("MIN(block_number) AS oldest_block");
+    expect(calls[0]?.[1]).toEqual([1]);
+});
+
+test("getOldestBlockNumber returns null when blocks are missing", async () => {
+    const query = jest.fn()
+        .mockResolvedValueOnce({ rows: [{ oldest_block: null }], rowCount: 1 })
+        .mockResolvedValueOnce({ rows: [], rowCount: 0 });
+    const repository = new PostgresBlocksRepository(createExecutor(query));
+
+    await expect(repository.getOldestBlockNumber(1)).resolves.toBeNull();
+    await expect(repository.getOldestBlockNumber(1)).resolves.toBeNull();
+});
+
+test("deleteBlockNumberRange deletes blocks in block number range", async () => {
     const query = jest.fn(async () => ({ rows: [], rowCount: 7 }));
     const repository = new PostgresBlocksRepository(createExecutor(query));
 
-    await expect(repository.deleteAtOrBeforeBlockNumber(1, 100)).resolves.toBe(7);
+    await expect(repository.deleteBlockNumberRange(1, 100, 105)).resolves.toBe(7);
+
+    const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
+    expect(calls[0]?.[0]).toContain("block_number BETWEEN $2 AND $3");
+    expect(calls[0]?.[1]).toEqual([1, 100, 105]);
 });
 
-test("deleteAtOrBeforeBlockNumber returns zero when rowCount is null", async () => {
+test("deleteBlockNumberRange skips query when range is empty", async () => {
+    const query = jest.fn();
+    const repository = new PostgresBlocksRepository(createExecutor(query));
+
+    await expect(repository.deleteBlockNumberRange(1, 105, 100)).resolves.toBe(0);
+
+    expect(query).not.toHaveBeenCalled();
+});
+
+test("deleteBlockNumberRange returns zero when rowCount is null", async () => {
     const query = jest.fn(async () => ({ rows: [], rowCount: null }));
     const repository = new PostgresBlocksRepository(createExecutor(query));
 
-    await expect(repository.deleteAtOrBeforeBlockNumber(1, 100)).resolves.toBe(0);
+    await expect(repository.deleteBlockNumberRange(1, 100, 105)).resolves.toBe(0);
 });
 
 test("deleteByBlockNumber deletes one block number", async () => {

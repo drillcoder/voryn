@@ -21,6 +21,10 @@ interface BlockDataProgressRow {
     last_fetched_at: Date | string | null;
 }
 
+interface OldestBlockRow {
+    oldest_block: bigint | number | string | null;
+}
+
 export class PostgresBlocksRepository implements BlocksRepository {
     constructor(
         private readonly pool: DbExecutor,
@@ -90,6 +94,19 @@ export class PostgresBlocksRepository implements BlocksRepository {
         };
     }
 
+    async getOldestBlockNumber(chainId: ChainId, transaction?: DbExecutor): Promise<BlockNumber | null> {
+        const executor = transaction ?? this.pool;
+        const result = await executor.query<OldestBlockRow>(
+            `SELECT MIN(block_number) AS oldest_block
+             FROM blocks
+             WHERE chain_id = $1`,
+            [chainId]
+        );
+        const oldestBlock = result.rows[0]?.oldest_block ?? null;
+
+        return oldestBlock === null ? null : parsePgInt(oldestBlock);
+    }
+
     async insert(block: PipelineBlock, transaction?: DbExecutor): Promise<void> {
         const executor = transaction ?? this.pool;
         await executor.query(
@@ -107,15 +124,20 @@ export class PostgresBlocksRepository implements BlocksRepository {
         );
     }
 
-    async deleteAtOrBeforeBlockNumber(
+    async deleteBlockNumberRange(
         chainId: ChainId,
-        blockNumber: BlockNumber,
+        fromBlock: BlockNumber,
+        toBlock: BlockNumber,
         transaction?: DbExecutor
     ): Promise<number> {
+        if (fromBlock > toBlock) {
+            return 0;
+        }
+
         const executor = transaction ?? this.pool;
         const deleted = await executor.query(
-            `DELETE FROM blocks WHERE chain_id = $1 AND block_number <= $2`,
-            [chainId, blockNumber]
+            `DELETE FROM blocks WHERE chain_id = $1 AND block_number BETWEEN $2 AND $3`,
+            [chainId, fromBlock, toBlock]
         );
 
         return deleted.rowCount ?? 0;

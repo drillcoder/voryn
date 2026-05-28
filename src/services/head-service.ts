@@ -134,10 +134,13 @@ export class HeadService {
                 rebaseTo,
                 transaction,
             );
-            await this.eventsRepository.deleteAtOrBeforeBlockNumber(chainId, rebaseTo, transaction);
-            await this.transactionsRepository.deleteAtOrBeforeBlockNumber(chainId, rebaseTo, transaction);
-            await this.blocksRepository.deleteAtOrBeforeBlockNumber(chainId, rebaseTo, transaction);
-            await this.blockJobsRepository.deleteAtOrBeforeBlockNumber(chainId, rebaseTo, transaction);
+            const oldestBlock = await this.blocksRepository.getOldestBlockNumber(chainId, transaction);
+            if (oldestBlock !== null && oldestBlock <= rebaseTo) {
+                await this.eventsRepository.deleteBlockNumberRange(chainId, oldestBlock, rebaseTo, transaction);
+                await this.transactionsRepository.deleteBlockNumberRange(chainId, oldestBlock, rebaseTo, transaction);
+                await this.blocksRepository.deleteBlockNumberRange(chainId, oldestBlock, rebaseTo, transaction);
+                await this.blockJobsRepository.deleteBlockNumberRange(chainId, oldestBlock, rebaseTo, transaction);
+            }
 
             this.logger.info("chain_cursor_rebased", {
                 chainId,

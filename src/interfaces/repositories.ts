@@ -85,7 +85,12 @@ export interface BlockJobsRepository {
         transaction?: DbExecutor
     ): Promise<number>;
 
-    deleteAtOrBeforeBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
+    deleteBlockNumberRange(
+        chainId: ChainId,
+        fromBlock: BlockNumber,
+        toBlock: BlockNumber,
+        transaction?: DbExecutor
+    ): Promise<number>;
 
     deleteAfterBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 }
@@ -95,9 +100,16 @@ export interface BlocksRepository {
 
     getProgress(chainId: ChainId, transaction?: DbExecutor): Promise<BlockDataProgress | null>;
 
+    getOldestBlockNumber(chainId: ChainId, transaction?: DbExecutor): Promise<BlockNumber | null>;
+
     insert(block: PipelineBlock, transaction?: DbExecutor): Promise<void>;
 
-    deleteAtOrBeforeBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
+    deleteBlockNumberRange(
+        chainId: ChainId,
+        fromBlock: BlockNumber,
+        toBlock: BlockNumber,
+        transaction?: DbExecutor
+    ): Promise<number>;
 
     deleteByBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 
@@ -116,7 +128,12 @@ export interface TransactionsRepository {
 
     insertMany(transactions: PipelineTransaction[], transaction?: DbExecutor): Promise<void>;
 
-    deleteAtOrBeforeBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
+    deleteBlockNumberRange(
+        chainId: ChainId,
+        fromBlock: BlockNumber,
+        toBlock: BlockNumber,
+        transaction?: DbExecutor
+    ): Promise<number>;
 
     deleteByBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 
@@ -136,7 +153,12 @@ export interface EventsRepository {
 
     insertMany(events: PipelineEvent[], transaction?: DbExecutor): Promise<void>;
 
-    deleteAtOrBeforeBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
+    deleteBlockNumberRange(
+        chainId: ChainId,
+        fromBlock: BlockNumber,
+        toBlock: BlockNumber,
+        transaction?: DbExecutor
+    ): Promise<number>;
 
     deleteByBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 

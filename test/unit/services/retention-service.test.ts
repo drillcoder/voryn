@@ -66,6 +66,7 @@ const createMissingCursorRepository = (): ChainCursorRepository => ({
 
 const createBlockJobsRepository = (
     deleted: number,
+    deleteBlockNumberRange: BlockJobsRepository["deleteBlockNumberRange"] = async () => deleted,
 ): BlockJobsRepository => ({
     enqueueRange: async () => undefined,
     get: async () => null,
@@ -82,46 +83,88 @@ const createBlockJobsRepository = (
     }),
     listFailedBlocks: async () => [],
     retryFailed: async () => 0,
-    deleteAtOrBeforeBlockNumber: async () => deleted,
+    deleteBlockNumberRange,
     deleteAfterBlockNumber: async () => 0,
 });
 
-const createBlocksRepository = (deleted: number): BlocksRepository => ({
+const createBlocksRepository = (
+    deleted: number,
+    oldestBlockNumber: number | null = 48,
+    deleteBlockNumberRange: BlocksRepository["deleteBlockNumberRange"] = async () => deleted,
+): BlocksRepository => ({
     insert: async () => undefined,
     get: async () => null,
     getProgress: async () => null,
-    deleteAtOrBeforeBlockNumber: async () => deleted,
+    getOldestBlockNumber: async () => oldestBlockNumber,
+    deleteBlockNumberRange,
     deleteByBlockNumber: async () => 0,
     deleteAfterBlockNumber: async () => 0,
 });
 
 const createTransactionsRepository = (
     deleted: number,
+    deleteBlockNumberRange: TransactionsRepository["deleteBlockNumberRange"] = async () => deleted,
 ): TransactionsRepository => ({
     listAfterPosition: async () => [],
     insertMany: async () => undefined,
-    deleteAtOrBeforeBlockNumber: async () => deleted,
+    deleteBlockNumberRange,
     deleteByBlockNumber: async () => 0,
     deleteAfterBlockNumber: async () => 0,
 });
 
-const createEventsRepository = (deleted: number): EventsRepository => ({
+const createEventsRepository = (
+    deleted: number,
+    deleteBlockNumberRange: EventsRepository["deleteBlockNumberRange"] = async () => deleted,
+): EventsRepository => ({
     listAfterPosition: async () => [],
     insertMany: async () => undefined,
-    deleteAtOrBeforeBlockNumber: async () => deleted,
+    deleteBlockNumberRange,
     deleteByBlockNumber: async () => 0,
     deleteAfterBlockNumber: async () => 0,
 });
 
 test("retention service purges committed data and logs result", async () => {
     const { logger, info } = createLogger();
+    const deleteBlockJobs = jest.fn(async () => 4);
+    const deleteBlocks = jest.fn(async () => 3);
+    const deleteTransactions = jest.fn(async () => 2);
+    const deleteEvents = jest.fn(async () => 1);
     const worker = new RetentionService(
         config,
         createCursorRepository(),
-        createBlockJobsRepository(4),
-        createBlocksRepository(3),
-        createTransactionsRepository(2),
-        createEventsRepository(1),
+        createBlockJobsRepository(4, deleteBlockJobs),
+        createBlocksRepository(3, 48, deleteBlocks),
+        createTransactionsRepository(2, deleteTransactions),
+        createEventsRepository(1, deleteEvents),
+        createPassThroughManager(),
+        logger,
+    );
+
+    await worker.execute();
+
+    expect(deleteBlockJobs).toHaveBeenCalledWith(1, 48, 48, expect.any(Object));
+    expect(deleteBlocks).toHaveBeenCalledWith(1, 48, 48, expect.any(Object));
+    expect(deleteTransactions).toHaveBeenCalledWith(1, 48, 48, expect.any(Object));
+    expect(deleteEvents).toHaveBeenCalledWith(1, 48, 48, expect.any(Object));
+    expect(info).toHaveBeenCalledWith("retention_purged", {
+        chainId: 1,
+        depthBlocks: 42,
+        deletedBlockJobs: 4,
+        deletedBlocks: 3,
+        deletedTransactions: 2,
+        deletedEvents: 1,
+    });
+});
+
+test("retention service logs zero deletions when oldest block is missing", async () => {
+    const { logger, info } = createLogger();
+    const worker = new RetentionService(
+        config,
+        createCursorRepository(),
+        createBlockJobsRepository(99),
+        createBlocksRepository(99, null),
+        createTransactionsRepository(99),
+        createEventsRepository(99),
         createPassThroughManager(),
         logger,
     );
@@ -131,10 +174,35 @@ test("retention service purges committed data and logs result", async () => {
     expect(info).toHaveBeenCalledWith("retention_purged", {
         chainId: 1,
         depthBlocks: 42,
-        deletedBlockJobs: 4,
-        deletedBlocks: 3,
-        deletedTransactions: 2,
-        deletedEvents: 1,
+        deletedBlockJobs: 0,
+        deletedBlocks: 0,
+        deletedTransactions: 0,
+        deletedEvents: 0,
+    });
+});
+
+test("retention service logs zero deletions when oldest block is after purge block", async () => {
+    const { logger, info } = createLogger();
+    const worker = new RetentionService(
+        config,
+        createCursorRepository(),
+        createBlockJobsRepository(99),
+        createBlocksRepository(99, 49),
+        createTransactionsRepository(99),
+        createEventsRepository(99),
+        createPassThroughManager(),
+        logger,
+    );
+
+    await worker.execute();
+
+    expect(info).toHaveBeenCalledWith("retention_purged", {
+        chainId: 1,
+        depthBlocks: 42,
+        deletedBlockJobs: 0,
+        deletedBlocks: 0,
+        deletedTransactions: 0,
+        deletedEvents: 0,
     });
 });
 

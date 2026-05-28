@@ -36,12 +36,13 @@ const createPassThroughManager = (): { manager: TransactionManager; transaction:
     };
 };
 
-const createBlocksRepository = (calls?: unknown[]): BlocksRepository => ({
+const createBlocksRepository = (calls?: unknown[], oldestBlock: number | null = 100): BlocksRepository => ({
     insert: async () => undefined,
     get: async () => null,
     getProgress: async () => null,
-    deleteAtOrBeforeBlockNumber: async (_chainId, toBlock, tx) => {
-        calls?.push(["deleteBlocksAtOrBefore", toBlock, tx]);
+    getOldestBlockNumber: async () => oldestBlock,
+    deleteBlockNumberRange: async (_chainId, fromBlock, toBlock, tx) => {
+        calls?.push(["deleteBlocksRange", fromBlock, toBlock, tx]);
         return 0;
     },
     deleteByBlockNumber: async () => 0,
@@ -51,8 +52,8 @@ const createBlocksRepository = (calls?: unknown[]): BlocksRepository => ({
 const createTransactionsRepository = (calls?: unknown[]): TransactionsRepository => ({
     listAfterPosition: async () => [],
     insertMany: async () => undefined,
-    deleteAtOrBeforeBlockNumber: async (_chainId, toBlock, tx) => {
-        calls?.push(["deleteTransactionsAtOrBefore", toBlock, tx]);
+    deleteBlockNumberRange: async (_chainId, fromBlock, toBlock, tx) => {
+        calls?.push(["deleteTransactionsRange", fromBlock, toBlock, tx]);
         return 0;
     },
     deleteByBlockNumber: async () => 0,
@@ -62,8 +63,8 @@ const createTransactionsRepository = (calls?: unknown[]): TransactionsRepository
 const createEventsRepository = (calls?: unknown[]): EventsRepository => ({
     listAfterPosition: async () => [],
     insertMany: async () => undefined,
-    deleteAtOrBeforeBlockNumber: async (_chainId, toBlock, tx) => {
-        calls?.push(["deleteEventsAtOrBefore", toBlock, tx]);
+    deleteBlockNumberRange: async (_chainId, fromBlock, toBlock, tx) => {
+        calls?.push(["deleteEventsRange", fromBlock, toBlock, tx]);
         return 0;
     },
     deleteByBlockNumber: async () => 0,
@@ -86,7 +87,7 @@ const createBlockJobsRepository = (overrides?: Partial<BlockJobsRepository>): Bl
     }),
     listFailedBlocks: async () => [],
     retryFailed: async () => 0,
-    deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteBlockNumberRange: async () => 0,
     deleteAfterBlockNumber: async () => 0,
     ...overrides,
 });
@@ -393,8 +394,8 @@ test("head service rebases and enqueues new jobs when committed block is below f
         enqueueRange: async (_chainId, from, to, tx) => {
             calls.push(["enqueueRange", from, to, tx]);
         },
-        deleteAtOrBeforeBlockNumber: async (_chainId, toBlock, tx) => {
-            calls.push(["deleteJobsAtOrBefore", toBlock, tx]);
+        deleteBlockNumberRange: async (_chainId, fromBlock, toBlock, tx) => {
+            calls.push(["deleteJobsRange", fromBlock, toBlock, tx]);
             return 0;
         },
     });
@@ -416,14 +417,93 @@ test("head service rebases and enqueues new jobs when committed block is below f
     expect(getForUpdateCalls).toBe(1);
     expect(calls).toEqual([
         ["setPositions", 113, HASH_C, 113, transaction],
-        ["deleteEventsAtOrBefore", 113, transaction],
-        ["deleteTransactionsAtOrBefore", 113, transaction],
-        ["deleteBlocksAtOrBefore", 113, transaction],
-        ["deleteJobsAtOrBefore", 113, transaction],
+        ["deleteEventsRange", 100, 113, transaction],
+        ["deleteTransactionsRange", 100, 113, transaction],
+        ["deleteBlocksRange", 100, 113, transaction],
+        ["deleteJobsRange", 100, 113, transaction],
         ["enqueueRange", 114, 118, transaction],
         ["setLastEnqueued", 118, transaction],
     ]);
 });
+
+test.each([null, 114])(
+    "head service skips rebase deletes when oldest block does not form a purge range",
+    async (oldestBlock) => {
+        const calls: unknown[] = [];
+        const { manager, transaction } = createPassThroughManager();
+
+        const chainCursorRepository: ChainCursorRepository = {
+            get: async () => ({
+                chainId: 1,
+                lastEnqueuedBlock: 200,
+                lastCommittedBlock: 90,
+                lastCommittedHash: HASH_A,
+                updatedAt: new Date(),
+            }),
+            getForUpdate: async () => ({
+                chainId: 1,
+                lastEnqueuedBlock: 200,
+                lastCommittedBlock: 90,
+                lastCommittedHash: HASH_A,
+                updatedAt: new Date(),
+            }),
+            insert: async () => undefined,
+            setLastEnqueued: async (_chainId, block, tx) => {
+                calls.push(["setLastEnqueued", block, tx]);
+            },
+            setPositions: async (_chainId, committed, committedHash, enqueued, tx) => {
+                calls.push(["setPositions", committed, committedHash, enqueued, tx]);
+            },
+            advanceLastCommitted: async () => undefined,
+        };
+
+        const source: BlockSource = {
+            getLatestBlockNumber: async () => 120,
+            getLatestBlock: async () => ({
+                chainId: 1,
+                number: 120,
+                hash: HASH_A,
+                parentHash: HASH_B,
+                timestamp: 1,
+            }),
+            getBlock: async () => ({ chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1 }),
+            getBlockData: async () => ({
+                block: { chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1 },
+                transactions: [],
+                logs: [],
+            }),
+        };
+
+        const blockJobsRepository = createBlockJobsRepository({
+            enqueueRange: async (_chainId, from, to, tx) => {
+                calls.push(["enqueueRange", from, to, tx]);
+            },
+            deleteBlockNumberRange: async () => {
+                calls.push("deleteJobsRange");
+                return 0;
+            },
+        });
+
+        const worker = new HeadService(
+            config,
+            source,
+            chainCursorRepository,
+            blockJobsRepository,
+            createBlocksRepository(calls, oldestBlock),
+            createTransactionsRepository(calls),
+            createEventsRepository(calls),
+            manager,
+        );
+
+        await worker.execute();
+
+        expect(calls).toEqual([
+            ["setPositions", 113, HASH_C, 113, transaction],
+            ["enqueueRange", 114, 118, transaction],
+            ["setLastEnqueued", 118, transaction],
+        ]);
+    }
+);
 
 test("head service enqueues without rebase when cursor catches up before transactional check", async () => {
     const calls: unknown[] = [];
@@ -483,10 +563,6 @@ test("head service enqueues without rebase when cursor catches up before transac
     const blockJobsRepository = createBlockJobsRepository({
         enqueueRange: async (_chainId, from, to, tx) => {
             calls.push(["enqueueRange", from, to, tx]);
-        },
-        deleteAtOrBeforeBlockNumber: async () => {
-            calls.push("deleteJobs");
-            return 0;
         },
     });
 

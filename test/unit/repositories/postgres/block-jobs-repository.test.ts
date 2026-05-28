@@ -323,18 +323,31 @@ test("retryFailed returns zero when rowCount is null", async () => {
     await expect(repository.retryFailed(1, 10, 12)).resolves.toBe(0);
 });
 
-test("deleteAtOrBeforeBlockNumber returns number of deleted rows", async () => {
+test("deleteBlockNumberRange deletes jobs in block number range", async () => {
     const query = jest.fn(async () => ({ rows: [], rowCount: 3 }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
-    await expect(repository.deleteAtOrBeforeBlockNumber(1, 10)).resolves.toBe(3);
+    await expect(repository.deleteBlockNumberRange(1, 10, 12)).resolves.toBe(3);
+
+    const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
+    expect(calls[0]?.[0]).toContain("block_number BETWEEN $2 AND $3");
+    expect(calls[0]?.[1]).toEqual([1, 10, 12]);
 });
 
-test("deleteAtOrBeforeBlockNumber returns zero when rowCount is null", async () => {
+test("deleteBlockNumberRange skips query when range is empty", async () => {
+    const query = jest.fn();
+    const repository = new PostgresBlockJobsRepository(createExecutor(query));
+
+    await expect(repository.deleteBlockNumberRange(1, 12, 10)).resolves.toBe(0);
+
+    expect(query).not.toHaveBeenCalled();
+});
+
+test("deleteBlockNumberRange returns zero when rowCount is null", async () => {
     const query = jest.fn(async () => ({ rows: [], rowCount: null }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
-    await expect(repository.deleteAtOrBeforeBlockNumber(1, 10)).resolves.toBe(0);
+    await expect(repository.deleteBlockNumberRange(1, 10, 12)).resolves.toBe(0);
 });
 
 test("deleteAfterBlockNumber deletes jobs after block number", async () => {

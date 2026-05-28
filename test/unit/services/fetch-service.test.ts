@@ -88,7 +88,7 @@ const createBlockJobsRepository = (overrides?: Partial<BlockJobsRepository>): Bl
     }),
     listFailedBlocks: async () => [],
     retryFailed: async () => 0,
-    deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteBlockNumberRange: async () => 0,
     deleteAfterBlockNumber: async () => 0,
     ...overrides,
 });
@@ -97,7 +97,8 @@ const createBlocksRepository = (overrides?: Partial<BlocksRepository>): BlocksRe
     insert: async () => undefined,
     get: async () => null,
     getProgress: async () => null,
-    deleteAtOrBeforeBlockNumber: async () => 0,
+    getOldestBlockNumber: async () => null,
+    deleteBlockNumberRange: async () => 0,
     deleteByBlockNumber: async () => 0,
     deleteAfterBlockNumber: async () => 0,
     ...overrides,
@@ -108,7 +109,7 @@ const createTransactionsRepository = (
 ): TransactionsRepository => ({
     listAfterPosition: async () => [],
     insertMany: async () => undefined,
-    deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteBlockNumberRange: async () => 0,
     deleteByBlockNumber: async () => 0,
     deleteAfterBlockNumber: async () => 0,
     ...overrides,
@@ -117,7 +118,7 @@ const createTransactionsRepository = (
 const createEventsRepository = (overrides?: Partial<EventsRepository>): EventsRepository => ({
     listAfterPosition: async () => [],
     insertMany: async () => undefined,
-    deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteBlockNumberRange: async () => 0,
     deleteByBlockNumber: async () => 0,
     deleteAfterBlockNumber: async () => 0,
     ...overrides,

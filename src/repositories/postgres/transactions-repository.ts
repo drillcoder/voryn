@@ -95,15 +95,20 @@ export class PostgresTransactionsRepository implements TransactionsRepository {
         }
     }
 
-    async deleteAtOrBeforeBlockNumber(
+    async deleteBlockNumberRange(
         chainId: ChainId,
-        blockNumber: BlockNumber,
+        fromBlock: BlockNumber,
+        toBlock: BlockNumber,
         transaction?: DbExecutor
     ): Promise<number> {
+        if (fromBlock > toBlock) {
+            return 0;
+        }
+
         const executor = transaction ?? this.pool;
         const deleted = await executor.query(
-            `DELETE FROM transactions WHERE chain_id = $1 AND block_number <= $2`,
-            [chainId, blockNumber]
+            `DELETE FROM transactions WHERE chain_id = $1 AND block_number BETWEEN $2 AND $3`,
+            [chainId, fromBlock, toBlock]
         );
 
         return deleted.rowCount ?? 0;

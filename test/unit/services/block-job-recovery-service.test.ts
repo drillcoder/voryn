@@ -17,7 +17,7 @@ const createBlockJobsRepository = (retryFailed: BlockJobsRepository["retryFailed
     }),
     listFailedBlocks: async () => [],
     retryFailed,
-    deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteBlockNumberRange: async () => 0,
     deleteAfterBlockNumber: async () => 0,
 });
 

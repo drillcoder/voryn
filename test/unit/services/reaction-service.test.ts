@@ -87,7 +87,7 @@ const createWorkerCursorsRepository = (
 const createEventsRepository = (overrides: Partial<EventsRepository> = {}): EventsRepository => ({
     listAfterPosition: async () => [],
     insertMany: async () => undefined,
-    deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteBlockNumberRange: async () => 0,
     deleteByBlockNumber: async () => 0,
     deleteAfterBlockNumber: async () => 0,
     ...overrides,
@@ -98,7 +98,7 @@ const createTransactionsRepository = (
 ): TransactionsRepository => ({
     listAfterPosition: async () => [],
     insertMany: async () => undefined,
-    deleteAtOrBeforeBlockNumber: async () => 0,
+    deleteBlockNumberRange: async () => 0,
     deleteByBlockNumber: async () => 0,
     deleteAfterBlockNumber: async () => 0,
     ...overrides,

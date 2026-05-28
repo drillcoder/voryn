@@ -50,23 +50,37 @@ export class RetentionService {
                 };
             }
 
-            const deletedBlockJobs = await this.blockJobsRepository.deleteAtOrBeforeBlockNumber(
+            const oldestBlock = await this.blocksRepository.getOldestBlockNumber(chainId, transaction);
+            if (oldestBlock === null || oldestBlock > purgeToBlock) {
+                return {
+                    deletedBlockJobs: 0,
+                    deletedBlocks: 0,
+                    deletedTransactions: 0,
+                    deletedEvents: 0,
+                };
+            }
+
+            const deletedBlockJobs = await this.blockJobsRepository.deleteBlockNumberRange(
                 chainId,
+                oldestBlock,
                 purgeToBlock,
                 transaction
             );
-            const deletedBlocks = await this.blocksRepository.deleteAtOrBeforeBlockNumber(
+            const deletedBlocks = await this.blocksRepository.deleteBlockNumberRange(
                 chainId,
+                oldestBlock,
                 purgeToBlock,
                 transaction
             );
-            const deletedTransactions = await this.transactionsRepository.deleteAtOrBeforeBlockNumber(
+            const deletedTransactions = await this.transactionsRepository.deleteBlockNumberRange(
                 chainId,
+                oldestBlock,
                 purgeToBlock,
                 transaction
             );
-            const deletedEvents = await this.eventsRepository.deleteAtOrBeforeBlockNumber(
+            const deletedEvents = await this.eventsRepository.deleteBlockNumberRange(
                 chainId,
+                oldestBlock,
                 purgeToBlock,
                 transaction
             );
