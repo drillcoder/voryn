@@ -12,17 +12,9 @@ TOOLS_RUN := $(COMPOSE) run --rm tools
 # Инициализация.
 init: install build db-init
 
-# Поднять ingestion окружение.
-ingestion-up:
-	$(COMPOSE) up -d head fetch sequencer retention
-
-# Рестарт ingestion окружения.
-ingestion-restart:
-	$(COMPOSE) up -d --force-recreate head fetch sequencer retention
-
-# Остановить ingestion окружение.
-ingestion-stop:
-	$(COMPOSE) stop head fetch sequencer retention
+# Установить зависимости в контейнере.
+install:
+	$(TOOLS_RUN) npm ci
 
 # Инициализировать схему БД.
 db-init: db-up
@@ -40,13 +32,21 @@ db-restart:
 db-stop:
 	$(COMPOSE) stop postgres
 
+# Поднять ingestion окружение.
+ingestion-up:
+	$(COMPOSE) up -d head fetch sequencer retention
+
+# Рестарт ingestion окружения.
+ingestion-restart:
+	$(COMPOSE) up -d --force-recreate head fetch sequencer retention
+
+# Остановить ingestion окружение.
+ingestion-stop:
+	$(COMPOSE) stop head fetch sequencer retention
+
 # Удалить контейнеры и тома.
 down:
 	$(COMPOSE) down -v
-
-# Установить зависимости в контейнере.
-install:
-	$(TOOLS_RUN) npm ci
 
 # Собрать проект.
 build:
