@@ -85,18 +85,18 @@ export class HeadService {
     }
 
     private async initializeCursor(chainId: ChainId, latestBlock: BlockNumber): Promise<void> {
-        const latestBlockData = await this.source.getBlockData(chainId, latestBlock);
+        const latestBlockData = await this.source.getBlock(chainId, latestBlock);
         await this.chainCursorRepository.insert({
             chainId,
             lastEnqueuedBlock: latestBlock,
             lastCommittedBlock: latestBlock,
-            lastCommittedHash: latestBlockData.block.hash,
+            lastCommittedHash: latestBlockData.hash,
         });
 
         this.logger.info("chain_cursor_initialized", {
             chainId,
             latestBlock,
-            latestBlockHash: latestBlockData.block.hash,
+            latestBlockHash: latestBlockData.hash,
         });
     }
 
@@ -106,8 +106,8 @@ export class HeadService {
         floorBlock: BlockNumber,
         depthBlocks: number,
     ): Promise<void> {
-        const floorData = await this.source.getBlockData(chainId, floorBlock);
-        const floorParentHash = floorData.block.parentHash;
+        const floorData = await this.source.getBlock(chainId, floorBlock);
+        const floorParentHash = floorData.parentHash;
         await this.transactionManager.run(async (transaction) => {
             const chainCursor = await this.chainCursorRepository.getForUpdate(chainId, transaction);
 

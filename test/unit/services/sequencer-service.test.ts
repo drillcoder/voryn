@@ -83,10 +83,11 @@ const createJob = (blockNumber: BlockNumber, status: BlockJob["status"] = "fetch
 
 const createSource = (
     getBlockData: BlockSource["getBlockData"] = async () => createFetchedBlock(0, HASH_A, HASH_A),
+    getBlock?: BlockSource["getBlock"],
 ): BlockSource => ({
     getLatestBlockNumber: async () => 0,
     getLatestBlock: async () => (await getBlockData(0, 0)).block,
-    getBlock: async (...args) => (await getBlockData(...args)).block,
+    getBlock: getBlock ?? (async (...args) => (await getBlockData(...args)).block),
     getBlockData,
 });
 
@@ -400,13 +401,18 @@ test("sequencer service rolls back to common ancestor on parent hash mismatch", 
     const cursor = createCursor(10, oldHash10, 11);
 
     const worker = createService({
-        source: createSource(async (_chainId, blockNumber) => {
-            if (blockNumber === 10) {
-                return createFetchedBlock(10, newHash10, hash9, 10);
-            }
+        source: createSource(
+            async () => {
+                throw new Error("not used");
+            },
+            async (_chainId, blockNumber) => {
+                if (blockNumber === 10) {
+                    return createFetchedBlock(10, newHash10, hash9, 10).block;
+                }
 
-            return createFetchedBlock(9, hash9, HASH_A, 9);
-        }),
+                return createFetchedBlock(9, hash9, HASH_A, 9).block;
+            }
+        ),
         chainCursorRepository: createChainCursorRepository(() => cursor, {
             setPositions: async (_chainId, blockNumber, blockHash, lastEnqueuedBlock, tx) => {
                 calls.push(`set-cursor:${String(blockNumber)}:${String(tx === transaction)}`);

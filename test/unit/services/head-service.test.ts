@@ -233,11 +233,9 @@ test("head service bootstraps missing cursor", async () => {
             timestamp: 1,
         }),
         getBlock: async () => ({ chainId: 1, number: 20, hash: HASH_A, parentHash: HASH_B, timestamp: 1 }),
-        getBlockData: async () => ({
-            block: { chainId: 1, number: 20, hash: HASH_A, parentHash: HASH_B, timestamp: 1 },
-            transactions: [],
-            logs: [],
-        }),
+        getBlockData: async () => {
+            throw new Error("not used");
+        },
     };
 
     const chainCursorRepository: ChainCursorRepository = {
@@ -380,13 +378,8 @@ test("head service rebases and enqueues new jobs when committed block is below f
             timestamp: 1,
         }),
         getBlock: async () => ({ chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1 }),
-        getBlockData: async (_chainId, blockNumber) => {
-            expect(blockNumber).toBe(114);
-            return {
-                block: { chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1 },
-                transactions: [],
-                logs: [],
-            };
+        getBlockData: async () => {
+            throw new Error("not used");
         },
     };
 
@@ -467,11 +460,9 @@ test.each([null, 114])(
                 timestamp: 1,
             }),
             getBlock: async () => ({ chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1 }),
-            getBlockData: async () => ({
-                block: { chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1 },
-                transactions: [],
-                logs: [],
-            }),
+            getBlockData: async () => {
+                throw new Error("not used");
+            },
         };
 
         const blockJobsRepository = createBlockJobsRepository({
@@ -553,11 +544,9 @@ test("head service enqueues without rebase when cursor catches up before transac
             timestamp: 1,
         }),
         getBlock: async () => ({ chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1 }),
-        getBlockData: async () => ({
-            block: { chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1 },
-            transactions: [],
-            logs: [],
-        }),
+        getBlockData: async () => {
+            throw new Error("not used");
+        },
     };
 
     const blockJobsRepository = createBlockJobsRepository({
@@ -710,11 +699,9 @@ test("head service throws when cursor disappears inside rebase transaction", asy
             timestamp: 1,
         }),
         getBlock: async () => ({ chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1 }),
-        getBlockData: async () => ({
-            block: { chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1 },
-            transactions: [],
-            logs: [],
-        }),
+        getBlockData: async () => {
+            throw new Error("not used");
+        },
     };
 
     const chainCursorRepository: ChainCursorRepository = {

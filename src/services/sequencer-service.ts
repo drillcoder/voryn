@@ -220,10 +220,10 @@ export class SequencerService {
         for (let blockNumber = cursor.lastCommittedBlock; blockNumber >= 0; blockNumber--) {
             const [pipelineBlock, sourceBlock] = await Promise.all([
                 this.blocksRepository.get(cursor.chainId, blockNumber),
-                this.source.getBlockData(cursor.chainId, blockNumber),
+                this.source.getBlock(cursor.chainId, blockNumber),
             ]);
 
-            if (pipelineBlock !== null && pipelineBlock.blockHash === sourceBlock.block.hash) {
+            if (pipelineBlock !== null && pipelineBlock.blockHash === sourceBlock.hash) {
                 return {
                     blockNumber,
                     blockHash: pipelineBlock.blockHash,
