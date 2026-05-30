@@ -42,6 +42,10 @@ services:
     <<: *node-base
     environment:
       DATABASE_URL: postgres://user:pass@postgres:5432/voryn
+      GIT_AUTHOR_NAME: ${GIT_NAME:-}
+      GIT_AUTHOR_EMAIL: ${GIT_EMAIL:-}
+      GIT_COMMITTER_NAME: ${GIT_NAME:-}
+      GIT_COMMITTER_EMAIL: ${GIT_EMAIL:-}
       VORYN_CHAIN_ID: ${VORYN_CHAIN_ID:-}
       VORYN_HEAD_RPC_URL: ${VORYN_HEAD_RPC_URL:-}
       VORYN_FETCH_RPC_URL: ${VORYN_FETCH_RPC_URL:-}
