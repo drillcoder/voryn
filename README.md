@@ -279,6 +279,7 @@ Main exports:
 
 - [Architecture](./docs/en/ARCHITECTURE.md)
 - [Database schema](./docs/en/DB_SCHEMA.md)
+- [Operations](./docs/en/OPERATIONS.md)
 - [Development](./docs/en/DEVELOPMENT.md)
 
 ## Development

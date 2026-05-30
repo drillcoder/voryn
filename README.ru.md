@@ -280,6 +280,7 @@ const source = await EthersBlockSource.create([provider]);
 
 - [Архитектура](./docs/ru/ARCHITECTURE.md)
 - [Схема БД](./docs/ru/DB_SCHEMA.md)
+- [Эксплуатация](./docs/ru/OPERATIONS.md)
 - [Разработка](./docs/ru/DEVELOPMENT.md)
 
 ## Разработка
