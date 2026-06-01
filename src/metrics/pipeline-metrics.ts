@@ -13,8 +13,12 @@ import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker
 import { PipelineMetricsService } from "../services/pipeline-metrics-service.js";
 import type { PipelineMetricsServiceConfig } from "../services/pipeline-metrics-service.js";
 import { resolveDbDependencies, resolveMultiBlockSource, resolveLogger } from "../runtime/resolvers.js";
-import type { PipelineMetricsOptions, RuntimeDbOptions, RuntimeLoggerOptions } from "../runtime/types.js";
-import type { MultiSourceOptions } from "../runtime/types.js";
+import type {
+    MultiSourceOptions,
+    PipelineMetricsOptions,
+    RuntimeDbOptions,
+    RuntimeLoggerOptions,
+} from "../interfaces/options.js";
 import { formatPipelineMetricsPrometheus } from "./prometheus.js";
 
 export interface PipelineMetricsDatabaseDependencies {

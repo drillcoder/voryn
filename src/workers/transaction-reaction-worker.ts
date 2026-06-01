@@ -7,7 +7,7 @@ import type {
     TransactionsRepository,
     WorkerCursorsRepository,
 } from "../interfaces/repositories.js";
-import type { ReactionWorkerOptions } from "../runtime/types.js";
+import type { ReactionWorkerOptions, RuntimeDbOptions, RuntimeLoggerOptions } from "../interfaces/options.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cursor-repository.js";
 import { PostgresTransactionsRepository } from "../repositories/postgres/transactions-repository.js";
@@ -15,7 +15,6 @@ import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker
 import type { ReactionServiceConfig } from "../services/reaction-service.js";
 import { ReactionService } from "../services/reaction-service.js";
 import { resolveDbDependencies, resolveLogger } from "../runtime/resolvers.js";
-import type { RuntimeDbOptions, RuntimeLoggerOptions } from "../runtime/types.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 import { buildReactionWorkerLockKey } from "./worker-lock-keys.js";
 

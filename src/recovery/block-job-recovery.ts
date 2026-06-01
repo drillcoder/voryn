@@ -1,12 +1,9 @@
 import type { Pool } from "pg";
 
 import type { BlockJobsRepository } from "../interfaces/repositories.js";
-import type { BlockJobRecoveryOptions } from "../runtime/types.js";
-import type { RuntimeDbOptions, RuntimeLoggerOptions } from "../runtime/types.js";
-import type {
-    BlockJobRecoveryServiceConfig,
-    RetryFailedBlockJobsResult,
-} from "../services/block-job-recovery-service.js";
+import type { BlockJobRecoveryOptions, RuntimeDbOptions, RuntimeLoggerOptions } from "../interfaces/options.js";
+import type { BlockJobRecoveryServiceConfig } from "../services/block-job-recovery-service.js";
+import type { RetryFailedBlockJobsResult } from "../interfaces/recovery.js";
 import type { BlockNumber } from "../types/chain.js";
 import { PostgresBlockJobsRepository } from "../repositories/postgres/block-jobs-repository.js";
 import { resolveDbDependencies, resolveLogger } from "../runtime/resolvers.js";

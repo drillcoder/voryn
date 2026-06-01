@@ -8,11 +8,15 @@ import type { Logger } from "../interfaces/logger.js";
 import { ConsoleLogger } from "../loggers/console-logger.js";
 import type {
     MultiSourceOptions,
-    ResolveDbDependenciesResult,
     RuntimeDbOptions,
     RuntimeLoggerOptions,
     SingleSourceOptions,
-} from "./types.js";
+} from "../interfaces/options.js";
+
+interface ResolveDbDependenciesResult<TDependencies extends object> {
+    dependencies: TDependencies;
+    dispose?: () => Promise<void>;
+}
 
 export function resolveLogger(options: RuntimeLoggerOptions): Logger {
     if (options.logger !== undefined) {

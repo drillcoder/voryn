@@ -22,7 +22,7 @@ import {
     transactionManager,
 } from "../helpers/pipeline-test-helpers.js";
 import type { EventReactionHandler, TransactionReactionHandler } from "../../../src/interfaces/reaction.js";
-import type { FetchWorkerOptions, ReactionWorkerOptions } from "../../../src/runtime/types.js";
+import type { FetchWorkerOptions, ReactionWorkerOptions } from "../../../src/interfaces/options.js";
 import type { WorkerCursorsRepository } from "../../../src/interfaces/repositories.js";
 
 jest.mock("ethers", () => ({

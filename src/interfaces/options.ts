@@ -1,46 +1,23 @@
-import type { BlockSource } from "../interfaces/block-source.js";
-import type { Logger } from "../interfaces/logger.js";
+import type { BlockSource } from "./block-source.js";
+import type { Logger } from "./logger.js";
 import type { LogLevel } from "../loggers/console-logger.js";
 import type { ChainId } from "../types/chain.js";
 
 export type RuntimeLoggerOptions =
-    | { logger: Logger; logLevel?: never }
-    | { logger?: never; logLevel: LogLevel };
-
-export interface ResolveDbDependenciesResult<TDependencies extends object> {
-    dependencies: TDependencies;
-    dispose?: () => Promise<void>;
-}
+    | { logger: Logger; logLevel?: never; }
+    | { logger?: never; logLevel: LogLevel; };
 
 export type RuntimeDbOptions<TDependencies extends object> =
-    | {
-        dbUrl: string;
-        overrides?: Partial<TDependencies>;
-    }
-    | {
-        dbUrl?: undefined;
-        overrides: TDependencies;
-    };
+    | { dbUrl: string; overrides?: Partial<TDependencies>; }
+    | { dbUrl?: undefined; overrides: TDependencies; };
 
 export type SingleSourceOptions =
-    | {
-        source: BlockSource;
-        rpcUrl?: never;
-    }
-    | {
-        source?: never;
-        rpcUrl: string;
-    };
+    | { source: BlockSource; rpcUrl?: never; }
+    | { source?: never; rpcUrl: string; };
 
 export type MultiSourceOptions =
-    | {
-        source: BlockSource;
-        rpcUrls?: never;
-    }
-    | {
-        source?: never;
-        rpcUrls: readonly string[];
-    };
+    | { source: BlockSource; rpcUrls?: never; }
+    | { source?: never; rpcUrls: readonly string[]; };
 
 export interface HeadWorkerOptions {
     chainId: ChainId;

@@ -9,7 +9,12 @@ import type {
     TransactionsRepository,
 } from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
-import type { SequencerWorkerOptions } from "../runtime/types.js";
+import type {
+    RuntimeDbOptions,
+    RuntimeLoggerOptions,
+    SequencerWorkerOptions,
+    SingleSourceOptions
+} from "../interfaces/options.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../repositories/postgres/block-jobs-repository.js";
@@ -21,7 +26,6 @@ import type { SequencerServiceConfig } from "../services/sequencer-service.js";
 import { SequencerService } from "../services/sequencer-service.js";
 import { SEQUENCER_WORKER_LOCK_KEY_BASE } from "./worker-lock-keys.js";
 import { resolveDbDependencies, resolveLogger, resolveSingleBlockSource } from "../runtime/resolvers.js";
-import type { RuntimeDbOptions, RuntimeLoggerOptions, SingleSourceOptions } from "../runtime/types.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
 export interface SequencerWorkerDatabaseDependencies {

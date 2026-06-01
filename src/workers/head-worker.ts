@@ -8,7 +8,12 @@ import type {
     EventsRepository,
     TransactionsRepository,
 } from "../interfaces/repositories.js";
-import type { HeadWorkerOptions } from "../runtime/types.js";
+import type {
+    HeadWorkerOptions,
+    RuntimeDbOptions,
+    RuntimeLoggerOptions,
+    SingleSourceOptions
+} from "../interfaces/options.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
@@ -21,7 +26,6 @@ import type { HeadServiceConfig } from "../services/head-service.js";
 import { HeadService } from "../services/head-service.js";
 import { HEAD_WORKER_LOCK_KEY_BASE } from "./worker-lock-keys.js";
 import { resolveDbDependencies, resolveLogger, resolveSingleBlockSource } from "../runtime/resolvers.js";
-import type { RuntimeDbOptions, RuntimeLoggerOptions, SingleSourceOptions } from "../runtime/types.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
 export interface HeadWorkerDatabaseDependencies {

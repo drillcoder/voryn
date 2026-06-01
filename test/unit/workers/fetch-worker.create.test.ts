@@ -1,5 +1,5 @@
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
-import type { FetchWorkerOptions } from "../../../src/runtime/types.js";
+import type { FetchWorkerOptions } from "../../../src/interfaces/options.js";
 import { FetchWorker } from "../../../src/workers/fetch-worker.js";
 import {
     createNoopBlockJobsRepository,

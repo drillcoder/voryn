@@ -13,7 +13,7 @@ import type {
     TransactionsRepository,
     WorkerCursorsRepository,
 } from "../interfaces/repositories.js";
-import type { ReactionWorkerOptions } from "../runtime/types.js";
+import type { ReactionWorkerOptions } from "../interfaces/options.js";
 import type { StreamType } from "../types/pipeline.js";
 
 export type ReactionServiceConfig = ReactionWorkerOptions;

@@ -10,7 +10,7 @@ import type {
     TransactionsRepository,
 } from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
-import type { SequencerWorkerOptions } from "../runtime/types.js";
+import type { SequencerWorkerOptions } from "../interfaces/options.js";
 import type { BlockNumber, ChainId, HashHex } from "../types/chain.js";
 
 interface CommonAncestor {

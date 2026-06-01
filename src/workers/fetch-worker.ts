@@ -1,7 +1,12 @@
 import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import type { Logger } from "../interfaces/logger.js";
-import type { FetchWorkerOptions } from "../runtime/types.js";
+import type {
+    FetchWorkerOptions,
+    RuntimeDbOptions,
+    RuntimeLoggerOptions,
+    SingleSourceOptions
+} from "../interfaces/options.js";
 import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../repositories/postgres/block-jobs-repository.js";
 import { PostgresBlocksRepository } from "../repositories/postgres/blocks-repository.js";
@@ -11,7 +16,6 @@ import type { FetchServiceConfig } from "../services/fetch-service.js";
 import { FetchService } from "../services/fetch-service.js";
 import { resolveDbDependencies, resolveLogger, resolveSingleBlockSource } from "../runtime/resolvers.js";
 import { PollingWorker } from "./polling-worker.js";
-import type { RuntimeDbOptions, RuntimeLoggerOptions, SingleSourceOptions } from "../runtime/types.js";
 import type {
     BlockJobsRepository,
     BlocksRepository,

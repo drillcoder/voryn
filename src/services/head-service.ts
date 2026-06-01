@@ -10,7 +10,7 @@ import type {
     TransactionsRepository,
 } from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
-import type { HeadWorkerOptions } from "../runtime/types.js";
+import type { HeadWorkerOptions } from "../interfaces/options.js";
 import type { BlockNumber, ChainId } from "../types/chain.js";
 
 export type HeadServiceConfig = HeadWorkerOptions;

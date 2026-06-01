@@ -9,7 +9,7 @@ import type {
     TransactionsRepository,
 } from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
-import type { RetentionWorkerOptions } from "../runtime/types.js";
+import type { RetentionWorkerOptions, RuntimeDbOptions, RuntimeLoggerOptions } from "../interfaces/options.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../repositories/postgres/block-jobs-repository.js";
@@ -21,7 +21,6 @@ import type { RetentionServiceConfig } from "../services/retention-service.js";
 import { RetentionService } from "../services/retention-service.js";
 import { RETENTION_WORKER_LOCK_KEY_BASE } from "./worker-lock-keys.js";
 import { resolveDbDependencies, resolveLogger } from "../runtime/resolvers.js";
-import type { RuntimeDbOptions, RuntimeLoggerOptions } from "../runtime/types.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
 export interface RetentionWorkerDatabaseDependencies {

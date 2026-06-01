@@ -8,7 +8,7 @@ import type {
     EventsRepository,
     TransactionsRepository,
 } from "../interfaces/repositories.js";
-import type { FetchWorkerOptions } from "../runtime/types.js";
+import type { FetchWorkerOptions } from "../interfaces/options.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import { asErrorMessage } from "../utils/errors.js";
 
