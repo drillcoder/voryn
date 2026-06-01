@@ -7,6 +7,7 @@ import type {
 } from "../../../src/interfaces/repositories.js";
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import type { DbExecutor } from "../../../src/interfaces/db.js";
+import type { Logger } from "../../../src/interfaces/logger.js";
 import type { TransactionManager } from "../../../src/interfaces/transaction-manager.js";
 import type { HeadServiceConfig } from "../../../src/services/head-service.js";
 import { HeadService } from "../../../src/services/head-service.js";
@@ -33,6 +34,20 @@ const createPassThroughManager = (): { manager: TransactionManager; transaction:
         manager: {
             run: async (callback) => callback(transaction),
         },
+    };
+};
+
+const createLogger = (): Logger & {
+    entries: { level: string; message: string; meta: Record<string, unknown> | undefined }[];
+} => {
+    const entries: { level: string; message: string; meta: Record<string, unknown> | undefined }[] = [];
+
+    return {
+        entries,
+        debug: (message, meta) => entries.push({ level: "debug", message, meta }),
+        info: (message, meta) => entries.push({ level: "info", message, meta }),
+        warn: (message, meta) => entries.push({ level: "warn", message, meta }),
+        error: (message, meta) => entries.push({ level: "error", message, meta }),
     };
 };
 
@@ -280,6 +295,7 @@ test("head service bootstraps missing cursor", async () => {
 
 test("head service skips when cursor is already ahead of safe head", async () => {
     let enqueued = false;
+    const logger = createLogger();
     const worker = new HeadService(
         config,
         {
@@ -323,11 +339,34 @@ test("head service skips when cursor is already ahead of safe head", async () =>
         createTransactionsRepository(),
         createEventsRepository(),
         createPassThroughManager().manager,
+        logger,
     );
 
     await worker.execute();
 
     expect(enqueued).toBe(false);
+    expect(logger.entries.find((entry) => entry.message === "head_tick_observed")).toMatchObject({
+        level: "debug",
+        meta: {
+            chainId: 1,
+            latestBlock: 12,
+            safeHead: 10,
+            floorBlock: 6,
+            lastEnqueuedBlock: 11,
+            lastCommittedBlock: 10,
+        },
+    });
+    expect(
+        logger.entries.find((entry) => entry.message === "head_enqueue_skipped_no_new_safe_blocks")
+    ).toMatchObject({
+        level: "debug",
+        meta: {
+            chainId: 1,
+            lastEnqueuedBlock: 11,
+            safeHead: 10,
+            fromBlock: 12,
+        },
+    });
 });
 
 test("head service rebases and enqueues new jobs when committed block is below floor", async () => {

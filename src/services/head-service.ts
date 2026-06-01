@@ -48,12 +48,30 @@ export class HeadService {
         const floorBlock = floor > 0 ? floor : 0;
         const cursorBeforeTx = await this.chainCursorRepository.get(chainId);
 
+        this.logger.debug("head_tick_observed", {
+            chainId,
+            latestBlock,
+            confirmations,
+            safeHead,
+            depthBlocks,
+            floorBlock,
+            lastEnqueuedBlock: cursorBeforeTx?.lastEnqueuedBlock ?? null,
+            lastCommittedBlock: cursorBeforeTx?.lastCommittedBlock ?? null,
+        });
+
         if (cursorBeforeTx === null) {
             await this.initializeCursor(chainId, latestBlock);
             return;
         }
 
         if (cursorBeforeTx.lastCommittedBlock < floorBlock - 1) {
+            this.logger.info("head_rebase_required", {
+                chainId,
+                safeHead,
+                floorBlock,
+                lastEnqueuedBlock: cursorBeforeTx.lastEnqueuedBlock,
+                lastCommittedBlock: cursorBeforeTx.lastCommittedBlock,
+            });
             await this.rebaseCursorAndEnqueue(chainId, safeHead, floorBlock, depthBlocks);
             return;
         }
@@ -66,9 +84,11 @@ export class HeadService {
             }
 
             if (chainCursor.lastCommittedBlock < floorBlock - 1) {
-                this.logger.debug("head_enqueue_deferred_until_rebase", {
+                this.logger.info("head_enqueue_deferred_until_rebase", {
                     chainId,
+                    safeHead,
                     lastCommittedBlock: chainCursor.lastCommittedBlock,
+                    lastEnqueuedBlock: chainCursor.lastEnqueuedBlock,
                     floorBlock,
                 });
                 return;
@@ -116,6 +136,13 @@ export class HeadService {
             }
 
             if (chainCursor.lastCommittedBlock >= floorBlock - 1) {
+                this.logger.info("head_rebase_skipped_cursor_caught_up", {
+                    chainId,
+                    safeHead,
+                    floorBlock,
+                    lastCommittedBlock: chainCursor.lastCommittedBlock,
+                    lastEnqueuedBlock: chainCursor.lastEnqueuedBlock,
+                });
                 await this.enqueueMissingBlockJobs(
                     chainId,
                     chainCursor.lastEnqueuedBlock,
@@ -148,6 +175,7 @@ export class HeadService {
                 depthBlocks,
                 floorBlock,
                 rebasedToBlock: rebaseTo,
+                floorParentHash,
             });
 
             await this.enqueueMissingBlockJobs(chainId, rebaseTo, floorBlock, safeHead, transaction);
@@ -164,6 +192,13 @@ export class HeadService {
         const fromBlock = Math.max(lastEnqueuedBlock + 1, floorBlock);
 
         if (fromBlock > safeHead) {
+            this.logger.debug("head_enqueue_skipped_no_new_safe_blocks", {
+                chainId,
+                lastEnqueuedBlock,
+                floorBlock,
+                safeHead,
+                fromBlock,
+            });
             return;
         }
 

@@ -42,13 +42,28 @@ export class SequencerService {
         for (let index = 0; index < maxBlocksPerTick; index++) {
             const cursor = await this.chainCursorRepository.get(chainId);
             if (cursor === null) {
+                this.logger.debug("sequencer_cursor_missing", {
+                    chainId,
+                    iteration: index,
+                    maxBlocksPerTick,
+                });
                 break;
             }
 
             const nextBlock = cursor.lastCommittedBlock + 1;
+            this.logger.debug("sequencer_tick_observed", {
+                chainId,
+                iteration: index,
+                maxBlocksPerTick,
+                lastCommittedBlock: cursor.lastCommittedBlock,
+                lastCommittedHash: cursor.lastCommittedHash,
+                lastEnqueuedBlock: cursor.lastEnqueuedBlock,
+                nextBlock,
+            });
+
             const job = await this.blockJobsRepository.get(chainId, nextBlock);
             if (job?.status !== "fetched") {
-                this.logBlockedByJobStatus(chainId, nextBlock, job);
+                this.logBlockedByJobStatus(chainId, nextBlock, job, cursor);
                 break;
             }
 
@@ -59,7 +74,23 @@ export class SequencerService {
                 );
             }
 
+            this.logger.debug("sequencer_next_block_loaded", {
+                chainId,
+                blockNumber: block.blockNumber,
+                blockHash: block.blockHash,
+                parentHash: block.parentHash,
+                expectedParentHash: cursor.lastCommittedHash,
+            });
+
             if (block.parentHash !== cursor.lastCommittedHash) {
+                this.logger.warn("sequencer_parent_hash_mismatch", {
+                    chainId,
+                    cursorBlock: cursor.lastCommittedBlock,
+                    cursorHash: cursor.lastCommittedHash,
+                    nextBlock: block.blockNumber,
+                    nextBlockHash: block.blockHash,
+                    nextBlockParentHash: block.parentHash,
+                });
                 await this.rollbackReorg(cursor);
                 break;
             }
@@ -103,25 +134,31 @@ export class SequencerService {
                 firstBlockNumber: committedBlocks[0],
                 lastBlockNumber: committedBlocks[committedBlocks.length - 1],
             });
-        } else {
-            this.logger.debug("sequencer_no_block_to_commit", { chainId });
         }
     }
 
     private logBlockedByJobStatus(
         chainId: ChainId,
         blockNumber: BlockNumber,
-        job: Awaited<ReturnType<BlockJobsRepository["get"]>>
+        job: Awaited<ReturnType<BlockJobsRepository["get"]>>,
+        cursor: ChainCursor,
     ): void {
+        const baseMeta = {
+            chainId,
+            blockNumber,
+            lastCommittedBlock: cursor.lastCommittedBlock,
+            lastCommittedHash: cursor.lastCommittedHash,
+            lastEnqueuedBlock: cursor.lastEnqueuedBlock,
+        };
+
         if (job === null) {
-            this.logger.debug("sequencer_waiting_for_block_job", { chainId, blockNumber });
+            this.logger.debug("sequencer_waiting_for_block_job", baseMeta);
             return;
         }
 
         if (job.status === "failed" && job.nextRetryAt === null) {
             this.logger.warn("sequencer_blocked_by_failed_job", {
-                chainId,
-                blockNumber,
+                ...baseMeta,
                 attempts: job.attempts,
                 error: job.error,
                 updatedAt: job.updatedAt,
@@ -131,8 +168,7 @@ export class SequencerService {
 
         if (job.status === "failed") {
             this.logger.debug("sequencer_waiting_for_failed_job_retry", {
-                chainId,
-                blockNumber,
+                ...baseMeta,
                 attempts: job.attempts,
                 nextRetryAt: job.nextRetryAt,
                 error: job.error,
@@ -141,10 +177,10 @@ export class SequencerService {
         }
 
         this.logger.debug("sequencer_waiting_for_block_fetch", {
-            chainId,
-            blockNumber,
+            ...baseMeta,
             status: job.status,
             attempts: job.attempts,
+            updatedAt: job.updatedAt,
         });
     }
 
@@ -155,6 +191,11 @@ export class SequencerService {
         const result = await this.transactionManager.run(async (transaction) => {
             const cursor = await this.chainCursorRepository.getForUpdate(chainId, transaction);
             if (cursor === null) {
+                this.logger.debug("sequencer_reorg_rollback_skipped_cursor_missing", {
+                    chainId,
+                    candidateBlock: candidateCursor.lastCommittedBlock,
+                    candidateHash: candidateCursor.lastCommittedHash,
+                });
                 return null;
             }
 
@@ -162,12 +203,37 @@ export class SequencerService {
                 cursor.lastCommittedBlock !== candidateCursor.lastCommittedBlock
                 || cursor.lastCommittedHash !== candidateCursor.lastCommittedHash
             ) {
+                this.logger.debug("sequencer_reorg_rollback_skipped_cursor_changed", {
+                    chainId,
+                    candidateBlock: candidateCursor.lastCommittedBlock,
+                    candidateHash: candidateCursor.lastCommittedHash,
+                    currentBlock: cursor.lastCommittedBlock,
+                    currentHash: cursor.lastCommittedHash,
+                });
                 return null;
             }
 
             const nextBlock = cursor.lastCommittedBlock + 1;
             const block = await this.blocksRepository.get(chainId, nextBlock, transaction);
-            if (block === null || block.parentHash === cursor.lastCommittedHash) {
+            if (block === null) {
+                this.logger.debug("sequencer_reorg_rollback_skipped_next_block_missing", {
+                    chainId,
+                    nextBlock,
+                    cursorBlock: cursor.lastCommittedBlock,
+                    cursorHash: cursor.lastCommittedHash,
+                });
+                return null;
+            }
+
+            if (block.parentHash === cursor.lastCommittedHash) {
+                this.logger.debug("sequencer_reorg_rollback_skipped_next_block_matches", {
+                    chainId,
+                    nextBlock,
+                    nextBlockHash: block.blockHash,
+                    nextBlockParentHash: block.parentHash,
+                    cursorBlock: cursor.lastCommittedBlock,
+                    cursorHash: cursor.lastCommittedHash,
+                });
                 return null;
             }
 
@@ -217,6 +283,12 @@ export class SequencerService {
     }
 
     private async findCommonAncestor(cursor: ChainCursor): Promise<CommonAncestor> {
+        this.logger.debug("sequencer_common_ancestor_search_started", {
+            chainId: cursor.chainId,
+            fromBlock: cursor.lastCommittedBlock,
+            fromHash: cursor.lastCommittedHash,
+        });
+
         for (let blockNumber = cursor.lastCommittedBlock; blockNumber >= 0; blockNumber--) {
             const [pipelineBlock, sourceBlock] = await Promise.all([
                 this.blocksRepository.get(cursor.chainId, blockNumber),
@@ -224,11 +296,24 @@ export class SequencerService {
             ]);
 
             if (pipelineBlock !== null && pipelineBlock.blockHash === sourceBlock.hash) {
+                this.logger.debug("sequencer_common_ancestor_found", {
+                    chainId: cursor.chainId,
+                    ancestorBlock: blockNumber,
+                    ancestorHash: pipelineBlock.blockHash,
+                });
                 return {
                     blockNumber,
                     blockHash: pipelineBlock.blockHash,
                 };
             }
+
+            this.logger.debug("sequencer_common_ancestor_checked", {
+                chainId: cursor.chainId,
+                blockNumber,
+                pipelineHash: pipelineBlock?.blockHash ?? null,
+                sourceHash: sourceBlock.hash,
+                matched: false,
+            });
         }
 
         throw new Error(

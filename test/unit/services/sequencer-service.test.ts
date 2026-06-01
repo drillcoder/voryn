@@ -276,12 +276,12 @@ test("sequencer service waits when next job is not fetched", async () => {
 
     await worker.execute();
 
-    expect(debug).toHaveBeenCalledWith("sequencer_waiting_for_block_fetch", {
+    expect(debug).toHaveBeenCalledWith("sequencer_waiting_for_block_fetch", expect.objectContaining({
         chainId: 10,
         blockNumber: 10,
         status: "fetching",
         attempts: 1,
-    });
+    }));
 });
 
 test("sequencer service waits when next block job is missing", async () => {
@@ -304,10 +304,10 @@ test("sequencer service waits when next block job is missing", async () => {
 
     await worker.execute();
 
-    expect(debug).toHaveBeenCalledWith("sequencer_waiting_for_block_job", {
+    expect(debug).toHaveBeenCalledWith("sequencer_waiting_for_block_job", expect.objectContaining({
         chainId: 10,
         blockNumber: 10,
-    });
+    }));
 });
 
 test("sequencer service warns when next fetched job failed permanently", async () => {
@@ -336,13 +336,13 @@ test("sequencer service warns when next fetched job failed permanently", async (
 
     await worker.execute();
 
-    expect(warn).toHaveBeenCalledWith("sequencer_blocked_by_failed_job", {
+    expect(warn).toHaveBeenCalledWith("sequencer_blocked_by_failed_job", expect.objectContaining({
         chainId: 10,
         blockNumber: 10,
         attempts: 3,
         error: "rpc timeout",
         updatedAt,
-    });
+    }));
 });
 
 test("sequencer service waits when failed job still has retry date", async () => {
@@ -371,13 +371,13 @@ test("sequencer service waits when failed job still has retry date", async () =>
 
     await worker.execute();
 
-    expect(debug).toHaveBeenCalledWith("sequencer_waiting_for_failed_job_retry", {
+    expect(debug).toHaveBeenCalledWith("sequencer_waiting_for_failed_job_retry", expect.objectContaining({
         chainId: 10,
         blockNumber: 10,
         attempts: 2,
         nextRetryAt,
         error: "rpc timeout",
-    });
+    }));
 });
 
 test("sequencer service throws when fetched job has no block data", async () => {
@@ -478,6 +478,7 @@ test("sequencer service logs rollback metadata for new tables", async () => {
     const oldHash10 = asHash32("0x1010101010101010101010101010101010101010101010101010101010101010");
     const newHash10 = asHash32("0x1111111111111111111111111111111111111111111111111111111111111111");
     const cursor = createCursor(10, oldHash10, 11);
+    const debug = jest.fn();
     const warn = jest.fn();
 
     const worker = createService({
@@ -513,7 +514,7 @@ test("sequencer service logs rollback metadata for new tables", async () => {
         }),
         transactionManager: manager,
         logger: {
-            debug: jest.fn(),
+            debug,
             info: jest.fn(),
             warn,
             error: jest.fn(),
@@ -531,6 +532,19 @@ test("sequencer service logs rollback metadata for new tables", async () => {
         deletedBlocks: 3,
         deletedTransactions: 4,
         deletedEvents: 5,
+    });
+    expect(warn).toHaveBeenCalledWith("sequencer_parent_hash_mismatch", {
+        chainId: 10,
+        cursorBlock: 10,
+        cursorHash: oldHash10,
+        nextBlock: 11,
+        nextBlockHash: HASH_B,
+        nextBlockParentHash: newHash10,
+    });
+    expect(debug).toHaveBeenCalledWith("sequencer_common_ancestor_found", {
+        chainId: 10,
+        ancestorBlock: 9,
+        ancestorHash: hash9,
     });
 });
 
@@ -796,6 +810,10 @@ test("sequencer service throws when common ancestor cannot be found during rollb
         blocksRepository: createBlocksRepository((_chainId, blockNumber) => {
             if (blockNumber === 2) {
                 return createBlock(2, nextHash, sourceHash, 2);
+            }
+
+            if (blockNumber === 0) {
+                return null;
             }
 
             return createBlock(blockNumber, oldHash, HASH_A);

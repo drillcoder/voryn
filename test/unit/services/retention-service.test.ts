@@ -20,16 +20,18 @@ const config: RetentionServiceConfig = {
     retentionDepthBlocks: 42,
 };
 
-const createLogger = (): { logger: Logger; info: jest.Mock } => {
+const createLogger = (): { logger: Logger; debug: jest.Mock; info: jest.Mock } => {
+    const debug = jest.fn();
     const info = jest.fn();
 
     return {
         logger: {
-            debug: jest.fn(),
+            debug,
             info,
             warn: jest.fn(),
             error: jest.fn(),
         },
+        debug,
         info,
     };
 };
@@ -124,7 +126,7 @@ const createEventsRepository = (
 });
 
 test("retention service purges committed data and logs result", async () => {
-    const { logger, info } = createLogger();
+    const { logger, debug, info } = createLogger();
     const deleteBlockJobs = jest.fn(async () => 4);
     const deleteBlocks = jest.fn(async () => 3);
     const deleteTransactions = jest.fn(async () => 2);
@@ -154,10 +156,38 @@ test("retention service purges committed data and logs result", async () => {
         deletedTransactions: 2,
         deletedEvents: 1,
     });
+    expect(debug).toHaveBeenCalledWith("retention_purge_stage_started", {
+        chainId: 1,
+        depthBlocks: 42,
+        stage: "block_jobs",
+        fromBlock: 48,
+        toBlock: 48,
+    });
+    expect(debug).toHaveBeenCalledWith("retention_purge_stage_started", {
+        chainId: 1,
+        depthBlocks: 42,
+        stage: "blocks",
+        fromBlock: 48,
+        toBlock: 48,
+    });
+    expect(debug).toHaveBeenCalledWith("retention_purge_stage_started", {
+        chainId: 1,
+        depthBlocks: 42,
+        stage: "transactions",
+        fromBlock: 48,
+        toBlock: 48,
+    });
+    expect(debug).toHaveBeenCalledWith("retention_purge_stage_started", {
+        chainId: 1,
+        depthBlocks: 42,
+        stage: "events",
+        fromBlock: 48,
+        toBlock: 48,
+    });
 });
 
 test("retention service logs zero deletions when oldest block is missing", async () => {
-    const { logger, info } = createLogger();
+    const { logger, debug, info } = createLogger();
     const worker = new RetentionService(
         config,
         createCursorRepository(),
@@ -178,6 +208,12 @@ test("retention service logs zero deletions when oldest block is missing", async
         deletedBlocks: 0,
         deletedTransactions: 0,
         deletedEvents: 0,
+    });
+    expect(debug).toHaveBeenCalledWith("retention_purge_skipped_no_blocks", {
+        chainId: 1,
+        depthBlocks: 42,
+        lastCommittedBlock: 90,
+        purgeToBlock: 48,
     });
 });
 
