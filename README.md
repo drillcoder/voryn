@@ -73,7 +73,19 @@ The package is published as ESM and uses `ethers` v6 and `pg`.
 
 ## Database setup
 
-Voryn expects the base PostgreSQL schema from `src/sql/postgres-schema.sql`.
+Voryn expects the base PostgreSQL schema from the SQL file included in the npm package.
+
+The physical file path after installation is:
+
+```txt
+node_modules/@drillcoder/voryn/dist/sql/postgres-schema.sql
+```
+
+The same file is also exposed as a package subpath:
+
+```txt
+@drillcoder/voryn/sql/postgres-schema.sql
+```
 
 You can apply the SQL with your own migration flow:
 
@@ -266,6 +278,9 @@ Pass one provider per chain.
 The adapter validates hashes, addresses, `data` fields, transaction indexes, and block number consistency. To use another data source, implement the `BlockSource` interface.
 
 ## Public API
+
+The stable public API is imported from the package root, `@drillcoder/voryn`. Internal paths are not part of the
+stable API.
 
 Main exports:
 

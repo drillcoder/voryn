@@ -73,7 +73,19 @@ npm install @drillcoder/voryn
 
 ## Инициализация БД
 
-Voryn ожидает базовую PostgreSQL-схему из `src/sql/postgres-schema.sql`.
+Voryn ожидает базовую PostgreSQL-схему из SQL-файла, который входит в npm-пакет.
+
+Физический путь после установки:
+
+```txt
+node_modules/@drillcoder/voryn/dist/sql/postgres-schema.sql
+```
+
+Этот же файл также доступен как package subpath:
+
+```txt
+@drillcoder/voryn/sql/postgres-schema.sql
+```
 
 Можно применить SQL своим способом:
 
@@ -267,6 +279,9 @@ const source = await EthersBlockSource.create([provider]);
 Адаптер валидирует хеши, адреса, `data`-поля, индексы транзакций и соответствие номера блока. Для другого источника данных достаточно реализовать интерфейс `BlockSource`.
 
 ## Публичный API
+
+Стабильный публичный API импортируется из корня пакета, `@drillcoder/voryn`. Внутренние пути не входят в
+стабильный API.
 
 Основные экспорты:
 
