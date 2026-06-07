@@ -91,8 +91,6 @@ export interface BlockJobsRepository {
         toBlock: BlockNumber,
         transaction?: DbExecutor
     ): Promise<number>;
-
-    deleteAfterBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 }
 
 export interface BlocksRepository {
@@ -112,8 +110,6 @@ export interface BlocksRepository {
     ): Promise<number>;
 
     deleteByBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
-
-    deleteAfterBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 }
 
 export interface TransactionsRepository {
@@ -136,8 +132,6 @@ export interface TransactionsRepository {
     ): Promise<number>;
 
     deleteByBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
-
-    deleteAfterBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 }
 
 export interface EventsRepository {
@@ -161,8 +155,6 @@ export interface EventsRepository {
     ): Promise<number>;
 
     deleteByBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
-
-    deleteAfterBlockNumber(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<number>;
 }
 
 export interface WorkerCursorsRepository {

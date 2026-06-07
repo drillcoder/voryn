@@ -114,7 +114,6 @@ const createBlocksRepository = (
     insert: async () => undefined,
     deleteBlockNumberRange: async () => 0,
     deleteByBlockNumber: async () => 0,
-    deleteAfterBlockNumber: async () => 0,
     ...overrides,
 });
 
@@ -125,7 +124,6 @@ const createTransactionsRepository = (
     insertMany: async () => undefined,
     deleteBlockNumberRange: async () => 0,
     deleteByBlockNumber: async () => 0,
-    deleteAfterBlockNumber: async () => 0,
     ...overrides,
 });
 
@@ -134,7 +132,6 @@ const createEventsRepository = (overrides: Partial<EventsRepository> = {}): Even
     insertMany: async () => undefined,
     deleteBlockNumberRange: async () => 0,
     deleteByBlockNumber: async () => 0,
-    deleteAfterBlockNumber: async () => 0,
     ...overrides,
 });
 
@@ -155,7 +152,6 @@ const createBlockJobsRepository = (overrides: Partial<BlockJobsRepository> = {})
     listFailedBlocks: async () => [],
     retryFailed: async () => 0,
     deleteBlockNumberRange: async () => 0,
-    deleteAfterBlockNumber: async () => 0,
     ...overrides,
 });
 
@@ -432,26 +428,26 @@ test("sequencer service rolls back to common ancestor on parent hash mismatch", 
 
             return createBlock(9, hash9, HASH_A, 9);
         }, {
-            deleteAfterBlockNumber: async (_chainId, blockNumber, tx) => {
-                calls.push(`delete-blocks-after:${String(blockNumber)}:${String(tx === transaction)}`);
+            deleteBlockNumberRange: async (_chainId, fromBlock, toBlock, tx) => {
+                calls.push(`delete-blocks-range:${String(fromBlock)}:${String(toBlock)}:${String(tx === transaction)}`);
                 return 1;
             },
         }),
         transactionsRepository: createTransactionsRepository({
-            deleteAfterBlockNumber: async (_chainId, blockNumber, tx) => {
-                calls.push(`delete-tx-after:${String(blockNumber)}:${String(tx === transaction)}`);
+            deleteBlockNumberRange: async (_chainId, fromBlock, toBlock, tx) => {
+                calls.push(`delete-tx-range:${String(fromBlock)}:${String(toBlock)}:${String(tx === transaction)}`);
                 return 2;
             },
         }),
         eventsRepository: createEventsRepository({
-            deleteAfterBlockNumber: async (_chainId, blockNumber, tx) => {
-                calls.push(`delete-events-after:${String(blockNumber)}:${String(tx === transaction)}`);
+            deleteBlockNumberRange: async (_chainId, fromBlock, toBlock, tx) => {
+                calls.push(`delete-events-range:${String(fromBlock)}:${String(toBlock)}:${String(tx === transaction)}`);
                 return 3;
             },
         }),
         blockJobsRepository: createBlockJobsRepository({
-            deleteAfterBlockNumber: async (_chainId, blockNumber, tx) => {
-                calls.push(`delete-jobs-after:${String(blockNumber)}:${String(tx === transaction)}`);
+            deleteBlockNumberRange: async (_chainId, fromBlock, toBlock, tx) => {
+                calls.push(`delete-jobs-range:${String(fromBlock)}:${String(toBlock)}:${String(tx === transaction)}`);
                 return 4;
             },
         }),
@@ -464,10 +460,10 @@ test("sequencer service rolls back to common ancestor on parent hash mismatch", 
     expect(cursor.lastCommittedHash).toBe(hash9);
     expect(cursor.lastEnqueuedBlock).toBe(9);
     expect(calls).toEqual([
-        "delete-events-after:9:true",
-        "delete-tx-after:9:true",
-        "delete-blocks-after:9:true",
-        "delete-jobs-after:9:true",
+        "delete-events-range:10:11:true",
+        "delete-tx-range:10:11:true",
+        "delete-blocks-range:10:11:true",
+        "delete-jobs-range:10:11:true",
         "set-cursor:9:true",
     ]);
 });
@@ -501,16 +497,16 @@ test("sequencer service logs rollback metadata for new tables", async () => {
 
             return createBlock(9, hash9, HASH_A, 9);
         }, {
-            deleteAfterBlockNumber: async () => 3,
+            deleteBlockNumberRange: async () => 3,
         }),
         transactionsRepository: createTransactionsRepository({
-            deleteAfterBlockNumber: async () => 4,
+            deleteBlockNumberRange: async () => 4,
         }),
         eventsRepository: createEventsRepository({
-            deleteAfterBlockNumber: async () => 5,
+            deleteBlockNumberRange: async () => 5,
         }),
         blockJobsRepository: createBlockJobsRepository({
-            deleteAfterBlockNumber: async () => 6,
+            deleteBlockNumberRange: async () => 6,
         }),
         transactionManager: manager,
         logger: {
@@ -526,6 +522,7 @@ test("sequencer service logs rollback metadata for new tables", async () => {
     expect(warn).toHaveBeenCalledWith("sequencer_reorg_rollback", {
         chainId: 10,
         fromBlock: 10,
+        toBlock: 11,
         ancestorBlock: 9,
         ancestorHash: hash9,
         deletedBlockJobs: 6,
@@ -579,25 +576,25 @@ test("sequencer service skips rollback when cursor changes during rollback trans
 
             return createBlock(9, hash9, HASH_A, 9);
         }, {
-            deleteAfterBlockNumber: async () => {
+            deleteBlockNumberRange: async () => {
                 calls.push("delete-blocks");
                 return 1;
             },
         }),
         transactionsRepository: createTransactionsRepository({
-            deleteAfterBlockNumber: async () => {
+            deleteBlockNumberRange: async () => {
                 calls.push("delete-transactions");
                 return 1;
             },
         }),
         eventsRepository: createEventsRepository({
-            deleteAfterBlockNumber: async () => {
+            deleteBlockNumberRange: async () => {
                 calls.push("delete-events");
                 return 1;
             },
         }),
         blockJobsRepository: createBlockJobsRepository({
-            deleteAfterBlockNumber: async () => {
+            deleteBlockNumberRange: async () => {
                 calls.push("delete-jobs");
                 return 1;
             },
@@ -640,25 +637,25 @@ test("sequencer service skips rollback when cursor is deleted during rollback tr
 
             return createBlock(9, hash9, HASH_A, 9);
         }, {
-            deleteAfterBlockNumber: async () => {
+            deleteBlockNumberRange: async () => {
                 calls.push("delete-blocks");
                 return 1;
             },
         }),
         transactionsRepository: createTransactionsRepository({
-            deleteAfterBlockNumber: async () => {
+            deleteBlockNumberRange: async () => {
                 calls.push("delete-transactions");
                 return 1;
             },
         }),
         eventsRepository: createEventsRepository({
-            deleteAfterBlockNumber: async () => {
+            deleteBlockNumberRange: async () => {
                 calls.push("delete-events");
                 return 1;
             },
         }),
         blockJobsRepository: createBlockJobsRepository({
-            deleteAfterBlockNumber: async () => {
+            deleteBlockNumberRange: async () => {
                 calls.push("delete-jobs");
                 return 1;
             },
@@ -703,25 +700,25 @@ test("sequencer service skips rollback when next block is gone during rollback t
 
             return createBlock(9, hash9, HASH_A, 9);
         }, {
-            deleteAfterBlockNumber: async () => {
+            deleteBlockNumberRange: async () => {
                 calls.push("delete-blocks");
                 return 1;
             },
         }),
         transactionsRepository: createTransactionsRepository({
-            deleteAfterBlockNumber: async () => {
+            deleteBlockNumberRange: async () => {
                 calls.push("delete-transactions");
                 return 1;
             },
         }),
         eventsRepository: createEventsRepository({
-            deleteAfterBlockNumber: async () => {
+            deleteBlockNumberRange: async () => {
                 calls.push("delete-events");
                 return 1;
             },
         }),
         blockJobsRepository: createBlockJobsRepository({
-            deleteAfterBlockNumber: async () => {
+            deleteBlockNumberRange: async () => {
                 calls.push("delete-jobs");
                 return 1;
             },
@@ -766,25 +763,25 @@ test("sequencer service skips rollback when next block already matches cursor du
 
             return createBlock(9, hash9, HASH_A, 9);
         }, {
-            deleteAfterBlockNumber: async () => {
+            deleteBlockNumberRange: async () => {
                 calls.push("delete-blocks");
                 return 1;
             },
         }),
         transactionsRepository: createTransactionsRepository({
-            deleteAfterBlockNumber: async () => {
+            deleteBlockNumberRange: async () => {
                 calls.push("delete-transactions");
                 return 1;
             },
         }),
         eventsRepository: createEventsRepository({
-            deleteAfterBlockNumber: async () => {
+            deleteBlockNumberRange: async () => {
                 calls.push("delete-events");
                 return 1;
             },
         }),
         blockJobsRepository: createBlockJobsRepository({
-            deleteAfterBlockNumber: async () => {
+            deleteBlockNumberRange: async () => {
                 calls.push("delete-jobs");
                 return 1;
             },

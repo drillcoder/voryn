@@ -109,7 +109,6 @@ export const createNoopBlockJobsRepository = (): BlockJobsRepository => ({
     listFailedBlocks: async () => [],
     retryFailed: async () => 0,
     deleteBlockNumberRange: async () => 0,
-    deleteAfterBlockNumber: async () => 0,
 });
 
 export const createNoopBlocksRepository = (): BlocksRepository => ({
@@ -119,7 +118,6 @@ export const createNoopBlocksRepository = (): BlocksRepository => ({
     getOldestBlockNumber: async () => null,
     deleteBlockNumberRange: async () => 0,
     deleteByBlockNumber: async () => 0,
-    deleteAfterBlockNumber: async () => 0,
 });
 
 export const createNoopChainCursorRepository = (): ChainCursorRepository => ({
@@ -136,7 +134,6 @@ export const createNoopTransactionsRepository = (): TransactionsRepository => ({
     insertMany: async () => undefined,
     deleteBlockNumberRange: async () => 0,
     deleteByBlockNumber: async () => 0,
-    deleteAfterBlockNumber: async () => 0,
 });
 
 export const createNoopEventsRepository = (): EventsRepository => ({
@@ -144,7 +141,6 @@ export const createNoopEventsRepository = (): EventsRepository => ({
     insertMany: async () => undefined,
     deleteBlockNumberRange: async () => 0,
     deleteByBlockNumber: async () => 0,
-    deleteAfterBlockNumber: async () => 0,
 });
 
 export const createNoopWorkerCursorsRepository = (): WorkerCursorsRepository => ({

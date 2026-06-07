@@ -349,21 +349,3 @@ test("deleteBlockNumberRange returns zero when rowCount is null", async () => {
 
     await expect(repository.deleteBlockNumberRange(1, 10, 12)).resolves.toBe(0);
 });
-
-test("deleteAfterBlockNumber deletes jobs after block number", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 4 }));
-    const repository = new PostgresBlockJobsRepository(createExecutor(query));
-
-    await expect(repository.deleteAfterBlockNumber(1, 10)).resolves.toBe(4);
-
-    const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
-    expect(calls[0]?.[0]).toContain("block_number > $2");
-    expect(calls[0]?.[1]).toEqual([1, 10]);
-});
-
-test("deleteAfterBlockNumber returns zero when rowCount is null", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
-    const repository = new PostgresBlockJobsRepository(createExecutor(query));
-
-    await expect(repository.deleteAfterBlockNumber(1, 10)).resolves.toBe(0);
-});

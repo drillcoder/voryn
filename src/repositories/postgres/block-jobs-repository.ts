@@ -309,20 +309,6 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
         return deleted.rowCount ?? 0;
     }
 
-    async deleteAfterBlockNumber(
-        chainId: ChainId,
-        blockNumber: BlockNumber,
-        transaction?: DbExecutor
-    ): Promise<number> {
-        const executor = transaction ?? this.pool;
-        const deleted = await executor.query(
-            `DELETE FROM block_jobs WHERE chain_id = $1 AND block_number > $2`,
-            [chainId, blockNumber]
-        );
-
-        return deleted.rowCount ?? 0;
-    }
-
     private mapJob(row: BlockJobRow): BlockJob {
         return {
             chainId: row.chain_id,

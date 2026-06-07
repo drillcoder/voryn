@@ -61,7 +61,6 @@ const createBlocksRepository = (calls?: unknown[], oldestBlock: number | null = 
         return 0;
     },
     deleteByBlockNumber: async () => 0,
-    deleteAfterBlockNumber: async () => 0,
 });
 
 const createTransactionsRepository = (calls?: unknown[]): TransactionsRepository => ({
@@ -72,7 +71,6 @@ const createTransactionsRepository = (calls?: unknown[]): TransactionsRepository
         return 0;
     },
     deleteByBlockNumber: async () => 0,
-    deleteAfterBlockNumber: async () => 0,
 });
 
 const createEventsRepository = (calls?: unknown[]): EventsRepository => ({
@@ -83,7 +81,6 @@ const createEventsRepository = (calls?: unknown[]): EventsRepository => ({
         return 0;
     },
     deleteByBlockNumber: async () => 0,
-    deleteAfterBlockNumber: async () => 0,
 });
 
 const createBlockJobsRepository = (overrides?: Partial<BlockJobsRepository>): BlockJobsRepository => ({
@@ -103,7 +100,6 @@ const createBlockJobsRepository = (overrides?: Partial<BlockJobsRepository>): Bl
     listFailedBlocks: async () => [],
     retryFailed: async () => 0,
     deleteBlockNumberRange: async () => 0,
-    deleteAfterBlockNumber: async () => 0,
     ...overrides,
 });
 

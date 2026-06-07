@@ -49,35 +49,6 @@ describe("integration repositories: postgres", () => {
         await expect(db.countRows("events")).resolves.toBe(2);
     });
 
-    test("deleteAfterBlockNumber removes rows above block number", async () => {
-        const blockJobsRepository = new PostgresBlockJobsRepository(db.pool);
-        const blocksRepository = new PostgresBlocksRepository(db.pool);
-        const transactionsRepository = new PostgresTransactionsRepository(db.pool);
-        const eventsRepository = new PostgresEventsRepository(db.pool);
-        const blocks = [
-            buildFetchedBlock(300, hashFromNumber(299)),
-            buildFetchedBlock(301, hashFromNumber(300)),
-            buildFetchedBlock(302, hashFromNumber(301)),
-        ];
-
-        await blockJobsRepository.enqueueRange(CHAIN_ID, 300, 302);
-
-        for (const block of blocks) {
-            await blocksRepository.insert(toPipelineBlock(block));
-            await transactionsRepository.insertMany(block.transactions);
-            await eventsRepository.insertMany(block.logs);
-        }
-
-        await expect(blockJobsRepository.deleteAfterBlockNumber(CHAIN_ID, 301)).resolves.toBe(1);
-        await expect(eventsRepository.deleteAfterBlockNumber(CHAIN_ID, 301)).resolves.toBe(1);
-        await expect(transactionsRepository.deleteAfterBlockNumber(CHAIN_ID, 301)).resolves.toBe(1);
-        await expect(blocksRepository.deleteAfterBlockNumber(CHAIN_ID, 301)).resolves.toBe(1);
-
-        await expect(db.countRows("block_jobs")).resolves.toBe(2);
-        await expect(db.countRows("blocks")).resolves.toBe(2);
-        await expect(db.countRows("transactions")).resolves.toBe(2);
-        await expect(db.countRows("events")).resolves.toBe(2);
-    });
 });
 
 function toPipelineBlock(block: FetchedBlock): PipelineBlock {

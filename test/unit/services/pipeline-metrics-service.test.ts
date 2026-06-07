@@ -311,7 +311,6 @@ function createBlockJobsRepository(
         listFailedBlocks: async (_chainId, limit) => failedBlocks.slice(0, limit),
         retryFailed: async () => 0,
         deleteBlockNumberRange: async () => 0,
-        deleteAfterBlockNumber: async () => 0,
     };
 }
 
@@ -334,7 +333,6 @@ function createBlocksRepository(options: {
         getOldestBlockNumber: async () => null,
         deleteBlockNumberRange: async () => 0,
         deleteByBlockNumber: async () => 0,
-        deleteAfterBlockNumber: async () => 0,
     };
 }
 

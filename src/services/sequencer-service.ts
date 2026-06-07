@@ -237,24 +237,31 @@ export class SequencerService {
                 return null;
             }
 
-            const deletedEvents = await this.eventsRepository.deleteAfterBlockNumber(
+            const rollbackFromBlock = ancestor.blockNumber + 1;
+            const rollbackToBlock = cursor.lastEnqueuedBlock;
+
+            const deletedEvents = await this.eventsRepository.deleteBlockNumberRange(
                 chainId,
-                ancestor.blockNumber,
+                rollbackFromBlock,
+                rollbackToBlock,
                 transaction
             );
-            const deletedTransactions = await this.transactionsRepository.deleteAfterBlockNumber(
+            const deletedTransactions = await this.transactionsRepository.deleteBlockNumberRange(
                 chainId,
-                ancestor.blockNumber,
+                rollbackFromBlock,
+                rollbackToBlock,
                 transaction
             );
-            const deletedBlocks = await this.blocksRepository.deleteAfterBlockNumber(
+            const deletedBlocks = await this.blocksRepository.deleteBlockNumberRange(
                 chainId,
-                ancestor.blockNumber,
+                rollbackFromBlock,
+                rollbackToBlock,
                 transaction
             );
-            const deletedBlockJobs = await this.blockJobsRepository.deleteAfterBlockNumber(
+            const deletedBlockJobs = await this.blockJobsRepository.deleteBlockNumberRange(
                 chainId,
-                ancestor.blockNumber,
+                rollbackFromBlock,
+                rollbackToBlock,
                 transaction
             );
 
@@ -267,7 +274,8 @@ export class SequencerService {
             );
 
             return {
-                fromBlock: ancestor.blockNumber + 1,
+                fromBlock: rollbackFromBlock,
+                toBlock: rollbackToBlock,
                 ancestorBlock: ancestor.blockNumber,
                 ancestorHash: ancestor.blockHash,
                 deletedBlockJobs,

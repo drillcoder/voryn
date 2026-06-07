@@ -86,7 +86,6 @@ const createBlockJobsRepository = (
     listFailedBlocks: async () => [],
     retryFailed: async () => 0,
     deleteBlockNumberRange,
-    deleteAfterBlockNumber: async () => 0,
 });
 
 const createBlocksRepository = (
@@ -100,7 +99,6 @@ const createBlocksRepository = (
     getOldestBlockNumber: async () => oldestBlockNumber,
     deleteBlockNumberRange,
     deleteByBlockNumber: async () => 0,
-    deleteAfterBlockNumber: async () => 0,
 });
 
 const createTransactionsRepository = (
@@ -111,7 +109,6 @@ const createTransactionsRepository = (
     insertMany: async () => undefined,
     deleteBlockNumberRange,
     deleteByBlockNumber: async () => 0,
-    deleteAfterBlockNumber: async () => 0,
 });
 
 const createEventsRepository = (
@@ -122,7 +119,6 @@ const createEventsRepository = (
     insertMany: async () => undefined,
     deleteBlockNumberRange,
     deleteByBlockNumber: async () => 0,
-    deleteAfterBlockNumber: async () => 0,
 });
 
 test("retention service purges committed data and logs result", async () => {

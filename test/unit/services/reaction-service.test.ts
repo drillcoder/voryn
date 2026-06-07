@@ -89,7 +89,6 @@ const createEventsRepository = (overrides: Partial<EventsRepository> = {}): Even
     insertMany: async () => undefined,
     deleteBlockNumberRange: async () => 0,
     deleteByBlockNumber: async () => 0,
-    deleteAfterBlockNumber: async () => 0,
     ...overrides,
 });
 
@@ -100,7 +99,6 @@ const createTransactionsRepository = (
     insertMany: async () => undefined,
     deleteBlockNumberRange: async () => 0,
     deleteByBlockNumber: async () => 0,
-    deleteAfterBlockNumber: async () => 0,
     ...overrides,
 });
 

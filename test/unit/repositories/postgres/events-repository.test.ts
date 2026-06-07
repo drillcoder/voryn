@@ -154,10 +154,3 @@ test("deleteByBlockNumber returns zero when rowCount is null", async () => {
 
     await expect(repository.deleteByBlockNumber(1, 10)).resolves.toBe(0);
 });
-
-test("deleteAfterBlockNumber returns zero when rowCount is null", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
-    const repository = new PostgresEventsRepository(createExecutor(query));
-
-    await expect(repository.deleteAfterBlockNumber(1, 10)).resolves.toBe(0);
-});
