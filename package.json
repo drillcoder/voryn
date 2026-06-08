@@ -1,7 +1,7 @@
 {
 	"name": "@drillcoder/voryn",
 	"version": "0.4.5",
-	"description": "TypeScript npm package based on ethers",
+	"description": "A TypeScript library for reliable EVM indexing with PostgreSQL.",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",

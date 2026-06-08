@@ -1,7 +1,7 @@
 # Voryn
 
 <p align="center">
-  <strong>TypeScript-каркас для надежной индексации EVM-сетей через PostgreSQL.</strong>
+  <strong>TypeScript-библиотека для надежной индексации EVM-сетей через PostgreSQL.</strong>
 </p>
 
 <p align="center">

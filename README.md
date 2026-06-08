@@ -1,7 +1,7 @@
 # Voryn
 
 <p align="center">
-  <strong>A TypeScript framework for reliable EVM indexing with PostgreSQL.</strong>
+  <strong>A TypeScript library for reliable EVM indexing with PostgreSQL.</strong>
 </p>
 
 <p align="center">
