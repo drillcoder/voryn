@@ -32,7 +32,7 @@ test("block job recovery create wires retry execution", async () => {
         overrides: { blockJobsRepository },
     });
 
-    const result = await recovery.retryFailedRange(10, 11);
+    const result = await recovery.retryFailedBlockRange(10, 11);
 
     await recovery.close();
 
@@ -58,6 +58,26 @@ test("block job recovery retries one block", async () => {
 
     expect(retryFailed).toHaveBeenCalledWith(7, 10, 10);
     expect(result.retried).toBe(1);
+});
+
+test("block job recovery retries all failed blocks", async () => {
+    const retryAllFailed = jest.fn(async () => 4);
+    const blockJobsRepository: BlockJobsRepository = {
+        ...createNoopBlockJobsRepository(),
+        retryAllFailed,
+    };
+    const recovery = await BlockJobRecovery.create({
+        logLevel: "error",
+         chainId: 7 ,
+        overrides: { blockJobsRepository },
+    });
+
+    const result = await recovery.retryAllFailedBlocks();
+
+    await recovery.close();
+
+    expect(retryAllFailed).toHaveBeenCalledWith(7);
+    expect(result.retried).toBe(4);
 });
 
 test("block job recovery merges db defaults with overrides and returns disposer", async () => {

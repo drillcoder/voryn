@@ -6,3 +6,8 @@ export interface RetryFailedBlockJobsResult {
     toBlock: BlockNumber;
     retried: number;
 }
+
+export interface RetryAllFailedBlockJobsResult {
+    chainId: ChainId;
+    retried: number;
+}

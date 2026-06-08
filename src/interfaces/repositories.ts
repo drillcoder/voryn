@@ -85,6 +85,8 @@ export interface BlockJobsRepository {
         transaction?: DbExecutor
     ): Promise<number>;
 
+    retryAllFailed(chainId: ChainId, transaction?: DbExecutor): Promise<number>;
+
     deleteBlockNumberRange(
         chainId: ChainId,
         fromBlock: BlockNumber,

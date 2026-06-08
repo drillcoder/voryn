@@ -323,6 +323,27 @@ test("retryFailed returns zero when rowCount is null", async () => {
     await expect(repository.retryFailed(1, 10, 12)).resolves.toBe(0);
 });
 
+test("retryAllFailed makes all failed jobs available for fetch and resets attempts", async () => {
+    const query = jest.fn(async () => ({ rows: [], rowCount: 4 }));
+    const repository = new PostgresBlockJobsRepository(createExecutor(query));
+
+    await expect(repository.retryAllFailed(1)).resolves.toBe(4);
+
+    const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
+    expect(calls[0]?.[0]).toContain("attempts = 0");
+    expect(calls[0]?.[0]).toContain("next_retry_at = NOW()");
+    expect(calls[0]?.[0]).toContain("status = 'failed'");
+    expect(calls[0]?.[0]).not.toContain("block_number BETWEEN");
+    expect(calls[0]?.[1]).toEqual([1]);
+});
+
+test("retryAllFailed returns zero when rowCount is null", async () => {
+    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const repository = new PostgresBlockJobsRepository(createExecutor(query));
+
+    await expect(repository.retryAllFailed(1)).resolves.toBe(0);
+});
+
 test("deleteBlockNumberRange deletes jobs in block number range", async () => {
     const query = jest.fn(async () => ({ rows: [], rowCount: 3 }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));

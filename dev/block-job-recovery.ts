@@ -1,4 +1,8 @@
-import type { CreateBlockJobRecoveryOptions } from "../src/index.js";
+import type {
+    CreateBlockJobRecoveryOptions,
+    RetryAllFailedBlockJobsResult,
+    RetryFailedBlockJobsResult,
+} from "../src/index.js";
 import { BlockJobRecovery } from "../src/index.js";
 import { createDevLogger, envNumber, envValue, runWithErrorHandling } from "./runtime.js";
 
@@ -11,21 +15,30 @@ async function run(): Promise<void> {
     const recovery = await BlockJobRecovery.create(options);
 
     try {
+        const allFailed = envValue("VORYN_RECOVERY_ALL_FAILED", "") === "true";
         const blockNumber = envOptionalNumber("VORYN_RECOVERY_BLOCK");
         const fromBlock = envOptionalNumber("VORYN_RECOVERY_FROM_BLOCK");
         const toBlock = envOptionalNumber("VORYN_RECOVERY_TO_BLOCK");
+        if (allFailed && (blockNumber !== null || fromBlock !== null || toBlock !== null)) {
+            throw new Error("Set VORYN_RECOVERY_ALL_FAILED without block or range variables");
+        }
         if (blockNumber !== null && (fromBlock !== null || toBlock !== null)) {
             throw new Error(
                 "Set either VORYN_RECOVERY_BLOCK or VORYN_RECOVERY_FROM_BLOCK/VORYN_RECOVERY_TO_BLOCK"
             );
         }
 
-        const result = blockNumber === null
-            ? await recovery.retryFailedRange(
+        let result: RetryAllFailedBlockJobsResult | RetryFailedBlockJobsResult;
+        if (allFailed) {
+            result = await recovery.retryAllFailedBlocks();
+        } else if (blockNumber === null) {
+            result = await recovery.retryFailedBlockRange(
                 requiredRangeBlock(fromBlock, "VORYN_RECOVERY_FROM_BLOCK"),
                 requiredRangeBlock(toBlock, "VORYN_RECOVERY_TO_BLOCK"),
-            )
-            : await recovery.retryFailedBlock(blockNumber);
+            );
+        } else {
+            result = await recovery.retryFailedBlock(blockNumber);
+        }
 
         console.log(JSON.stringify(result, null, 2));
     } finally {

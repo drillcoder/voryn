@@ -108,6 +108,7 @@ export const createNoopBlockJobsRepository = (): BlockJobsRepository => ({
     }),
     listFailedBlocks: async () => [],
     retryFailed: async () => 0,
+    retryAllFailed: async () => 0,
     deleteBlockNumberRange: async () => 0,
 });
 

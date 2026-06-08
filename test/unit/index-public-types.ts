@@ -69,6 +69,7 @@ import type {
     RetentionPurgeResult,
     RetentionWorkerDatabaseDependencies,
     RetentionWorkerOptions,
+    RetryAllFailedBlockJobsResult,
     RetryFailedBlockJobsResult,
     RuntimeDbOptions,
     RuntimeLoggerOptions,
@@ -159,6 +160,7 @@ interface PublicApiTypesCompile {
     RetentionPurgeResult: RetentionPurgeResult;
     RetentionWorkerDatabaseDependencies: RetentionWorkerDatabaseDependencies;
     RetentionWorkerOptions: RetentionWorkerOptions;
+    RetryAllFailedBlockJobsResult: RetryAllFailedBlockJobsResult;
     RetryFailedBlockJobsResult: RetryFailedBlockJobsResult;
     RuntimeDbOptions: RuntimeDbOptions<Record<string, never>>;
     RuntimeLoggerOptions: RuntimeLoggerOptions;

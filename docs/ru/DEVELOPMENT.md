@@ -110,8 +110,9 @@ npm exec -- tsx --tsconfig dev/tsconfig.json dev/block-job-recovery.ts
 - `VORYN_RECOVERY_BLOCK` (`optional`) — один failed-блок для повторной обработки.
 - `VORYN_RECOVERY_FROM_BLOCK` (`optional`) — начало диапазона failed-блоков.
 - `VORYN_RECOVERY_TO_BLOCK` (`optional`) — конец диапазона failed-блоков.
+- `VORYN_RECOVERY_ALL_FAILED=true` (`optional`) — повторно отправить все failed-блоки.
 
-Нужно задать либо `VORYN_RECOVERY_BLOCK`, либо обе переменные диапазона:
+Нужно задать один режим: `VORYN_RECOVERY_ALL_FAILED=true`, `VORYN_RECOVERY_BLOCK` или обе переменные диапазона:
 `VORYN_RECOVERY_FROM_BLOCK` и `VORYN_RECOVERY_TO_BLOCK`.
 
 Пример:

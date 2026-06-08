@@ -310,6 +310,7 @@ function createBlockJobsRepository(
         getStatusCounts: async () => counts,
         listFailedBlocks: async (_chainId, limit) => failedBlocks.slice(0, limit),
         retryFailed: async () => 0,
+        retryAllFailed: async () => 0,
         deleteBlockNumberRange: async () => 0,
     };
 }

@@ -1,7 +1,10 @@
 import type { BlockJobsRepository } from "../../../src/interfaces/repositories.js";
 import { BlockJobRecoveryService } from "../../../src/services/block-job-recovery-service.js";
 
-const createBlockJobsRepository = (retryFailed: BlockJobsRepository["retryFailed"]): BlockJobsRepository => ({
+const createBlockJobsRepository = (
+    retryFailed: BlockJobsRepository["retryFailed"],
+    retryAllFailed: BlockJobsRepository["retryAllFailed"] = async () => 0
+): BlockJobsRepository => ({
     enqueueRange: async () => undefined,
     get: async () => null,
     claimForFetch: async () => null,
@@ -17,6 +20,7 @@ const createBlockJobsRepository = (retryFailed: BlockJobsRepository["retryFailed
     }),
     listFailedBlocks: async () => [],
     retryFailed,
+    retryAllFailed,
     deleteBlockNumberRange: async () => 0,
 });
 
@@ -59,4 +63,30 @@ test("block job recovery service rejects invalid ranges", async () => {
     await expect(service.retryFailedBlockRange(44, 42))
         .rejects.toThrow("Cannot retry failed block jobs");
     expect(retryFailed).not.toHaveBeenCalled();
+});
+
+test("block job recovery service retries all failed blocks", async () => {
+    const retryFailed = jest.fn(async () => 0);
+    const retryAllFailed = jest.fn(async () => 5);
+    const info = jest.fn();
+    const service = new BlockJobRecoveryService(
+        { chainId: 10 },
+        createBlockJobsRepository(retryFailed, retryAllFailed),
+        {
+            debug: jest.fn(),
+            info,
+            warn: jest.fn(),
+            error: jest.fn(),
+        }
+    );
+
+    const result = await service.retryAllFailedBlocks();
+
+    expect(retryAllFailed).toHaveBeenCalledWith(10);
+    expect(retryFailed).not.toHaveBeenCalled();
+    expect(result).toEqual({
+        chainId: 10,
+        retried: 5,
+    });
+    expect(info).toHaveBeenCalledWith("all_failed_block_jobs_retry_requested", result);
 });

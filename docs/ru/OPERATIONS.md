@@ -174,6 +174,19 @@ await recovery.retryFailedRange(124, 130);
 await recovery.close();
 ```
 
+Повторно отправить все failed blocks:
+
+```ts
+const recovery = await BlockJobRecovery.create({
+    dbUrl: "postgres://user:pass@localhost:5432/voryn",
+    logLevel: "info",
+    chainId: 1,
+});
+
+await recovery.retryAllFailedBlocks();
+await recovery.close();
+```
+
 Не запускайте ручной recovery, пока причина сбоя активна. Если RPC все еще возвращает ошибки, recovery просто вернет
 те же jobs обратно в failed. Также не делайте ручной recovery, когда sequencer обрабатывает reorg: дайте sequencer
 закончить rollback, а `head` — заново поставить правильный диапазон в очередь.

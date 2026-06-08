@@ -290,6 +290,23 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
         return updated.rowCount ?? 0;
     }
 
+    async retryAllFailed(chainId: ChainId, transaction?: DbExecutor): Promise<number> {
+        const executor = transaction ?? this.pool;
+        const updated = await executor.query(
+            `UPDATE block_jobs
+             SET attempts = 0,
+                 claimed_by = NULL,
+                 claimed_at = NULL,
+                 next_retry_at = NOW(),
+                 updated_at = NOW()
+             WHERE chain_id = $1
+               AND status = 'failed'`,
+            [chainId]
+        );
+
+        return updated.rowCount ?? 0;
+    }
+
     async deleteBlockNumberRange(
         chainId: ChainId,
         fromBlock: BlockNumber,

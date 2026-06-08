@@ -2,7 +2,7 @@ import type { Logger } from "../interfaces/logger.js";
 import type { BlockJobsRepository } from "../interfaces/repositories.js";
 import type { BlockJobRecoveryOptions } from "../interfaces/options.js";
 import type { BlockNumber } from "../types/chain.js";
-import type { RetryFailedBlockJobsResult } from "../interfaces/recovery.js";
+import type { RetryAllFailedBlockJobsResult, RetryFailedBlockJobsResult } from "../interfaces/recovery.js";
 import { noopLogger } from "../interfaces/logger.js";
 
 export type BlockJobRecoveryServiceConfig = BlockJobRecoveryOptions;
@@ -37,6 +37,15 @@ export class BlockJobRecoveryService {
         };
 
         this.logger.info("failed_block_jobs_retry_requested", result);
+        return result;
+    }
+
+    async retryAllFailedBlocks(): Promise<RetryAllFailedBlockJobsResult> {
+        const retried = await this.blockJobsRepository.retryAllFailed(this.config.chainId);
+
+        const result = { chainId: this.config.chainId, retried };
+
+        this.logger.info("all_failed_block_jobs_retry_requested", result);
         return result;
     }
 }

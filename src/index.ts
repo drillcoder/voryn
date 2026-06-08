@@ -57,7 +57,7 @@ export type {
     ReactionHandlerResult,
     TransactionReactionHandler,
 } from "./interfaces/reaction.js";
-export type { RetryFailedBlockJobsResult } from "./interfaces/recovery.js";
+export type { RetryAllFailedBlockJobsResult, RetryFailedBlockJobsResult } from "./interfaces/recovery.js";
 export type {
     BlockJobsRepository,
     BlocksRepository,

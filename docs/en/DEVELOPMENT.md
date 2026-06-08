@@ -109,8 +109,9 @@ For `block-job-recovery`:
 - `VORYN_RECOVERY_BLOCK` (`optional`) — one failed block to retry.
 - `VORYN_RECOVERY_FROM_BLOCK` (`optional`) — beginning of a failed block range.
 - `VORYN_RECOVERY_TO_BLOCK` (`optional`) — end of a failed block range.
+- `VORYN_RECOVERY_ALL_FAILED=true` (`optional`) — retry all failed blocks.
 
-Set either `VORYN_RECOVERY_BLOCK`, or both range variables:
+Set one mode: `VORYN_RECOVERY_ALL_FAILED=true`, `VORYN_RECOVERY_BLOCK`, or both range variables:
 `VORYN_RECOVERY_FROM_BLOCK` and `VORYN_RECOVERY_TO_BLOCK`.
 
 Example:
