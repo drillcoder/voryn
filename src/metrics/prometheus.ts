@@ -133,38 +133,6 @@ function addPipelineMetricsGauges(
         );
     }
 
-    for (const failedBlock of metrics.failedBlocks) {
-        const labels = { block: String(failedBlock.block) };
-
-        addGauge(
-            metrics.chainId,
-            {
-                name: "voryn_pipeline_failed_block_attempts",
-                help: "Fetch attempts for recently failed blocks.",
-            },
-            failedBlock.attempts,
-            labels,
-        );
-        addGauge(
-            metrics.chainId,
-            {
-                name: "voryn_pipeline_failed_block_next_retry_timestamp_seconds",
-                help: "Unix timestamp when a recently failed block can be retried.",
-            },
-            failedBlock.nextRetryAt === null ? null : dateToUnixSeconds(failedBlock.nextRetryAt),
-            labels,
-        );
-        addGauge(
-            metrics.chainId,
-            {
-                name: "voryn_pipeline_failed_block_updated_timestamp_seconds",
-                help: "Unix timestamp when a recently failed block was last updated.",
-            },
-            dateToUnixSeconds(failedBlock.updatedAt),
-            labels,
-        );
-    }
-
     for (const reaction of metrics.reactions) {
         const labels = {
             worker_name: reaction.workerName,

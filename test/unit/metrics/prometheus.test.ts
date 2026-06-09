@@ -86,17 +86,6 @@ test("formats pipeline metrics as prometheus text", () => {
         "voryn_pipeline_block_jobs{chain_id=\"7\",status=\"fetched\"} 3",
         "voryn_pipeline_block_jobs{chain_id=\"7\",status=\"committed\"} 4",
         "voryn_pipeline_block_jobs{chain_id=\"7\",status=\"failed\"} 5",
-        "# HELP voryn_pipeline_failed_block_attempts Fetch attempts for recently failed blocks.",
-        "# TYPE voryn_pipeline_failed_block_attempts gauge",
-        "voryn_pipeline_failed_block_attempts{chain_id=\"7\",block=\"101\"} 4",
-        "# HELP voryn_pipeline_failed_block_next_retry_timestamp_seconds "
-            + "Unix timestamp when a recently failed block can be retried.",
-        "# TYPE voryn_pipeline_failed_block_next_retry_timestamp_seconds gauge",
-        "voryn_pipeline_failed_block_next_retry_timestamp_seconds{chain_id=\"7\",block=\"101\"} 1767225630",
-        "# HELP voryn_pipeline_failed_block_updated_timestamp_seconds "
-            + "Unix timestamp when a recently failed block was last updated.",
-        "# TYPE voryn_pipeline_failed_block_updated_timestamp_seconds gauge",
-        "voryn_pipeline_failed_block_updated_timestamp_seconds{chain_id=\"7\",block=\"101\"} 1767225603",
         "# HELP voryn_pipeline_reaction_block Current block processed by a reaction worker.",
         "# TYPE voryn_pipeline_reaction_block gauge",
         "voryn_pipeline_reaction_block"
@@ -125,7 +114,7 @@ test("omits nullable metrics when values are unknown", () => {
     expect(formatted).not.toContain("voryn_pipeline_freshness_seconds{");
 });
 
-test("omits failed block retry timestamp when retry date is unknown", () => {
+test("omits failed block details from prometheus text", () => {
     const metrics: ChainPipelineMetrics = {
         ...createEmptyMetrics(),
         blockStatusCounts: {
@@ -146,11 +135,9 @@ test("omits failed block retry timestamp when retry date is unknown", () => {
 
     const formatted = formatPipelineMetricsPrometheus(createSnapshot([metrics]));
 
-    expect(formatted).toContain("voryn_pipeline_failed_block_attempts{chain_id=\"1\",block=\"11\"} 2");
-    expect(formatted).not.toContain("voryn_pipeline_failed_block_next_retry_timestamp_seconds{");
-    expect(formatted).toContain(
-        "voryn_pipeline_failed_block_updated_timestamp_seconds{chain_id=\"1\",block=\"11\"} 1767225605"
-    );
+    expect(formatted).toContain("voryn_pipeline_block_jobs{chain_id=\"1\",status=\"failed\"} 1");
+    expect(formatted).not.toContain("voryn_pipeline_failed_block_");
+    expect(formatted).not.toContain("block=\"11\"");
 });
 
 test("formats reaction block lag without cursor internals", () => {

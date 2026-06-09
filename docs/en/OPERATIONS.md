@@ -267,12 +267,11 @@ Prometheus output includes these gauges:
 - `voryn_pipeline_max_lag_seconds`
 - `voryn_pipeline_freshness_seconds`
 - `voryn_pipeline_block_jobs`
-- `voryn_pipeline_failed_block_attempts`
-- `voryn_pipeline_failed_block_next_retry_timestamp_seconds`
-- `voryn_pipeline_failed_block_updated_timestamp_seconds`
 - `voryn_pipeline_reaction_block`
 - `voryn_pipeline_reaction_lag_blocks`
 - `voryn_pipeline_reaction_seconds_since_progress`
+
+Failed block details are available in the JSON snapshot only. Prometheus exposes failed job counts through `voryn_pipeline_block_jobs{status="failed"}`.
 
 Healthy state usually looks like this:
 
