@@ -30,7 +30,9 @@
 		"test:watch": "jest --config dev/jest.config.js --watch",
 		"prepublishOnly": "npm run build",
 		"pack:dry-run": "npm pack --dry-run",
-		"db:apply-sql": "tsx --tsconfig dev/tsconfig.json dev/apply-sql.ts"
+		"db:apply-sql": "tsx --tsconfig dev/tsconfig.json dev/apply-sql.ts",
+		"release": "semantic-release",
+		"release:dry-run": "semantic-release --dry-run"
 	},
 	"keywords": [
 		"ethers",
@@ -55,8 +57,15 @@
 		"pg": "^8.20.0"
 	},
 	"devDependencies": {
+		"@semantic-release/changelog": "^6.0.3",
+		"@semantic-release/commit-analyzer": "^13.0.1",
+		"@semantic-release/git": "^10.0.1",
+		"@semantic-release/github": "^12.0.8",
+		"@semantic-release/npm": "^13.1.5",
+		"@semantic-release/release-notes-generator": "^14.1.1",
 		"@types/jest": "^30.0.0",
 		"@types/pg": "^8.18.0",
+		"conventional-changelog-conventionalcommits": "^9.3.1",
 		"eslint": "^9.39.3",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-import-resolver-typescript": "^4.4.4",
@@ -65,6 +74,7 @@
 		"eslint-plugin-n": "^17.24.0",
 		"jest": "^30.2.0",
 		"prettier": "^3.8.1",
+		"semantic-release": "^25.0.5",
 		"ts-jest": "^29.4.6",
 		"tsx": "^4.21.0",
 		"typescript": "^5.9.3",

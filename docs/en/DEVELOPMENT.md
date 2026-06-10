@@ -122,3 +122,30 @@ VORYN_CHAIN_ID=1 \
 VORYN_HEAD_RPC_URL="https://rpc.example.org" \
 npm exec -- tsx --tsconfig dev/tsconfig.json dev/head.ts
 ```
+
+## Releases
+
+Releases are automated with `semantic-release` from Conventional Commits on `main`.
+
+After CI checks pass on a push to `main`, the release job:
+
+- reads commits since the previous `vX.Y.Z` tag;
+- chooses the next semantic version;
+- updates `CHANGELOG.md`, `package.json`, and `package-lock.json`;
+- creates a release commit and tag;
+- creates a GitHub Release;
+- publishes the package to npm.
+
+Required npm Trusted Publishing configuration:
+
+- package: `@drillcoder/voryn`;
+- repository owner: `drillcoder`;
+- repository name: `voryn`;
+- workflow filename: `ci.yml`;
+- environment: empty unless the release job starts using a GitHub environment.
+
+To inspect the next release locally without publishing:
+
+```bash
+npm run release:dry-run
+```
