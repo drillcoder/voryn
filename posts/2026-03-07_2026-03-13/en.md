@@ -8,11 +8,11 @@ This week Voryn started moving from an architectural skeleton toward the first r
 
 The main focus was library infrastructure:
 
-- added `ConsoleLogger`, so workers and services could produce readable logs during local development;
-- renamed `contracts` to `interfaces`, because that better described the role of this layer;
+- added ConsoleLogger, so workers and services could produce readable logs during local development;
+- renamed contracts to interfaces, because that better described the role of this layer;
 - reorganized tests into folders aligned with the source structure;
 - added branded hex types and validation helpers for hash, address, and data fields;
-- implemented the first block source adapter based on `ethers`;
+- implemented the first block source adapter based on ethers;
 - started building the PostgreSQL layer: factory, client, parsers, and initial store implementations;
 - added implementations and tests for chain cursor, raw blocks, event stream, transaction stream, and retention store.
 
