@@ -192,7 +192,7 @@ test("sequencer service commits next fetched block by advancing cursor and marki
     const worker = createService({
         chainCursorRepository: createChainCursorRepository(() => cursor, {
             advanceLastCommitted: async (_chainId, _prevBlock, _prevHash, blockNumber, blockHash, tx) => {
-                calls.push(`advance:${String(blockNumber)}:${String(blockHash)}:${String(tx === transaction)}`);
+                calls.push(`advance:${String(blockNumber)}:${blockHash}:${String(tx === transaction)}`);
                 cursor.lastCommittedBlock = blockNumber;
                 cursor.lastCommittedHash = blockHash;
             },
@@ -209,7 +209,7 @@ test("sequencer service commits next fetched block by advancing cursor and marki
     await worker.execute();
 
     expect(calls).toEqual([
-        `advance:41:${String(HASH_B)}:true`,
+        `advance:41:${HASH_B}:true`,
         "mark-committed:41:true",
     ]);
 });

@@ -6,7 +6,7 @@ export const asHash32 = (value: unknown): HashHex => {
         throw new Error("invalid hash: expected 0x-prefixed 32-byte hex");
     }
 
-    return value as HashHex;
+    return value;
 };
 
 export const asAddress = (value: unknown): AddressHex => {
@@ -14,7 +14,7 @@ export const asAddress = (value: unknown): AddressHex => {
         throw new Error("invalid address: expected 0x-prefixed 20-byte address");
     }
 
-    return value as AddressHex;
+    return value;
 };
 
 export const asHexData = (value: unknown): DataHex => {

@@ -6,7 +6,6 @@ export type {
     ChainId,
     DataHex,
     HashHex,
-    Hex,
 } from "./types/chain.js";
 export type { BlockJobStatus, StreamType } from "./types/pipeline.js";
 

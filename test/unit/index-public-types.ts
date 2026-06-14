@@ -48,7 +48,6 @@ import type {
     HashHex,
     HeadWorkerDatabaseDependencies,
     HeadWorkerOptions,
-    Hex,
     LeaderLock,
     Logger,
     LogLevel,
@@ -139,7 +138,6 @@ interface PublicApiTypesCompile {
     HashHex: HashHex;
     HeadWorkerDatabaseDependencies: HeadWorkerDatabaseDependencies;
     HeadWorkerOptions: HeadWorkerOptions;
-    Hex: Hex;
     LeaderLock: LeaderLock;
     Logger: Logger;
     LogLevel: LogLevel;
@@ -180,3 +178,13 @@ interface PublicApiTypesCompile {
 }
 
 type PublicApiTypeOnlyGuard = AssertNever<Extract<keyof PublicApiTypesCompile, RuntimePublicApiName>>;
+
+const addressHexLiteral: AddressHex = "0x90661cE00457cDDFb0d2396E619FeC80cBEF2B2f";
+const dataHexLiteral: DataHex = "0x";
+const chainTransaction = {} as ChainTransaction;
+
+const comparesAddressWithAddressHex: boolean = chainTransaction.from === addressHexLiteral;
+const comparesAddressWithStringLiteral: boolean =
+    chainTransaction.from === "0x90661cE00457cDDFb0d2396E619FeC80cBEF2B2f";
+const comparesDataWithDataHex: boolean = chainTransaction.data === dataHexLiteral;
+const comparesDataWithStringLiteral: boolean = chainTransaction.data === "0x";
