@@ -43,12 +43,8 @@ export abstract class SingletonPollingWorker extends PollingWorker {
         }
     }
 
-    override async stop(): Promise<void> {
-        try {
-            await super.stop();
-        } finally {
-            await this.releaseLock();
-        }
+    protected override async beforeCleanup(): Promise<void> {
+        await this.releaseLock();
     }
 
     private async releaseLock(): Promise<void> {

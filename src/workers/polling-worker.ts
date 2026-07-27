@@ -6,6 +6,12 @@ export abstract class PollingWorker implements WorkerLifecycle {
     private active = false;
     private runPromise: Promise<void> | null = null;
     private finalized = false;
+    private stopPromise: Promise<void> | null = null;
+    private finalizationPromise: Promise<void> | null = null;
+    private pendingDelay: {
+        timer: ReturnType<typeof setTimeout>;
+        resolve: () => void;
+    } | null = null;
 
     protected constructor(
         protected readonly workerName: string,
@@ -34,16 +40,23 @@ export abstract class PollingWorker implements WorkerLifecycle {
             this.runPromise = this.runLoop();
         } catch (error) {
             this.active = false;
-            this.finalized = true;
-            await this.runCleanup();
+            await this.finalizeLifecycle();
             throw error;
         }
     }
 
     async stop(): Promise<void> {
+        this.stopPromise ??= this.stopOnce();
+        await this.stopPromise;
+    }
+
+    private async stopOnce(): Promise<void> {
         if (this.lifecycleFinalized) {
+            await this.finalizeLifecycle();
             return;
         }
+
+        this.finalized = true;
 
         try {
             if (!this.active) {
@@ -51,12 +64,12 @@ export abstract class PollingWorker implements WorkerLifecycle {
             }
 
             this.active = false;
+            this.cancelPendingDelay();
             await this.runPromise;
             this.runPromise = null;
             this.logger.info("worker_stopped", { worker: this.workerName });
         } finally {
-            this.finalized = true;
-            await this.runCleanup();
+            await this.finalizeLifecycle();
         }
     }
 
@@ -76,7 +89,7 @@ export abstract class PollingWorker implements WorkerLifecycle {
                 break;
             }
 
-            await new Promise((resolve) => setTimeout(resolve, this.delayBetweenTicksMs));
+            await this.waitForNextTick();
         }
     }
 
@@ -88,12 +101,46 @@ export abstract class PollingWorker implements WorkerLifecycle {
         return this.finalized;
     }
 
+    protected beforeCleanup(): Promise<void> {
+        return Promise.resolve();
+    }
+
+    private async finalizeLifecycle(): Promise<void> {
+        this.finalized = true;
+        this.finalizationPromise ??= this.runCleanup();
+        await this.finalizationPromise;
+    }
+
     private async runCleanup(): Promise<void> {
-        if (this.cleanupFn === undefined) {
+        try {
+            await this.beforeCleanup();
+        } finally {
+            if (this.cleanupFn !== undefined) {
+                await this.cleanupFn();
+            }
+        }
+    }
+
+    private async waitForNextTick(): Promise<void> {
+        await new Promise<void>((resolve) => {
+            const timer = setTimeout(() => {
+                this.pendingDelay = null;
+                resolve();
+            }, this.delayBetweenTicksMs);
+
+            this.pendingDelay = { timer, resolve };
+        });
+    }
+
+    private cancelPendingDelay(): void {
+        const pendingDelay = this.pendingDelay;
+        if (pendingDelay === null) {
             return;
         }
 
-        await this.cleanupFn();
+        this.pendingDelay = null;
+        clearTimeout(pendingDelay.timer);
+        pendingDelay.resolve();
     }
 
     protected abstract tick(): Promise<void>;

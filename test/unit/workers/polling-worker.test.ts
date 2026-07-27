@@ -123,6 +123,28 @@ test("polling worker calls cleanup on stop", async () => {
     expect(cleanup).toHaveBeenCalledTimes(1);
 });
 
+test("polling worker interrupts the delay between ticks on stop", async () => {
+    jest.useFakeTimers();
+
+    try {
+        const { logger } = createLogger();
+        const onTick = jest.fn(async () => undefined);
+        const worker = new TestPollingWorker(logger, onTick);
+
+        await worker.start();
+        await jest.advanceTimersByTimeAsync(0);
+
+        expect(onTick).toHaveBeenCalledTimes(1);
+        expect(jest.getTimerCount()).toBe(1);
+
+        await worker.stop();
+
+        expect(jest.getTimerCount()).toBe(0);
+    } finally {
+        jest.useRealTimers();
+    }
+});
+
 test("polling worker cannot start after lifecycle is finalized", async () => {
     const { logger } = createLogger();
     const worker = new TestPollingWorker(logger, async () => undefined);

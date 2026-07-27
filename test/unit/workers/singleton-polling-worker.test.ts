@@ -37,9 +37,10 @@ class TestSingletonWorker extends SingletonPollingWorker {
     constructor(
         logger: Logger,
         lock: LeaderLock,
-        private readonly onTick: () => Promise<void>
+        private readonly onTick: () => Promise<void>,
+        cleanup?: () => Promise<void>
     ) {
-        super("singleton-worker", 1000, logger, lock);
+        super("singleton-worker", 1000, logger, lock, cleanup);
     }
 
     protected async tick(): Promise<void> {
@@ -64,12 +65,12 @@ test("singleton worker rejects start when lock is held", async () => {
 });
 
 test("singleton worker releases lock when start fails", async () => {
-    let releaseCount = 0;
+    const lifecycleOrder: string[] = [];
 
     const lock: LeaderLock = {
         tryAcquire: async () => true,
         release: async () => {
-            releaseCount += 1;
+            lifecycleOrder.push("release");
         },
     };
 
@@ -82,10 +83,19 @@ test("singleton worker releases lock when start fails", async () => {
         error: () => undefined,
     };
 
-    const worker = new TestSingletonWorker(logger, lock, async () => undefined);
+    const worker = new TestSingletonWorker(
+        logger,
+        lock,
+        async () => undefined,
+        async () => {
+            lifecycleOrder.push("cleanup");
+        }
+    );
 
     await expect(worker.start()).rejects.toThrow("logger failed");
-    expect(releaseCount).toBe(1);
+    await worker.stop();
+
+    expect(lifecycleOrder).toEqual(["release", "cleanup"]);
 });
 
 test("singleton worker acquires and releases lock on lifecycle", async () => {
@@ -115,6 +125,39 @@ test("singleton worker acquires and releases lock on lifecycle", async () => {
 
     expect(acquireCount).toBe(1);
     expect(releaseCount).toBe(1);
+});
+
+test("singleton worker coalesces concurrent stops and releases lock before cleanup", async () => {
+    const { logger } = createLogger();
+    const tick = createDeferred();
+    const lifecycleOrder: string[] = [];
+
+    const lock: LeaderLock = {
+        tryAcquire: async () => true,
+        release: async () => {
+            lifecycleOrder.push("release");
+        },
+    };
+
+    const worker = new TestSingletonWorker(
+        logger,
+        lock,
+        async () => tick.promise,
+        async () => {
+            lifecycleOrder.push("cleanup");
+        }
+    );
+
+    await worker.start();
+    const firstStopPromise = worker.stop();
+    const secondStopPromise = worker.stop();
+
+    expect(lifecycleOrder).toEqual([]);
+
+    tick.resolve();
+    await Promise.all([firstStopPromise, secondStopPromise]);
+
+    expect(lifecycleOrder).toEqual(["release", "cleanup"]);
 });
 
 test("singleton worker stop without start does not release lock", async () => {
