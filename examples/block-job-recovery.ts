@@ -16,7 +16,7 @@ import { BlockJobRecovery } from "@drillcoder/voryn";
 
         const fromBlock = 124;
         const toBlock = 130;
-        const rangeResult = await recovery.retryFailedRange(fromBlock, toBlock);
+        const rangeResult = await recovery.retryFailedBlockRange(fromBlock, toBlock);
 
         const allFailedResult = await recovery.retryAllFailedBlocks();
 
