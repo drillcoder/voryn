@@ -32,6 +32,12 @@ export class HeadService {
     async execute(): Promise<void> {
         const { chainId, confirmations, depthBlocks } = this.config;
         const latestBlock = await this.source.getLatestBlockNumber(chainId);
+
+        this.logger.debug("head_latest_block_number_load_completed", {
+            chainId,
+            latestBlock,
+        });
+
         const safeHead = latestBlock - confirmations;
 
         if (safeHead < 0) {

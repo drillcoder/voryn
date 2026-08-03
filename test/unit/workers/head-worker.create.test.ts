@@ -1,4 +1,5 @@
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
+import type { Logger } from "../../../src/interfaces/logger.js";
 import type { HeadWorkerOptions } from "../../../src/interfaces/options.js";
 import { HeadWorker } from "../../../src/workers/head-worker.js";
 import {
@@ -15,6 +16,13 @@ import {
 
 test("head worker create wires service execution", async () => {
     const getLatestBlockNumber = jest.fn(async () => 0);
+    const debug = jest.fn<unknown, [string, Record<string, unknown>?]>();
+    const logger: Logger = {
+        debug,
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+    };
     const config: HeadWorkerOptions = {
         chainId: 7,
         confirmations: 1,
@@ -35,7 +43,7 @@ test("head worker create wires service execution", async () => {
     };
 
     const worker = await HeadWorker.create({
-        logLevel: "error",
+        logger,
         ...config,
         source,
         overrides: {
@@ -52,6 +60,12 @@ test("head worker create wires service execution", async () => {
     await invokeTick(worker);
 
     expect(getLatestBlockNumber).toHaveBeenCalledWith(7);
+    expect(debug.mock.calls.map(([message]) => message)).toEqual([
+        "head_tick_started",
+        "head_latest_block_number_load_completed",
+        "head_waiting_for_safe_head",
+        "head_tick_completed",
+    ]);
     expect(invokeStartLogMeta(worker)).toEqual({
         chainId: 7,
         confirmations: 1,

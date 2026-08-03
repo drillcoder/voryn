@@ -51,6 +51,15 @@ const createLogger = (): Logger & {
     };
 };
 
+const createDeferred = <T>(): { promise: Promise<T>; resolve: (value: T) => void } => {
+    let resolve!: (value: T) => void;
+    const promise = new Promise<T>((resolvePromise) => {
+        resolve = resolvePromise;
+    });
+
+    return { promise, resolve };
+};
+
 const createBlocksRepository = (calls?: unknown[], oldestBlock: number | null = 100): BlocksRepository => ({
     insert: async () => undefined,
     get: async () => null,
@@ -293,10 +302,19 @@ test("head service bootstraps missing cursor", async () => {
 test("head service skips when cursor is already ahead of safe head", async () => {
     let enqueued = false;
     const logger = createLogger();
+    const latestBlockLoad = createDeferred<number>();
+    const chainCursor = {
+        chainId: 1,
+        lastEnqueuedBlock: 11,
+        lastCommittedBlock: 10,
+        lastCommittedHash: HASH_A,
+        updatedAt: new Date(),
+    };
+    const chainCursorLoad = createDeferred<typeof chainCursor>();
     const worker = new HeadService(
         config,
         {
-            getLatestBlockNumber: async () => 12,
+            getLatestBlockNumber: () => latestBlockLoad.promise,
             getLatestBlock: async () => {
                 throw new Error("not used");
             },
@@ -308,20 +326,8 @@ test("head service skips when cursor is already ahead of safe head", async () =>
             },
         },
         {
-            get: async () => ({
-                chainId: 1,
-                lastEnqueuedBlock: 11,
-                lastCommittedBlock: 10,
-                lastCommittedHash: HASH_A,
-                updatedAt: new Date(),
-            }),
-            getForUpdate: async () => ({
-                chainId: 1,
-                lastEnqueuedBlock: 11,
-                lastCommittedBlock: 10,
-                lastCommittedHash: HASH_A,
-                updatedAt: new Date(),
-            }),
+            get: () => chainCursorLoad.promise,
+            getForUpdate: async () => chainCursor,
             insert: async () => undefined,
             setLastEnqueued: async () => undefined,
             setPositions: async () => undefined,
@@ -339,9 +345,35 @@ test("head service skips when cursor is already ahead of safe head", async () =>
         logger,
     );
 
-    await worker.execute();
+    const executePromise = worker.execute();
+
+    expect(logger.entries).toEqual([]);
+
+    latestBlockLoad.resolve(12);
+    await Promise.resolve();
+
+    expect(logger.entries.map((entry) => entry.message)).toEqual([
+        "head_latest_block_number_load_completed",
+    ]);
+
+    chainCursorLoad.resolve(chainCursor);
+    await executePromise;
 
     expect(enqueued).toBe(false);
+    expect(logger.entries.map((entry) => entry.message)).toEqual([
+        "head_latest_block_number_load_completed",
+        "head_tick_observed",
+        "head_enqueue_skipped_no_new_safe_blocks",
+    ]);
+    expect(logger.entries.find(
+        (entry) => entry.message === "head_latest_block_number_load_completed"
+    )).toMatchObject({
+        level: "debug",
+        meta: {
+            chainId: 1,
+            latestBlock: 12,
+        },
+    });
     expect(logger.entries.find((entry) => entry.message === "head_tick_observed")).toMatchObject({
         level: "debug",
         meta: {
