@@ -10,6 +10,7 @@ import { PipelineMetrics } from "@drillcoder/voryn";
             "https://mainnet-rpc.example.org",
             "https://bsc-rpc.example.org",
         ],
+        rpcRequestTimeoutMs: 5_000,
     };
 
     const metrics = await PipelineMetrics.create(options);

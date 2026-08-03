@@ -7,6 +7,7 @@ import { HeadWorker } from "@drillcoder/voryn";
         logLevel: "info",
         chainId: 1,
         rpcUrl: "https://rpc.example.org",
+        rpcRequestTimeoutMs: 5_000,
         delayBetweenTicksMs: 1_000,
         confirmations: 0,
         depthBlocks: 65_000,

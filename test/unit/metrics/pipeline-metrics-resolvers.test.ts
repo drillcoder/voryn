@@ -4,27 +4,38 @@ import { PipelineMetrics } from "../../../src/metrics/pipeline-metrics.js";
 import { validatePostgresSchema } from "../../../src/postgres/schema.js";
 import { createNoopBlockJobsRepository } from "../helpers/pipeline-test-helpers.js";
 
-jest.mock("ethers", () => ({
-    isHexString: (value: unknown, length?: number) => (
-        typeof value === "string"
-        && /^0x[0-9a-fA-F]*$/.test(value)
-        && (length === undefined || value.length === 2 + length * 2)
-    ),
-    isAddress: (value: unknown) => (
-        typeof value === "string"
-        && /^0x[0-9a-fA-F]{40}$/.test(value)
-    ),
-    getBytes: (value: unknown) => {
-        if (typeof value !== "string" || !/^0x(?:[0-9a-fA-F]{2})*$/.test(value)) {
-            throw new Error("invalid bytes");
-        }
+jest.mock("ethers", () => {
+    class FetchRequest {
+        readonly url: string;
 
-        return new Uint8Array();
-    },
-    JsonRpcProvider: jest.fn().mockImplementation(() => ({
-        getNetwork: async () => ({ chainId: 7n }),
-    })),
-}));
+        constructor(url: string) {
+            this.url = url;
+        }
+    }
+
+    return {
+        FetchRequest,
+        isHexString: (value: unknown, length?: number) => (
+            typeof value === "string"
+            && /^0x[0-9a-fA-F]*$/.test(value)
+            && (length === undefined || value.length === 2 + length * 2)
+        ),
+        isAddress: (value: unknown) => (
+            typeof value === "string"
+            && /^0x[0-9a-fA-F]{40}$/.test(value)
+        ),
+        getBytes: (value: unknown) => {
+            if (typeof value !== "string" || !/^0x(?:[0-9a-fA-F]{2})*$/.test(value)) {
+                throw new Error("invalid bytes");
+            }
+
+            return new Uint8Array();
+        },
+        JsonRpcProvider: jest.fn().mockImplementation(() => ({
+            getNetwork: async () => ({ chainId: 7n }),
+        })),
+    };
+});
 
 jest.mock("../../../src/postgres/schema.js", () => ({
     validatePostgresSchema: jest.fn(async () => undefined),

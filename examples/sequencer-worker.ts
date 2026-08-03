@@ -7,6 +7,7 @@ import { SequencerWorker } from "@drillcoder/voryn";
         logLevel: "info",
         chainId: 1,
         rpcUrl: "https://rpc.example.org",
+        rpcRequestTimeoutMs: 5_000,
         delayBetweenTicksMs: 100,
         maxBlocksPerTick: 10,
     };

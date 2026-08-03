@@ -41,6 +41,8 @@
 - `dbUrl`: строка подключения к PostgreSQL, если зависимости не переданы через `overrides`.
 - `logLevel` или `logger`: встроенный уровень логирования или свой logger.
 - `rpcUrl` или `source`: block source для `HeadWorker`, `FetchWorker` и `SequencerWorker`.
+- `rpcRequestTimeoutMs`: таймаут одного HTTP RPC-запроса при использовании `rpcUrl` или `rpcUrls`;
+  по умолчанию `30_000`.
 
 `HeadWorker`:
 

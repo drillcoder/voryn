@@ -8,6 +8,7 @@ async function run(): Promise<void> {
         logger: createDevLogger(),
         chainId: envNumber("VORYN_CHAIN_ID", "0"),
         rpcUrl: envValue("VORYN_HEAD_RPC_URL", ""),
+        rpcRequestTimeoutMs: envNumber("VORYN_HEAD_RPC_REQUEST_TIMEOUT_MS", "5000"),
         delayBetweenTicksMs: envNumber("VORYN_HEAD_DELAY_BETWEEN_TICKS_MS", "1000"),
         confirmations: envNumber("VORYN_HEAD_CONFIRMATIONS", "0"),
         depthBlocks: envNumber("VORYN_HEAD_DEPTH_BLOCKS", "65000"),

@@ -1,6 +1,6 @@
 import type { Pool } from "pg";
 import { Pool as PostgresPool } from "pg";
-import { JsonRpcProvider } from "ethers";
+import { FetchRequest, JsonRpcProvider } from "ethers";
 import { EthersBlockSource } from "../adapters/ethers-block-source.js";
 import { validatePostgresSchema } from "../postgres/schema.js";
 import type { BlockSource } from "../interfaces/block-source.js";
@@ -18,6 +18,8 @@ interface ResolveDbDependenciesResult<TDependencies extends object> {
     dispose?: () => Promise<void>;
 }
 
+const DEFAULT_RPC_REQUEST_TIMEOUT_MS = 30_000;
+
 export function resolveLogger(options: RuntimeLoggerOptions): Logger {
     if (options.logger !== undefined) {
         return options.logger;
@@ -31,7 +33,10 @@ export async function resolveSingleBlockSource(options: SingleSourceOptions): Pr
         return options.source;
     }
 
-    return resolveMultiBlockSource({ rpcUrls: [options.rpcUrl] });
+    return resolveMultiBlockSource({
+        rpcUrls: [options.rpcUrl],
+        rpcRequestTimeoutMs: options.rpcRequestTimeoutMs,
+    });
 }
 
 export async function resolveMultiBlockSource(options: MultiSourceOptions): Promise<BlockSource> {
@@ -39,7 +44,10 @@ export async function resolveMultiBlockSource(options: MultiSourceOptions): Prom
         return options.source;
     }
 
-    const { rpcUrls } = options;
+    const {
+        rpcUrls,
+        rpcRequestTimeoutMs = DEFAULT_RPC_REQUEST_TIMEOUT_MS,
+    } = options;
 
     if (rpcUrls.length === 0) {
         throw new Error("Ethers source rpcUrls config must not be empty");
@@ -51,7 +59,17 @@ export async function resolveMultiBlockSource(options: MultiSourceOptions): Prom
         }
     }
 
-    return EthersBlockSource.create(rpcUrls.map((rpcUrl) => new JsonRpcProvider(rpcUrl)));
+    if (!Number.isSafeInteger(rpcRequestTimeoutMs) || rpcRequestTimeoutMs <= 0) {
+        throw new Error("Ethers source rpcRequestTimeoutMs must be a positive safe integer");
+    }
+
+    return EthersBlockSource.create(rpcUrls.map((rpcUrl) => {
+        const request = new FetchRequest(rpcUrl);
+        request.timeout = rpcRequestTimeoutMs;
+        request.retryFunc = () => Promise.resolve(false);
+
+        return new JsonRpcProvider(request);
+    }));
 }
 
 export async function resolveDbDependencies<TDependencies extends object>(

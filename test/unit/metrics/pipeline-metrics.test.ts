@@ -8,7 +8,16 @@ import {
 import { asHash32 } from "../../../src/utils/hex.js";
 
 jest.mock("ethers", () => {
+    class FetchRequest {
+        readonly url: string;
+
+        constructor(url: string) {
+            this.url = url;
+        }
+    }
+
     return {
+        FetchRequest,
         isHexString: (value: unknown, length?: number) => (
             typeof value === "string"
             && /^0x[0-9a-fA-F]*$/.test(value)
@@ -25,13 +34,13 @@ jest.mock("ethers", () => {
 
             return new Uint8Array();
         },
-        JsonRpcProvider: jest.fn().mockImplementation((rpcUrl: string) => ({
-            getNetwork: async () => ({ chainId: BigInt(rpcUrl.endsWith("/8") ? 8 : 7) }),
+        JsonRpcProvider: jest.fn().mockImplementation((request: { url: string }) => ({
+            getNetwork: async () => ({ chainId: BigInt(request.url.endsWith("/8") ? 8 : 7) }),
             getBlock: async () => ({
-                number: rpcUrl.endsWith("/8") ? 80 : 70,
+                number: request.url.endsWith("/8") ? 80 : 70,
                 hash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                 parentHash: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-                timestamp: rpcUrl.endsWith("/8") ? 800 : 700,
+                timestamp: request.url.endsWith("/8") ? 800 : 700,
                 transactions: [],
                 prefetchedTransactions: [],
             }),

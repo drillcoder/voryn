@@ -41,6 +41,7 @@ Common options:
 - `dbUrl`: PostgreSQL connection string, unless dependencies are provided through `overrides`.
 - `logLevel` or `logger`: built-in log level or custom logger.
 - `rpcUrl` or `source`: block source for `HeadWorker`, `FetchWorker`, and `SequencerWorker`.
+- `rpcRequestTimeoutMs`: timeout for one HTTP RPC request when `rpcUrl` or `rpcUrls` is used; defaults to `30_000`.
 
 `HeadWorker`:
 

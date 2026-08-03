@@ -133,6 +133,7 @@ const headOptions = {
     logLevel,
     dbUrl,
     rpcUrl,
+    rpcRequestTimeoutMs: 5_000,
 };
 
 const fetchOptions = {
@@ -147,6 +148,7 @@ const fetchOptions = {
     logLevel,
     dbUrl,
     rpcUrl,
+    rpcRequestTimeoutMs: 30_000,
 };
 
 const sequencerOptions = {
@@ -156,6 +158,7 @@ const sequencerOptions = {
     logLevel,
     dbUrl,
     rpcUrl,
+    rpcRequestTimeoutMs: 5_000,
 };
 
 const head = await HeadWorker.create(headOptions);
@@ -243,6 +246,7 @@ const metrics = await PipelineMetrics.create({
         "https://mainnet-rpc.example.org",
         "https://bsc-rpc.example.org",
     ],
+    rpcRequestTimeoutMs: 5_000,
 });
 
 const snapshot = await metrics.get();

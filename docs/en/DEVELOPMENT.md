@@ -54,6 +54,7 @@ Main environment variables:
 For `head`:
 
 - `VORYN_HEAD_RPC_URL` (`required`) — RPC URL for reading the current network head.
+- `VORYN_HEAD_RPC_REQUEST_TIMEOUT_MS` (`optional`, default `5_000`) — timeout for one HTTP RPC request.
 - `VORYN_HEAD_DELAY_BETWEEN_TICKS_MS` (`optional`, default `1_000`) — delay between ticks in milliseconds.
 - `VORYN_HEAD_CONFIRMATIONS` (`optional`, default `0`) — number of confirmations before enqueuing a block.
 - `VORYN_HEAD_DEPTH_BLOCKS` (`optional`, default `65_000`, must be `> 0`) — allowed lag from `safe head` in blocks. If `last_committed_block` falls below this range, `head` rebases to the available RPC history boundary.
@@ -61,6 +62,7 @@ For `head`:
 For `fetch`:
 
 - `VORYN_FETCH_RPC_URL` (`required`) — RPC URL for loading block data.
+- `VORYN_FETCH_RPC_REQUEST_TIMEOUT_MS` (`optional`, default `30_000`) — timeout for one HTTP RPC request.
 - `VORYN_FETCH_DELAY_BETWEEN_TICKS_MS` (`optional`, default `100`) — delay between ticks in milliseconds.
 - `VORYN_FETCH_BATCH_SIZE` (`optional`, default `10`) — maximum jobs per `tick`.
 - `VORYN_FETCH_CONCURRENCY` (`optional`, default `1`) — maximum jobs that `fetch` processes concurrently.
@@ -72,6 +74,7 @@ For `fetch`:
 For `sequencer`:
 
 - `VORYN_SEQUENCER_RPC_URL` (`optional`) — RPC URL for checking the current branch during chain reorganization.
+- `VORYN_SEQUENCER_RPC_REQUEST_TIMEOUT_MS` (`optional`, default `5_000`) — timeout for one HTTP RPC request.
 - `VORYN_SEQUENCER_DELAY_BETWEEN_TICKS_MS` (`optional`, default `100`) — delay between sequencer ticks.
 - `VORYN_SEQUENCER_MAX_BLOCKS_PER_TICK` (`optional`, default `10`) — maximum number of blocks the sequencer processes in one `tick`.
 
@@ -97,6 +100,7 @@ npm exec -- tsx --tsconfig dev/tsconfig.json dev/metrics.ts
 For `metrics`:
 
 - `VORYN_METRICS_RPC_URL` (`required`) — RPC URL for reading the current latest block.
+- `VORYN_METRICS_RPC_REQUEST_TIMEOUT_MS` (`optional`, default `5_000`) — timeout for one HTTP RPC request.
 
 Return failed block jobs to processing:
 

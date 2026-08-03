@@ -1,3 +1,4 @@
+import { FetchRequest, FetchResponse, JsonRpcProvider } from "ethers";
 import { Pool } from "pg";
 import { EthersBlockSource } from "../../../src/adapters/ethers-block-source.js";
 import { ConsoleLogger } from "../../../src/loggers/console-logger.js";
@@ -11,11 +12,20 @@ import {
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import type { Logger } from "../../../src/interfaces/logger.js";
 
-jest.mock("ethers", () => ({
-    JsonRpcProvider: jest.fn().mockImplementation((rpcUrl: string) => ({
-        getNetwork: async () => ({ chainId: BigInt(rpcUrl.endsWith("/56") ? 56 : 1) }),
-    })),
-}));
+jest.mock("ethers", () => {
+    const actual = jest.requireActual<{
+        FetchRequest: typeof FetchRequest;
+        FetchResponse: typeof FetchResponse;
+    }>("ethers");
+
+    return {
+        FetchRequest: actual.FetchRequest,
+        FetchResponse: actual.FetchResponse,
+        JsonRpcProvider: jest.fn().mockImplementation((request: { url: string }) => ({
+            getNetwork: async () => ({ chainId: BigInt(request.url.endsWith("/56") ? 56 : 1) }),
+        })),
+    };
+});
 
 jest.mock("../../../src/postgres/schema.js", () => ({
     validatePostgresSchema: jest.fn(async () => undefined),
@@ -32,6 +42,16 @@ const logger: Logger = {
     warn: jest.fn(),
     error: jest.fn(),
 };
+
+function getProviderRequest(index = 0): FetchRequest {
+    const connection = jest.mocked(JsonRpcProvider).mock.calls[index]?.[0];
+
+    if (!(connection instanceof FetchRequest)) {
+        throw new Error("Expected JsonRpcProvider to receive a FetchRequest");
+    }
+
+    return connection;
+}
 
 beforeEach(() => {
     jest.mocked(validatePostgresSchema).mockResolvedValue(undefined);
@@ -63,6 +83,31 @@ test("resolveSingleBlockSource returns provided source", async () => {
 test("resolveSingleBlockSource creates ethers source from rpcUrl", async () => {
     await expect(resolveSingleBlockSource({ rpcUrl: "http://127.0.0.1/1" }))
         .resolves.toBeInstanceOf(EthersBlockSource);
+
+    const request = getProviderRequest();
+
+    expect(request.url).toBe("http://127.0.0.1/1");
+    expect(request.timeout).toBe(30_000);
+    expect(request.retryFunc).not.toBeNull();
+
+    if (request.retryFunc === null) {
+        throw new Error("Expected RPC retry policy to be configured");
+    }
+
+    await expect(request.retryFunc(
+        request,
+        new FetchResponse(429, "Too Many Requests", {}, null, request),
+        0,
+    )).resolves.toBe(false);
+});
+
+test("resolveSingleBlockSource applies configured rpc request timeout", async () => {
+    await expect(resolveSingleBlockSource({
+        rpcUrl: "http://127.0.0.1/1",
+        rpcRequestTimeoutMs: 12_345,
+    })).resolves.toBeInstanceOf(EthersBlockSource);
+
+    expect(getProviderRequest().timeout).toBe(12_345);
 });
 
 test("resolveMultiBlockSource creates multi-chain ethers source", async () => {
@@ -71,7 +116,11 @@ test("resolveMultiBlockSource creates multi-chain ethers source", async () => {
             "http://127.0.0.1/1",
             "http://127.0.0.1/56",
         ],
+        rpcRequestTimeoutMs: 23_456,
     })).resolves.toBeInstanceOf(EthersBlockSource);
+
+    expect(getProviderRequest(0).timeout).toBe(23_456);
+    expect(getProviderRequest(1).timeout).toBe(23_456);
 });
 
 test("resolveMultiBlockSource returns provided source", async () => {
@@ -101,7 +150,15 @@ test.each([
         { rpcUrls: [""] },
         "Ethers source rpcUrl is empty",
     ],
-])("resolveMultiBlockSource rejects invalid rpc urls", async (config, expectedError) => {
+    [
+        { rpcUrls: ["http://127.0.0.1/1"], rpcRequestTimeoutMs: 0 },
+        "Ethers source rpcRequestTimeoutMs must be a positive safe integer",
+    ],
+    [
+        { rpcUrls: ["http://127.0.0.1/1"], rpcRequestTimeoutMs: 1.5 },
+        "Ethers source rpcRequestTimeoutMs must be a positive safe integer",
+    ],
+])("resolveMultiBlockSource rejects invalid source config", async (config, expectedError) => {
     await expect(resolveMultiBlockSource(config)).rejects.toThrow(expectedError);
 });
 

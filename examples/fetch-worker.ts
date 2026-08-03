@@ -7,6 +7,7 @@ import { FetchWorker } from "@drillcoder/voryn";
         logLevel: "info",
         chainId: 1,
         rpcUrl: "https://rpc.example.org",
+        rpcRequestTimeoutMs: 30_000,
         delayBetweenTicksMs: 100,
         fetchBatchSize: 10,
         fetchConcurrency: 1,

@@ -12,12 +12,12 @@ export type RuntimeDbOptions<TDependencies extends object> =
     | { dbUrl?: undefined; overrides: TDependencies; };
 
 export type SingleSourceOptions =
-    | { source: BlockSource; rpcUrl?: never; }
-    | { source?: never; rpcUrl: string; };
+    | { source: BlockSource; rpcUrl?: never; rpcRequestTimeoutMs?: never; }
+    | { source?: never; rpcUrl: string; rpcRequestTimeoutMs?: number; };
 
 export type MultiSourceOptions =
-    | { source: BlockSource; rpcUrls?: never; }
-    | { source?: never; rpcUrls: readonly string[]; };
+    | { source: BlockSource; rpcUrls?: never; rpcRequestTimeoutMs?: never; }
+    | { source?: never; rpcUrls: readonly string[]; rpcRequestTimeoutMs?: number; };
 
 export interface HeadWorkerOptions {
     chainId: ChainId;
