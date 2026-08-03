@@ -61,10 +61,8 @@ test("head worker create wires service execution", async () => {
 
     expect(getLatestBlockNumber).toHaveBeenCalledWith(7);
     expect(debug.mock.calls.map(([message]) => message)).toEqual([
-        "head_tick_started",
         "head_latest_block_number_load_completed",
         "head_waiting_for_safe_head",
-        "head_tick_completed",
     ]);
     expect(invokeStartLogMeta(worker)).toEqual({
         chainId: 7,

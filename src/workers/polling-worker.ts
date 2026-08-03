@@ -76,7 +76,13 @@ export abstract class PollingWorker implements WorkerLifecycle {
     private async runLoop(): Promise<void> {
         while (this.active) {
             try {
+                this.logger.debug("worker_tick_started", {
+                    worker: this.workerName,
+                });
                 await this.tick();
+                this.logger.debug("worker_tick_completed", {
+                    worker: this.workerName,
+                });
             } catch (error) {
                 this.logger.error("worker_tick_failed", {
                     worker: this.workerName,

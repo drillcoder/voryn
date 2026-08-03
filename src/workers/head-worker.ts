@@ -99,13 +99,7 @@ export class HeadWorker extends SingletonPollingWorker {
     }
 
     protected async tick(): Promise<void> {
-        const { chainId } = this.serviceConfig;
-
-        this.logger.debug("head_tick_started", { chainId });
-
         await this.service.execute();
-
-        this.logger.debug("head_tick_completed", { chainId });
     }
 
     protected override buildStartLogMeta(): Record<string, unknown> {

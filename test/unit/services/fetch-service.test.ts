@@ -253,11 +253,6 @@ test("fetch service writes debug logs for each fetch stage", async () => {
 
     await worker.execute();
 
-    expect(debug).toHaveBeenCalledWith("fetch_tick_started", expect.objectContaining({
-        chainId: 7,
-        instanceId: "w1",
-        batchSize: 1,
-    }));
     expect(debug).toHaveBeenCalledWith("fetch_claim_started", expect.objectContaining({
         chainId: 7,
         instanceId: "w1",

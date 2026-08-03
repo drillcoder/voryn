@@ -15,11 +15,14 @@ const createDeferred = (): Deferred => {
 };
 
 const createLogger = () => {
+    const debugCalls: Array<{ message: string; meta?: Record<string, unknown> }> = [];
     const infoCalls: Array<{ message: string; meta?: Record<string, unknown> }> = [];
     const errorCalls: Array<{ message: string; meta?: Record<string, unknown> }> = [];
 
     const logger: Logger = {
-        debug: () => undefined,
+        debug: (message, meta) => {
+            debugCalls.push({ message, meta });
+        },
         info: (message, meta) => {
             infoCalls.push({ message, meta });
         },
@@ -29,7 +32,7 @@ const createLogger = () => {
         },
     };
 
-    return { logger, infoCalls, errorCalls };
+    return { logger, debugCalls, infoCalls, errorCalls };
 };
 
 class TestPollingWorker extends PollingWorker {
@@ -64,26 +67,52 @@ class TestPollingWorkerWithCleanup extends PollingWorker {
 
 test("polling worker start/stop logs lifecycle once", async () => {
     const deferred = createDeferred();
-    const { logger, infoCalls } = createLogger();
-    const worker = new TestPollingWorker(logger, async () => deferred.promise);
+    const { logger, debugCalls, infoCalls } = createLogger();
+    const onTick = jest.fn(async () => deferred.promise);
+    const worker = new TestPollingWorker(logger, onTick);
 
     await worker.start();
     await worker.start();
 
-    const stopPromise = worker.stop();
+    let stopped = false;
+    const stopPromise = worker.stop().then(() => {
+        stopped = true;
+    });
+    await Promise.resolve();
+
+    expect(stopped).toBe(false);
+    expect(infoCalls.map((call) => call.message)).toEqual(["worker_started"]);
+    expect(debugCalls).toEqual([
+        {
+            message: "worker_tick_started",
+            meta: { worker: "test-worker" },
+        },
+    ]);
+
     deferred.resolve();
     await stopPromise;
 
     await worker.stop();
 
+    expect(onTick).toHaveBeenCalledTimes(1);
     expect(infoCalls.map((x) => x.message)).toEqual(["worker_started", "worker_stopped"]);
+    expect(debugCalls).toEqual([
+        {
+            message: "worker_tick_started",
+            meta: { worker: "test-worker" },
+        },
+        {
+            message: "worker_tick_completed",
+            meta: { worker: "test-worker" },
+        },
+    ]);
 });
 
 test("polling worker logs tick failures and continues", async () => {
     const secondTickReady = createDeferred();
     const secondTickRelease = createDeferred();
 
-    const { logger, errorCalls } = createLogger();
+    const { logger, debugCalls, errorCalls } = createLogger();
     let attempts = 0;
 
     const worker = new TestPollingWorker(logger, async () => {
@@ -106,6 +135,11 @@ test("polling worker logs tick failures and continues", async () => {
     expect(errorCalls).toHaveLength(1);
     expect(errorCalls[0]?.message).toBe("worker_tick_failed");
     expect(errorCalls[0]?.meta).toMatchObject({ worker: "test-worker", error: "boom" });
+    expect(debugCalls.map((call) => call.message)).toEqual([
+        "worker_tick_started",
+        "worker_tick_started",
+        "worker_tick_completed",
+    ]);
 });
 
 test("polling worker calls cleanup on stop", async () => {

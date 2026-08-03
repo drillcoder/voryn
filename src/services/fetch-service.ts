@@ -45,14 +45,6 @@ export class FetchService {
         const staleClaimedBefore = new Date(Date.now() - Math.max(1, this.config.fetchClaimTtlMs));
         const jobs: { job: BlockJob; batchIndex: number }[] = [];
 
-        this.logger.debug("fetch_tick_started", {
-            chainId,
-            instanceId: this.config.instanceId,
-            batchSize,
-            concurrency,
-            staleClaimedBefore,
-        });
-
         for (let index = 0; index < batchSize; index++) {
             this.logger.debug("fetch_claim_started", {
                 chainId,
