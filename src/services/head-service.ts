@@ -66,6 +66,10 @@ export class HeadService {
         });
 
         if (cursorBeforeTx === null) {
+            this.logger.debug("head_cursor_initialization_required", {
+                chainId,
+                latestBlock,
+            });
             await this.initializeCursor(chainId, latestBlock);
             return;
         }

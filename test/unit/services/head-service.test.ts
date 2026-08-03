@@ -243,6 +243,7 @@ test("head service starts enqueue range from zero when depth exceeds safe head",
 
 test("head service bootstraps missing cursor", async () => {
     const inserted: unknown[] = [];
+    const logger = createLogger();
 
     const source: BlockSource = {
         getLatestBlockNumber: async () => 20,
@@ -285,6 +286,7 @@ test("head service bootstraps missing cursor", async () => {
         createTransactionsRepository(),
         createEventsRepository(),
         createPassThroughManager().manager,
+        logger,
     );
 
     await worker.execute();
@@ -296,6 +298,12 @@ test("head service bootstraps missing cursor", async () => {
             lastCommittedBlock: 20,
             lastCommittedHash: HASH_A,
         },
+    ]);
+    expect(logger.entries.map((entry) => entry.message)).toEqual([
+        "head_latest_block_number_load_completed",
+        "head_tick_observed",
+        "head_cursor_initialization_required",
+        "chain_cursor_initialized",
     ]);
 });
 
