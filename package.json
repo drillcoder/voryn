@@ -1,6 +1,6 @@
 {
 	"name": "@drillcoder/voryn",
-	"version": "0.5.0",
+	"version": "0.5.1",
 	"description": "A TypeScript library for reliable EVM indexing with PostgreSQL.",
 	"type": "module",
 	"main": "./dist/index.js",

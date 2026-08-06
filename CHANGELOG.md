@@ -1,3 +1,9 @@
+## [0.5.1](https://github.com/drillcoder/voryn/compare/v0.5.0...v0.5.1) (2026-08-06)
+
+### Bug Fixes
+
+* **postgres:** keep and monitor singleton leader locks ([9b45b49](https://github.com/drillcoder/voryn/commit/9b45b496c94c5d26ce5b6f6212ed10472cd19017))
+
 ## [0.5.0](https://github.com/drillcoder/voryn/compare/v0.4.7...v0.5.0) (2026-08-03)
 
 ### Features
