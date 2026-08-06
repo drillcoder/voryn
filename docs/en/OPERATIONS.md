@@ -20,6 +20,19 @@ Run workers as separate processes or containers. Processes coordinate through Po
 They use `LeaderLock`, so duplicate processes should not process the same singleton workload at the same time.
 `FetchWorker` does not use a singleton lock and can be scaled horizontally.
 
+Process runners must register `onFailure` before starting a singleton worker. The worker stops itself if its leader
+lock is lost, while the listener must report the failure and set a non-zero process exit code so the process manager
+can restart it.
+
+```ts
+worker.onFailure((error) => {
+    console.error(error);
+    process.exitCode = 1;
+});
+
+await worker.start();
+```
+
 ## Startup Order
 
 Use this order for a new environment:

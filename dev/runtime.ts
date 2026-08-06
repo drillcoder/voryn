@@ -1,4 +1,4 @@
-import type { Logger, LogLevel, WorkerLifecycle } from "../src/index.js";
+import type { Logger, LogLevel, WorkerLifecycle, WorkerLifecycleWithFailure } from "../src/index.js";
 import { ConsoleLogger } from "../src/index.js";
 
 export function envValue(name: string, defaultValue: string): string {
@@ -35,7 +35,29 @@ export async function runWorkerLifecycle(
     logger: Logger,
 ): Promise<void> {
     await worker.start();
-    const signal = await waitForShutdownSignal();
+    await finishWorkerLifecycle(command, worker, logger, waitForShutdownSignal());
+}
+
+export async function runWorkerLifecycleWithFailure(
+    command: "head" | "sequencer" | "retention",
+    worker: WorkerLifecycleWithFailure,
+    logger: Logger,
+): Promise<void> {
+    const failure = new Promise<never>((_resolve, reject) => {
+        worker.onFailure(reject);
+    });
+    const shutdown = Promise.race([waitForShutdownSignal(), failure]);
+    await Promise.race([worker.start(), shutdown]);
+    await finishWorkerLifecycle(command, worker, logger, shutdown);
+}
+
+async function finishWorkerLifecycle(
+    command: "head" | "fetch" | "sequencer" | "retention",
+    worker: WorkerLifecycle,
+    logger: Logger,
+    shutdown: Promise<NodeJS.Signals>,
+): Promise<void> {
+    const signal = await shutdown;
     logger.info("worker_shutdown_signal_received", { command, signal });
     await worker.stop();
 }

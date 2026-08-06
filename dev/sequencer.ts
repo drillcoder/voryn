@@ -1,6 +1,12 @@
 import type { CreateSequencerWorkerOptions } from "../src/index.js";
 import { SequencerWorker } from "../src/index.js";
-import { createDevLogger, envNumber, envValue, runWithErrorHandling, runWorkerLifecycle } from "./runtime.js";
+import {
+    createDevLogger,
+    envNumber,
+    envValue,
+    runWithErrorHandling,
+    runWorkerLifecycleWithFailure,
+} from "./runtime.js";
 
 async function run(): Promise<void> {
     const options: CreateSequencerWorkerOptions = {
@@ -14,7 +20,7 @@ async function run(): Promise<void> {
     };
     const worker = await SequencerWorker.create(options);
 
-    await runWorkerLifecycle("sequencer", worker, createDevLogger());
+    await runWorkerLifecycleWithFailure("sequencer", worker, createDevLogger());
 }
 
 runWithErrorHandling("sequencer", run);

@@ -25,6 +25,11 @@ import { EventReactionWorker } from "@drillcoder/voryn";
 
     const worker = await EventReactionWorker.create(options);
 
+    worker.onFailure((error) => {
+        console.error(error);
+        process.exitCode = 1;
+    });
+
     const shutdown = async (): Promise<void> => {
         await worker.stop();
     };

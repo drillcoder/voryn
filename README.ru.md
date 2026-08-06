@@ -165,6 +165,13 @@ const head = await HeadWorker.create(headOptions);
 const fetch = await FetchWorker.create(fetchOptions);
 const sequencer = await SequencerWorker.create(sequencerOptions);
 
+const handleSingletonFailure = (error: Error): void => {
+    console.error(error);
+    process.exitCode = 1;
+};
+head.onFailure(handleSingletonFailure);
+sequencer.onFailure(handleSingletonFailure);
+
 await Promise.all([
     head.start(),
     fetch.start(),
@@ -214,6 +221,11 @@ const options: CreateEventReactionWorkerOptions = {
 };
 
 const worker = await EventReactionWorker.create(options);
+
+worker.onFailure((error) => {
+    console.error(error);
+    process.exitCode = 1;
+});
 
 await worker.start();
 ```

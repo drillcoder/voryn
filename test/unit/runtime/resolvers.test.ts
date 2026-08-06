@@ -221,6 +221,10 @@ test("resolveDbDependencies validates schema, merges overrides, and disposes poo
 
     expect(validationConfig.pool).toBeInstanceOf(Pool);
     expect(validationConfig.logger).toBe(logger);
+    expect(validationConfig.pool.options).toMatchObject({
+        keepAlive: true,
+        keepAliveInitialDelayMillis: 30_000,
+    });
     expect(buildDefaults).toHaveBeenCalledWith(expect.any(Pool));
     expect(result.dependencies).toEqual({
         value: "override",

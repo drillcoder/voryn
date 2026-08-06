@@ -1,6 +1,12 @@
 import type { CreateHeadWorkerOptions } from "../src/index.js";
 import { HeadWorker } from "../src/index.js";
-import { createDevLogger, envNumber, envValue, runWithErrorHandling, runWorkerLifecycle } from "./runtime.js";
+import {
+    createDevLogger,
+    envNumber,
+    envValue,
+    runWithErrorHandling,
+    runWorkerLifecycleWithFailure,
+} from "./runtime.js";
 
 async function run(): Promise<void> {
     const options: CreateHeadWorkerOptions = {
@@ -15,7 +21,7 @@ async function run(): Promise<void> {
     };
     const worker = await HeadWorker.create(options);
 
-    await runWorkerLifecycle("head", worker, createDevLogger());
+    await runWorkerLifecycleWithFailure("head", worker, createDevLogger());
 }
 
 runWithErrorHandling("head", run);

@@ -3,3 +3,7 @@ export interface WorkerLifecycle {
 
     stop(): Promise<void>;
 }
+
+export interface WorkerLifecycleWithFailure extends WorkerLifecycle {
+    onFailure(listener: (error: Error) => void): void;
+}

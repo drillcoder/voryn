@@ -15,6 +15,8 @@ const createDeferred = (): Deferred => {
     return { promise, resolve };
 };
 
+const ignoreLockLoss = (): void => undefined;
+
 const createLogger = () => {
     const warnCalls: Array<{ message: string; meta?: Record<string, unknown> }> = [];
     const errorCalls: Array<{ message: string; meta?: Record<string, unknown> }> = [];
@@ -54,6 +56,7 @@ test("singleton worker rejects start when lock is held", async () => {
     const lock: LeaderLock = {
         tryAcquire: async () => false,
         release: async () => undefined,
+        onLost: ignoreLockLoss,
     };
 
     const worker = new TestSingletonWorker(logger, lock, async () => undefined);
@@ -72,6 +75,7 @@ test("singleton worker releases lock when start fails", async () => {
         release: async () => {
             lifecycleOrder.push("release");
         },
+        onLost: ignoreLockLoss,
     };
 
     const logger: Logger = {
@@ -113,6 +117,7 @@ test("singleton worker acquires and releases lock on lifecycle", async () => {
         release: async () => {
             releaseCount += 1;
         },
+        onLost: ignoreLockLoss,
     };
 
     const worker = new TestSingletonWorker(logger, lock, async () => tick.promise);
@@ -137,6 +142,7 @@ test("singleton worker coalesces concurrent stops and releases lock before clean
         release: async () => {
             lifecycleOrder.push("release");
         },
+        onLost: ignoreLockLoss,
     };
 
     const worker = new TestSingletonWorker(
@@ -169,6 +175,7 @@ test("singleton worker stop without start does not release lock", async () => {
         release: async () => {
             releaseCount += 1;
         },
+        onLost: ignoreLockLoss,
     };
 
     const worker = new TestSingletonWorker(logger, lock, async () => undefined);
@@ -195,6 +202,7 @@ test("singleton worker logs release errors and clears lock state", async () => {
             releaseCount += 1;
             throw new Error("release failed");
         },
+        onLost: ignoreLockLoss,
     };
 
     const worker = new TestSingletonWorker(logger, lock, async () => firstTick.promise);
@@ -214,4 +222,116 @@ test("singleton worker logs release errors and clears lock state", async () => {
     expect(errorCalls.map((x) => x.message)).toEqual([
         "worker_lock_release_failed",
     ]);
+});
+
+test("singleton worker stops with an error when its leader lock is lost", async () => {
+    const { logger, errorCalls } = createLogger();
+    const tick = createDeferred();
+    const release = jest.fn(async () => undefined);
+    let notifyLost = (_error: Error): void => undefined;
+    const lock: LeaderLock = {
+        tryAcquire: async () => true,
+        release,
+        onLost: (listener) => {
+            notifyLost = listener;
+        },
+    };
+    const worker = new TestSingletonWorker(logger, lock, async () => tick.promise);
+
+    await worker.start();
+    const failure = new Promise<Error>((resolve) => {
+        worker.onFailure(resolve);
+    });
+    notifyLost(new Error("connection lost"));
+
+    await expect(failure).resolves.toEqual(
+        new Error('Worker "singleton-worker" lost its leader lock: connection lost')
+    );
+    tick.resolve();
+    await worker.stop();
+
+    expect(release).toHaveBeenCalledTimes(1);
+    expect(errorCalls).toContainEqual({
+        message: "worker_lock_lost",
+        meta: { worker: "singleton-worker", error: "connection lost" },
+    });
+});
+
+test("singleton worker ignores lock errors raised during graceful release", async () => {
+    const { logger, errorCalls } = createLogger();
+    const tick = createDeferred();
+    let notifyLost = (_error: Error): void => undefined;
+    const lock: LeaderLock = {
+        tryAcquire: async () => true,
+        release: async () => {
+            notifyLost(new Error("socket closed during release"));
+        },
+        onLost: (listener) => {
+            notifyLost = listener;
+        },
+    };
+    const worker = new TestSingletonWorker(logger, lock, async () => tick.promise);
+
+    await worker.start();
+    const stopPromise = worker.stop();
+    tick.resolve();
+
+    await expect(stopPromise).resolves.toBeUndefined();
+    expect(errorCalls).toEqual([]);
+});
+
+test("lock loss interrupts a graceful stop that is draining a tick", async () => {
+    const { logger } = createLogger();
+    const tick = createDeferred();
+    let notifyLost = (_error: Error): void => undefined;
+    const lock: LeaderLock = {
+        tryAcquire: async () => true,
+        release: async () => undefined,
+        onLost: (listener) => {
+            notifyLost = listener;
+            return () => undefined;
+        },
+    };
+    const worker = new TestSingletonWorker(logger, lock, async () => tick.promise);
+
+    await worker.start();
+    const stopPromise = worker.stop();
+    const failure = new Promise<Error>((resolve) => {
+        worker.onFailure(resolve);
+    });
+    notifyLost(new Error("backend terminated"));
+
+    await expect(failure).resolves.toEqual(
+        new Error('Worker "singleton-worker" lost its leader lock: backend terminated')
+    );
+    tick.resolve();
+    await stopPromise;
+});
+
+test("a cleanup error after lock loss does not create an unhandled rejection", async () => {
+    const { logger } = createLogger();
+    const tick = createDeferred();
+    const cleanupError = new Error("cleanup failed");
+    let notifyLost = (_error: Error): void => undefined;
+    const lock: LeaderLock = {
+        tryAcquire: async () => true,
+        release: async () => undefined,
+        onLost: (listener) => {
+            notifyLost = listener;
+        },
+    };
+    const worker = new TestSingletonWorker(
+        logger,
+        lock,
+        async () => tick.promise,
+        async () => {
+            throw cleanupError;
+        }
+    );
+
+    await worker.start();
+    notifyLost(new Error("connection lost"));
+    tick.resolve();
+
+    await expect(worker.stop()).rejects.toBe(cleanupError);
 });

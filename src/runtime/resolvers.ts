@@ -19,6 +19,7 @@ interface ResolveDbDependenciesResult<TDependencies extends object> {
 }
 
 const DEFAULT_RPC_REQUEST_TIMEOUT_MS = 30_000;
+const POSTGRES_KEEP_ALIVE_INITIAL_DELAY_MS = 30_000;
 
 export function resolveLogger(options: RuntimeLoggerOptions): Logger {
     if (options.logger !== undefined) {
@@ -78,7 +79,11 @@ export async function resolveDbDependencies<TDependencies extends object>(
     buildDefaults: (pool: Pool) => TDependencies
 ): Promise<ResolveDbDependenciesResult<TDependencies>> {
     if (options.dbUrl !== undefined) {
-        const pool = new PostgresPool({ connectionString: options.dbUrl });
+        const pool = new PostgresPool({
+            connectionString: options.dbUrl,
+            keepAlive: true,
+            keepAliveInitialDelayMillis: POSTGRES_KEEP_ALIVE_INITIAL_DELAY_MS,
+        });
 
         try {
             await validatePostgresSchema({ pool, logger });

@@ -83,6 +83,7 @@ export const invokeStartLogMeta = (worker: object): Record<string, unknown> => (
 export const leaderLock: LeaderLock = {
     tryAcquire: async () => true,
     release: async () => undefined,
+    onLost: () => undefined,
 };
 
 export const transactionManager: TransactionManager = {

@@ -20,6 +20,9 @@ export function createLeaderLock(): LeaderLock {
         async release(): Promise<void> {
             return undefined;
         },
+        onLost(): void {
+            return undefined;
+        },
     };
 }
 

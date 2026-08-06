@@ -1,10 +1,13 @@
 import type { LeaderLock } from "../interfaces/leader-lock.js";
 import type { Logger } from "../interfaces/logger.js";
+import type { WorkerLifecycleWithFailure } from "../interfaces/worker-lifecycle.js";
 import { asErrorMessage } from "../utils/errors.js";
 import { PollingWorker } from "./polling-worker.js";
 
-export abstract class SingletonPollingWorker extends PollingWorker {
+export abstract class SingletonPollingWorker extends PollingWorker implements WorkerLifecycleWithFailure {
     private lockAcquired = false;
+    private releasingLock = false;
+    private failureListener: ((error: Error) => void) | undefined;
 
     protected constructor(
         name: string,
@@ -14,6 +17,13 @@ export abstract class SingletonPollingWorker extends PollingWorker {
         cleanup?: () => Promise<void>,
     ) {
         super(name, delayBetweenTicksMs, logger, cleanup);
+        leaderLock.onLost((error) => {
+            this.handleLockLost(error);
+        });
+    }
+
+    onFailure(listener: (error: Error) => void): void {
+        this.failureListener = listener;
     }
 
     override async start(): Promise<void> {
@@ -47,11 +57,25 @@ export abstract class SingletonPollingWorker extends PollingWorker {
         await this.releaseLock();
     }
 
+    private handleLockLost(error: Error): void {
+        if (!this.lockAcquired || this.releasingLock) {
+            return;
+        }
+
+        this.failureListener?.(new Error(`Worker "${this.workerName}" lost its leader lock: ${error.message}`));
+        void this.stop().catch(() => undefined);
+        this.logger.error("worker_lock_lost", {
+            worker: this.workerName,
+            error: asErrorMessage(error),
+        });
+    }
+
     private async releaseLock(): Promise<void> {
         if (!this.lockAcquired) {
             return;
         }
 
+        this.releasingLock = true;
         try {
             await this.leaderLock.release();
         } catch (error) {
@@ -61,6 +85,7 @@ export abstract class SingletonPollingWorker extends PollingWorker {
             });
         } finally {
             this.lockAcquired = false;
+            this.releasingLock = false;
         }
     }
 }

@@ -1,6 +1,12 @@
 import type { CreateRetentionWorkerOptions } from "../src/index.js";
 import { RetentionWorker } from "../src/index.js";
-import { createDevLogger, envNumber, envValue, runWithErrorHandling, runWorkerLifecycle } from "./runtime.js";
+import {
+    createDevLogger,
+    envNumber,
+    envValue,
+    runWithErrorHandling,
+    runWorkerLifecycleWithFailure,
+} from "./runtime.js";
 
 async function run(): Promise<void> {
     const options: CreateRetentionWorkerOptions = {
@@ -12,7 +18,7 @@ async function run(): Promise<void> {
     };
     const worker = await RetentionWorker.create(options);
 
-    await runWorkerLifecycle("retention", worker, createDevLogger());
+    await runWorkerLifecycleWithFailure("retention", worker, createDevLogger());
 }
 
 runWithErrorHandling("retention", run);

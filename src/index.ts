@@ -66,7 +66,7 @@ export type {
     WorkerCursorsRepository,
 } from "./interfaces/repositories.js";
 export type { TransactionManager } from "./interfaces/transaction-manager.js";
-export type { WorkerLifecycle } from "./interfaces/worker-lifecycle.js";
+export type { WorkerLifecycle, WorkerLifecycleWithFailure } from "./interfaces/worker-lifecycle.js";
 
 export { HeadWorker } from "./workers/head-worker.js";
 export type { CreateHeadWorkerOptions, HeadWorkerDatabaseDependencies } from "./workers/head-worker.js";
