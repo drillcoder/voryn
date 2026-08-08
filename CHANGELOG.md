@@ -1,3 +1,13 @@
+## [1.0.0](https://github.com/drillcoder/voryn/compare/v0.5.1...v1.0.0) (2026-08-08)
+
+### ⚠ BREAKING CHANGES
+
+* add RPC fallback providers
+
+### Features
+
+* add RPC fallback providers ([f46c2c9](https://github.com/drillcoder/voryn/commit/f46c2c9def29802c9de37a63946f34a459663c41))
+
 ## [0.5.1](https://github.com/drillcoder/voryn/compare/v0.5.0...v0.5.1) (2026-08-06)
 
 ### Bug Fixes
