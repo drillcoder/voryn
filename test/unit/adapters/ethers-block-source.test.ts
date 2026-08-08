@@ -2,9 +2,10 @@ import type {
     EthersBlockLike,
     EthersLogLike,
     EthersProviderLike,
-    EthersTransactionLike
+    EthersTransactionLike,
 } from "../../../src/adapters/ethers-block-source.js";
 import { EthersBlockSource } from "../../../src/adapters/ethers-block-source.js";
+import type { Logger } from "../../../src/interfaces/logger.js";
 
 const hash = (char: string): string => `0x${char.repeat(64)}`;
 const address = (char: string): string => `0x${char.repeat(40)}`;
@@ -20,11 +21,24 @@ const createProviderMock = (): jest.Mocked<EthersProviderLike> => ({
 const createSource = async (
     provider: jest.Mocked<EthersProviderLike>,
     chainId = 7n,
+    fallbackProvider?: jest.Mocked<EthersProviderLike>,
+    logger?: Logger,
 ): Promise<EthersBlockSource> => {
     provider.getNetwork.mockResolvedValue({ chainId });
+    fallbackProvider?.getNetwork.mockResolvedValue({ chainId });
 
-    return EthersBlockSource.create([provider]);
+    return EthersBlockSource.create({
+        providerPairs: [{ provider, fallbackProvider }],
+        logger,
+    });
 };
+
+const createLoggerMock = (): jest.Mocked<Logger> => ({
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+});
 
 test("maps latest block, transactions and logs from ethers provider", async () => {
     const blockCalls: Array<{ blockNumber: number; prefetchTxs?: boolean }> = [];
@@ -211,6 +225,54 @@ test("reads latest block number from a single provider", async () => {
     await expect(source.getLatestBlockNumber(42)).resolves.toBe(999);
 });
 
+test("uses fallback provider and logs provider failure", async () => {
+    const provider = createProviderMock();
+    provider.getBlockNumber.mockRejectedValue(new Error("provider unavailable"));
+    const fallbackProvider = createProviderMock();
+    fallbackProvider.getBlockNumber.mockResolvedValue(999);
+    const logger = createLoggerMock();
+    const source = await createSource(provider, 42n, fallbackProvider, logger);
+
+    await expect(source.getLatestBlockNumber(42)).resolves.toBe(999);
+
+    expect(provider.getBlockNumber.mock.calls).toHaveLength(1);
+    expect(fallbackProvider.getBlockNumber.mock.calls).toHaveLength(1);
+    expect(logger.warn.mock.calls).toEqual([[
+        "ethers_source_provider_failed_fallback_started", {
+            chainId: 42,
+            operation: "getLatestBlockNumber",
+            error: "provider unavailable",
+        },
+    ]]);
+});
+
+test("does not call fallback provider when provider succeeds", async () => {
+    const provider = createProviderMock();
+    provider.getBlockNumber.mockResolvedValue(100);
+    const fallbackProvider = createProviderMock();
+    const source = await createSource(provider, 42n, fallbackProvider);
+
+    await expect(source.getLatestBlockNumber(42)).resolves.toBe(100);
+
+    expect(fallbackProvider.getBlockNumber.mock.calls).toHaveLength(0);
+});
+
+test("reports provider and fallback errors when both providers fail", async () => {
+    const provider = createProviderMock();
+    provider.getBlockNumber.mockRejectedValue(new Error("provider unavailable"));
+    const fallbackProvider = createProviderMock();
+    fallbackProvider.getBlockNumber.mockRejectedValue("fallback unavailable");
+    const source = await createSource(provider, 42n, fallbackProvider);
+
+    await expect(source.getLatestBlockNumber(42)).rejects.toThrow(
+        "Ethers source getLatestBlockNumber failed on provider and fallback provider for chain 42: "
+        + "provider: provider unavailable; fallback: fallback unavailable"
+    );
+
+    expect(provider.getBlockNumber.mock.calls).toHaveLength(1);
+    expect(fallbackProvider.getBlockNumber.mock.calls).toHaveLength(1);
+});
+
 test("throws when provider is missing for chain", async () => {
     const provider = createProviderMock();
     const source = await createSource(provider);
@@ -228,15 +290,20 @@ test("creates source by detecting provider chain ids", async () => {
     providerB.getNetwork.mockResolvedValue({ chainId: 56n });
     providerB.getBlockNumber.mockResolvedValue(200);
 
-    const source = await EthersBlockSource.create([providerA, providerB]);
+    const source = await EthersBlockSource.create({
+        providerPairs: [
+            { provider: providerA },
+            { provider: providerB },
+        ],
+    });
 
     await expect(source.getLatestBlockNumber(1)).resolves.toBe(100);
     await expect(source.getLatestBlockNumber(56)).resolves.toBe(200);
 });
 
 test("rejects empty provider list", async () => {
-    await expect(EthersBlockSource.create([])).rejects.toThrow(
-        "Ethers source providers config must not be empty"
+    await expect(EthersBlockSource.create({ providerPairs: [] })).rejects.toThrow(
+        "Ethers source providerPairs must not be empty"
     );
 });
 
@@ -246,7 +313,12 @@ test("rejects duplicated detected chain ids", async () => {
     const providerB = createProviderMock();
     providerB.getNetwork.mockResolvedValue({ chainId: 1n });
 
-    await expect(EthersBlockSource.create([providerA, providerB])).rejects.toThrow(
+    await expect(EthersBlockSource.create({
+        providerPairs: [
+            { provider: providerA },
+            { provider: providerB },
+        ],
+    })).rejects.toThrow(
         "Ethers source chain id is duplicated: 1"
     );
 });
@@ -255,9 +327,57 @@ test("rejects invalid detected chain id", async () => {
     const provider = createProviderMock();
     provider.getNetwork.mockResolvedValue({ chainId: 0n });
 
-    await expect(EthersBlockSource.create([provider])).rejects.toThrow(
+    await expect(EthersBlockSource.create({
+        providerPairs: [{ provider }],
+    })).rejects.toThrow(
         "Ethers source chain id is invalid: 0"
     );
+});
+
+test("rejects mismatched fallback provider chain id", async () => {
+    const provider = createProviderMock();
+    provider.getNetwork.mockResolvedValue({ chainId: 1n });
+    const fallbackProvider = createProviderMock();
+    fallbackProvider.getNetwork.mockResolvedValue({ chainId: 56n });
+
+    await expect(EthersBlockSource.create({
+        providerPairs: [{ provider, fallbackProvider }],
+    })).rejects.toThrow(
+        "Ethers fallback source chain id mismatch: expected 1, got 56"
+    );
+});
+
+test("rejects invalid fallback provider chain id", async () => {
+    const provider = createProviderMock();
+    provider.getNetwork.mockResolvedValue({ chainId: 1n });
+    const fallbackProvider = createProviderMock();
+    fallbackProvider.getNetwork.mockResolvedValue({ chainId: 0n });
+
+    await expect(EthersBlockSource.create({
+        providerPairs: [{ provider, fallbackProvider }],
+    })).rejects.toThrow(
+        "Ethers fallback source chain id is invalid: 0"
+    );
+});
+
+test("rejects unavailable provider during startup", async () => {
+    const provider = createProviderMock();
+    provider.getNetwork.mockRejectedValue(new Error("provider startup failed"));
+
+    await expect(EthersBlockSource.create({
+        providerPairs: [{ provider }],
+    })).rejects.toThrow("provider startup failed");
+});
+
+test("rejects unavailable fallback provider during startup", async () => {
+    const provider = createProviderMock();
+    provider.getNetwork.mockResolvedValue({ chainId: 1n });
+    const fallbackProvider = createProviderMock();
+    fallbackProvider.getNetwork.mockRejectedValue(new Error("fallback startup failed"));
+
+    await expect(EthersBlockSource.create({
+        providerPairs: [{ provider, fallbackProvider }],
+    })).rejects.toThrow("fallback startup failed");
 });
 
 test("reads block without prefetching transactions", async () => {
@@ -396,6 +516,48 @@ test("throws on log block hash mismatch", async () => {
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
         "log block hash mismatch for chain 7 block 9"
     );
+});
+
+test("restarts the whole block data load on fallback after invalid logs", async () => {
+    const provider = createProviderMock();
+    const fallbackProvider = createProviderMock();
+    const block: EthersBlockLike = {
+        number: 9,
+        hash: hash("a"),
+        parentHash: hash("b"),
+        timestamp: 1,
+        transactions: [],
+        prefetchedTransactions: [],
+    };
+    const invalidLog: EthersLogLike = {
+        blockNumber: 9,
+        blockHash: hash("c"),
+        transactionHash: hash("d"),
+        transactionIndex: 0,
+        index: 0,
+        address: address("f"),
+        topics: [],
+        data: "0x",
+    };
+    const validLog: EthersLogLike = {
+        ...invalidLog,
+        blockHash: hash("a"),
+    };
+    provider.getBlock.mockResolvedValue(block);
+    provider.getLogs.mockResolvedValue([invalidLog]);
+    fallbackProvider.getBlock.mockResolvedValue(block);
+    fallbackProvider.getLogs.mockResolvedValue([validLog]);
+    const source = await createSource(provider, 7n, fallbackProvider);
+
+    await expect(source.getBlockData(7, 9)).resolves.toMatchObject({
+        block: { number: 9, hash: hash("a") },
+        logs: [{ blockHash: hash("a") }],
+    });
+
+    expect(provider.getBlock.mock.calls).toHaveLength(1);
+    expect(provider.getLogs.mock.calls).toHaveLength(1);
+    expect(fallbackProvider.getBlock.mock.calls).toHaveLength(1);
+    expect(fallbackProvider.getLogs.mock.calls).toHaveLength(1);
 });
 
 test("throws when block hash is missing", async () => {

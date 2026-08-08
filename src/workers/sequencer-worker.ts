@@ -47,7 +47,7 @@ export type CreateSequencerWorkerOptions =
 export class SequencerWorker extends SingletonPollingWorker {
     static async create(options: CreateSequencerWorkerOptions): Promise<SequencerWorker> {
         const logger = resolveLogger(options);
-        const source = await resolveSingleBlockSource(options);
+        const source = await resolveSingleBlockSource(options, logger);
         const serviceConfig: SequencerServiceConfig = {
             chainId: options.chainId,
             delayBetweenTicksMs: options.delayBetweenTicksMs,

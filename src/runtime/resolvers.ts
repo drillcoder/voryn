@@ -5,6 +5,7 @@ import { EthersBlockSource } from "../adapters/ethers-block-source.js";
 import { validatePostgresSchema } from "../postgres/schema.js";
 import type { BlockSource } from "../interfaces/block-source.js";
 import type { Logger } from "../interfaces/logger.js";
+import { noopLogger } from "../interfaces/logger.js";
 import { ConsoleLogger } from "../loggers/console-logger.js";
 import type {
     MultiSourceOptions,
@@ -29,34 +30,44 @@ export function resolveLogger(options: RuntimeLoggerOptions): Logger {
     return new ConsoleLogger({ minLevel: options.logLevel });
 }
 
-export async function resolveSingleBlockSource(options: SingleSourceOptions): Promise<BlockSource> {
+export async function resolveSingleBlockSource(
+    options: SingleSourceOptions,
+    logger: Logger = noopLogger,
+): Promise<BlockSource> {
     if (options.source !== undefined) {
         return options.source;
     }
 
     return resolveMultiBlockSource({
-        rpcUrls: [options.rpcUrl],
+        rpcConfigs: [options.rpcConfig],
         rpcRequestTimeoutMs: options.rpcRequestTimeoutMs,
-    });
+    }, logger);
 }
 
-export async function resolveMultiBlockSource(options: MultiSourceOptions): Promise<BlockSource> {
+export async function resolveMultiBlockSource(
+    options: MultiSourceOptions,
+    logger: Logger = noopLogger,
+): Promise<BlockSource> {
     if (options.source !== undefined) {
         return options.source;
     }
 
     const {
-        rpcUrls,
+        rpcConfigs,
         rpcRequestTimeoutMs = DEFAULT_RPC_REQUEST_TIMEOUT_MS,
     } = options;
 
-    if (rpcUrls.length === 0) {
-        throw new Error("Ethers source rpcUrls config must not be empty");
+    if (rpcConfigs.length === 0) {
+        throw new Error("Ethers source rpcConfigs must not be empty");
     }
 
-    for (const rpcUrl of rpcUrls) {
-        if (rpcUrl.trim() === "") {
+    for (const rpcConfig of rpcConfigs) {
+        if (rpcConfig.rpcUrl.trim() === "") {
             throw new Error("Ethers source rpcUrl is empty");
+        }
+
+        if (rpcConfig.fallbackRpcUrl?.trim() === "") {
+            throw new Error("Ethers source fallbackRpcUrl is empty");
         }
     }
 
@@ -64,13 +75,23 @@ export async function resolveMultiBlockSource(options: MultiSourceOptions): Prom
         throw new Error("Ethers source rpcRequestTimeoutMs must be a positive safe integer");
     }
 
-    return EthersBlockSource.create(rpcUrls.map((rpcUrl) => {
+    const createProvider = (rpcUrl: string): JsonRpcProvider => {
         const request = new FetchRequest(rpcUrl);
         request.timeout = rpcRequestTimeoutMs;
         request.retryFunc = () => Promise.resolve(false);
 
         return new JsonRpcProvider(request);
-    }));
+    };
+
+    return EthersBlockSource.create({
+        providerPairs: rpcConfigs.map((rpcConfig) => ({
+            provider: createProvider(rpcConfig.rpcUrl),
+            fallbackProvider: rpcConfig.fallbackRpcUrl === undefined
+                ? undefined
+                : createProvider(rpcConfig.fallbackRpcUrl),
+        })),
+        logger,
+    });
 }
 
 export async function resolveDbDependencies<TDependencies extends object>(

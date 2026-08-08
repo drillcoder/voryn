@@ -121,7 +121,10 @@ await pool.end();
 import { FetchWorker, HeadWorker, SequencerWorker } from "@drillcoder/voryn";
 
 const dbUrl = "postgres://user:pass@localhost:5432/voryn";
-const rpcUrl = "https://rpc.example.org";
+const rpcConfig = {
+    rpcUrl: "https://rpc.example.org",
+    fallbackRpcUrl: "https://fallback-rpc.example.org",
+};
 const chainId = 1;
 const logLevel = "info";
 
@@ -132,7 +135,7 @@ const headOptions = {
     depthBlocks: 65_000,
     logLevel,
     dbUrl,
-    rpcUrl,
+    rpcConfig,
     rpcRequestTimeoutMs: 5_000,
 };
 
@@ -147,7 +150,7 @@ const fetchOptions = {
     retryMaxDelayMs: 10_000,
     logLevel,
     dbUrl,
-    rpcUrl,
+    rpcConfig,
     rpcRequestTimeoutMs: 30_000,
 };
 
@@ -157,7 +160,7 @@ const sequencerOptions = {
     maxBlocksPerTick: 10,
     logLevel,
     dbUrl,
-    rpcUrl,
+    rpcConfig,
     rpcRequestTimeoutMs: 5_000,
 };
 
@@ -255,9 +258,15 @@ const dbUrl = "postgres://user:pass@localhost:5432/voryn";
 const metrics = await PipelineMetrics.create({
     dbUrl,
     chainIds: [1, 56],
-    rpcUrls: [
-        "https://mainnet-rpc.example.org",
-        "https://bsc-rpc.example.org",
+    rpcConfigs: [
+        {
+            rpcUrl: "https://mainnet-rpc.example.org",
+            fallbackRpcUrl: "https://mainnet-fallback-rpc.example.org",
+        },
+        {
+            rpcUrl: "https://bsc-rpc.example.org",
+            fallbackRpcUrl: "https://bsc-fallback-rpc.example.org",
+        },
     ],
     rpcRequestTimeoutMs: 5_000,
 });
@@ -286,11 +295,15 @@ import { JsonRpcProvider } from "ethers";
 import { EthersBlockSource } from "@drillcoder/voryn";
 
 const provider = new JsonRpcProvider("https://rpc.example.org");
+const fallbackProvider = new JsonRpcProvider("https://fallback-rpc.example.org");
 
-const source = await EthersBlockSource.create([provider]);
+const source = await EthersBlockSource.create({
+    providerPairs: [{ provider, fallbackProvider }],
+});
 ```
 
-Передайте по одному provider-у на каждую сеть.
+Передайте по одной паре providers на каждую сеть. Fallback provider опционален и используется, если обычный
+provider возвращает ошибку или невалидные данные.
 
 Адаптер валидирует хеши, адреса, `data`-поля, индексы транзакций и соответствие номера блока. Для другого источника данных достаточно реализовать интерфейс `BlockSource`.
 

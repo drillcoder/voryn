@@ -47,7 +47,7 @@ export type CreateHeadWorkerOptions =
 export class HeadWorker extends SingletonPollingWorker {
     static async create(options: CreateHeadWorkerOptions): Promise<HeadWorker> {
         const logger = resolveLogger(options);
-        const source = await resolveSingleBlockSource(options);
+        const source = await resolveSingleBlockSource(options, logger);
         const serviceConfig: HeadServiceConfig = {
             chainId: options.chainId,
             delayBetweenTicksMs: options.delayBetweenTicksMs,

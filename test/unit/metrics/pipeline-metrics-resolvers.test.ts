@@ -57,7 +57,7 @@ test("pipeline metrics merges db defaults with overrides and returns disposer", 
     const metrics = await PipelineMetrics.create({
         logLevel: "error",
         ...options,
-        rpcUrls: ["http://127.0.0.1:8545"],
+        rpcConfigs: [{ rpcUrl: "http://127.0.0.1:8545" }],
         dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
         overrides: {
             blockJobsRepository,

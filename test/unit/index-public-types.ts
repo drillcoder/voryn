@@ -34,8 +34,10 @@ import type {
     DbExecutor,
     DbQueryResult,
     EthersBlockLike,
+    EthersBlockSourceOptions,
     EthersLogLike,
     EthersNetworkLike,
+    EthersProviderPair,
     EthersProviderLike,
     EthersTransactionLike,
     EventReactionHandler,
@@ -68,6 +70,7 @@ import type {
     RetentionPurgeResult,
     RetentionWorkerDatabaseDependencies,
     RetentionWorkerOptions,
+    RpcConfig,
     RetryAllFailedBlockJobsResult,
     RetryFailedBlockJobsResult,
     RuntimeDbOptions,
@@ -124,8 +127,10 @@ interface PublicApiTypesCompile {
     DbExecutor: DbExecutor;
     DbQueryResult: DbQueryResult;
     EthersBlockLike: EthersBlockLike;
+    EthersBlockSourceOptions: EthersBlockSourceOptions;
     EthersLogLike: EthersLogLike;
     EthersNetworkLike: EthersNetworkLike;
+    EthersProviderPair: EthersProviderPair;
     EthersProviderLike: EthersProviderLike;
     EthersTransactionLike: EthersTransactionLike;
     EventReactionHandler: EventReactionHandler;
@@ -158,6 +163,7 @@ interface PublicApiTypesCompile {
     RetentionPurgeResult: RetentionPurgeResult;
     RetentionWorkerDatabaseDependencies: RetentionWorkerDatabaseDependencies;
     RetentionWorkerOptions: RetentionWorkerOptions;
+    RpcConfig: RpcConfig;
     RetryAllFailedBlockJobsResult: RetryAllFailedBlockJobsResult;
     RetryFailedBlockJobsResult: RetryFailedBlockJobsResult;
     RuntimeDbOptions: RuntimeDbOptions<Record<string, never>>;
@@ -188,3 +194,29 @@ const comparesAddressWithStringLiteral: boolean =
     chainTransaction.from === "0x90661cE00457cDDFb0d2396E619FeC80cBEF2B2f";
 const comparesDataWithDataHex: boolean = chainTransaction.data === dataHexLiteral;
 const comparesDataWithStringLiteral: boolean = chainTransaction.data === "0x";
+
+const blockSource = {} as BlockSource;
+const singleRpcFallbackOptions: SingleSourceOptions = {
+    rpcConfig: {
+        rpcUrl: "http://rpc.local",
+        fallbackRpcUrl: "http://fallback.local",
+    },
+};
+const multiRpcFallbackOptions: MultiSourceOptions = {
+    rpcConfigs: [{
+        rpcUrl: "http://rpc.local",
+        fallbackRpcUrl: "http://fallback.local",
+    }],
+};
+
+// @ts-expect-error A custom source cannot be combined with an RPC config.
+const invalidSingleSourceFallbackOptions: SingleSourceOptions = {
+    source: blockSource,
+    rpcConfig: { rpcUrl: "http://rpc.local" },
+};
+
+// @ts-expect-error A custom source cannot be combined with RPC configs.
+const invalidMultiSourceFallbackOptions: MultiSourceOptions = {
+    source: blockSource,
+    rpcConfigs: [{ rpcUrl: "http://rpc.local" }],
+};

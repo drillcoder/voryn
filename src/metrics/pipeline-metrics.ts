@@ -38,7 +38,7 @@ export class PipelineMetrics {
     static async create(options: CreatePipelineMetricsOptions): Promise<PipelineMetrics> {
         const logger = resolveLogger(options);
         validatePipelineMetricsOptions(options);
-        const source = await resolveMultiBlockSource(options);
+        const source = await resolveMultiBlockSource(options, logger);
         const serviceConfig: PipelineMetricsServiceConfig = {
             chainIds: options.chainIds,
         };
@@ -102,7 +102,7 @@ function validatePipelineMetricsOptions(options: CreatePipelineMetricsOptions): 
         seenChainIds.add(chainId);
     }
 
-    if (options.rpcUrls !== undefined && options.chainIds.length !== options.rpcUrls.length) {
-        throw new Error("Pipeline metrics chainIds and rpcUrls configs must have the same length");
+    if (options.rpcConfigs !== undefined && options.chainIds.length !== options.rpcConfigs.length) {
+        throw new Error("Pipeline metrics chainIds and rpcConfigs must have the same length");
     }
 }

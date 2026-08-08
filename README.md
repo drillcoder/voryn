@@ -121,7 +121,10 @@ The minimal ingestion pipeline consists of `head`, `fetch`, and `sequencer`. In 
 import { FetchWorker, HeadWorker, SequencerWorker } from "@drillcoder/voryn";
 
 const dbUrl = "postgres://user:pass@localhost:5432/voryn";
-const rpcUrl = "https://rpc.example.org";
+const rpcConfig = {
+    rpcUrl: "https://rpc.example.org",
+    fallbackRpcUrl: "https://fallback-rpc.example.org",
+};
 const chainId = 1;
 const logLevel = "info";
 
@@ -132,7 +135,7 @@ const headOptions = {
     depthBlocks: 65_000,
     logLevel,
     dbUrl,
-    rpcUrl,
+    rpcConfig,
     rpcRequestTimeoutMs: 5_000,
 };
 
@@ -147,7 +150,7 @@ const fetchOptions = {
     retryMaxDelayMs: 10_000,
     logLevel,
     dbUrl,
-    rpcUrl,
+    rpcConfig,
     rpcRequestTimeoutMs: 30_000,
 };
 
@@ -157,7 +160,7 @@ const sequencerOptions = {
     maxBlocksPerTick: 10,
     logLevel,
     dbUrl,
-    rpcUrl,
+    rpcConfig,
     rpcRequestTimeoutMs: 5_000,
 };
 
@@ -254,9 +257,15 @@ const dbUrl = "postgres://user:pass@localhost:5432/voryn";
 const metrics = await PipelineMetrics.create({
     dbUrl,
     chainIds: [1, 56],
-    rpcUrls: [
-        "https://mainnet-rpc.example.org",
-        "https://bsc-rpc.example.org",
+    rpcConfigs: [
+        {
+            rpcUrl: "https://mainnet-rpc.example.org",
+            fallbackRpcUrl: "https://mainnet-fallback-rpc.example.org",
+        },
+        {
+            rpcUrl: "https://bsc-rpc.example.org",
+            fallbackRpcUrl: "https://bsc-fallback-rpc.example.org",
+        },
     ],
     rpcRequestTimeoutMs: 5_000,
 });
@@ -285,11 +294,15 @@ import { JsonRpcProvider } from "ethers";
 import { EthersBlockSource } from "@drillcoder/voryn";
 
 const provider = new JsonRpcProvider("https://rpc.example.org");
+const fallbackProvider = new JsonRpcProvider("https://fallback-rpc.example.org");
 
-const source = await EthersBlockSource.create([provider]);
+const source = await EthersBlockSource.create({
+    providerPairs: [{ provider, fallbackProvider }],
+});
 ```
 
-Pass one provider per chain.
+Pass one provider pair per chain. The fallback provider is optional and is used if the regular provider returns
+an error or invalid data.
 
 The adapter validates hashes, addresses, `data` fields, transaction indexes, and block number consistency. To use another data source, implement the `BlockSource` interface.
 

@@ -6,7 +6,10 @@ import { SequencerWorker } from "@drillcoder/voryn";
         dbUrl: "postgres://user:pass@localhost:5432/voryn",
         logLevel: "info",
         chainId: 1,
-        rpcUrl: "https://rpc.example.org",
+        rpcConfig: {
+            rpcUrl: "https://rpc.example.org",
+            fallbackRpcUrl: "https://fallback-rpc.example.org",
+        },
         rpcRequestTimeoutMs: 5_000,
         delayBetweenTicksMs: 100,
         maxBlocksPerTick: 10,

@@ -80,8 +80,8 @@ test("resolveSingleBlockSource returns provided source", async () => {
     await expect(resolveSingleBlockSource({ source })).resolves.toBe(source);
 });
 
-test("resolveSingleBlockSource creates ethers source from rpcUrl", async () => {
-    await expect(resolveSingleBlockSource({ rpcUrl: "http://127.0.0.1/1" }))
+test("resolveSingleBlockSource creates ethers source from rpcConfig", async () => {
+    await expect(resolveSingleBlockSource({ rpcConfig: { rpcUrl: "http://127.0.0.1/1" } }))
         .resolves.toBeInstanceOf(EthersBlockSource);
 
     const request = getProviderRequest();
@@ -103,24 +103,80 @@ test("resolveSingleBlockSource creates ethers source from rpcUrl", async () => {
 
 test("resolveSingleBlockSource applies configured rpc request timeout", async () => {
     await expect(resolveSingleBlockSource({
-        rpcUrl: "http://127.0.0.1/1",
+        rpcConfig: { rpcUrl: "http://127.0.0.1/1" },
         rpcRequestTimeoutMs: 12_345,
     })).resolves.toBeInstanceOf(EthersBlockSource);
 
     expect(getProviderRequest().timeout).toBe(12_345);
 });
 
+test("resolveSingleBlockSource creates provider and fallback provider", async () => {
+    const source = await resolveSingleBlockSource({
+        rpcConfig: {
+            rpcUrl: "http://127.0.0.1/1",
+            fallbackRpcUrl: "http://fallback.local/1",
+        },
+        rpcRequestTimeoutMs: 12_345,
+    }, logger);
+
+    expect(source).toBeInstanceOf(EthersBlockSource);
+    expect(Reflect.get(source, "logger")).toBe(logger);
+    expect(getProviderRequest(0).url).toBe("http://127.0.0.1/1");
+    expect(getProviderRequest(1).url).toBe("http://fallback.local/1");
+    expect(getProviderRequest(0).timeout).toBe(12_345);
+    expect(getProviderRequest(1).timeout).toBe(12_345);
+
+    const fallbackRequest = getProviderRequest(1);
+    expect(fallbackRequest.retryFunc).not.toBeNull();
+    if (fallbackRequest.retryFunc === null) {
+        throw new Error("Expected fallback RPC retry policy to be configured");
+    }
+
+    await expect(fallbackRequest.retryFunc(
+        fallbackRequest,
+        new FetchResponse(429, "Too Many Requests", {}, null, fallbackRequest),
+        0,
+    )).resolves.toBe(false);
+});
+
 test("resolveMultiBlockSource creates multi-chain ethers source", async () => {
     await expect(resolveMultiBlockSource({
-        rpcUrls: [
-            "http://127.0.0.1/1",
-            "http://127.0.0.1/56",
+        rpcConfigs: [
+            { rpcUrl: "http://127.0.0.1/1" },
+            { rpcUrl: "http://127.0.0.1/56" },
         ],
         rpcRequestTimeoutMs: 23_456,
     })).resolves.toBeInstanceOf(EthersBlockSource);
 
     expect(getProviderRequest(0).timeout).toBe(23_456);
     expect(getProviderRequest(1).timeout).toBe(23_456);
+});
+
+test("resolveMultiBlockSource creates providers from paired RPC configs", async () => {
+    await expect(resolveMultiBlockSource({
+        rpcConfigs: [
+            {
+                rpcUrl: "http://rpc.local/1",
+                fallbackRpcUrl: "http://fallback.local/1",
+            },
+            {
+                rpcUrl: "http://rpc.local/56",
+                fallbackRpcUrl: "http://fallback.local/56",
+            },
+        ],
+    })).resolves.toBeInstanceOf(EthersBlockSource);
+
+    expect([
+        getProviderRequest(0).url,
+        getProviderRequest(1).url,
+        getProviderRequest(2).url,
+        getProviderRequest(3).url,
+    ]).toEqual([
+        "http://rpc.local/1",
+        "http://fallback.local/1",
+        "http://rpc.local/56",
+        "http://fallback.local/56",
+    ]);
 });
 
 test("resolveMultiBlockSource returns provided source", async () => {
@@ -141,21 +197,30 @@ test("resolveMultiBlockSource returns provided source", async () => {
 });
 
 test.each([
-    [{ rpcUrls: [] }, "Ethers source rpcUrls config must not be empty"],
+    [{ rpcConfigs: [] }, "Ethers source rpcConfigs must not be empty"],
     [
-        { rpcUrls: ["http://127.0.0.1/1", "http://127.0.0.1/1"] },
+        {
+            rpcConfigs: [
+                { rpcUrl: "http://127.0.0.1/1" },
+                { rpcUrl: "http://127.0.0.1/1" },
+            ],
+        },
         "Ethers source chain id is duplicated: 1",
     ],
     [
-        { rpcUrls: [""] },
+        { rpcConfigs: [{ rpcUrl: "" }] },
         "Ethers source rpcUrl is empty",
     ],
     [
-        { rpcUrls: ["http://127.0.0.1/1"], rpcRequestTimeoutMs: 0 },
+        { rpcConfigs: [{ rpcUrl: "http://127.0.0.1/1", fallbackRpcUrl: " " }] },
+        "Ethers source fallbackRpcUrl is empty",
+    ],
+    [
+        { rpcConfigs: [{ rpcUrl: "http://127.0.0.1/1" }], rpcRequestTimeoutMs: 0 },
         "Ethers source rpcRequestTimeoutMs must be a positive safe integer",
     ],
     [
-        { rpcUrls: ["http://127.0.0.1/1"], rpcRequestTimeoutMs: 1.5 },
+        { rpcConfigs: [{ rpcUrl: "http://127.0.0.1/1" }], rpcRequestTimeoutMs: 1.5 },
         "Ethers source rpcRequestTimeoutMs must be a positive safe integer",
     ],
 ])("resolveMultiBlockSource rejects invalid source config", async (config, expectedError) => {

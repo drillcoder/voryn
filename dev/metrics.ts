@@ -7,7 +7,10 @@ async function run(): Promise<void> {
         dbUrl: envValue("DATABASE_URL", ""),
         logger: createDevLogger(),
         chainIds: [envNumber("VORYN_CHAIN_ID", "0")],
-        rpcUrls: [envValue("VORYN_METRICS_RPC_URL", "")],
+        rpcConfigs: [{
+            rpcUrl: envValue("VORYN_METRICS_RPC_URL", ""),
+            fallbackRpcUrl: envValue("VORYN_METRICS_FALLBACK_RPC_URL", ""),
+        }],
         rpcRequestTimeoutMs: envNumber("VORYN_METRICS_RPC_REQUEST_TIMEOUT_MS", "5000"),
     };
     const metrics = await PipelineMetrics.create(options);

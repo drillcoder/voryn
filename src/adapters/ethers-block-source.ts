@@ -1,8 +1,11 @@
 import type { Block, Log, Provider, TransactionResponse } from "ethers";
 import type { BlockSource } from "../interfaces/block-source.js";
+import type { Logger } from "../interfaces/logger.js";
+import { noopLogger } from "../interfaces/logger.js";
 import type { BlockNumber, ChainId, HashHex } from "../types/chain.js";
 import type { ChainBlock, ChainLog, ChainTransaction, FetchedBlock } from "../interfaces/chain.js";
 import { asChainId } from "../utils/chain.js";
+import { asErrorMessage } from "../utils/errors.js";
 import { asAddress, asHash32, asHexData } from "../utils/hex.js";
 
 export type EthersNetworkLike = Pick<Awaited<ReturnType<Provider["getNetwork"]>>, "chainId">;
@@ -38,52 +41,95 @@ export interface EthersProviderLike {
     getLogs(filter: { fromBlock: BlockNumber; toBlock: BlockNumber }): Promise<EthersLogLike[]>;
 }
 
+export interface EthersProviderPair {
+    provider: EthersProviderLike;
+    fallbackProvider?: EthersProviderLike;
+}
+
+export interface EthersBlockSourceOptions {
+    providerPairs: readonly EthersProviderPair[];
+    logger?: Logger;
+}
+
 export class EthersBlockSource implements BlockSource {
-    private constructor(private readonly providers: ReadonlyMap<ChainId, EthersProviderLike>) {
+    private constructor(
+        private readonly providerPairMap: ReadonlyMap<ChainId, EthersProviderPair>,
+        private readonly logger: Logger,
+    ) {
     }
 
-    static async create(providers: readonly EthersProviderLike[]): Promise<EthersBlockSource> {
-        if (providers.length === 0) {
-            throw new Error("Ethers source providers config must not be empty");
+    static async create(options: EthersBlockSourceOptions): Promise<EthersBlockSource> {
+        const { providerPairs, logger = noopLogger } = options;
+
+        if (providerPairs.length === 0) {
+            throw new Error("Ethers source providerPairs must not be empty");
         }
 
-        const mappedProviders = new Map<ChainId, EthersProviderLike>();
+        const providerPairMap = new Map<ChainId, EthersProviderPair>();
 
-        for (const provider of providers) {
-            const network = await provider.getNetwork();
+        for (const providerPair of providerPairs) {
+            const network = await providerPair.provider.getNetwork();
             const chainId = asChainId(network.chainId, "Ethers source chain id");
 
-            if (mappedProviders.has(chainId)) {
+            if (providerPairMap.has(chainId)) {
                 throw new Error(`Ethers source chain id is duplicated: ${String(chainId)}`);
             }
 
-            mappedProviders.set(chainId, provider);
+            if (providerPair.fallbackProvider !== undefined) {
+                const fallbackNetwork = await providerPair.fallbackProvider.getNetwork();
+                const fallbackChainId = asChainId(fallbackNetwork.chainId, "Ethers fallback source chain id");
+
+                if (fallbackChainId !== chainId) {
+                    throw new Error(
+                        "Ethers fallback source chain id mismatch: "
+                        + `expected ${String(chainId)}, got ${String(fallbackChainId)}`
+                    );
+                }
+            }
+
+            providerPairMap.set(chainId, providerPair);
         }
 
-        return new EthersBlockSource(mappedProviders);
+        return new EthersBlockSource(providerPairMap, logger);
     }
 
     async getLatestBlockNumber(chainId: ChainId): Promise<BlockNumber> {
-        const provider = this.getProvider(chainId);
-        return provider.getBlockNumber();
+        return this.executeWithFallback(
+            chainId,
+            "getLatestBlockNumber",
+            {},
+            async (provider) => provider.getBlockNumber(),
+        );
     }
 
     async getLatestBlock(chainId: ChainId): Promise<ChainBlock> {
-        const provider = this.getProvider(chainId);
-        const block = await provider.getBlock("latest", false);
-
-        return this.mapBlock(chainId, block, "latest");
+        return this.executeWithFallback(chainId, "getLatestBlock", {}, async (provider) => {
+            const block = await provider.getBlock("latest", false);
+            return this.mapBlock(chainId, block, "latest");
+        });
     }
 
     async getBlock(chainId: ChainId, blockNumber: BlockNumber): Promise<ChainBlock> {
-        const provider = this.getProvider(chainId);
-        const block = await provider.getBlock(blockNumber, false);
-
-        return this.mapBlock(chainId, block, blockNumber);
+        return this.executeWithFallback(chainId, "getBlock", { blockNumber }, async (provider) => {
+            const block = await provider.getBlock(blockNumber, false);
+            return this.mapBlock(chainId, block, blockNumber);
+        });
     }
 
     async getBlockData(chainId: ChainId, blockNumber: BlockNumber): Promise<FetchedBlock> {
-        const provider = this.getProvider(chainId);
+        return this.executeWithFallback(
+            chainId,
+            "getBlockData",
+            { blockNumber },
+            async (provider) => this.loadBlockData(provider, chainId, blockNumber),
+        );
+    }
+
+    private async loadBlockData(
+        provider: EthersProviderLike,
+        chainId: ChainId,
+        blockNumber: BlockNumber,
+    ): Promise<FetchedBlock> {
         const block = await provider.getBlock(blockNumber, true);
 
         if (!block) {
@@ -124,13 +170,48 @@ export class EthersBlockSource implements BlockSource {
         };
     }
 
-    private getProvider(chainId: ChainId): EthersProviderLike {
-        const provider = this.providers.get(chainId);
-        if (provider === undefined) {
+    private getProviderPair(chainId: ChainId): EthersProviderPair {
+        const providerPair = this.providerPairMap.get(chainId);
+        if (providerPair === undefined) {
             throw new Error(`provider not found for chain ${String(chainId)}`);
         }
 
-        return provider;
+        return providerPair;
+    }
+
+    private async executeWithFallback<TResult>(
+        chainId: ChainId,
+        operation: string,
+        meta: Record<string, unknown>,
+        execute: (provider: EthersProviderLike) => Promise<TResult>,
+    ): Promise<TResult> {
+        const { provider, fallbackProvider } = this.getProviderPair(chainId);
+
+        try {
+            return await execute(provider);
+        } catch (sourceError) {
+            if (fallbackProvider === undefined) {
+                throw sourceError;
+            }
+
+            this.logger.warn("ethers_source_provider_failed_fallback_started", {
+                chainId,
+                operation,
+                ...meta,
+                error: asErrorMessage(sourceError),
+            });
+
+            try {
+                return await execute(fallbackProvider);
+            } catch (fallbackError) {
+                throw new AggregateError(
+                    [sourceError, fallbackError],
+                    `Ethers source ${operation} failed on provider and fallback provider for chain `
+                    + `${String(chainId)}: provider: ${asErrorMessage(sourceError)}; `
+                    + `fallback: ${asErrorMessage(fallbackError)}`,
+                );
+            }
+        }
     }
 
     private mapBlock(

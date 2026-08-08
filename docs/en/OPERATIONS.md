@@ -53,8 +53,9 @@ Common options:
 - `delayBetweenTicksMs`: pause between worker ticks.
 - `dbUrl`: PostgreSQL connection string, unless dependencies are provided through `overrides`.
 - `logLevel` or `logger`: built-in log level or custom logger.
-- `rpcUrl` or `source`: block source for `HeadWorker`, `FetchWorker`, and `SequencerWorker`.
-- `rpcRequestTimeoutMs`: timeout for one HTTP RPC request when `rpcUrl` or `rpcUrls` is used; defaults to `30_000`.
+- `rpcConfig` or `source`: block source for `HeadWorker`, `FetchWorker`, and `SequencerWorker`. `rpcConfig`
+  contains the required `rpcUrl` and an optional `fallbackRpcUrl`.
+- `rpcRequestTimeoutMs`: timeout for one HTTP request to either configured RPC URL; defaults to `30_000`.
 
 `HeadWorker`:
 

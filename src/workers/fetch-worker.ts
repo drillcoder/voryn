@@ -41,7 +41,7 @@ export type CreateFetchWorkerOptions =
 export class FetchWorker extends PollingWorker {
     static async create(options: CreateFetchWorkerOptions): Promise<FetchWorker> {
         const logger = resolveLogger(options);
-        const source = await resolveSingleBlockSource(options);
+        const source = await resolveSingleBlockSource(options, logger);
         const { dependencies, dispose } = await resolveDbDependencies<FetchWorkerDatabaseDependencies>(
             options,
             logger,

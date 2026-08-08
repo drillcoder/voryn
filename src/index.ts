@@ -45,6 +45,7 @@ export type {
     PipelineMetricsOptions,
     ReactionWorkerOptions,
     RetentionWorkerOptions,
+    RpcConfig,
     RuntimeDbOptions,
     RuntimeLoggerOptions,
     SequencerWorkerOptions,
@@ -108,9 +109,11 @@ export type { ConsoleLoggerOptions, ConsoleLogWriter, LogLevel } from "./loggers
 
 export { EthersBlockSource } from "./adapters/ethers-block-source.js";
 export type {
+    EthersBlockSourceOptions,
     EthersBlockLike,
     EthersLogLike,
     EthersNetworkLike,
+    EthersProviderPair,
     EthersProviderLike,
     EthersTransactionLike,
 } from "./adapters/ethers-block-source.js";

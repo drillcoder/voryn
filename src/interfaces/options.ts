@@ -11,13 +11,34 @@ export type RuntimeDbOptions<TDependencies extends object> =
     | { dbUrl: string; overrides?: Partial<TDependencies>; }
     | { dbUrl?: undefined; overrides: TDependencies; };
 
+export interface RpcConfig {
+    rpcUrl: string;
+    fallbackRpcUrl?: string;
+}
+
 export type SingleSourceOptions =
-    | { source: BlockSource; rpcUrl?: never; rpcRequestTimeoutMs?: never; }
-    | { source?: never; rpcUrl: string; rpcRequestTimeoutMs?: number; };
+    | {
+        source: BlockSource;
+        rpcConfig?: never;
+        rpcRequestTimeoutMs?: never;
+    }
+    | {
+        source?: never;
+        rpcConfig: RpcConfig;
+        rpcRequestTimeoutMs?: number;
+    };
 
 export type MultiSourceOptions =
-    | { source: BlockSource; rpcUrls?: never; rpcRequestTimeoutMs?: never; }
-    | { source?: never; rpcUrls: readonly string[]; rpcRequestTimeoutMs?: number; };
+    | {
+        source: BlockSource;
+        rpcConfigs?: never;
+        rpcRequestTimeoutMs?: never;
+    }
+    | {
+        source?: never;
+        rpcConfigs: readonly RpcConfig[];
+        rpcRequestTimeoutMs?: number;
+    };
 
 export interface HeadWorkerOptions {
     chainId: ChainId;

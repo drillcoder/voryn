@@ -6,9 +6,15 @@ import { PipelineMetrics } from "@drillcoder/voryn";
         dbUrl: "postgres://user:pass@localhost:5432/voryn",
         logLevel: "info",
         chainIds: [1, 56],
-        rpcUrls: [
-            "https://mainnet-rpc.example.org",
-            "https://bsc-rpc.example.org",
+        rpcConfigs: [
+            {
+                rpcUrl: "https://mainnet-rpc.example.org",
+                fallbackRpcUrl: "https://mainnet-fallback-rpc.example.org",
+            },
+            {
+                rpcUrl: "https://bsc-rpc.example.org",
+                fallbackRpcUrl: "https://bsc-fallback-rpc.example.org",
+            },
         ],
         rpcRequestTimeoutMs: 5_000,
     };

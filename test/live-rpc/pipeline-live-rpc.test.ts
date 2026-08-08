@@ -65,7 +65,9 @@ describeLive("live rpc pipeline", () => {
         const transactionsRepository = new PostgresTransactionsRepository(db.pool);
         const eventsRepository = new PostgresEventsRepository(db.pool);
 
-        const source = await EthersBlockSource.create([new JsonRpcProvider(rpcUrl)]);
+        const source = await EthersBlockSource.create({
+            providerPairs: [{ provider: new JsonRpcProvider(rpcUrl) }],
+        });
 
         const latest = await source.getLatestBlockNumber(chainId);
         const previous = await source.getBlockData(chainId, latest - 1);

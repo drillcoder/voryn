@@ -53,9 +53,9 @@ await worker.start();
 - `delayBetweenTicksMs`: пауза между ticks воркера.
 - `dbUrl`: строка подключения к PostgreSQL, если зависимости не переданы через `overrides`.
 - `logLevel` или `logger`: встроенный уровень логирования или свой logger.
-- `rpcUrl` или `source`: block source для `HeadWorker`, `FetchWorker` и `SequencerWorker`.
-- `rpcRequestTimeoutMs`: таймаут одного HTTP RPC-запроса при использовании `rpcUrl` или `rpcUrls`;
-  по умолчанию `30_000`.
+- `rpcConfig` или `source`: block source для `HeadWorker`, `FetchWorker` и `SequencerWorker`. `rpcConfig` содержит
+  обязательный `rpcUrl` и опциональный `fallbackRpcUrl`.
+- `rpcRequestTimeoutMs`: таймаут одного HTTP-запроса к любому из настроенных RPC URL; по умолчанию `30_000`.
 
 `HeadWorker`:
 

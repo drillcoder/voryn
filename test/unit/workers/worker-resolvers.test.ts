@@ -92,11 +92,11 @@ const workerCursorsRepository: WorkerCursorsRepository = {
     advance: async () => undefined,
 };
 
-test("fetch worker creates ethers source when only rpcUrl is provided", async () => {
+test("fetch worker creates ethers source when rpcConfig is provided", async () => {
     const worker = await FetchWorker.create({
         logLevel: "error",
         ...fetchConfig,
-        rpcUrl: "http://127.0.0.1:8545",
+        rpcConfig: { rpcUrl: "http://127.0.0.1:8545" },
         overrides: {
             blockJobsRepository: createNoopBlockJobsRepository(),
             blocksRepository: createNoopBlocksRepository(),
@@ -114,7 +114,7 @@ test("fetch worker creates ethers source when only rpcUrl is provided", async ()
 test("fetch worker creates default logger with min level", async () => {
     const worker = await FetchWorker.create({
         ...fetchConfig,
-        rpcUrl: "http://127.0.0.1:8545",
+        rpcConfig: { rpcUrl: "http://127.0.0.1:8545" },
         logLevel: "warn",
         overrides: {
             blockJobsRepository: createNoopBlockJobsRepository(),
@@ -141,7 +141,7 @@ test("fetch worker merges db defaults with overrides and returns disposer", asyn
     const worker = await FetchWorker.create({
         logLevel: "error",
         ...fetchConfig,
-        rpcUrl: "http://127.0.0.1:8545",
+        rpcConfig: { rpcUrl: "http://127.0.0.1:8545" },
         dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
         overrides: {
             blockJobsRepository: {
@@ -185,7 +185,7 @@ test("head worker with dbUrl returns singleton lock and disposer", async () => {
         confirmations: 1,
         delayBetweenTicksMs: 1000,
         depthBlocks: 10,
-        rpcUrl: "http://127.0.0.1:8545",
+        rpcConfig: { rpcUrl: "http://127.0.0.1:8545" },
         dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
         overrides: {
             leaderLock,
@@ -204,7 +204,7 @@ test("sequencer worker with dbUrl returns singleton lock and disposer", async ()
         chainId: 7,
         delayBetweenTicksMs: 1000,
         maxBlocksPerTick: 1,
-        rpcUrl: "http://127.0.0.1:8545",
+        rpcConfig: { rpcUrl: "http://127.0.0.1:8545" },
         dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
         overrides: {
             leaderLock,

@@ -55,6 +55,7 @@ docker compose --env-file dev/.env -f dev/docker-compose.yml logs -f head fetch 
 Дополнительно для `head`:
 
 - `VORYN_HEAD_RPC_URL` (`required`) — RPC URL для чтения текущего хеда сети.
+- `VORYN_HEAD_FALLBACK_RPC_URL` (`required`) — резервный RPC URL на случай ошибки.
 - `VORYN_HEAD_RPC_REQUEST_TIMEOUT_MS` (`optional`, по умолчанию `5_000`) — таймаут одного HTTP RPC-запроса.
 - `VORYN_HEAD_DELAY_BETWEEN_TICKS_MS` (`optional`, по умолчанию `1_000`) — задержка между тиками в миллисекундах.
 - `VORYN_HEAD_CONFIRMATIONS` (`optional`, по умолчанию `0`) — число подтверждений перед постановкой блока в очередь.
@@ -63,6 +64,7 @@ docker compose --env-file dev/.env -f dev/docker-compose.yml logs -f head fetch 
 Дополнительно для `fetch`:
 
 - `VORYN_FETCH_RPC_URL` (`required`) — RPC URL для загрузки данных блоков.
+- `VORYN_FETCH_FALLBACK_RPC_URL` (`required`) — резервный RPC URL на случай ошибки.
 - `VORYN_FETCH_RPC_REQUEST_TIMEOUT_MS` (`optional`, по умолчанию `30_000`) — таймаут одного HTTP RPC-запроса.
 - `VORYN_FETCH_DELAY_BETWEEN_TICKS_MS` (`optional`, по умолчанию `100`) — задержка между тиками в миллисекундах.
 - `VORYN_FETCH_BATCH_SIZE` (`optional`, по умолчанию `10`) — максимум задач за один `tick`.
@@ -75,6 +77,7 @@ docker compose --env-file dev/.env -f dev/docker-compose.yml logs -f head fetch 
 Дополнительно для `sequencer`:
 
 - `VORYN_SEQUENCER_RPC_URL` (`optional`) — RPC URL для проверки актуальной ветки при реорганизации цепи.
+- `VORYN_SEQUENCER_FALLBACK_RPC_URL` (`required`) — резервный RPC URL на случай ошибки.
 - `VORYN_SEQUENCER_RPC_REQUEST_TIMEOUT_MS` (`optional`, по умолчанию `5_000`) — таймаут одного HTTP RPC-запроса.
 - `VORYN_SEQUENCER_DELAY_BETWEEN_TICKS_MS` (`optional`, по умолчанию `100`) — задержка между тиками sequencer.
 - `VORYN_SEQUENCER_MAX_BLOCKS_PER_TICK` (`optional`, по умолчанию `10`) — максимальное число блоков, которое sequencer обрабатывает за один `tick`.
@@ -101,6 +104,7 @@ npm exec -- tsx --tsconfig dev/tsconfig.json dev/metrics.ts
 Дополнительно для `metrics`:
 
 - `VORYN_METRICS_RPC_URL` (`required`) — RPC URL для чтения текущего latest block.
+- `VORYN_METRICS_FALLBACK_RPC_URL` (`required`) — резервный RPC URL на случай ошибки.
 - `VORYN_METRICS_RPC_REQUEST_TIMEOUT_MS` (`optional`, по умолчанию `5_000`) — таймаут одного HTTP RPC-запроса.
 
 Вернуть failed block jobs в обработку:

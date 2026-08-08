@@ -52,9 +52,9 @@ const HASH = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
 const config = {
     chainIds: [7, 8],
-    rpcUrls: [
-        "http://127.0.0.1/7",
-        "http://127.0.0.1/8",
+    rpcConfigs: [
+        { rpcUrl: "http://127.0.0.1/7" },
+        { rpcUrl: "http://127.0.0.1/8" },
     ],
 };
 
@@ -101,21 +101,27 @@ test("pipeline metrics returns prometheus text for all configured chains", async
 });
 
 test.each([
-    [{ chainIds: [], rpcUrls: [] }, "Pipeline metrics chainIds config must not be empty"],
+    [{ chainIds: [], rpcConfigs: [] }, "Pipeline metrics chainIds config must not be empty"],
     [
-        { chainIds: [7, 8], rpcUrls: ["http://127.0.0.1/7"] },
-        "Pipeline metrics chainIds and rpcUrls configs must have the same length",
+        { chainIds: [7, 8], rpcConfigs: [{ rpcUrl: "http://127.0.0.1/7" }] },
+        "Pipeline metrics chainIds and rpcConfigs must have the same length",
     ],
     [
-        { chainIds: [7, 7], rpcUrls: ["http://127.0.0.1/7", "http://127.0.0.1/8"] },
+        {
+            chainIds: [7, 7],
+            rpcConfigs: [
+                { rpcUrl: "http://127.0.0.1/7" },
+                { rpcUrl: "http://127.0.0.1/8" },
+            ],
+        },
         "Pipeline metrics chain id is duplicated: 7",
     ],
     [
-        { chainIds: [0], rpcUrls: ["http://127.0.0.1/7"] },
+        { chainIds: [0], rpcConfigs: [{ rpcUrl: "http://127.0.0.1/7" }] },
         "Pipeline metrics chain id is invalid: 0",
     ],
     [
-        { chainIds: [7], rpcUrls: [" "] },
+        { chainIds: [7], rpcConfigs: [{ rpcUrl: " " }] },
         "Ethers source rpcUrl is empty",
     ],
 ])("pipeline metrics rejects invalid source config", async (invalidConfig, expectedError) => {
