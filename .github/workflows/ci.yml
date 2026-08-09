@@ -10,6 +10,8 @@ jobs:
   checks:
     name: Checks
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       VORYN_TEST_RPC_URL: ${{ vars.VORYN_TEST_RPC_URL }}
       VORYN_TEST_CHAIN_ID: ${{ vars.VORYN_TEST_CHAIN_ID }}
