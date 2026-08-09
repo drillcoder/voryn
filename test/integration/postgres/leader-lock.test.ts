@@ -1,4 +1,3 @@
-import type { Pool } from "pg";
 import { PostgresLeaderLock } from "../../../src/postgres/leader-lock.js";
 import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../helpers/test-db.js";
 import type { IsolatedDbContext } from "../helpers/test-db.js";
@@ -25,7 +24,7 @@ describe("integration postgres leader lock", () => {
     });
 
     test("only one holder can acquire advisory lock key at a time", async () => {
-        const pool = db.pool as unknown as Pool;
+        const pool = db.pool;
         const lockA = new PostgresLeaderLock(pool, 88_000_001n);
         const lockB = new PostgresLeaderLock(pool, 88_000_001n);
 
@@ -39,7 +38,7 @@ describe("integration postgres leader lock", () => {
     });
 
     test("reports a terminated lock backend and lets a competitor acquire promptly", async () => {
-        const pool = db.pool as unknown as Pool;
+        const pool = db.pool;
         const lockKey = 88_000_002n;
         const holder = new PostgresLeaderLock(pool, lockKey);
         const competitor = new PostgresLeaderLock(pool, lockKey);
