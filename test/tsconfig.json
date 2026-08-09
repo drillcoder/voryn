@@ -3,8 +3,9 @@
   "compilerOptions": {
     "noEmit": true,
     "isolatedModules": true,
+    "types": ["node", "jest"],
     "module": "CommonJS",
-    "moduleResolution": "Node",
+    "moduleResolution": "Bundler",
     "rootDir": ".."
   },
   "include": ["./**/*.ts"]
