@@ -1,3 +1,4 @@
+import type { Logger } from "../../../src/interfaces/logger.js";
 import type { PipelineEvent, PipelineTransaction, WorkerCursorPosition } from "../../../src/interfaces/pipeline.js";
 import type {
     ChainCursorRepository,
@@ -101,6 +102,22 @@ const createTransactionsRepository = (
     deleteByBlockNumber: async () => 0,
     ...overrides,
 });
+
+const createLogger = (): { logger: Logger; debug: jest.Mock; info: jest.Mock } => {
+    const debug = jest.fn();
+    const info = jest.fn();
+
+    return {
+        logger: {
+            debug,
+            info,
+            warn: jest.fn(),
+            error: jest.fn(),
+        },
+        debug,
+        info,
+    };
+};
 
 test("reaction service reads committed events by cursor and advances processed positions", async () => {
     const handled: Array<[number, number, number]> = [];
@@ -210,6 +227,65 @@ test("reaction service advances processed transaction immediately after skipped"
     expect(advanced).toEqual([
         { lastBlockNumber: 101, lastTransactionIndex: 1 },
     ]);
+});
+
+test("reaction service logs batches with processed items at info level", async () => {
+    const { logger, debug, info } = createLogger();
+    const service = new ReactionService({
+        config,
+        streamType: "event",
+        handler: async (event) => event.index === 0 ? "skipped" : "processed",
+        chainCursorRepository: createChainCursorRepository(),
+        workerCursorsRepository: createWorkerCursorsRepository(
+            { lastBlockNumber: 99, lastTransactionIndex: 1, lastLogIndex: 2 }
+        ),
+        eventsRepository: createEventsRepository({
+            listAfterPosition: async () => [
+                createEvent(100, 0, 0),
+                createEvent(101, 0, 1),
+            ],
+        }),
+        logger,
+    });
+
+    await service.execute();
+
+    expect(info).toHaveBeenCalledWith("event_reaction_tick_scanned", {
+        chainId: 5,
+        workerName: "reaction-handler",
+        processed: 1,
+        skipped: 1,
+        lastAdvancedPosition: { lastBlockNumber: 101, lastTransactionIndex: 0, lastLogIndex: 1 },
+    });
+    expect(debug).not.toHaveBeenCalled();
+});
+
+test("reaction service logs batches with only skipped items at debug level", async () => {
+    const { logger, debug, info } = createLogger();
+    const service = new ReactionService({
+        config,
+        streamType: "event",
+        handler: async () => "skipped",
+        chainCursorRepository: createChainCursorRepository(),
+        workerCursorsRepository: createWorkerCursorsRepository(
+            { lastBlockNumber: 99, lastTransactionIndex: 1, lastLogIndex: 2 }
+        ),
+        eventsRepository: createEventsRepository({
+            listAfterPosition: async () => [createEvent(100, 0, 0)],
+        }),
+        logger,
+    });
+
+    await service.execute();
+
+    expect(debug).toHaveBeenCalledWith("event_reaction_tick_scanned", {
+        chainId: 5,
+        workerName: "reaction-handler",
+        processed: 0,
+        skipped: 1,
+        lastAdvancedPosition: { lastBlockNumber: 100, lastTransactionIndex: 0, lastLogIndex: 0 },
+    });
+    expect(info).not.toHaveBeenCalled();
 });
 
 test("reaction service flushes skipped transaction position before handler failure", async () => {

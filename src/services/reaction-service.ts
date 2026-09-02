@@ -157,13 +157,20 @@ export class ReactionService {
         await flushSkipped();
 
         if (items.length > 0) {
-            this.logger.info(`${this.options.streamType}_reaction_tick_processed`, {
+            const message = `${this.options.streamType}_reaction_tick_scanned`;
+            const meta = {
                 chainId,
                 workerName,
                 processed: processedCount,
                 skipped: skippedCount,
-                lastProcessedPosition: lastAdvancedPosition,
-            });
+                lastAdvancedPosition,
+            };
+
+            if (processedCount > 0) {
+                this.logger.info(message, meta);
+            } else {
+                this.logger.debug(message, meta);
+            }
         } else {
             this.logger.debug(`${this.options.streamType}_reaction_tick_no_items`, { chainId, workerName });
         }
