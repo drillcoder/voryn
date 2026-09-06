@@ -9,10 +9,22 @@ archive_dir="$tmp_dir/archive"
 consumer_dir="$tmp_dir/consumer"
 mkdir -p "$archive_dir" "$consumer_dir"
 
+typescript_bin="$(pwd)/node_modules/.bin/tsc"
+
 archive_name="$(npm pack --pack-destination "$archive_dir" --silent)"
 archive_path="$archive_dir/$archive_name"
 
 npm install --prefix "$consumer_dir" --ignore-scripts --no-audit --no-fund "$archive_path"
+cp test/package/consumer.ts "$consumer_dir/consumer.mts"
+
+"$typescript_bin" \
+    --noEmit \
+    --ignoreConfig \
+    --strict \
+    --target ES2022 \
+    --module NodeNext \
+    --moduleResolution NodeNext \
+    "$consumer_dir/consumer.mts"
 
 cd "$consumer_dir"
 node --input-type=module -e '

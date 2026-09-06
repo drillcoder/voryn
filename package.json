@@ -57,6 +57,7 @@
 		"access": "public"
 	},
 	"dependencies": {
+		"@types/pg": "^8.21.0",
 		"ethers": "^6.16.0",
 		"pg": "^8.23.0"
 	},
@@ -69,7 +70,6 @@
 		"@semantic-release/release-notes-generator": "^14.1.1",
 		"@types/jest": "^30.0.0",
 		"@types/node": "^22.0.0",
-		"@types/pg": "^8.21.0",
 		"conventional-changelog-conventionalcommits": "10.2.1",
 		"eslint": "^9.39.5",
 		"eslint-config-prettier": "^10.1.8",
