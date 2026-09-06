@@ -44,14 +44,14 @@ jobs:
       - name: Lint
         run: make lint
 
-      - name: Unit tests
-        run: make test
-
-      - name: Coverage
-        run: make test-coverage
-
       - name: Unit coverage
         run: make test-unit-coverage
+
+      - name: Integration tests
+        run: make test-integration
+
+      - name: E2E tests
+        run: make test-e2e
 
       - name: Check live RPC configuration
         run: |
