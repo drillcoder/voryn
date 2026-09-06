@@ -3,6 +3,9 @@
 	"version": "1.0.2",
 	"description": "A TypeScript library for reliable EVM indexing with PostgreSQL.",
 	"type": "module",
+	"engines": {
+		"node": ">=22"
+	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"exports": {
@@ -65,7 +68,7 @@
 		"@semantic-release/npm": "^13.1.5",
 		"@semantic-release/release-notes-generator": "^14.1.1",
 		"@types/jest": "^30.0.0",
-		"@types/node": "^24.13.3",
+		"@types/node": "^22.0.0",
 		"@types/pg": "^8.21.0",
 		"conventional-changelog-conventionalcommits": "10.2.1",
 		"eslint": "^9.39.5",
