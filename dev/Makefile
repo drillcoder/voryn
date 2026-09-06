@@ -7,7 +7,7 @@ TOOLS_RUN := $(COMPOSE) run --rm tools
 .PHONY: \
 	init ingestion-up ingestion-restart ingestion-stop \
 	db-up db-restart db-stop down \
-	install build lint test test-all db-init lint-fix test-coverage test-unit-coverage test-watch test-integration test-e2e test-live-rpc
+	install build build-test pack-dry-run pack-test lint test test-all db-init lint-fix test-coverage test-unit-coverage test-watch test-integration test-e2e test-live-rpc
 
 # Инициализация.
 init: install build db-init
@@ -55,6 +55,14 @@ build:
 # Собрать тесты.
 build-test:
 	$(TOOLS_RUN) npm run build-test
+
+# Проверить состав npm-архива без его создания.
+pack-dry-run:
+	$(TOOLS_RUN) npm run pack:dry-run
+
+# Установить npm-архив в чистый проект и проверить публичные импорты.
+pack-test:
+	$(TOOLS_RUN) npm run pack:test
 
 # Проверить линтер.
 lint:

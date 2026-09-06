@@ -30,6 +30,7 @@
 		"test:watch": "jest --config dev/jest.config.js --watch",
 		"prepublishOnly": "npm run build",
 		"pack:dry-run": "npm pack --dry-run",
+		"pack:test": "sh test/package/consumer.sh",
 		"db:apply-sql": "tsx --tsconfig dev/tsconfig.json dev/apply-sql.ts",
 		"release": "semantic-release",
 		"release:dry-run": "semantic-release --dry-run"

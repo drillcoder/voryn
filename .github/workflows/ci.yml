@@ -35,6 +35,12 @@ jobs:
       - name: Build tests
         run: make build-test
 
+      - name: Check package contents
+        run: make pack-dry-run
+
+      - name: Test installed package
+        run: make pack-test
+
       - name: Lint
         run: make lint
 
