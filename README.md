@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <a href="./README.ru.md">Russian documentation</a>
+  🇬🇧 English&nbsp;&nbsp;|&nbsp;&nbsp;<a href="./README.ru.md">🇷🇺 Русский</a>
 </p>
 
 Voryn helps you build indexers that read blocks from EVM RPC, store normalized fetched data, commit chain progress in strict order, and run your application logic on transactions and events.
