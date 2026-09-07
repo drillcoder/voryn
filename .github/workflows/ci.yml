@@ -47,6 +47,12 @@ jobs:
       - name: Unit coverage
         run: make test-unit-coverage
 
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage/lcov.info
+          fail_ci_if_error: true
+
       - name: Integration tests
         run: make test-integration
 

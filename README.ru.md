@@ -8,7 +8,8 @@
   <a href="https://www.npmjs.com/package/@drillcoder/voryn"><img alt="npm" src="https://img.shields.io/npm/v/%40drillcoder%2Fvoryn?style=flat-square"></a>
   <a href="https://www.npmjs.com/package/@drillcoder/voryn"><img alt="npm downloads" src="https://img.shields.io/npm/dm/%40drillcoder%2Fvoryn?style=flat-square"></a>
   <a href="./LICENSE"><img alt="license" src="https://img.shields.io/npm/l/%40drillcoder%2Fvoryn?style=flat-square"></a>
-  <img alt="test coverage" src="https://img.shields.io/badge/coverage-100%25-brightgreen?style=flat-square">
+  <a href="https://github.com/drillcoder/voryn/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/drillcoder/voryn/actions/workflows/ci.yml/badge.svg?branch=main"></a>
+  <a href="https://codecov.io/gh/drillcoder/voryn"><img alt="test coverage" src="https://codecov.io/gh/drillcoder/voryn/branch/main/graph/badge.svg"></a>
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-6.x-3178c6?style=flat-square">
   <img alt="ethers" src="https://img.shields.io/badge/ethers-v6-2535a0?style=flat-square">
   <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-ready-4169e1?style=flat-square">
