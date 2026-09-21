@@ -1,4 +1,12 @@
-import { PostgresBlockJobsRepository } from "../../../src/repositories/postgres/block-jobs-repository.js";
+import {
+    afterAll,
+    beforeAll,
+    beforeEach,
+    describe,
+    expect,
+    test,
+} from "vitest";
+
 import { PostgresBlocksRepository } from "../../../src/repositories/postgres/blocks-repository.js";
 import { PostgresEventsRepository } from "../../../src/repositories/postgres/events-repository.js";
 import { PostgresTransactionsRepository } from "../../../src/repositories/postgres/transactions-repository.js";

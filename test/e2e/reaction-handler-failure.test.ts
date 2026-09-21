@@ -1,3 +1,12 @@
+import {
+    afterAll,
+    beforeAll,
+    beforeEach,
+    describe,
+    expect,
+    test,
+} from "vitest";
+
 import type { EventReactionHandler } from "../../src/interfaces/reaction.js";
 import { PostgresChainCursorRepository } from "../../src/repositories/postgres/chain-cursor-repository.js";
 import { PostgresEventsRepository } from "../../src/repositories/postgres/events-repository.js";

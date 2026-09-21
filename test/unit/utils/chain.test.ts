@@ -1,3 +1,5 @@
+import { expect, test } from "vitest";
+
 import { asChainId } from "../../../src/utils/chain.js";
 
 test("asChainId accepts positive safe integers", () => {

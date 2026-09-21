@@ -1,3 +1,5 @@
+import { expect, test, vi } from "vitest";
+
 import type { SequencerWorkerOptions } from "../../../src/interfaces/options.js";
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import { SequencerWorker } from "../../../src/workers/sequencer-worker.js";
@@ -15,7 +17,7 @@ import {
 } from "../helpers/pipeline-test-helpers.js";
 
 test("sequencer worker create wires service execution", async () => {
-    const getCursor = jest.fn(async () => null);
+    const getCursor = vi.fn(async () => null);
     const config: Omit<SequencerWorkerOptions, "sourceConfig"> = {
         delayBetweenTicksMs: 1000,
         maxBlocksPerTick: 1,

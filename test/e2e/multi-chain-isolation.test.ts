@@ -1,3 +1,12 @@
+import {
+    afterAll,
+    beforeAll,
+    beforeEach,
+    describe,
+    expect,
+    test,
+} from "vitest";
+
 import type { BlockSource } from "../../src/interfaces/block-source.js";
 import type { FetchedBlock } from "../../src/interfaces/chain.js";
 import { PostgresTransactionManager } from "../../src/postgres/transaction-manager.js";

@@ -1,3 +1,5 @@
+import { expect, test } from "vitest";
+
 import * as voryn from "../../src/index.js";
 
 test("public entry point exports exact runtime APIs", () => {

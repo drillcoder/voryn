@@ -10,7 +10,7 @@ Main commands:
 - `make build-test` — type-check test compilation.
 - `make lint` — run ESLint.
 - `make test` — run unit tests.
-- `make test-all` — run the full Jest suite.
+- `make test-all` — run the full Vitest suite.
 - `make test-coverage` — run tests with coverage.
 
 ## Docker (dev)

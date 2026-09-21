@@ -1,20 +1,23 @@
+import type { Mock } from "vitest";
+import { expect, test, vi } from "vitest";
+
 import { PostgresChainCursorRepository } from "../../../../src/repositories/postgres/chain-cursor-repository.js";
 import type { DbExecutor } from "../../../../src/interfaces/db.js";
 import { asHash32 } from "../../../../src/utils/hex.js";
 
 const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
-const createExecutor = (query: jest.Mock): DbExecutor => ({ query: query as never });
+const createExecutor = (query: Mock): DbExecutor => ({ query: query as never });
 
 test("get returns null when cursor is missing", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 0 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 0 }));
     const repository = new PostgresChainCursorRepository(createExecutor(query));
 
     await expect(repository.get(10)).resolves.toBeNull();
 });
 
 test("get maps chain cursor row", async () => {
-    const query = jest.fn(async () => ({
+    const query = vi.fn(async () => ({
         rows: [{
             chain_id: 10,
             last_enqueued_block: "12",
@@ -35,7 +38,7 @@ test("get maps chain cursor row", async () => {
 });
 
 test("getForUpdate maps chain cursor row and locks it", async () => {
-    const query = jest.fn(async () => ({
+    const query = vi.fn(async () => ({
         rows: [{
             chain_id: 10,
             last_enqueued_block: "12",
@@ -60,7 +63,7 @@ test("getForUpdate maps chain cursor row and locks it", async () => {
 });
 
 test("getForUpdate returns null when cursor is missing", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 0 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 0 }));
     const executor = createExecutor(query);
     const repository = new PostgresChainCursorRepository(executor);
 
@@ -68,7 +71,7 @@ test("getForUpdate returns null when cursor is missing", async () => {
 });
 
 test("advanceLastCommitted throws when optimistic update fails", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 0 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 0 }));
     const repository = new PostgresChainCursorRepository(createExecutor(query));
 
     await expect(
@@ -77,7 +80,7 @@ test("advanceLastCommitted throws when optimistic update fails", async () => {
 });
 
 test("advanceLastCommitted throws when rowCount is null", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: null }));
     const repository = new PostgresChainCursorRepository(createExecutor(query));
 
     await expect(
@@ -86,7 +89,7 @@ test("advanceLastCommitted throws when rowCount is null", async () => {
 });
 
 test("advanceLastCommitted succeeds when one row is updated", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 1 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 1 }));
     const repository = new PostgresChainCursorRepository(createExecutor(query));
 
     await expect(
@@ -95,28 +98,28 @@ test("advanceLastCommitted succeeds when one row is updated", async () => {
 });
 
 test("setLastEnqueued throws when cursor is missing", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 0 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 0 }));
     const repository = new PostgresChainCursorRepository(createExecutor(query));
 
     await expect(repository.setLastEnqueued(10, 12)).rejects.toThrow("Chain cursor for chain 10 not found");
 });
 
 test("setLastEnqueued throws when rowCount is null", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: null }));
     const repository = new PostgresChainCursorRepository(createExecutor(query));
 
     await expect(repository.setLastEnqueued(10, 12)).rejects.toThrow("Chain cursor for chain 10 not found");
 });
 
 test("setLastEnqueued succeeds when cursor exists", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 1 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 1 }));
     const repository = new PostgresChainCursorRepository(createExecutor(query));
 
     await expect(repository.setLastEnqueued(10, 12)).resolves.toBeUndefined();
 });
 
 test("setPositions throws when cursor is missing", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 0 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 0 }));
     const repository = new PostgresChainCursorRepository(createExecutor(query));
 
     await expect(repository.setPositions(10, 12, HASH_A, 12)).rejects.toThrow(
@@ -125,7 +128,7 @@ test("setPositions throws when cursor is missing", async () => {
 });
 
 test("setPositions throws when rowCount is null", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: null }));
     const repository = new PostgresChainCursorRepository(createExecutor(query));
 
     await expect(repository.setPositions(10, 12, HASH_A, 12)).rejects.toThrow(
@@ -134,7 +137,7 @@ test("setPositions throws when rowCount is null", async () => {
 });
 
 test("setPositions updates committed and enqueued values", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 1 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 1 }));
     const repository = new PostgresChainCursorRepository(createExecutor(query));
 
     await repository.setPositions(10, 12, HASH_A, 12);
@@ -149,7 +152,7 @@ test("setPositions updates committed and enqueued values", async () => {
 });
 
 test("insert executes with on conflict", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 1 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 1 }));
     const repository = new PostgresChainCursorRepository(createExecutor(query));
 
     await repository.insert({

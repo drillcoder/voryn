@@ -1,3 +1,5 @@
+import { expect, test, vi } from "vitest";
+
 import type { Logger } from "../../../src/interfaces/logger.js";
 import { PollingWorker } from "../../../src/workers/polling-worker.js";
 
@@ -68,7 +70,7 @@ class TestPollingWorkerWithCleanup extends PollingWorker {
 test("polling worker start/stop logs lifecycle once", async () => {
     const deferred = createDeferred();
     const { logger, debugCalls, infoCalls } = createLogger();
-    const onTick = jest.fn(async () => deferred.promise);
+    const onTick = vi.fn(async () => deferred.promise);
     const worker = new TestPollingWorker(logger, onTick);
 
     await worker.start();
@@ -145,7 +147,7 @@ test("polling worker logs tick failures and continues", async () => {
 test("polling worker calls cleanup on stop", async () => {
     const deferred = createDeferred();
     const { logger } = createLogger();
-    const cleanup = jest.fn(async () => undefined);
+    const cleanup = vi.fn(async () => undefined);
     const worker = new TestPollingWorkerWithCleanup(logger, async () => deferred.promise, cleanup);
 
     await worker.start();
@@ -158,24 +160,24 @@ test("polling worker calls cleanup on stop", async () => {
 });
 
 test("polling worker interrupts the delay between ticks on stop", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
 
     try {
         const { logger } = createLogger();
-        const onTick = jest.fn(async () => undefined);
+        const onTick = vi.fn(async () => undefined);
         const worker = new TestPollingWorker(logger, onTick);
 
         await worker.start();
-        await jest.advanceTimersByTimeAsync(0);
+        await vi.advanceTimersByTimeAsync(0);
 
         expect(onTick).toHaveBeenCalledTimes(1);
-        expect(jest.getTimerCount()).toBe(1);
+        expect(vi.getTimerCount()).toBe(1);
 
         await worker.stop();
 
-        expect(jest.getTimerCount()).toBe(0);
+        expect(vi.getTimerCount()).toBe(0);
     } finally {
-        jest.useRealTimers();
+        vi.useRealTimers();
     }
 });
 

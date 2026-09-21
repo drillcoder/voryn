@@ -1,3 +1,5 @@
+import { beforeEach, expect, test, vi } from "vitest";
+
 import { EthersBlockSource } from "../../../src/adapters/ethers-block-source.js";
 import type { LeaderLock } from "../../../src/interfaces/leader-lock.js";
 import { ConsoleLogger } from "../../../src/loggers/console-logger.js";
@@ -30,12 +32,12 @@ import type {
 import type { WorkerCursorsRepository } from "../../../src/interfaces/repositories.js";
 import { RpcPoolManager } from "@drillcoder/ethers-rpc-pool";
 
-jest.mock("../../../src/postgres/schema.js", () => ({
-    validatePostgresSchema: jest.fn(async () => undefined),
+vi.mock("../../../src/postgres/schema.js", () => ({
+    validatePostgresSchema: vi.fn(async () => undefined),
 }));
 
 beforeEach(() => {
-    jest.mocked(validatePostgresSchema).mockClear();
+    vi.mocked(validatePostgresSchema).mockClear();
 });
 
 const fetchConfig: Omit<FetchWorkerOptions, "sourceConfig"> = {
@@ -126,7 +128,7 @@ test("fetch worker creates default logger with min level", async () => {
 });
 
 test("fetch worker does not close a custom block source", async () => {
-    const close = jest.fn(async () => undefined);
+    const close = vi.fn(async () => undefined);
     const source = {
         close,
         getLatestBlockNumber: async () => 0,
@@ -160,11 +162,11 @@ test("fetch worker does not close a custom block source", async () => {
 
 test("RPC-backed workers close their pool when database initialization fails", async () => {
     const initializationError = new Error("schema validation failed");
-    const closeSpy = jest.spyOn(RpcPoolManager.prototype, "close");
+    const closeSpy = vi.spyOn(RpcPoolManager.prototype, "close");
     const dbUrl = "postgresql://voryn:voryn@127.0.0.1:5432/voryn";
     const sourceConfig = rpcSourceConfig();
 
-    jest.mocked(validatePostgresSchema).mockRejectedValueOnce(initializationError);
+    vi.mocked(validatePostgresSchema).mockRejectedValueOnce(initializationError);
     await expect(FetchWorker.create({
         logLevel: "error",
         ...fetchConfig,
@@ -172,7 +174,7 @@ test("RPC-backed workers close their pool when database initialization fails", a
         dbUrl,
     })).rejects.toBe(initializationError);
 
-    jest.mocked(validatePostgresSchema).mockRejectedValueOnce(initializationError);
+    vi.mocked(validatePostgresSchema).mockRejectedValueOnce(initializationError);
     await expect(HeadWorker.create({
         logLevel: "error",
         confirmations: 0,
@@ -182,7 +184,7 @@ test("RPC-backed workers close their pool when database initialization fails", a
         dbUrl,
     })).rejects.toBe(initializationError);
 
-    jest.mocked(validatePostgresSchema).mockRejectedValueOnce(initializationError);
+    vi.mocked(validatePostgresSchema).mockRejectedValueOnce(initializationError);
     await expect(SequencerWorker.create({
         logLevel: "error",
         delayBetweenTicksMs: 1000,
@@ -196,7 +198,7 @@ test("RPC-backed workers close their pool when database initialization fails", a
 });
 
 test("fetch worker merges db defaults with overrides and returns disposer", async () => {
-    const claimForFetch = jest.fn(async () => null);
+    const claimForFetch = vi.fn(async () => null);
     const worker = await FetchWorker.create({
         logLevel: "error",
         ...fetchConfig,

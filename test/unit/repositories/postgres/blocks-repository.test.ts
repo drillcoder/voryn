@@ -1,3 +1,6 @@
+import type { Mock } from "vitest";
+import { expect, test, vi } from "vitest";
+
 import { PostgresBlocksRepository } from "../../../../src/repositories/postgres/blocks-repository.js";
 import type { DbExecutor } from "../../../../src/interfaces/db.js";
 import { asHash32 } from "../../../../src/utils/hex.js";
@@ -5,17 +8,17 @@ import { asHash32 } from "../../../../src/utils/hex.js";
 const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 const HASH_B = asHash32("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
 
-const createExecutor = (query: jest.Mock): DbExecutor => ({ query: query as never });
+const createExecutor = (query: Mock): DbExecutor => ({ query: query as never });
 
 test("get returns null when block is missing", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 0 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 0 }));
     const repository = new PostgresBlocksRepository(createExecutor(query));
 
     await expect(repository.get(1, 100)).resolves.toBeNull();
 });
 
 test("get maps block row", async () => {
-    const query = jest.fn(async () => ({
+    const query = vi.fn(async () => ({
         rows: [{
             chain_id: 1,
             block_number: "100",
@@ -39,7 +42,7 @@ test("get maps block row", async () => {
 });
 
 test("save inserts block data", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 1 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 1 }));
     const repository = new PostgresBlocksRepository(createExecutor(query));
     const fetchedAt = new Date("2026-03-30T10:00:00.000Z");
 
@@ -59,7 +62,7 @@ test("save inserts block data", async () => {
 });
 
 test("getProgress maps latest block and fetch time", async () => {
-    const query = jest.fn(async () => ({
+    const query = vi.fn(async () => ({
         rows: [{
             max_fetched_block: "123",
             max_fetched_block_timestamp: "1711792800",
@@ -77,14 +80,14 @@ test("getProgress maps latest block and fetch time", async () => {
 });
 
 test("getProgress returns null when blocks table is empty", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 0 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 0 }));
     const repository = new PostgresBlocksRepository(createExecutor(query));
 
     await expect(repository.getProgress(1)).resolves.toBeNull();
 });
 
 test("getProgress throws when progress row is malformed", async () => {
-    const query = jest.fn()
+    const query = vi.fn()
         .mockResolvedValueOnce({
             rows: [{
                 max_fetched_block: null,
@@ -119,7 +122,7 @@ test("getProgress throws when progress row is malformed", async () => {
 });
 
 test("getOldestBlockNumber maps oldest block", async () => {
-    const query = jest.fn(async () => ({
+    const query = vi.fn(async () => ({
         rows: [{ oldest_block: "42" }],
         rowCount: 1,
     }));
@@ -133,7 +136,7 @@ test("getOldestBlockNumber maps oldest block", async () => {
 });
 
 test("getOldestBlockNumber returns null when blocks are missing", async () => {
-    const query = jest.fn()
+    const query = vi.fn()
         .mockResolvedValueOnce({ rows: [{ oldest_block: null }], rowCount: 1 })
         .mockResolvedValueOnce({ rows: [], rowCount: 0 });
     const repository = new PostgresBlocksRepository(createExecutor(query));
@@ -143,7 +146,7 @@ test("getOldestBlockNumber returns null when blocks are missing", async () => {
 });
 
 test("deleteBlockNumberRange deletes blocks in block number range", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 7 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 7 }));
     const repository = new PostgresBlocksRepository(createExecutor(query));
 
     await expect(repository.deleteBlockNumberRange(1, 100, 105)).resolves.toBe(7);
@@ -154,7 +157,7 @@ test("deleteBlockNumberRange deletes blocks in block number range", async () => 
 });
 
 test("deleteBlockNumberRange skips query when range is empty", async () => {
-    const query = jest.fn();
+    const query = vi.fn();
     const repository = new PostgresBlocksRepository(createExecutor(query));
 
     await expect(repository.deleteBlockNumberRange(1, 105, 100)).resolves.toBe(0);
@@ -163,14 +166,14 @@ test("deleteBlockNumberRange skips query when range is empty", async () => {
 });
 
 test("deleteBlockNumberRange returns zero when rowCount is null", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: null }));
     const repository = new PostgresBlocksRepository(createExecutor(query));
 
     await expect(repository.deleteBlockNumberRange(1, 100, 105)).resolves.toBe(0);
 });
 
 test("deleteByBlockNumber deletes one block number", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 1 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 1 }));
     const repository = new PostgresBlocksRepository(createExecutor(query));
 
     await expect(repository.deleteByBlockNumber(1, 100)).resolves.toBe(1);
@@ -181,7 +184,7 @@ test("deleteByBlockNumber deletes one block number", async () => {
 });
 
 test("deleteByBlockNumber returns zero when rowCount is null", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: null }));
     const repository = new PostgresBlocksRepository(createExecutor(query));
 
     await expect(repository.deleteByBlockNumber(1, 100)).resolves.toBe(0);

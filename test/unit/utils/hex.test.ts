@@ -1,3 +1,5 @@
+import { expect, test } from "vitest";
+
 import { asAddress, asHash32, asHexData, } from "../../../src/utils/hex.js";
 
 const hash = (char: string): string => `0x${char.repeat(64)}`;

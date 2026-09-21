@@ -1,3 +1,11 @@
+import {
+    afterEach,
+    beforeEach,
+    expect,
+    test,
+    vi,
+} from "vitest";
+
 import { Pool } from "pg";
 import { EthersBlockSource } from "../../../src/adapters/ethers-block-source.js";
 import { ConsoleLogger } from "../../../src/loggers/console-logger.js";
@@ -13,8 +21,8 @@ import {
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import type { Logger } from "../../../src/interfaces/logger.js";
 
-jest.mock("../../../src/postgres/schema.js", () => ({
-    validatePostgresSchema: jest.fn(async () => undefined),
+vi.mock("../../../src/postgres/schema.js", () => ({
+    validatePostgresSchema: vi.fn(async () => undefined),
 }));
 
 interface TestDependencies {
@@ -23,20 +31,20 @@ interface TestDependencies {
 }
 
 const logger: Logger = {
-    debug: jest.fn(),
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
 };
 
 beforeEach(() => {
-    jest.mocked(validatePostgresSchema).mockResolvedValue(undefined);
-    jest.clearAllMocks();
+    vi.mocked(validatePostgresSchema).mockResolvedValue(undefined);
+    vi.clearAllMocks();
 });
 
 afterEach(() => {
-    jest.restoreAllMocks();
-    jest.mocked(validatePostgresSchema).mockReset();
+    vi.restoreAllMocks();
+    vi.mocked(validatePostgresSchema).mockClear();
 });
 
 test("resolveSingleBlockSource returns provided source", async () => {
@@ -142,10 +150,10 @@ test.each([
 
 test("resolveLogger returns provided logger", () => {
     const providedLogger: Logger = {
-        debug: jest.fn(),
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
     };
 
     expect(resolveLogger({ logger: providedLogger })).toBe(providedLogger);
@@ -164,8 +172,8 @@ test("combineDisposers returns undefined without resources", () => {
 
 test("combineDisposers runs every resource cleanup and returns one failure", async () => {
     const cleanupError = new Error("cleanup failed");
-    const successfulDispose = jest.fn(async () => undefined);
-    const failingDispose = jest.fn(async () => {
+    const successfulDispose = vi.fn(async () => undefined);
+    const failingDispose = vi.fn(async () => {
         throw cleanupError;
     });
     const dispose = combineDisposers(failingDispose, undefined, successfulDispose);
@@ -195,7 +203,7 @@ test("combineDisposers aggregates multiple cleanup failures", async () => {
 
 test("disposeAfterError preserves initialization failure after successful cleanup", async () => {
     const initializationError = new Error("initialization failed");
-    const dispose = jest.fn(async () => undefined);
+    const dispose = vi.fn(async () => undefined);
 
     await expect(disposeAfterError(initializationError, dispose)).rejects.toBe(initializationError);
     expect(dispose).toHaveBeenCalledTimes(1);
@@ -218,7 +226,7 @@ test("resolveDbDependencies returns overrides without dbUrl", async () => {
         value: "override",
         preserved: "override",
     };
-    const buildDefaults = jest.fn(() => ({
+    const buildDefaults = vi.fn(() => ({
         value: "default",
         preserved: "default",
     }));
@@ -232,8 +240,8 @@ test("resolveDbDependencies returns overrides without dbUrl", async () => {
 });
 
 test("resolveDbDependencies validates schema, merges overrides, and disposes pool", async () => {
-    const endSpy = jest.spyOn(Pool.prototype, "end");
-    const buildDefaults = jest.fn(() => ({
+    const endSpy = vi.spyOn(Pool.prototype, "end");
+    const buildDefaults = vi.fn(() => ({
         value: "default",
         preserved: "default",
     }));
@@ -250,7 +258,7 @@ test("resolveDbDependencies validates schema, merges overrides, and disposes poo
     );
 
     expect(validatePostgresSchema).toHaveBeenCalledTimes(1);
-    const validationConfig = jest.mocked(validatePostgresSchema).mock.calls[0]?.[0];
+    const validationConfig = vi.mocked(validatePostgresSchema).mock.calls[0]?.[0];
 
     expect(validationConfig.pool).toBeInstanceOf(Pool);
     expect(validationConfig.logger).toBe(logger);
@@ -272,12 +280,12 @@ test("resolveDbDependencies validates schema, merges overrides, and disposes poo
 
 test("resolveDbDependencies closes pool and rethrows validation errors", async () => {
     const validationError = new Error("schema is invalid");
-    const endSpy = jest.spyOn(Pool.prototype, "end");
-    const buildDefaults = jest.fn(() => ({
+    const endSpy = vi.spyOn(Pool.prototype, "end");
+    const buildDefaults = vi.fn(() => ({
         value: "default",
         preserved: "default",
     }));
-    jest.mocked(validatePostgresSchema).mockRejectedValueOnce(validationError);
+    vi.mocked(validatePostgresSchema).mockRejectedValueOnce(validationError);
 
     await expect(
         resolveDbDependencies<TestDependencies>(

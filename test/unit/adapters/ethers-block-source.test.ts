@@ -1,3 +1,6 @@
+import type { Mocked } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
+
 import type {
     EthersBlockLike,
     EthersLogLike,
@@ -6,31 +9,26 @@ import type {
 } from "../../../src/adapters/ethers-block-source.js";
 import { EthersBlockSource } from "../../../src/adapters/ethers-block-source.js";
 import type { Logger } from "../../../src/interfaces/logger.js";
-import type {
-    RpcEndpointDataError as RpcEndpointDataErrorType,
-    UnknownNetworkError as UnknownNetworkErrorType,
-} from "@drillcoder/ethers-rpc-pool";
 
-const mockProvidersByChain = new Map<number, jest.Mocked<EthersProviderLike>[]>();
-const mockPoolConfigs: Array<{
+interface MockPoolConfig {
     logger?: (event: Record<string, unknown>) => void;
     networks: readonly { chainId: number; rpcUrls: readonly string[] }[];
     operationTimeoutMs: number;
     requestTimeoutMs: number;
-}> = [];
-const mockPoolClose = jest.fn(async () => undefined);
-
-interface RpcPoolModule {
-    RpcEndpointDataError: typeof RpcEndpointDataErrorType;
-    UnknownNetworkError: typeof UnknownNetworkErrorType;
 }
 
-jest.mock("@drillcoder/ethers-rpc-pool", () => {
-    const actual = jest.requireActual<RpcPoolModule>("@drillcoder/ethers-rpc-pool");
+const { mockProvidersByChain, mockPoolConfigs, mockPoolClose } = vi.hoisted(() => ({
+    mockProvidersByChain: new Map<number, Mocked<EthersProviderLike>[]>(),
+    mockPoolConfigs: new Array<MockPoolConfig>(),
+    mockPoolClose: vi.fn(async () => undefined),
+}));
+
+vi.mock(import("@drillcoder/ethers-rpc-pool"), async (importOriginal) => {
+    const actual = await importOriginal();
 
     return {
         ...actual,
-        RpcPoolManager: jest.fn().mockImplementation((config: (typeof mockPoolConfigs)[number]) => {
+        RpcPoolManager: vi.fn().mockImplementation(function (config: MockPoolConfig) {
             mockPoolConfigs.push(config);
             return {
                 close: mockPoolClose,
@@ -65,17 +63,17 @@ jest.mock("@drillcoder/ethers-rpc-pool", () => {
 const hash = (char: string): string => `0x${char.repeat(64)}`;
 const address = (char: string): string => `0x${char.repeat(40)}`;
 
-const createProviderMock = (): jest.Mocked<EthersProviderLike> => ({
-    getBlockNumber: jest.fn(),
-    getBlock: jest.fn(),
-    getTransaction: jest.fn(),
-    getLogs: jest.fn(),
+const createProviderMock = (): Mocked<EthersProviderLike> => ({
+    getBlockNumber: vi.fn(),
+    getBlock: vi.fn(),
+    getTransaction: vi.fn(),
+    getLogs: vi.fn(),
 });
 
 const createSource = async (
-    provider: jest.Mocked<EthersProviderLike>,
+    provider: Mocked<EthersProviderLike>,
     chainId = 7n,
-    fallbackProvider?: jest.Mocked<EthersProviderLike>,
+    fallbackProvider?: Mocked<EthersProviderLike>,
     logger?: Logger,
 ): Promise<EthersBlockSource> => {
     mockProvidersByChain.set(Number(chainId), fallbackProvider === undefined
@@ -93,11 +91,11 @@ const createSource = async (
     });
 };
 
-const createLoggerMock = (): jest.Mocked<Logger> => ({
-    debug: jest.fn(),
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
+const createLoggerMock = (): Mocked<Logger> => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
 });
 
 beforeEach(() => {

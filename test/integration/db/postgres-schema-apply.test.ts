@@ -1,3 +1,5 @@
+import { describe, expect, test } from "vitest";
+
 import { randomBytes } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";

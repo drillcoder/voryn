@@ -1,3 +1,11 @@
+import {
+    afterAll,
+    beforeAll,
+    describe,
+    expect,
+    test,
+} from "vitest";
+
 import { PostgresTransactionManager } from "../../src/postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../../src/repositories/postgres/block-jobs-repository.js";
 import { PostgresBlocksRepository } from "../../src/repositories/postgres/blocks-repository.js";

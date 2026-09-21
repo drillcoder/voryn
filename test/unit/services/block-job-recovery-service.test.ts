@@ -1,3 +1,5 @@
+import { expect, test, vi } from "vitest";
+
 import type { BlockJobsRepository } from "../../../src/interfaces/repositories.js";
 import { BlockJobRecoveryService } from "../../../src/services/block-job-recovery-service.js";
 
@@ -25,13 +27,13 @@ const createBlockJobsRepository = (
 });
 
 test("block job recovery service retries one failed block with fresh attempts", async () => {
-    const retryFailed = jest.fn(async () => 1);
-    const info = jest.fn();
+    const retryFailed = vi.fn(async () => 1);
+    const info = vi.fn();
     const service = new BlockJobRecoveryService({ chainId: 10 }, createBlockJobsRepository(retryFailed), {
-        debug: jest.fn(),
+        debug: vi.fn(),
         info,
-        warn: jest.fn(),
-        error: jest.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
     });
 
     const result = await service.retryFailedBlock(42);
@@ -47,7 +49,7 @@ test("block job recovery service retries one failed block with fresh attempts", 
 });
 
 test("block job recovery service retries a range", async () => {
-    const retryFailed = jest.fn(async () => 3);
+    const retryFailed = vi.fn(async () => 3);
     const service = new BlockJobRecoveryService({ chainId: 10 }, createBlockJobsRepository(retryFailed));
 
     const result = await service.retryFailedBlockRange(42, 44);
@@ -57,7 +59,7 @@ test("block job recovery service retries a range", async () => {
 });
 
 test("block job recovery service rejects invalid ranges", async () => {
-    const retryFailed = jest.fn(async () => 0);
+    const retryFailed = vi.fn(async () => 0);
     const service = new BlockJobRecoveryService({ chainId: 10 }, createBlockJobsRepository(retryFailed));
 
     await expect(service.retryFailedBlockRange(44, 42))
@@ -66,17 +68,17 @@ test("block job recovery service rejects invalid ranges", async () => {
 });
 
 test("block job recovery service retries all failed blocks", async () => {
-    const retryFailed = jest.fn(async () => 0);
-    const retryAllFailed = jest.fn(async () => 5);
-    const info = jest.fn();
+    const retryFailed = vi.fn(async () => 0);
+    const retryAllFailed = vi.fn(async () => 5);
+    const info = vi.fn();
     const service = new BlockJobRecoveryService(
         { chainId: 10 },
         createBlockJobsRepository(retryFailed, retryAllFailed),
         {
-            debug: jest.fn(),
+            debug: vi.fn(),
             info,
-            warn: jest.fn(),
-            error: jest.fn(),
+            warn: vi.fn(),
+            error: vi.fn(),
         }
     );
 

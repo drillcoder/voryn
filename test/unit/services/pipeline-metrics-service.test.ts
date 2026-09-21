@@ -1,3 +1,11 @@
+import {
+    afterEach,
+    beforeEach,
+    expect,
+    test,
+    vi,
+} from "vitest";
+
 import { PipelineMetricsService } from "../../../src/services/pipeline-metrics-service.js";
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import type { BlockDataProgress, BlockJobStatusCounts, FailedBlockMetrics } from "../../../src/interfaces/metrics.js";
@@ -14,11 +22,11 @@ const HASH = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 const NOW = new Date("2026-01-01T00:00:10.900Z");
 
 beforeEach(() => {
-    jest.useFakeTimers({ now: NOW });
+    vi.useFakeTimers({ now: NOW });
 });
 
 afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
 });
 
 test("pipeline metrics service maps pipeline stages and reaction block lag", async () => {

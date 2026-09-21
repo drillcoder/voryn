@@ -1,10 +1,13 @@
+import type { Mock } from "vitest";
+import { expect, test, vi } from "vitest";
+
 import { PostgresBlockJobsRepository } from "../../../../src/repositories/postgres/block-jobs-repository.js";
 import type { DbExecutor } from "../../../../src/interfaces/db.js";
 
-const createExecutor = (query: jest.Mock): DbExecutor => ({ query: query as never });
+const createExecutor = (query: Mock): DbExecutor => ({ query: query as never });
 
 test("claimForFetch returns null when queue is empty", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 0 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 0 }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
     const claimed = await repository.claimForFetch(1, "worker-a", new Date("2026-03-30T10:00:00.000Z"));
@@ -13,7 +16,7 @@ test("claimForFetch returns null when queue is empty", async () => {
 });
 
 test("get returns null when block job does not exist", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 0 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 0 }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
     const job = await repository.get(1, 42);
@@ -24,7 +27,7 @@ test("get returns null when block job does not exist", async () => {
 });
 
 test("get maps block job row", async () => {
-    const query = jest.fn(async () => ({
+    const query = vi.fn(async () => ({
         rows: [{
             chain_id: 1,
             block_number: "42",
@@ -55,7 +58,7 @@ test("get maps block job row", async () => {
 
 test("claimForFetch maps row and passes stale threshold", async () => {
     const staleBefore = new Date("2026-03-30T10:00:00.000Z");
-    const query = jest.fn(async () => ({
+    const query = vi.fn(async () => ({
         rows: [{
             chain_id: 1,
             block_number: "42",
@@ -84,7 +87,7 @@ test("claimForFetch maps row and passes stale threshold", async () => {
 });
 
 test("claimForFetch maps nullable claimedAt and non-null retry date", async () => {
-    const query = jest.fn(async () => ({
+    const query = vi.fn(async () => ({
         rows: [{
             chain_id: 1,
             block_number: "43",
@@ -106,7 +109,7 @@ test("claimForFetch maps nullable claimedAt and non-null retry date", async () =
 });
 
 test("markFetchFailed throws when ownership is lost", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 0 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 0 }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
     await expect(repository.markFetchFailed(1, 99, "worker-a", "boom", null)).rejects.toThrow(
@@ -115,7 +118,7 @@ test("markFetchFailed throws when ownership is lost", async () => {
 });
 
 test("enqueueRange skips query when range is empty", async () => {
-    const query = jest.fn();
+    const query = vi.fn();
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
     await repository.enqueueRange(1, 10, 9);
@@ -124,7 +127,7 @@ test("enqueueRange skips query when range is empty", async () => {
 });
 
 test("enqueueRange writes range when bounds are valid", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 3 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 3 }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
     await repository.enqueueRange(1, 10, 12);
@@ -135,14 +138,14 @@ test("enqueueRange writes range when bounds are valid", async () => {
 });
 
 test("markFetched succeeds when row exists", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 1 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 1 }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
     await expect(repository.markFetched(1, 7, "worker-a")).resolves.toBeUndefined();
 });
 
 test("markFetched throws when ownership is lost", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 0 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 0 }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
     await expect(repository.markFetched(1, 7, "worker-a")).rejects.toThrow(
@@ -151,7 +154,7 @@ test("markFetched throws when ownership is lost", async () => {
 });
 
 test("markFetched treats rowCount=null as not updated", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: null }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
     await expect(repository.markFetched(1, 7, "worker-a")).rejects.toThrow(
@@ -160,14 +163,14 @@ test("markFetched treats rowCount=null as not updated", async () => {
 });
 
 test("markFetchFailed succeeds when row exists", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 1 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 1 }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
     await expect(repository.markFetchFailed(1, 7, "worker-a", "boom", null)).resolves.toBeUndefined();
 });
 
 test("markFetchFailed treats rowCount=null as not updated", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: null }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
     await expect(repository.markFetchFailed(1, 7, "worker-a", "boom", null)).rejects.toThrow(
@@ -176,28 +179,28 @@ test("markFetchFailed treats rowCount=null as not updated", async () => {
 });
 
 test("markCommitted throws when row was not updated", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 0 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 0 }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
     await expect(repository.markCommitted(1, 10)).rejects.toThrow("Failed to mark block job as committed");
 });
 
 test("markCommitted succeeds when row was updated", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 1 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 1 }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
     await expect(repository.markCommitted(1, 10)).resolves.toBeUndefined();
 });
 
 test("markCommitted treats rowCount=null as failure", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: null }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
     await expect(repository.markCommitted(1, 10)).rejects.toThrow("Failed to mark block job as committed");
 });
 
 test("getStatusCounts maps counts by status", async () => {
-    const query = jest.fn(async () => ({
+    const query = vi.fn(async () => ({
         rows: [{
             pending_count: "2",
             fetching_count: "1",
@@ -224,7 +227,7 @@ test("getStatusCounts maps counts by status", async () => {
 });
 
 test("getStatusCounts maps empty counts", async () => {
-    const query = jest.fn(async () => ({
+    const query = vi.fn(async () => ({
         rows: [{
             pending_count: "0",
             fetching_count: "0",
@@ -248,7 +251,7 @@ test("getStatusCounts maps empty counts", async () => {
 });
 
 test("listFailedBlocks maps oldest failed blocks", async () => {
-    const query = jest.fn(async () => ({
+    const query = vi.fn(async () => ({
         rows: [
             {
                 block_number: "11",
@@ -295,7 +298,7 @@ test("listFailedBlocks maps oldest failed blocks", async () => {
 });
 
 test("retryFailed makes failed range available for fetch and resets attempts", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 2 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 2 }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
     await expect(repository.retryFailed(1, 10, 12)).resolves.toBe(2);
@@ -308,7 +311,7 @@ test("retryFailed makes failed range available for fetch and resets attempts", a
 });
 
 test("retryFailed skips query when range is empty", async () => {
-    const query = jest.fn();
+    const query = vi.fn();
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
     await expect(repository.retryFailed(1, 12, 10)).resolves.toBe(0);
@@ -317,14 +320,14 @@ test("retryFailed skips query when range is empty", async () => {
 });
 
 test("retryFailed returns zero when rowCount is null", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: null }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
     await expect(repository.retryFailed(1, 10, 12)).resolves.toBe(0);
 });
 
 test("retryAllFailed makes all failed jobs available for fetch and resets attempts", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 4 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 4 }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
     await expect(repository.retryAllFailed(1)).resolves.toBe(4);
@@ -338,14 +341,14 @@ test("retryAllFailed makes all failed jobs available for fetch and resets attemp
 });
 
 test("retryAllFailed returns zero when rowCount is null", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: null }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
     await expect(repository.retryAllFailed(1)).resolves.toBe(0);
 });
 
 test("deleteBlockNumberRange deletes jobs in block number range", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 3 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 3 }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
     await expect(repository.deleteBlockNumberRange(1, 10, 12)).resolves.toBe(3);
@@ -356,7 +359,7 @@ test("deleteBlockNumberRange deletes jobs in block number range", async () => {
 });
 
 test("deleteBlockNumberRange skips query when range is empty", async () => {
-    const query = jest.fn();
+    const query = vi.fn();
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
     await expect(repository.deleteBlockNumberRange(1, 12, 10)).resolves.toBe(0);
@@ -365,7 +368,7 @@ test("deleteBlockNumberRange skips query when range is empty", async () => {
 });
 
 test("deleteBlockNumberRange returns zero when rowCount is null", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: null }));
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
     await expect(repository.deleteBlockNumberRange(1, 10, 12)).resolves.toBe(0);

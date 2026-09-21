@@ -1,3 +1,6 @@
+import type { Mock } from "vitest";
+import { expect, test, vi } from "vitest";
+
 import { PostgresEventsRepository } from "../../../../src/repositories/postgres/events-repository.js";
 import type { DbExecutor } from "../../../../src/interfaces/db.js";
 import { asAddress, asHash32, asHexData } from "../../../../src/utils/hex.js";
@@ -8,10 +11,10 @@ const ADDRESS = asAddress("0x1111111111111111111111111111111111111111");
 const TOPIC = asHash32("0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc");
 const DATA = asHexData("0x01");
 
-const createExecutor = (query: jest.Mock): DbExecutor => ({ query: query as never });
+const createExecutor = (query: Mock): DbExecutor => ({ query: query as never });
 
 test("listAfterPosition returns empty result when limit is zero", async () => {
-    const query = jest.fn();
+    const query = vi.fn();
     const repository = new PostgresEventsRepository(createExecutor(query));
 
     await expect(repository.listAfterPosition(1, 10, 9, 0, 0, 0)).resolves.toEqual([]);
@@ -19,7 +22,7 @@ test("listAfterPosition returns empty result when limit is zero", async () => {
 });
 
 test("listAfterPosition maps event rows", async () => {
-    const query = jest.fn(async () => ({
+    const query = vi.fn(async () => ({
         rows: [{
             chain_id: 1,
             block_number: "10",
@@ -56,7 +59,7 @@ test("listAfterPosition maps event rows", async () => {
 });
 
 test("insertMany skips when logs list is empty", async () => {
-    const query = jest.fn();
+    const query = vi.fn();
     const repository = new PostgresEventsRepository(createExecutor(query));
 
     await repository.insertMany([]);
@@ -65,7 +68,7 @@ test("insertMany skips when logs list is empty", async () => {
 });
 
 test("insertMany writes one batch for small input", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 1 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 1 }));
     const repository = new PostgresEventsRepository(createExecutor(query));
 
     await repository.insertMany([
@@ -89,7 +92,7 @@ test("insertMany writes one batch for small input", async () => {
 });
 
 test("listAfterPosition throws when topics payload is invalid", async () => {
-    const query = jest.fn(async () => ({
+    const query = vi.fn(async () => ({
         rows: [{
             chain_id: 1,
             block_number: "10",
@@ -111,7 +114,7 @@ test("listAfterPosition throws when topics payload is invalid", async () => {
 });
 
 test("deleteBlockNumberRange deletes events in block number range", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 5 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 5 }));
     const repository = new PostgresEventsRepository(createExecutor(query));
 
     await expect(repository.deleteBlockNumberRange(1, 10, 12)).resolves.toBe(5);
@@ -122,7 +125,7 @@ test("deleteBlockNumberRange deletes events in block number range", async () => 
 });
 
 test("deleteBlockNumberRange skips query when range is empty", async () => {
-    const query = jest.fn();
+    const query = vi.fn();
     const repository = new PostgresEventsRepository(createExecutor(query));
 
     await expect(repository.deleteBlockNumberRange(1, 12, 10)).resolves.toBe(0);
@@ -131,14 +134,14 @@ test("deleteBlockNumberRange skips query when range is empty", async () => {
 });
 
 test("deleteBlockNumberRange returns zero when rowCount is null", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: null }));
     const repository = new PostgresEventsRepository(createExecutor(query));
 
     await expect(repository.deleteBlockNumberRange(1, 10, 12)).resolves.toBe(0);
 });
 
 test("deleteByBlockNumber deletes events for one block", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 3 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 3 }));
     const repository = new PostgresEventsRepository(createExecutor(query));
 
     await expect(repository.deleteByBlockNumber(1, 10)).resolves.toBe(3);
@@ -149,7 +152,7 @@ test("deleteByBlockNumber deletes events for one block", async () => {
 });
 
 test("deleteByBlockNumber returns zero when rowCount is null", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: null }));
     const repository = new PostgresEventsRepository(createExecutor(query));
 
     await expect(repository.deleteByBlockNumber(1, 10)).resolves.toBe(0);

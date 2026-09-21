@@ -1,14 +1,17 @@
+import type { Mock } from "vitest";
+import { expect, test, vi } from "vitest";
+
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { applySqlFileToPostgresDb, validatePostgresSchema } from "../../../src/postgres/schema.js";
 
 interface MockPool {
-    query: jest.Mock;
+    query: Mock;
 }
 
 type LoggerMeta = Record<string, unknown> | undefined;
-type LoggerMockMethod = jest.Mock<unknown, [string, LoggerMeta?]>;
+type LoggerMockMethod = Mock<(message: string, meta?: LoggerMeta) => unknown>;
 
 interface MockLogger {
     debug: LoggerMockMethod;
@@ -34,10 +37,10 @@ interface SchemaFixture {
 }
 
 const createLogger = (): MockLogger => ({
-    debug: jest.fn<unknown, [string, LoggerMeta?]>(),
-    info: jest.fn<unknown, [string, LoggerMeta?]>(),
-    warn: jest.fn<unknown, [string, LoggerMeta?]>(),
-    error: jest.fn<unknown, [string, LoggerMeta?]>(),
+    debug: vi.fn<(message: string, meta?: LoggerMeta) => unknown>(),
+    info: vi.fn<(message: string, meta?: LoggerMeta) => unknown>(),
+    warn: vi.fn<(message: string, meta?: LoggerMeta) => unknown>(),
+    error: vi.fn<(message: string, meta?: LoggerMeta) => unknown>(),
 });
 
 const createValidSchemaFixture = (): SchemaFixture => ({
@@ -133,7 +136,7 @@ function column(
 
 function createSchemaPool(fixture: SchemaFixture): MockPool {
     return {
-        query: jest.fn()
+        query: vi.fn()
             .mockResolvedValueOnce({
                 rows: fixture.tables.map((tableName) => ({ table_name: tableName })),
                 rowCount: fixture.tables.length,
@@ -173,7 +176,7 @@ test("applySqlFileToPostgresDb executes sql from file", async () => {
     await writeFile(sqlFilePath, "SELECT 1;\n", "utf8");
 
     const pool: MockPool = {
-        query: jest.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
+        query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
     };
     const logger = createLogger();
 
@@ -203,7 +206,7 @@ test("applySqlFileToPostgresDb logs and rethrows query error", async () => {
     await writeFile(sqlFilePath, "SELECT fail();\n", "utf8");
 
     const pool: MockPool = {
-        query: jest.fn().mockRejectedValue(new Error("db down")),
+        query: vi.fn().mockRejectedValue(new Error("db down")),
     };
     const logger = createLogger();
 
@@ -235,7 +238,7 @@ test("applySqlFileToPostgresDb logs unknown query errors", async () => {
     await writeFile(sqlFilePath, "SELECT fail();\n", "utf8");
 
     const pool: MockPool = {
-        query: jest.fn().mockRejectedValue("db down"),
+        query: vi.fn().mockRejectedValue("db down"),
     };
     const logger = createLogger();
 
@@ -430,7 +433,7 @@ test("validatePostgresSchema aggregates validation errors", async () => {
 
 test("validatePostgresSchema logs unknown validation errors", async () => {
     const pool: MockPool = {
-        query: jest.fn().mockRejectedValue("db down"),
+        query: vi.fn().mockRejectedValue("db down"),
     };
     const logger = createLogger();
 

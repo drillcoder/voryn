@@ -1,3 +1,6 @@
+import type { Mock } from "vitest";
+import { expect, test, vi } from "vitest";
+
 import type {
     BlockJobsRepository,
     BlocksRepository,
@@ -130,18 +133,18 @@ const createSource = (getBlockData: BlockSource["getBlockData"]): BlockSource =>
 
 const createLogger = (): {
     logger: Logger;
-    debug: jest.Mock<unknown, [string, LoggerMeta?]>;
-    info: jest.Mock<unknown, [string, LoggerMeta?]>;
+    debug: Mock<(message: string, meta?: LoggerMeta) => unknown>;
+    info: Mock<(message: string, meta?: LoggerMeta) => unknown>;
 } => {
-    const debug = jest.fn<unknown, [string, LoggerMeta?]>();
-    const info = jest.fn<unknown, [string, LoggerMeta?]>();
+    const debug = vi.fn<(message: string, meta?: LoggerMeta) => unknown>();
+    const info = vi.fn<(message: string, meta?: LoggerMeta) => unknown>();
 
     return {
         logger: {
             debug,
             info,
-            warn: jest.fn<unknown, [string, LoggerMeta?]>(),
-            error: jest.fn<unknown, [string, LoggerMeta?]>(),
+            warn: vi.fn<(message: string, meta?: LoggerMeta) => unknown>(),
+            error: vi.fn<(message: string, meta?: LoggerMeta) => unknown>(),
         },
         debug,
         info,
@@ -460,7 +463,7 @@ test("fetch service marks failure with retry date", async () => {
 });
 
 test("fetch service swallows claim-lost race without failing tick", async () => {
-    const logger = { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+    const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 
     const source = createSource(async () => blockPayload);
 
@@ -554,7 +557,7 @@ test("fetch service sets nextRetryAt=null when max attempts reached", async () =
 });
 
 test("fetch service swallows claim-lost during markFetchFailed", async () => {
-    const logger = { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+    const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
     const worker = new FetchService(
         config,
         createSource(async () => {

@@ -1,3 +1,5 @@
+import { expect, test, vi } from "vitest";
+
 import type { Logger, WorkerLifecycle, WorkerLifecycleWithFailure } from "../../../src/index.js";
 import { envValues, runWorkerLifecycle, runWorkerLifecycleWithFailure } from "../../../dev/runtime.js";
 
@@ -23,7 +25,7 @@ test("envValues parses comma-separated values and removes blanks", () => {
 });
 
 test("worker runtime propagates worker failure", async () => {
-    const stop = jest.fn(async () => undefined);
+    const stop = vi.fn(async () => undefined);
     let fail = (_error: Error): void => undefined;
     const worker: WorkerLifecycleWithFailure = {
         start: async () => undefined,
@@ -41,7 +43,7 @@ test("worker runtime propagates worker failure", async () => {
 });
 
 test("worker runtime gracefully stops on a shutdown signal", async () => {
-    const stop = jest.fn(async () => undefined);
+    const stop = vi.fn(async () => undefined);
     const worker: WorkerLifecycleWithFailure = {
         start: async () => undefined,
         stop,
@@ -57,7 +59,7 @@ test("worker runtime gracefully stops on a shutdown signal", async () => {
 });
 
 test("worker runtime supports lifecycle implementations without completion notification", async () => {
-    const stop = jest.fn(async () => undefined);
+    const stop = vi.fn(async () => undefined);
     const worker: WorkerLifecycle = {
         start: async () => undefined,
         stop,

@@ -1,3 +1,6 @@
+import type { Mock } from "vitest";
+import { expect, test, vi } from "vitest";
+
 import { PostgresTransactionsRepository } from "../../../../src/repositories/postgres/transactions-repository.js";
 import type { DbExecutor } from "../../../../src/interfaces/db.js";
 import { asAddress, asHash32, asHexData } from "../../../../src/utils/hex.js";
@@ -7,10 +10,10 @@ const TX_HASH = asHash32("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 const FROM = asAddress("0x1111111111111111111111111111111111111111");
 const DATA = asHexData("0x01");
 
-const createExecutor = (query: jest.Mock): DbExecutor => ({ query: query as never });
+const createExecutor = (query: Mock): DbExecutor => ({ query: query as never });
 
 test("listAfterPosition returns empty result when limit is zero", async () => {
-    const query = jest.fn();
+    const query = vi.fn();
     const repository = new PostgresTransactionsRepository(createExecutor(query));
 
     await expect(repository.listAfterPosition(1, 10, 9, 0, 0)).resolves.toEqual([]);
@@ -18,7 +21,7 @@ test("listAfterPosition returns empty result when limit is zero", async () => {
 });
 
 test("listAfterPosition maps transaction rows", async () => {
-    const query = jest.fn(async () => ({
+    const query = vi.fn(async () => ({
         rows: [{
             chain_id: 1,
             block_number: "10",
@@ -56,7 +59,7 @@ test("listAfterPosition maps transaction rows", async () => {
 
 test("listAfterPosition maps transaction recipient address", async () => {
     const toAddress = asAddress("0x2222222222222222222222222222222222222222");
-    const query = jest.fn(async () => ({
+    const query = vi.fn(async () => ({
         rows: [{
             chain_id: 1,
             block_number: "10",
@@ -88,7 +91,7 @@ test("listAfterPosition maps transaction recipient address", async () => {
 });
 
 test("insertMany skips when transaction list is empty", async () => {
-    const query = jest.fn();
+    const query = vi.fn();
     const repository = new PostgresTransactionsRepository(createExecutor(query));
 
     await repository.insertMany([]);
@@ -97,7 +100,7 @@ test("insertMany skips when transaction list is empty", async () => {
 });
 
 test("insertMany writes one batch for small input", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 1 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 1 }));
     const repository = new PostgresTransactionsRepository(createExecutor(query));
 
     await repository.insertMany([
@@ -121,7 +124,7 @@ test("insertMany writes one batch for small input", async () => {
 });
 
 test("deleteBlockNumberRange deletes transactions in block number range", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 2 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 2 }));
     const repository = new PostgresTransactionsRepository(createExecutor(query));
 
     await expect(repository.deleteBlockNumberRange(1, 10, 12)).resolves.toBe(2);
@@ -132,7 +135,7 @@ test("deleteBlockNumberRange deletes transactions in block number range", async 
 });
 
 test("deleteBlockNumberRange skips query when range is empty", async () => {
-    const query = jest.fn();
+    const query = vi.fn();
     const repository = new PostgresTransactionsRepository(createExecutor(query));
 
     await expect(repository.deleteBlockNumberRange(1, 12, 10)).resolves.toBe(0);
@@ -141,14 +144,14 @@ test("deleteBlockNumberRange skips query when range is empty", async () => {
 });
 
 test("deleteBlockNumberRange returns zero when rowCount is null", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: null }));
     const repository = new PostgresTransactionsRepository(createExecutor(query));
 
     await expect(repository.deleteBlockNumberRange(1, 10, 12)).resolves.toBe(0);
 });
 
 test("deleteByBlockNumber deletes transactions for one block", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 2 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 2 }));
     const repository = new PostgresTransactionsRepository(createExecutor(query));
 
     await expect(repository.deleteByBlockNumber(1, 10)).resolves.toBe(2);
@@ -159,7 +162,7 @@ test("deleteByBlockNumber deletes transactions for one block", async () => {
 });
 
 test("deleteByBlockNumber returns zero when rowCount is null", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: null }));
     const repository = new PostgresTransactionsRepository(createExecutor(query));
 
     await expect(repository.deleteByBlockNumber(1, 10)).resolves.toBe(0);

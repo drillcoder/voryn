@@ -1,3 +1,6 @@
+import type { Mock } from "vitest";
+import { expect, test, vi } from "vitest";
+
 import type { Logger } from "../../../src/interfaces/logger.js";
 import type { PipelineEvent, PipelineTransaction, WorkerCursorPosition } from "../../../src/interfaces/pipeline.js";
 import type {
@@ -103,16 +106,16 @@ const createTransactionsRepository = (
     ...overrides,
 });
 
-const createLogger = (): { logger: Logger; debug: jest.Mock; info: jest.Mock } => {
-    const debug = jest.fn();
-    const info = jest.fn();
+const createLogger = (): { logger: Logger; debug: Mock; info: Mock } => {
+    const debug = vi.fn();
+    const info = vi.fn();
 
     return {
         logger: {
             debug,
             info,
-            warn: jest.fn(),
-            error: jest.fn(),
+            warn: vi.fn(),
+            error: vi.fn(),
         },
         debug,
         info,

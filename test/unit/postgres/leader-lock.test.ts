@@ -1,3 +1,6 @@
+import type { Mock } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
+
 import { EventEmitter } from "node:events";
 import { PostgresLeaderLock } from "../../../src/postgres/leader-lock.js";
 
@@ -11,10 +14,10 @@ interface MockQueryResult {
     rows: Array<Record<string, boolean>>;
 }
 
-type QueryMock = jest.Mock<Promise<MockQueryResult>, [string | MockQueryConfig, unknown[]?]>;
+type QueryMock = Mock<(query: string | MockQueryConfig, values?: unknown[]) => Promise<MockQueryResult>>;
 
 interface MockPool {
-    connect: jest.Mock<Promise<MockClient>, []>;
+    connect: Mock<() => Promise<MockClient>>;
 }
 
 interface Deferred<T> {
@@ -24,13 +27,15 @@ interface Deferred<T> {
 }
 
 class MockClient extends EventEmitter {
-    readonly query: QueryMock = jest.fn<Promise<MockQueryResult>, [string | MockQueryConfig, unknown[]?]>();
-    readonly release = jest.fn<undefined, [Error?]>();
+    readonly query: QueryMock = vi.fn<
+        (query: string | MockQueryConfig, values?: unknown[]) => Promise<MockQueryResult>
+    >();
+    readonly release = vi.fn<(error?: Error) => undefined>();
 }
 
 function createPool(client: MockClient): MockPool {
     return {
-        connect: jest.fn<Promise<MockClient>, []>().mockResolvedValue(client),
+        connect: vi.fn<() => Promise<MockClient>>().mockResolvedValue(client),
     };
 }
 
@@ -45,11 +50,11 @@ function createDeferred<T>(): Deferred<T> {
 }
 
 afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
 });
 
 test("keeps one dedicated client while the lock is held", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     const client = new MockClient();
     client.query
         .mockResolvedValueOnce({ rows: [{ acquired: true }] })
@@ -63,7 +68,7 @@ test("keeps one dedicated client while the lock is held", async () => {
     expect(pool.connect).toHaveBeenCalledTimes(1);
     expect(client.query).toHaveBeenCalledTimes(1);
     expect(client.listenerCount("error")).toBe(1);
-    expect(jest.getTimerCount()).toBe(1);
+    expect(vi.getTimerCount()).toBe(1);
 
     await lock.release();
 });
@@ -106,7 +111,7 @@ test("handles a client error during acquisition without double release", async (
         client.emit("error", error);
         throw error;
     });
-    const listener = jest.fn();
+    const listener = vi.fn();
     const lock = new PostgresLeaderLock(createPool(client) as never, 113n);
     lock.onLost(listener);
 
@@ -127,7 +132,7 @@ test("release is a noop before acquisition", async () => {
 });
 
 test("unlocks and returns a healthy client", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     const client = new MockClient();
     client.query
         .mockResolvedValueOnce({ rows: [{ acquired: true }] })
@@ -146,11 +151,11 @@ test("unlocks and returns a healthy client", async () => {
     expect(unlockQuery.query_timeout).toBe(10_000);
     expect(client.release).toHaveBeenCalledWith();
     expect(client.listenerCount("error")).toBe(0);
-    expect(jest.getTimerCount()).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
 });
 
 test("returns a healthy client when unlock reports failure", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     const client = new MockClient();
     client.query
         .mockResolvedValueOnce({ rows: [{ acquired: true }] })
@@ -164,7 +169,7 @@ test("returns a healthy client when unlock reports failure", async () => {
 });
 
 test("returns a healthy client when unlock returns no row", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     const client = new MockClient();
     client.query
         .mockResolvedValueOnce({ rows: [{ acquired: true }] })
@@ -190,7 +195,7 @@ test("heartbeat is a noop without an active client", async () => {
 });
 
 test("heartbeat checks the exact lock on the dedicated client", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     const client = new MockClient();
     client.query
         .mockResolvedValueOnce({ rows: [{ acquired: true }] })
@@ -199,7 +204,7 @@ test("heartbeat checks the exact lock on the dedicated client", async () => {
     const lock = new PostgresLeaderLock(createPool(client) as never, 10_000_001n);
 
     await lock.tryAcquire();
-    await jest.advanceTimersByTimeAsync(30_000);
+    await vi.advanceTimersByTimeAsync(30_000);
 
     const heartbeatQuery = client.query.mock.calls[1][0];
     if (typeof heartbeatQuery === "string") {
@@ -208,43 +213,43 @@ test("heartbeat checks the exact lock on the dedicated client", async () => {
     expect(heartbeatQuery.text).toContain("pid = pg_backend_pid()");
     expect(heartbeatQuery.values).toEqual(["10000001"]);
     expect(heartbeatQuery.query_timeout).toBe(10_000);
-    expect(jest.getTimerCount()).toBe(1);
+    expect(vi.getTimerCount()).toBe(1);
 
     await lock.release();
 });
 
 test("heartbeat reports a lost lock and discards the client", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     const client = new MockClient();
     client.query
         .mockResolvedValueOnce({ rows: [{ acquired: true }] })
         .mockResolvedValueOnce({ rows: [{ held: false }] });
-    const listener = jest.fn<undefined, [Error]>();
+    const listener = vi.fn<(error: Error) => undefined>();
     const lock = new PostgresLeaderLock(createPool(client) as never, 10_000_002n);
     lock.onLost(listener);
 
     await lock.tryAcquire();
-    await jest.advanceTimersByTimeAsync(30_000);
+    await vi.advanceTimersByTimeAsync(30_000);
 
     expect(listener).toHaveBeenCalledTimes(1);
     const lossError = listener.mock.calls[0][0];
     expect(client.release).toHaveBeenCalledWith(lossError);
-    expect(jest.getTimerCount()).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
 });
 
 test("heartbeat errors report lock loss once", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     const error = new Error("heartbeat timeout");
     const client = new MockClient();
     client.query
         .mockResolvedValueOnce({ rows: [{ acquired: true }] })
         .mockRejectedValueOnce(error);
-    const listener = jest.fn();
+    const listener = vi.fn();
     const lock = new PostgresLeaderLock(createPool(client) as never, 10_000_003n);
     lock.onLost(listener);
 
     await lock.tryAcquire();
-    await jest.advanceTimersByTimeAsync(30_000);
+    await vi.advanceTimersByTimeAsync(30_000);
 
     expect(listener).toHaveBeenCalledTimes(1);
     expect(listener).toHaveBeenCalledWith(error);
@@ -252,11 +257,11 @@ test("heartbeat errors report lock loss once", async () => {
 });
 
 test("a client error is handled without an unhandled error event", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     const error = new Error("Connection terminated unexpectedly");
     const client = new MockClient();
     client.query.mockResolvedValueOnce({ rows: [{ acquired: true }] });
-    const listener = jest.fn();
+    const listener = vi.fn();
     const lock = new PostgresLeaderLock(createPool(client) as never, 10_000_004n);
     lock.onLost(listener);
 
@@ -269,7 +274,7 @@ test("a client error is handled without an unhandled error event", async () => {
 });
 
 test("a stale client error listener does not affect a released lock", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     const client = new MockClient();
     client.query
         .mockResolvedValueOnce({ rows: [{ acquired: true }] })
@@ -285,7 +290,7 @@ test("a stale client error listener does not affect a released lock", async () =
 });
 
 test("a client error during release does not report lock loss", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     const error = new Error("connection lost during release");
     const client = new MockClient();
     client.query
@@ -294,7 +299,7 @@ test("a client error during release does not report lock loss", async () => {
             client.emit("error", error);
             throw error;
         });
-    const listener = jest.fn();
+    const listener = vi.fn();
     const lock = new PostgresLeaderLock(createPool(client) as never, 10_000_006n);
     lock.onLost(listener);
 
@@ -305,7 +310,7 @@ test("a client error during release does not report lock loss", async () => {
 });
 
 test("a heartbeat completing during release does not start another heartbeat", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     const heartbeat = createDeferred<{ rows: Array<{ held: boolean }> }>();
     const client = new MockClient();
     client.query
@@ -315,32 +320,32 @@ test("a heartbeat completing during release does not start another heartbeat", a
     const lock = new PostgresLeaderLock(createPool(client) as never, 10_000_007n);
 
     await lock.tryAcquire();
-    await jest.advanceTimersByTimeAsync(30_000);
+    await vi.advanceTimersByTimeAsync(30_000);
     await lock.release();
     heartbeat.resolve({ rows: [{ held: true }] });
-    await jest.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(0);
 
-    expect(jest.getTimerCount()).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
     expect(client.release).toHaveBeenCalledTimes(1);
 });
 
 test("a heartbeat error after release does not affect the released client", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     const heartbeat = createDeferred<{ rows: Array<{ held: boolean }> }>();
     const client = new MockClient();
     client.query
         .mockResolvedValueOnce({ rows: [{ acquired: true }] })
         .mockReturnValueOnce(heartbeat.promise)
         .mockResolvedValueOnce({ rows: [{ released: true }] });
-    const listener = jest.fn();
+    const listener = vi.fn();
     const lock = new PostgresLeaderLock(createPool(client) as never, 10_000_008n);
     lock.onLost(listener);
 
     await lock.tryAcquire();
-    await jest.advanceTimersByTimeAsync(30_000);
+    await vi.advanceTimersByTimeAsync(30_000);
     await lock.release();
     heartbeat.reject(new Error("stale heartbeat error"));
-    await jest.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(0);
 
     expect(listener).not.toHaveBeenCalled();
     expect(client.release).toHaveBeenCalledTimes(1);

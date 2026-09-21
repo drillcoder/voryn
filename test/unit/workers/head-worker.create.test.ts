@@ -1,3 +1,5 @@
+import { expect, test, vi } from "vitest";
+
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import type { Logger } from "../../../src/interfaces/logger.js";
 import type { HeadWorkerOptions } from "../../../src/interfaces/options.js";
@@ -15,13 +17,13 @@ import {
 } from "../helpers/pipeline-test-helpers.js";
 
 test("head worker create wires service execution", async () => {
-    const getLatestBlockNumber = jest.fn(async () => 0);
-    const debug = jest.fn<unknown, [string, Record<string, unknown>?]>();
+    const getLatestBlockNumber = vi.fn(async () => 0);
+    const debug = vi.fn<(message: string, meta?: Record<string, unknown>) => unknown>();
     const logger: Logger = {
         debug,
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
     };
     const config: Omit<HeadWorkerOptions, "sourceConfig"> = {
         confirmations: 1,

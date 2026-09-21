@@ -1,3 +1,12 @@
+import {
+    afterAll,
+    beforeAll,
+    beforeEach,
+    describe,
+    expect,
+    test,
+} from "vitest";
+
 import type { EventReactionHandler, TransactionReactionHandler } from "../../src/interfaces/reaction.js";
 import { PostgresLeaderLock } from "../../src/postgres/leader-lock.js";
 import { PostgresTransactionManager } from "../../src/postgres/transaction-manager.js";

@@ -1,3 +1,5 @@
+import { beforeEach, expect, test, vi } from "vitest";
+
 import { Pool } from "pg";
 
 import type { BlockJobsRepository } from "../../../src/interfaces/repositories.js";
@@ -6,8 +8,8 @@ import { BlockJobRecovery } from "../../../src/recovery/block-job-recovery.js";
 import { PostgresBlockJobsRepository } from "../../../src/repositories/postgres/block-jobs-repository.js";
 import { createNoopBlockJobsRepository } from "../helpers/pipeline-test-helpers.js";
 
-jest.mock("../../../src/postgres/schema.js", () => ({
-    validatePostgresSchema: jest.fn(async () => undefined),
+vi.mock("../../../src/postgres/schema.js", () => ({
+    validatePostgresSchema: vi.fn(async () => undefined),
 }));
 
 interface BlockJobRecoveryInternals {
@@ -17,11 +19,11 @@ interface BlockJobRecoveryInternals {
 }
 
 beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 });
 
 test("block job recovery create wires retry execution", async () => {
-    const retryFailed = jest.fn(async () => 2);
+    const retryFailed = vi.fn(async () => 2);
     const blockJobsRepository: BlockJobsRepository = {
         ...createNoopBlockJobsRepository(),
         retryFailed,
@@ -41,7 +43,7 @@ test("block job recovery create wires retry execution", async () => {
 });
 
 test("block job recovery retries one block", async () => {
-    const retryFailed = jest.fn(async () => 1);
+    const retryFailed = vi.fn(async () => 1);
     const blockJobsRepository: BlockJobsRepository = {
         ...createNoopBlockJobsRepository(),
         retryFailed,
@@ -61,7 +63,7 @@ test("block job recovery retries one block", async () => {
 });
 
 test("block job recovery retries all failed blocks", async () => {
-    const retryAllFailed = jest.fn(async () => 4);
+    const retryAllFailed = vi.fn(async () => 4);
     const blockJobsRepository: BlockJobsRepository = {
         ...createNoopBlockJobsRepository(),
         retryAllFailed,
@@ -82,7 +84,7 @@ test("block job recovery retries all failed blocks", async () => {
 
 test("block job recovery merges db defaults with overrides and returns disposer", async () => {
     const blockJobsRepository = createNoopBlockJobsRepository();
-    const endSpy = jest.spyOn(Pool.prototype, "end");
+    const endSpy = vi.spyOn(Pool.prototype, "end");
     const recovery = await BlockJobRecovery.create({
         logLevel: "error",
          chainId: 7 ,
@@ -103,7 +105,7 @@ test("block job recovery merges db defaults with overrides and returns disposer"
 });
 
 test("block job recovery builds postgres repository by default with db url", async () => {
-    const endSpy = jest.spyOn(Pool.prototype, "end");
+    const endSpy = vi.spyOn(Pool.prototype, "end");
     const recovery = await BlockJobRecovery.create({
         logLevel: "error",
          chainId: 7 ,

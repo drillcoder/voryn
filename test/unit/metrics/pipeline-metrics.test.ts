@@ -1,3 +1,5 @@
+import { expect, test } from "vitest";
+
 import { PipelineMetrics } from "../../../src/metrics/pipeline-metrics.js";
 import {
     createNoopBlockJobsRepository,

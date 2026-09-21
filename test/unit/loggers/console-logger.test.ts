@@ -1,3 +1,5 @@
+import { expect, test, vi } from "vitest";
+
 import type { ConsoleLogWriter } from "../../../src/loggers/console-logger.js";
 import { ConsoleLogger } from "../../../src/loggers/console-logger.js";
 
@@ -178,10 +180,10 @@ test("console logger uses default options when no options provided", () => {
     const previousNoColor = process.env.NO_COLOR;
     process.env.NO_COLOR = "1";
 
-    const stdoutWriteSpy = jest
+    const stdoutWriteSpy = vi
         .spyOn(process.stdout, "write")
         .mockImplementation(() => true);
-    const stderrWriteSpy = jest
+    const stderrWriteSpy = vi
         .spyOn(process.stderr, "write")
         .mockImplementation(() => true);
 

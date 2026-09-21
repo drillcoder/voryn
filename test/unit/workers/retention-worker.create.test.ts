@@ -1,3 +1,5 @@
+import { expect, test, vi } from "vitest";
+
 import type { RetentionWorkerOptions } from "../../../src/interfaces/options.js";
 import { RetentionWorker } from "../../../src/workers/retention-worker.js";
 import {
@@ -13,7 +15,7 @@ import {
 } from "../helpers/pipeline-test-helpers.js";
 
 test("retention worker create wires service execution", async () => {
-    const getCursor = jest.fn(async () => null);
+    const getCursor = vi.fn(async () => null);
     const config: RetentionWorkerOptions = {
         chainId: 11,
         delayBetweenTicksMs: 1000,

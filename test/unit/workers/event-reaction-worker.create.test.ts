@@ -1,3 +1,5 @@
+import { expect, test } from "vitest";
+
 import type { EventReactionHandler } from "../../../src/interfaces/reaction.js";
 import type { ReactionWorkerOptions } from "../../../src/interfaces/options.js";
 import { EventReactionWorker } from "../../../src/workers/event-reaction-worker.js";

@@ -1,3 +1,5 @@
+import { expect, test, vi } from "vitest";
+
 import { Pool } from "pg";
 import type { BlockJobsRepository } from "../../../src/interfaces/repositories.js";
 import { PipelineMetrics } from "../../../src/metrics/pipeline-metrics.js";
@@ -5,8 +7,8 @@ import { validatePostgresSchema } from "../../../src/postgres/schema.js";
 import { createNoopBlockJobsRepository } from "../helpers/pipeline-test-helpers.js";
 import { RpcPoolManager } from "@drillcoder/ethers-rpc-pool";
 
-jest.mock("../../../src/postgres/schema.js", () => ({
-    validatePostgresSchema: jest.fn(async () => undefined),
+vi.mock("../../../src/postgres/schema.js", () => ({
+    validatePostgresSchema: vi.fn(async () => undefined),
 }));
 
 interface PipelineMetricsInternals {
@@ -22,7 +24,7 @@ interface PipelineMetricsInternals {
 
 test("pipeline metrics merges db defaults with overrides and returns disposer", async () => {
     const blockJobsRepository = createNoopBlockJobsRepository();
-    const endSpy = jest.spyOn(Pool.prototype, "end");
+    const endSpy = vi.spyOn(Pool.prototype, "end");
     const metrics = await PipelineMetrics.create({
         logLevel: "error",
         sourceConfig: {
@@ -47,8 +49,8 @@ test("pipeline metrics merges db defaults with overrides and returns disposer", 
 
 test("pipeline metrics closes its RPC pool when database initialization fails", async () => {
     const initializationError = new Error("schema validation failed");
-    const closeSpy = jest.spyOn(RpcPoolManager.prototype, "close");
-    jest.mocked(validatePostgresSchema).mockRejectedValueOnce(initializationError);
+    const closeSpy = vi.spyOn(RpcPoolManager.prototype, "close");
+    vi.mocked(validatePostgresSchema).mockRejectedValueOnce(initializationError);
 
     await expect(PipelineMetrics.create({
         logLevel: "error",

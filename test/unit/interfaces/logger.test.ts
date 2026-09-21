@@ -1,3 +1,5 @@
+import { expect, test } from "vitest";
+
 import { noopLogger } from "../../../src/interfaces/logger.js";
 
 test("noop logger methods are no-op and do not throw", () => {

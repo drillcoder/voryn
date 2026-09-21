@@ -1,17 +1,20 @@
+import type { Mock } from "vitest";
+import { expect, test, vi } from "vitest";
+
 import { PostgresWorkerCursorsRepository } from "../../../../src/repositories/postgres/worker-cursors-repository.js";
 import type { DbExecutor } from "../../../../src/interfaces/db.js";
 
-const createExecutor = (query: jest.Mock): DbExecutor => ({ query: query as never });
+const createExecutor = (query: Mock): DbExecutor => ({ query: query as never });
 
 test("get returns null when worker cursor is missing", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 0 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 0 }));
     const repository = new PostgresWorkerCursorsRepository(createExecutor(query));
 
     await expect(repository.get("worker-a", 1, "transaction")).resolves.toBeNull();
 });
 
 test("advance throws if cursor does not exist", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: 0 }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: 0 }));
     const repository = new PostgresWorkerCursorsRepository(createExecutor(query));
 
     await expect(repository.advance("worker-a", 1, "event", {
@@ -22,7 +25,7 @@ test("advance throws if cursor does not exist", async () => {
 });
 
 test("advance throws when rowCount is null", async () => {
-    const query = jest.fn(async () => ({ rows: [], rowCount: null }));
+    const query = vi.fn(async () => ({ rows: [], rowCount: null }));
     const repository = new PostgresWorkerCursorsRepository(createExecutor(query));
 
     await expect(repository.advance("worker-a", 1, "event", {
@@ -33,7 +36,7 @@ test("advance throws when rowCount is null", async () => {
 });
 
 test("get maps cursor row", async () => {
-    const query = jest.fn(async () => ({
+    const query = vi.fn(async () => ({
         rows: [{
             worker_name: "worker-a",
             chain_id: 1,
@@ -60,7 +63,7 @@ test("get maps cursor row", async () => {
 });
 
 test("listByChain maps cursor rows", async () => {
-    const query = jest.fn(async () => ({
+    const query = vi.fn(async () => ({
         rows: [
             {
                 worker_name: "event-worker",
@@ -116,7 +119,7 @@ test("listByChain maps cursor rows", async () => {
 });
 
 test("insert and advance succeed when rows are present", async () => {
-    const query = jest
+    const query = vi
         .fn()
         .mockResolvedValueOnce({ rows: [], rowCount: 1 })
         .mockResolvedValueOnce({ rows: [], rowCount: 1 });
@@ -135,7 +138,7 @@ test("insert and advance succeed when rows are present", async () => {
 });
 
 test("insert and advance use null for missing log index", async () => {
-    const query = jest
+    const query = vi
         .fn()
         .mockResolvedValueOnce({ rows: [], rowCount: 1 })
         .mockResolvedValueOnce({ rows: [], rowCount: 1 });

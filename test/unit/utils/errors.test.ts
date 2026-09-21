@@ -1,3 +1,5 @@
+import { expect, test } from "vitest";
+
 import { asErrorMessage } from "../../../src/utils/errors.js";
 
 test("asErrorMessage returns message from Error", () => {

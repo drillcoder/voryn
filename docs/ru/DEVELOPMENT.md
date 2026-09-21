@@ -10,7 +10,7 @@
 - `make build-test` — проверить компиляцию тестов.
 - `make lint` — запустить ESLint.
 - `make test` — запустить unit-тесты.
-- `make test-all` — запустить весь Jest-набор.
+- `make test-all` — запустить весь набор Vitest.
 - `make test-coverage` — запустить тесты с coverage.
 
 ## Docker (dev)

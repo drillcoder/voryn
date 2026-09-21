@@ -1,3 +1,5 @@
+import { expect, test } from "vitest";
+
 import { Pool } from "pg";
 import type { LeaderLock } from "../../../src/interfaces/leader-lock.js";
 import type { Logger } from "../../../src/interfaces/logger.js";

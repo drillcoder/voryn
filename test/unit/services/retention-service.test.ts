@@ -1,3 +1,6 @@
+import type { Mock } from "vitest";
+import { expect, test, vi } from "vitest";
+
 import type { DbExecutor } from "../../../src/interfaces/db.js";
 import type { Logger } from "../../../src/interfaces/logger.js";
 import type { RetentionServiceConfig } from "../../../src/services/retention-service.js";
@@ -20,16 +23,16 @@ const config: RetentionServiceConfig = {
     retentionDepthBlocks: 42,
 };
 
-const createLogger = (): { logger: Logger; debug: jest.Mock; info: jest.Mock } => {
-    const debug = jest.fn();
-    const info = jest.fn();
+const createLogger = (): { logger: Logger; debug: Mock; info: Mock } => {
+    const debug = vi.fn();
+    const info = vi.fn();
 
     return {
         logger: {
             debug,
             info,
-            warn: jest.fn(),
-            error: jest.fn(),
+            warn: vi.fn(),
+            error: vi.fn(),
         },
         debug,
         info,
@@ -124,10 +127,10 @@ const createEventsRepository = (
 
 test("retention service purges committed data and logs result", async () => {
     const { logger, debug, info } = createLogger();
-    const deleteBlockJobs = jest.fn(async () => 4);
-    const deleteBlocks = jest.fn(async () => 3);
-    const deleteTransactions = jest.fn(async () => 2);
-    const deleteEvents = jest.fn(async () => 1);
+    const deleteBlockJobs = vi.fn(async () => 4);
+    const deleteBlocks = vi.fn(async () => 3);
+    const deleteTransactions = vi.fn(async () => 2);
+    const deleteEvents = vi.fn(async () => 1);
     const worker = new RetentionService(
         config,
         createCursorRepository(),

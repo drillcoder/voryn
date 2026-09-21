@@ -1,3 +1,5 @@
+import { expect, test } from "vitest";
+
 import { parsePgBigint, parsePgInt, parsePgTimestamp } from "../../../src/postgres/pg-parsers.js";
 
 test("parsePgBigint parses string and number values", () => {

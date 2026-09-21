@@ -1,3 +1,5 @@
+import { expect, test, vi } from "vitest";
+
 import type { LeaderLock } from "../../../src/interfaces/leader-lock.js";
 import type { Logger } from "../../../src/interfaces/logger.js";
 import { SingletonPollingWorker } from "../../../src/workers/singleton-polling-worker.js";
@@ -227,7 +229,7 @@ test("singleton worker logs release errors and clears lock state", async () => {
 test("singleton worker stops with an error when its leader lock is lost", async () => {
     const { logger, errorCalls } = createLogger();
     const tick = createDeferred();
-    const release = jest.fn(async () => undefined);
+    const release = vi.fn(async () => undefined);
     let notifyLost = (_error: Error): void => undefined;
     const lock: LeaderLock = {
         tryAcquire: async () => true,

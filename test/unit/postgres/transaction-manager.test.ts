@@ -1,26 +1,29 @@
+import type { Mock } from "vitest";
+import { expect, test, vi } from "vitest";
+
 import { PostgresTransactionManager } from "../../../src/postgres/transaction-manager.js";
 
 interface MockClient {
-    query: jest.Mock;
-    release: jest.Mock;
+    query: Mock;
+    release: Mock;
 }
 
 interface MockPool {
-    connect: jest.Mock<Promise<MockClient>, []>;
+    connect: Mock<() => Promise<MockClient>>;
 }
 
 const createPoolWithClient = (client: MockClient): MockPool => ({
-    connect: jest.fn(async () => client),
+    connect: vi.fn(async () => client),
 });
 
 test("postgres transaction manager runs callback in BEGIN/COMMIT", async () => {
     const executed: string[] = [];
     const client: MockClient = {
-        query: jest.fn(async (text: string) => {
+        query: vi.fn(async (text: string) => {
             executed.push(text);
             return { rows: [], rowCount: 0 };
         }),
-        release: jest.fn(),
+        release: vi.fn(),
     };
 
     const manager = new PostgresTransactionManager(createPoolWithClient(client) as never);
@@ -37,11 +40,11 @@ test("postgres transaction manager runs callback in BEGIN/COMMIT", async () => {
 test("postgres transaction manager rolls back on callback error", async () => {
     const executed: string[] = [];
     const client: MockClient = {
-        query: jest.fn(async (text: string) => {
+        query: vi.fn(async (text: string) => {
             executed.push(text);
             return { rows: [], rowCount: 0 };
         }),
-        release: jest.fn(),
+        release: vi.fn(),
     };
 
     const manager = new PostgresTransactionManager(createPoolWithClient(client) as never);

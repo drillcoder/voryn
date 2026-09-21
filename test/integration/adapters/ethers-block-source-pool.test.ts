@@ -1,3 +1,5 @@
+import { expect, test } from "vitest";
+
 import { createServer } from "node:http";
 import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import { EthersBlockSource } from "../../../src/adapters/ethers-block-source.js";

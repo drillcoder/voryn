@@ -1,3 +1,5 @@
+import { expect, test, vi } from "vitest";
+
 import type { FetchedBlock } from "../../../src/interfaces/chain.js";
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import type { DbExecutor } from "../../../src/interfaces/db.js";
@@ -255,7 +257,7 @@ test("sequencer service commits multiple fetched blocks in one tick", async () =
 
 test("sequencer service waits when next job is not fetched", async () => {
     const { manager } = createPassThroughManager();
-    const debug = jest.fn();
+    const debug = vi.fn();
     const worker = createService({
         chainCursorRepository: createChainCursorRepository(() => createCursor(9, HASH_A, 10)),
         blocksRepository: createBlocksRepository(() => createBlock(10, HASH_B, HASH_A)),
@@ -265,9 +267,9 @@ test("sequencer service waits when next job is not fetched", async () => {
         transactionManager: manager,
         logger: {
             debug,
-            info: jest.fn(),
-            warn: jest.fn(),
-            error: jest.fn(),
+            info: vi.fn(),
+            warn: vi.fn(),
+            error: vi.fn(),
         },
     });
 
@@ -283,7 +285,7 @@ test("sequencer service waits when next job is not fetched", async () => {
 
 test("sequencer service waits when next block job is missing", async () => {
     const { manager } = createPassThroughManager();
-    const debug = jest.fn();
+    const debug = vi.fn();
     const worker = createService({
         chainCursorRepository: createChainCursorRepository(() => createCursor(9, HASH_A, 10)),
         blocksRepository: createBlocksRepository(() => createBlock(10, HASH_B, HASH_A)),
@@ -293,9 +295,9 @@ test("sequencer service waits when next block job is missing", async () => {
         transactionManager: manager,
         logger: {
             debug,
-            info: jest.fn(),
-            warn: jest.fn(),
-            error: jest.fn(),
+            info: vi.fn(),
+            warn: vi.fn(),
+            error: vi.fn(),
         },
     });
 
@@ -309,7 +311,7 @@ test("sequencer service waits when next block job is missing", async () => {
 
 test("sequencer service warns when next fetched job failed permanently", async () => {
     const { manager } = createPassThroughManager();
-    const warn = jest.fn();
+    const warn = vi.fn();
     const updatedAt = new Date("2026-01-01T00:00:00.000Z");
     const worker = createService({
         chainCursorRepository: createChainCursorRepository(() => createCursor(9, HASH_A, 10)),
@@ -324,10 +326,10 @@ test("sequencer service warns when next fetched job failed permanently", async (
         }),
         transactionManager: manager,
         logger: {
-            debug: jest.fn(),
-            info: jest.fn(),
+            debug: vi.fn(),
+            info: vi.fn(),
             warn,
-            error: jest.fn(),
+            error: vi.fn(),
         },
     });
 
@@ -344,7 +346,7 @@ test("sequencer service warns when next fetched job failed permanently", async (
 
 test("sequencer service waits when failed job still has retry date", async () => {
     const { manager } = createPassThroughManager();
-    const debug = jest.fn();
+    const debug = vi.fn();
     const nextRetryAt = new Date("2026-01-01T00:01:00.000Z");
     const worker = createService({
         chainCursorRepository: createChainCursorRepository(() => createCursor(9, HASH_A, 10)),
@@ -360,9 +362,9 @@ test("sequencer service waits when failed job still has retry date", async () =>
         transactionManager: manager,
         logger: {
             debug,
-            info: jest.fn(),
-            warn: jest.fn(),
-            error: jest.fn(),
+            info: vi.fn(),
+            warn: vi.fn(),
+            error: vi.fn(),
         },
     });
 
@@ -475,8 +477,8 @@ test("sequencer service logs rollback metadata for new tables", async () => {
     const oldHash10 = asHash32("0x1010101010101010101010101010101010101010101010101010101010101010");
     const newHash10 = asHash32("0x1111111111111111111111111111111111111111111111111111111111111111");
     const cursor = createCursor(10, oldHash10, 11);
-    const debug = jest.fn();
-    const warn = jest.fn();
+    const debug = vi.fn();
+    const warn = vi.fn();
 
     const worker = createService({
         source: createSource(async (_chainId, blockNumber) => {
@@ -512,9 +514,9 @@ test("sequencer service logs rollback metadata for new tables", async () => {
         transactionManager: manager,
         logger: {
             debug,
-            info: jest.fn(),
+            info: vi.fn(),
             warn,
-            error: jest.fn(),
+            error: vi.fn(),
         },
     });
 

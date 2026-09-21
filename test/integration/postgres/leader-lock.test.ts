@@ -1,3 +1,11 @@
+import {
+    afterAll,
+    beforeAll,
+    describe,
+    expect,
+    test,
+} from "vitest";
+
 import { PostgresLeaderLock } from "../../../src/postgres/leader-lock.js";
 import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../helpers/test-db.js";
 import type { IsolatedDbContext } from "../helpers/test-db.js";

@@ -1,3 +1,5 @@
+import { expect, test } from "vitest";
+
 import type { ChainPipelineMetrics, PipelineMetricsResult } from "../../../src/interfaces/metrics.js";
 import { formatPipelineMetricsPrometheus } from "../../../src/metrics/prometheus.js";
 

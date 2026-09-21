@@ -1,3 +1,5 @@
+import { expect, test, vi } from "vitest";
+
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import type { FetchWorkerOptions } from "../../../src/interfaces/options.js";
 import { FetchWorker } from "../../../src/workers/fetch-worker.js";
@@ -12,7 +14,7 @@ import {
 } from "../helpers/pipeline-test-helpers.js";
 
 test("fetch worker create wires service execution", async () => {
-    const claimForFetch = jest.fn(async () => null);
+    const claimForFetch = vi.fn(async () => null);
     const config: Omit<FetchWorkerOptions, "sourceConfig"> = {
         delayBetweenTicksMs: 1000,
         fetchBatchSize: 1,
