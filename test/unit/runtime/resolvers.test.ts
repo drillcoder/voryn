@@ -1,9 +1,10 @@
-import { FetchRequest, FetchResponse, JsonRpcProvider } from "ethers";
 import { Pool } from "pg";
 import { EthersBlockSource } from "../../../src/adapters/ethers-block-source.js";
 import { ConsoleLogger } from "../../../src/loggers/console-logger.js";
 import { validatePostgresSchema } from "../../../src/postgres/schema.js";
 import {
+    combineDisposers,
+    disposeAfterError,
     resolveDbDependencies,
     resolveSingleBlockSource,
     resolveMultiBlockSource,
@@ -11,21 +12,6 @@ import {
 } from "../../../src/runtime/resolvers.js";
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import type { Logger } from "../../../src/interfaces/logger.js";
-
-jest.mock("ethers", () => {
-    const actual = jest.requireActual<{
-        FetchRequest: typeof FetchRequest;
-        FetchResponse: typeof FetchResponse;
-    }>("ethers");
-
-    return {
-        FetchRequest: actual.FetchRequest,
-        FetchResponse: actual.FetchResponse,
-        JsonRpcProvider: jest.fn().mockImplementation((request: { url: string }) => ({
-            getNetwork: async () => ({ chainId: BigInt(request.url.endsWith("/56") ? 56 : 1) }),
-        })),
-    };
-});
 
 jest.mock("../../../src/postgres/schema.js", () => ({
     validatePostgresSchema: jest.fn(async () => undefined),
@@ -42,16 +28,6 @@ const logger: Logger = {
     warn: jest.fn(),
     error: jest.fn(),
 };
-
-function getProviderRequest(index = 0): FetchRequest {
-    const connection = jest.mocked(JsonRpcProvider).mock.calls[index]?.[0];
-
-    if (!(connection instanceof FetchRequest)) {
-        throw new Error("Expected JsonRpcProvider to receive a FetchRequest");
-    }
-
-    return connection;
-}
 
 beforeEach(() => {
     jest.mocked(validatePostgresSchema).mockResolvedValue(undefined);
@@ -77,106 +53,37 @@ test("resolveSingleBlockSource returns provided source", async () => {
         },
     };
 
-    await expect(resolveSingleBlockSource({ source })).resolves.toBe(source);
-});
-
-test("resolveSingleBlockSource creates ethers source from rpcConfig", async () => {
-    await expect(resolveSingleBlockSource({ rpcConfig: { rpcUrl: "http://127.0.0.1/1" } }))
-        .resolves.toBeInstanceOf(EthersBlockSource);
-
-    const request = getProviderRequest();
-
-    expect(request.url).toBe("http://127.0.0.1/1");
-    expect(request.timeout).toBe(30_000);
-    expect(request.retryFunc).not.toBeNull();
-
-    if (request.retryFunc === null) {
-        throw new Error("Expected RPC retry policy to be configured");
-    }
-
-    await expect(request.retryFunc(
-        request,
-        new FetchResponse(429, "Too Many Requests", {}, null, request),
-        0,
-    )).resolves.toBe(false);
-});
-
-test("resolveSingleBlockSource applies configured rpc request timeout", async () => {
     await expect(resolveSingleBlockSource({
-        rpcConfig: { rpcUrl: "http://127.0.0.1/1" },
-        rpcRequestTimeoutMs: 12_345,
-    })).resolves.toBeInstanceOf(EthersBlockSource);
-
-    expect(getProviderRequest().timeout).toBe(12_345);
+        chainId: 1,
+        source,
+    })).resolves.toEqual({ source });
 });
 
-test("resolveSingleBlockSource creates provider and fallback provider", async () => {
-    const source = await resolveSingleBlockSource({
-        rpcConfig: {
-            rpcUrl: "http://127.0.0.1/1",
-            fallbackRpcUrl: "http://fallback.local/1",
+test("resolveSingleBlockSource creates ethers source from RPC config", async () => {
+    const resolved = await resolveSingleBlockSource({
+        network: {
+            chainId: 1,
+            rpcUrls: ["http://127.0.0.1/1"],
         },
-        rpcRequestTimeoutMs: 12_345,
-    }, logger);
+    });
 
-    expect(source).toBeInstanceOf(EthersBlockSource);
-    expect(Reflect.get(source, "logger")).toBe(logger);
-    expect(getProviderRequest(0).url).toBe("http://127.0.0.1/1");
-    expect(getProviderRequest(1).url).toBe("http://fallback.local/1");
-    expect(getProviderRequest(0).timeout).toBe(12_345);
-    expect(getProviderRequest(1).timeout).toBe(12_345);
-
-    const fallbackRequest = getProviderRequest(1);
-    expect(fallbackRequest.retryFunc).not.toBeNull();
-    if (fallbackRequest.retryFunc === null) {
-        throw new Error("Expected fallback RPC retry policy to be configured");
-    }
-
-    await expect(fallbackRequest.retryFunc(
-        fallbackRequest,
-        new FetchResponse(429, "Too Many Requests", {}, null, fallbackRequest),
-        0,
-    )).resolves.toBe(false);
+    expect(resolved.source).toBeInstanceOf(EthersBlockSource);
+    expect(resolved.dispose).toBeDefined();
+    await resolved.dispose?.();
 });
 
 test("resolveMultiBlockSource creates multi-chain ethers source", async () => {
-    await expect(resolveMultiBlockSource({
-        rpcConfigs: [
-            { rpcUrl: "http://127.0.0.1/1" },
-            { rpcUrl: "http://127.0.0.1/56" },
+    const resolved = await resolveMultiBlockSource({
+        networks: [
+            { chainId: 1, rpcUrls: ["http://127.0.0.1/1"] },
+            { chainId: 56, rpcUrls: ["http://127.0.0.1/56"] },
         ],
-        rpcRequestTimeoutMs: 23_456,
-    })).resolves.toBeInstanceOf(EthersBlockSource);
+        requestTimeoutMs: 23_456,
+        operationTimeoutMs: 67_890,
+    });
 
-    expect(getProviderRequest(0).timeout).toBe(23_456);
-    expect(getProviderRequest(1).timeout).toBe(23_456);
-});
-
-test("resolveMultiBlockSource creates providers from paired RPC configs", async () => {
-    await expect(resolveMultiBlockSource({
-        rpcConfigs: [
-            {
-                rpcUrl: "http://rpc.local/1",
-                fallbackRpcUrl: "http://fallback.local/1",
-            },
-            {
-                rpcUrl: "http://rpc.local/56",
-                fallbackRpcUrl: "http://fallback.local/56",
-            },
-        ],
-    })).resolves.toBeInstanceOf(EthersBlockSource);
-
-    expect([
-        getProviderRequest(0).url,
-        getProviderRequest(1).url,
-        getProviderRequest(2).url,
-        getProviderRequest(3).url,
-    ]).toEqual([
-        "http://rpc.local/1",
-        "http://fallback.local/1",
-        "http://rpc.local/56",
-        "http://fallback.local/56",
-    ]);
+    expect(resolved.source).toBeInstanceOf(EthersBlockSource);
+    await resolved.dispose?.();
 });
 
 test("resolveMultiBlockSource returns provided source", async () => {
@@ -193,35 +100,41 @@ test("resolveMultiBlockSource returns provided source", async () => {
         },
     };
 
-    await expect(resolveMultiBlockSource({ source })).resolves.toBe(source);
+    await expect(resolveMultiBlockSource({ chainIds: [1], source })).resolves.toEqual({ source });
 });
 
 test.each([
-    [{ rpcConfigs: [] }, "Ethers source rpcConfigs must not be empty"],
+    [{ networks: [] }, "Ethers source networks must not be empty"],
     [
         {
-            rpcConfigs: [
-                { rpcUrl: "http://127.0.0.1/1" },
-                { rpcUrl: "http://127.0.0.1/1" },
+            networks: [
+                { chainId: 1, rpcUrls: ["http://127.0.0.1/1"] },
+                { chainId: 1, rpcUrls: ["http://127.0.0.1/2"] },
             ],
         },
-        "Ethers source chain id is duplicated: 1",
+        "networks[1].chainId must be unique",
     ],
     [
-        { rpcConfigs: [{ rpcUrl: "" }] },
-        "Ethers source rpcUrl is empty",
+        { networks: [{ chainId: 1, rpcUrls: [] }] },
+        "networks[0].rpcUrls must not be empty",
     ],
     [
-        { rpcConfigs: [{ rpcUrl: "http://127.0.0.1/1", fallbackRpcUrl: " " }] },
-        "Ethers source fallbackRpcUrl is empty",
+        { networks: [{ chainId: 1, rpcUrls: [" "] }] },
+        "networks[0].rpcUrls[0] must be a valid HTTP or HTTPS URL",
     ],
     [
-        { rpcConfigs: [{ rpcUrl: "http://127.0.0.1/1" }], rpcRequestTimeoutMs: 0 },
-        "Ethers source rpcRequestTimeoutMs must be a positive safe integer",
+        {
+            networks: [{ chainId: 1, rpcUrls: ["http://127.0.0.1/1"] }],
+            requestTimeoutMs: 0,
+        },
+        "requestTimeoutMs must be a positive safe integer",
     ],
     [
-        { rpcConfigs: [{ rpcUrl: "http://127.0.0.1/1" }], rpcRequestTimeoutMs: 1.5 },
-        "Ethers source rpcRequestTimeoutMs must be a positive safe integer",
+        {
+            networks: [{ chainId: 1, rpcUrls: ["http://127.0.0.1/1"] }],
+            operationTimeoutMs: 1.5,
+        },
+        "operationTimeoutMs must be a positive safe integer",
     ],
 ])("resolveMultiBlockSource rejects invalid source config", async (config, expectedError) => {
     await expect(resolveMultiBlockSource(config)).rejects.toThrow(expectedError);
@@ -243,6 +156,61 @@ test("resolveLogger creates console logger with min level", () => {
 
     expect(resolvedLogger).toBeInstanceOf(ConsoleLogger);
     expect(Reflect.get(resolvedLogger, "minLevel")).toBe("warn");
+});
+
+test("combineDisposers returns undefined without resources", () => {
+    expect(combineDisposers(undefined)).toBeUndefined();
+});
+
+test("combineDisposers runs every resource cleanup and returns one failure", async () => {
+    const cleanupError = new Error("cleanup failed");
+    const successfulDispose = jest.fn(async () => undefined);
+    const failingDispose = jest.fn(async () => {
+        throw cleanupError;
+    });
+    const dispose = combineDisposers(failingDispose, undefined, successfulDispose);
+
+    await expect(dispose?.()).rejects.toBe(cleanupError);
+    expect(failingDispose).toHaveBeenCalledTimes(1);
+    expect(successfulDispose).toHaveBeenCalledTimes(1);
+});
+
+test("combineDisposers aggregates multiple cleanup failures", async () => {
+    const firstError = new Error("first cleanup failed");
+    const secondError = new Error("second cleanup failed");
+    const dispose = combineDisposers(
+        async () => {
+            throw firstError;
+        },
+        async () => {
+            throw secondError;
+        },
+    );
+
+    await expect(dispose?.()).rejects.toMatchObject({
+        errors: [firstError, secondError],
+        message: "Multiple resource cleanup operations failed",
+    });
+});
+
+test("disposeAfterError preserves initialization failure after successful cleanup", async () => {
+    const initializationError = new Error("initialization failed");
+    const dispose = jest.fn(async () => undefined);
+
+    await expect(disposeAfterError(initializationError, dispose)).rejects.toBe(initializationError);
+    expect(dispose).toHaveBeenCalledTimes(1);
+});
+
+test("disposeAfterError aggregates initialization and cleanup failures", async () => {
+    const initializationError = new Error("initialization failed");
+    const cleanupError = new Error("cleanup failed");
+
+    await expect(disposeAfterError(initializationError, async () => {
+        throw cleanupError;
+    })).rejects.toMatchObject({
+        errors: [initializationError, cleanupError],
+        message: "Initialization and resource cleanup failed",
+    });
 });
 
 test("resolveDbDependencies returns overrides without dbUrl", async () => {

@@ -9,12 +9,7 @@ import type {
     TransactionsRepository,
 } from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
-import type {
-    RuntimeDbOptions,
-    RuntimeLoggerOptions,
-    SequencerWorkerOptions,
-    SingleSourceOptions
-} from "../interfaces/options.js";
+import type { RuntimeDbOptions, RuntimeLoggerOptions, SequencerWorkerOptions } from "../interfaces/options.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../repositories/postgres/block-jobs-repository.js";
@@ -25,7 +20,14 @@ import { PostgresTransactionsRepository } from "../repositories/postgres/transac
 import type { SequencerServiceConfig } from "../services/sequencer-service.js";
 import { SequencerService } from "../services/sequencer-service.js";
 import { SEQUENCER_WORKER_LOCK_KEY_BASE } from "./worker-lock-keys.js";
-import { resolveDbDependencies, resolveLogger, resolveSingleBlockSource } from "../runtime/resolvers.js";
+import {
+    combineDisposers,
+    disposeAfterError,
+    resolveDbDependencies,
+    resolveLogger,
+    resolveSingleChainId,
+    resolveSingleBlockSource,
+} from "../runtime/resolvers.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
 export interface SequencerWorkerDatabaseDependencies {
@@ -41,47 +43,58 @@ export interface SequencerWorkerDatabaseDependencies {
 export type CreateSequencerWorkerOptions =
     RuntimeLoggerOptions
     & SequencerWorkerOptions
-    & SingleSourceOptions
     & RuntimeDbOptions<SequencerWorkerDatabaseDependencies>;
 
 export class SequencerWorker extends SingletonPollingWorker {
     static async create(options: CreateSequencerWorkerOptions): Promise<SequencerWorker> {
         const logger = resolveLogger(options);
-        const source = await resolveSingleBlockSource(options, logger);
+        const resolvedSource = await resolveSingleBlockSource(options.sourceConfig, logger);
         const serviceConfig: SequencerServiceConfig = {
-            chainId: options.chainId,
+            chainId: resolveSingleChainId(options.sourceConfig),
             delayBetweenTicksMs: options.delayBetweenTicksMs,
             maxBlocksPerTick: options.maxBlocksPerTick,
         };
-        const { dependencies, dispose } = await resolveDbDependencies<SequencerWorkerDatabaseDependencies>(
-            options,
-            logger,
-            (pool: Pool): SequencerWorkerDatabaseDependencies => ({
-                chainCursorRepository: new PostgresChainCursorRepository(pool),
-                blocksRepository: new PostgresBlocksRepository(pool),
-                transactionsRepository: new PostgresTransactionsRepository(pool),
-                eventsRepository: new PostgresEventsRepository(pool),
-                blockJobsRepository: new PostgresBlockJobsRepository(pool),
-                transactionManager: new PostgresTransactionManager(pool),
-                leaderLock: new PostgresLeaderLock(
-                    pool,
-                    SEQUENCER_WORKER_LOCK_KEY_BASE + BigInt(serviceConfig.chainId)
-                ),
-            })
-        );
-        const service = new SequencerService(
-            serviceConfig,
-            source,
-            dependencies.chainCursorRepository,
-            dependencies.blocksRepository,
-            dependencies.transactionsRepository,
-            dependencies.eventsRepository,
-            dependencies.blockJobsRepository,
-            dependencies.transactionManager,
-            logger,
-        );
+        let dbDispose: (() => Promise<void>) | undefined;
+        try {
+            const { dependencies, dispose } = await resolveDbDependencies<SequencerWorkerDatabaseDependencies>(
+                options,
+                logger,
+                (pool: Pool): SequencerWorkerDatabaseDependencies => ({
+                    chainCursorRepository: new PostgresChainCursorRepository(pool),
+                    blocksRepository: new PostgresBlocksRepository(pool),
+                    transactionsRepository: new PostgresTransactionsRepository(pool),
+                    eventsRepository: new PostgresEventsRepository(pool),
+                    blockJobsRepository: new PostgresBlockJobsRepository(pool),
+                    transactionManager: new PostgresTransactionManager(pool),
+                    leaderLock: new PostgresLeaderLock(
+                        pool,
+                        SEQUENCER_WORKER_LOCK_KEY_BASE + BigInt(serviceConfig.chainId)
+                    ),
+                })
+            );
+            dbDispose = dispose;
+            const service = new SequencerService(
+                serviceConfig,
+                resolvedSource.source,
+                dependencies.chainCursorRepository,
+                dependencies.blocksRepository,
+                dependencies.transactionsRepository,
+                dependencies.eventsRepository,
+                dependencies.blockJobsRepository,
+                dependencies.transactionManager,
+                logger,
+            );
 
-        return new SequencerWorker(serviceConfig, service, dependencies.leaderLock, logger, dispose);
+            return new SequencerWorker(
+                serviceConfig,
+                service,
+                dependencies.leaderLock,
+                logger,
+                combineDisposers(dbDispose, resolvedSource.dispose),
+            );
+        } catch (error) {
+            return await disposeAfterError(error, dbDispose, resolvedSource.dispose);
+        }
     }
 
     private constructor(

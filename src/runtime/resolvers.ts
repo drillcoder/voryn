@@ -1,25 +1,32 @@
-import type { Pool } from "pg";
 import { Pool as PostgresPool } from "pg";
-import { FetchRequest, JsonRpcProvider } from "ethers";
 import { EthersBlockSource } from "../adapters/ethers-block-source.js";
-import { validatePostgresSchema } from "../postgres/schema.js";
-import type { BlockSource } from "../interfaces/block-source.js";
-import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
 import { ConsoleLogger } from "../loggers/console-logger.js";
+import { validatePostgresSchema } from "../postgres/schema.js";
+
+import type { Pool } from "pg";
+import type { BlockSource } from "../interfaces/block-source.js";
+import type { Logger } from "../interfaces/logger.js";
 import type {
-    MultiSourceOptions,
+    MultiChainSourceConfig,
     RuntimeDbOptions,
     RuntimeLoggerOptions,
-    SingleSourceOptions,
+    SingleChainSourceConfig,
 } from "../interfaces/options.js";
+import type { ChainId } from "../types/chain.js";
+
+type AsyncDisposer = () => Promise<void>;
 
 interface ResolveDbDependenciesResult<TDependencies extends object> {
     dependencies: TDependencies;
-    dispose?: () => Promise<void>;
+    dispose?: AsyncDisposer;
 }
 
-const DEFAULT_RPC_REQUEST_TIMEOUT_MS = 30_000;
+export interface ResolvedBlockSource {
+    source: BlockSource;
+    dispose?: AsyncDisposer;
+}
+
 const POSTGRES_KEEP_ALIVE_INITIAL_DELAY_MS = 30_000;
 
 export function resolveLogger(options: RuntimeLoggerOptions): Logger {
@@ -30,68 +37,82 @@ export function resolveLogger(options: RuntimeLoggerOptions): Logger {
     return new ConsoleLogger({ minLevel: options.logLevel });
 }
 
+export function resolveSingleChainId(config: SingleChainSourceConfig): ChainId {
+    return config.network !== undefined ? config.network.chainId : config.chainId;
+}
+
 export async function resolveSingleBlockSource(
-    options: SingleSourceOptions,
+    config: SingleChainSourceConfig,
     logger: Logger = noopLogger,
-): Promise<BlockSource> {
-    if (options.source !== undefined) {
-        return options.source;
+): Promise<ResolvedBlockSource> {
+    if (config.source !== undefined) {
+        return { source: config.source };
     }
 
     return resolveMultiBlockSource({
-        rpcConfigs: [options.rpcConfig],
-        rpcRequestTimeoutMs: options.rpcRequestTimeoutMs,
+        networks: [config.network],
+        requestTimeoutMs: config.requestTimeoutMs,
+        operationTimeoutMs: config.operationTimeoutMs,
     }, logger);
 }
 
 export async function resolveMultiBlockSource(
-    options: MultiSourceOptions,
+    config: MultiChainSourceConfig,
     logger: Logger = noopLogger,
-): Promise<BlockSource> {
-    if (options.source !== undefined) {
-        return options.source;
+): Promise<ResolvedBlockSource> {
+    if (config.source !== undefined) {
+        return { source: config.source };
     }
 
-    const {
-        rpcConfigs,
-        rpcRequestTimeoutMs = DEFAULT_RPC_REQUEST_TIMEOUT_MS,
-    } = options;
-
-    if (rpcConfigs.length === 0) {
-        throw new Error("Ethers source rpcConfigs must not be empty");
-    }
-
-    for (const rpcConfig of rpcConfigs) {
-        if (rpcConfig.rpcUrl.trim() === "") {
-            throw new Error("Ethers source rpcUrl is empty");
-        }
-
-        if (rpcConfig.fallbackRpcUrl?.trim() === "") {
-            throw new Error("Ethers source fallbackRpcUrl is empty");
-        }
-    }
-
-    if (!Number.isSafeInteger(rpcRequestTimeoutMs) || rpcRequestTimeoutMs <= 0) {
-        throw new Error("Ethers source rpcRequestTimeoutMs must be a positive safe integer");
-    }
-
-    const createProvider = (rpcUrl: string): JsonRpcProvider => {
-        const request = new FetchRequest(rpcUrl);
-        request.timeout = rpcRequestTimeoutMs;
-        request.retryFunc = () => Promise.resolve(false);
-
-        return new JsonRpcProvider(request);
-    };
-
-    return EthersBlockSource.create({
-        providerPairs: rpcConfigs.map((rpcConfig) => ({
-            provider: createProvider(rpcConfig.rpcUrl),
-            fallbackProvider: rpcConfig.fallbackRpcUrl === undefined
-                ? undefined
-                : createProvider(rpcConfig.fallbackRpcUrl),
-        })),
+    const source = await EthersBlockSource.create({
+        networks: config.networks,
+        requestTimeoutMs: config.requestTimeoutMs,
+        operationTimeoutMs: config.operationTimeoutMs,
         logger,
     });
+
+    return {
+        source,
+        dispose: async () => source.close(),
+    };
+}
+
+export function combineDisposers(...disposers: (AsyncDisposer | undefined)[]): AsyncDisposer | undefined {
+    const available = disposers.filter((dispose): dispose is AsyncDisposer => dispose !== undefined);
+    if (available.length === 0) {
+        return undefined;
+    }
+
+    return async (): Promise<void> => {
+        const errors: unknown[] = [];
+        for (const dispose of available) {
+            try {
+                await dispose();
+            } catch (error) {
+                errors.push(error);
+            }
+        }
+
+        if (errors.length === 1) {
+            throw errors[0];
+        }
+        if (errors.length > 1) {
+            throw new AggregateError(errors, "Multiple resource cleanup operations failed");
+        }
+    };
+}
+
+export async function disposeAfterError(
+    error: unknown,
+    ...disposers: (AsyncDisposer | undefined)[]
+): Promise<never> {
+    try {
+        await combineDisposers(...disposers)?.();
+    } catch (cleanupError) {
+        throw new AggregateError([error, cleanupError], "Initialization and resource cleanup failed");
+    }
+
+    throw error;
 }
 
 export async function resolveDbDependencies<TDependencies extends object>(

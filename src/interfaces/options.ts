@@ -11,44 +11,48 @@ export type RuntimeDbOptions<TDependencies extends object> =
     | { dbUrl: string; overrides?: Partial<TDependencies>; }
     | { dbUrl?: undefined; overrides: TDependencies; };
 
-export interface RpcConfig {
-    rpcUrl: string;
-    fallbackRpcUrl?: string;
+export interface RpcNetworkConfig {
+    chainId: ChainId;
+    rpcUrls: readonly string[];
 }
 
-export type SingleSourceOptions =
-    | {
-        source: BlockSource;
-        rpcConfig?: never;
-        rpcRequestTimeoutMs?: never;
-    }
-    | {
-        source?: never;
-        rpcConfig: RpcConfig;
-        rpcRequestTimeoutMs?: number;
-    };
+export type SingleChainSourceConfig = {
+    chainId?: never;
+    source?: never;
+    network: RpcNetworkConfig;
+    requestTimeoutMs?: number;
+    operationTimeoutMs?: number;
+} | {
+    chainId: ChainId;
+    source: BlockSource;
+    network?: never;
+    requestTimeoutMs?: never;
+    operationTimeoutMs?: never;
+};
 
-export type MultiSourceOptions =
-    | {
-        source: BlockSource;
-        rpcConfigs?: never;
-        rpcRequestTimeoutMs?: never;
-    }
-    | {
-        source?: never;
-        rpcConfigs: readonly RpcConfig[];
-        rpcRequestTimeoutMs?: number;
-    };
+export type MultiChainSourceConfig = {
+    chainIds?: never;
+    source?: never;
+    networks: readonly RpcNetworkConfig[];
+    requestTimeoutMs?: number;
+    operationTimeoutMs?: number;
+} | {
+    chainIds: readonly ChainId[];
+    source: BlockSource;
+    networks?: never;
+    requestTimeoutMs?: never;
+    operationTimeoutMs?: never;
+}
 
 export interface HeadWorkerOptions {
-    chainId: ChainId;
+    sourceConfig: SingleChainSourceConfig;
     delayBetweenTicksMs: number;
     confirmations: number;
     depthBlocks: number;
 }
 
 export interface FetchWorkerOptions {
-    chainId: ChainId;
+    sourceConfig: SingleChainSourceConfig;
     delayBetweenTicksMs: number;
     fetchBatchSize: number;
     fetchConcurrency: number;
@@ -59,7 +63,7 @@ export interface FetchWorkerOptions {
 }
 
 export interface SequencerWorkerOptions {
-    chainId: ChainId;
+    sourceConfig: SingleChainSourceConfig;
     delayBetweenTicksMs: number;
     maxBlocksPerTick: number;
 }
@@ -83,5 +87,5 @@ export interface BlockJobRecoveryOptions {
 }
 
 export interface PipelineMetricsOptions {
-    chainIds: readonly ChainId[];
+    sourceConfig: MultiChainSourceConfig;
 }

@@ -1,14 +1,14 @@
-import type { Block, Log, Provider, TransactionResponse } from "ethers";
+import { RpcEndpointDataError, RpcPoolManager } from "@drillcoder/ethers-rpc-pool";
+import type { RpcPoolLoggerEvent } from "@drillcoder/ethers-rpc-pool";
+import type { Block, Log, TransactionResponse } from "ethers";
 import type { BlockSource } from "../interfaces/block-source.js";
 import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
+import type { RpcNetworkConfig } from "../interfaces/options.js";
 import type { BlockNumber, ChainId, HashHex } from "../types/chain.js";
 import type { ChainBlock, ChainLog, ChainTransaction, FetchedBlock } from "../interfaces/chain.js";
-import { asChainId } from "../utils/chain.js";
 import { asErrorMessage } from "../utils/errors.js";
 import { asAddress, asHash32, asHexData } from "../utils/hex.js";
-
-export type EthersNetworkLike = Pick<Awaited<ReturnType<Provider["getNetwork"]>>, "chainId">;
 
 export type EthersTransactionLike = Omit<Pick<
     TransactionResponse,
@@ -30,8 +30,6 @@ export type EthersBlockLike = Pick<
 };
 
 export interface EthersProviderLike {
-    getNetwork(): Promise<EthersNetworkLike>;
-
     getBlockNumber(): Promise<BlockNumber>;
 
     getBlock(blockNumber: BlockNumber | "latest", prefetchTxs?: boolean): Promise<EthersBlockLike | null>;
@@ -41,86 +39,73 @@ export interface EthersProviderLike {
     getLogs(filter: { fromBlock: BlockNumber; toBlock: BlockNumber }): Promise<EthersLogLike[]>;
 }
 
-export interface EthersProviderPair {
-    provider: EthersProviderLike;
-    fallbackProvider?: EthersProviderLike;
-}
-
 export interface EthersBlockSourceOptions {
-    providerPairs: readonly EthersProviderPair[];
+    networks: readonly RpcNetworkConfig[];
+    requestTimeoutMs?: number;
+    operationTimeoutMs?: number;
     logger?: Logger;
 }
 
+const DEFAULT_RPC_REQUEST_TIMEOUT_MS = 30_000;
+const DEFAULT_RPC_OPERATION_TIMEOUT_MS = 60_000;
+
 export class EthersBlockSource implements BlockSource {
     private constructor(
-        private readonly providerPairMap: ReadonlyMap<ChainId, EthersProviderPair>,
-        private readonly logger: Logger,
+        private readonly pool: RpcPoolManager,
     ) {
     }
 
     static async create(options: EthersBlockSourceOptions): Promise<EthersBlockSource> {
-        const { providerPairs, logger = noopLogger } = options;
-
-        if (providerPairs.length === 0) {
-            throw new Error("Ethers source providerPairs must not be empty");
+        await Promise.resolve();
+        const {
+            networks,
+            requestTimeoutMs = DEFAULT_RPC_REQUEST_TIMEOUT_MS,
+            operationTimeoutMs = DEFAULT_RPC_OPERATION_TIMEOUT_MS,
+            logger = noopLogger,
+        } = options;
+        if (networks.length === 0) {
+            throw new TypeError("Ethers source networks must not be empty");
         }
+        const pool = new RpcPoolManager({
+            networks,
+            requestTimeoutMs,
+            operationTimeoutMs,
+            logger: (event) => {
+                logRpcPoolEvent(logger, event);
+            },
+        });
 
-        const providerPairMap = new Map<ChainId, EthersProviderPair>();
+        return new EthersBlockSource(pool);
+    }
 
-        for (const providerPair of providerPairs) {
-            const network = await providerPair.provider.getNetwork();
-            const chainId = asChainId(network.chainId, "Ethers source chain id");
-
-            if (providerPairMap.has(chainId)) {
-                throw new Error(`Ethers source chain id is duplicated: ${String(chainId)}`);
-            }
-
-            if (providerPair.fallbackProvider !== undefined) {
-                const fallbackNetwork = await providerPair.fallbackProvider.getNetwork();
-                const fallbackChainId = asChainId(fallbackNetwork.chainId, "Ethers fallback source chain id");
-
-                if (fallbackChainId !== chainId) {
-                    throw new Error(
-                        "Ethers fallback source chain id mismatch: "
-                        + `expected ${String(chainId)}, got ${String(fallbackChainId)}`
-                    );
-                }
-            }
-
-            providerPairMap.set(chainId, providerPair);
-        }
-
-        return new EthersBlockSource(providerPairMap, logger);
+    async close(): Promise<void> {
+        await this.pool.close();
     }
 
     async getLatestBlockNumber(chainId: ChainId): Promise<BlockNumber> {
-        return this.executeWithFallback(
+        return this.pool.executeWithRetry(
             chainId,
-            "getLatestBlockNumber",
-            {},
             async (provider) => provider.getBlockNumber(),
         );
     }
 
     async getLatestBlock(chainId: ChainId): Promise<ChainBlock> {
-        return this.executeWithFallback(chainId, "getLatestBlock", {}, async (provider) => {
+        return this.pool.executeWithRetry(chainId, async (provider) => {
             const block = await provider.getBlock("latest", false);
             return this.mapBlock(chainId, block, "latest");
         });
     }
 
     async getBlock(chainId: ChainId, blockNumber: BlockNumber): Promise<ChainBlock> {
-        return this.executeWithFallback(chainId, "getBlock", { blockNumber }, async (provider) => {
+        return this.pool.executeWithRetry(chainId, async (provider) => {
             const block = await provider.getBlock(blockNumber, false);
             return this.mapBlock(chainId, block, blockNumber);
         });
     }
 
     async getBlockData(chainId: ChainId, blockNumber: BlockNumber): Promise<FetchedBlock> {
-        return this.executeWithFallback(
+        return this.pool.executeWithRetry(
             chainId,
-            "getBlockData",
-            { blockNumber },
             async (provider) => this.loadBlockData(provider, chainId, blockNumber),
         );
     }
@@ -133,26 +118,26 @@ export class EthersBlockSource implements BlockSource {
         const block = await provider.getBlock(blockNumber, true);
 
         if (!block) {
-            throw new Error(
+            throw new RpcEndpointDataError(
                 `block not found for chain ${String(chainId)} at number ${String(blockNumber)}`
             );
         }
 
         if (block.hash === null) {
-            throw new Error(
+            throw new RpcEndpointDataError(
                 `block hash is missing for chain ${String(chainId)} at number ${String(block.number)}`
             );
         }
 
         if (block.number !== blockNumber) {
-            throw new Error(
+            throw new RpcEndpointDataError(
                 "block number mismatch for chain "
                 + `${String(chainId)}: expected ${String(blockNumber)}, got ${String(block.number)}`
             );
         }
 
-        const blockHash = asHash32(block.hash);
-        const parentHash = asHash32(block.parentHash);
+        const blockHash = mapEndpointData(() => asHash32(block.hash));
+        const parentHash = mapEndpointData(() => asHash32(block.parentHash));
 
         const transactions = await this.fetchTransactions(provider, chainId, block.number, blockHash, block);
         const logs = await this.fetchLogs(provider, chainId, block.number, blockHash);
@@ -170,70 +155,26 @@ export class EthersBlockSource implements BlockSource {
         };
     }
 
-    private getProviderPair(chainId: ChainId): EthersProviderPair {
-        const providerPair = this.providerPairMap.get(chainId);
-        if (providerPair === undefined) {
-            throw new Error(`provider not found for chain ${String(chainId)}`);
-        }
-
-        return providerPair;
-    }
-
-    private async executeWithFallback<TResult>(
-        chainId: ChainId,
-        operation: string,
-        meta: Record<string, unknown>,
-        execute: (provider: EthersProviderLike) => Promise<TResult>,
-    ): Promise<TResult> {
-        const { provider, fallbackProvider } = this.getProviderPair(chainId);
-
-        try {
-            return await execute(provider);
-        } catch (sourceError) {
-            if (fallbackProvider === undefined) {
-                throw sourceError;
-            }
-
-            this.logger.warn("ethers_source_provider_failed_fallback_started", {
-                chainId,
-                operation,
-                ...meta,
-                error: asErrorMessage(sourceError),
-            });
-
-            try {
-                return await execute(fallbackProvider);
-            } catch (fallbackError) {
-                throw new AggregateError(
-                    [sourceError, fallbackError],
-                    `Ethers source ${operation} failed on provider and fallback provider for chain `
-                    + `${String(chainId)}: provider: ${asErrorMessage(sourceError)}; `
-                    + `fallback: ${asErrorMessage(fallbackError)}`,
-                );
-            }
-        }
-    }
-
     private mapBlock(
         chainId: ChainId,
         block: EthersBlockLike | null,
         expectedBlock: BlockNumber | "latest",
     ): ChainBlock {
         if (!block) {
-            throw new Error(
+            throw new RpcEndpointDataError(
                 `block not found for chain ${String(chainId)} at ${String(expectedBlock)}`
             );
         }
 
         if (expectedBlock !== "latest" && block.number !== expectedBlock) {
-            throw new Error(
+            throw new RpcEndpointDataError(
                 "block number mismatch for chain "
                 + `${String(chainId)}: expected ${String(expectedBlock)}, got ${String(block.number)}`
             );
         }
 
         if (block.hash === null) {
-            throw new Error(
+            throw new RpcEndpointDataError(
                 `block hash is missing for chain ${String(chainId)} at number ${String(block.number)}`
             );
         }
@@ -241,8 +182,8 @@ export class EthersBlockSource implements BlockSource {
         return {
             chainId,
             number: block.number,
-            hash: asHash32(block.hash),
-            parentHash: asHash32(block.parentHash),
+            hash: mapEndpointData(() => asHash32(block.hash)),
+            parentHash: mapEndpointData(() => asHash32(block.parentHash)),
             timestamp: block.timestamp,
         };
     }
@@ -271,7 +212,7 @@ export class EthersBlockSource implements BlockSource {
                 block.transactions.map(async (hash) => {
                     const transaction = await provider.getTransaction(hash);
                     if (!transaction) {
-                        throw new Error(
+                        throw new RpcEndpointDataError(
                             "transaction not found for chain "
                             + `${String(chainId)} block ${String(blockNumber)} hash ${hash}`
                         );
@@ -294,28 +235,28 @@ export class EthersBlockSource implements BlockSource {
             transactionChainId !== null
             && transactionChainId !== BigInt(chainId)
         ) {
-            throw new Error(
+            throw new RpcEndpointDataError(
                 "transaction chain id mismatch for chain "
                 + `${String(chainId)} block ${String(blockNumber)} transaction ${transaction.hash}`
             );
         }
 
         if (transaction.blockNumber === null || transaction.blockNumber !== blockNumber) {
-            throw new Error(
+            throw new RpcEndpointDataError(
                 "transaction block number mismatch for chain "
                 + `${String(chainId)} block ${String(blockNumber)} transaction ${transaction.hash}`
             );
         }
 
         if (transaction.blockHash === null || transaction.blockHash !== blockHash) {
-            throw new Error(
+            throw new RpcEndpointDataError(
                 "transaction block hash mismatch for chain "
                 + `${String(chainId)} block ${String(blockNumber)} transaction ${transaction.hash}`
             );
         }
 
         if (!Number.isInteger(transaction.index) || transaction.index < 0) {
-            throw new Error(
+            throw new RpcEndpointDataError(
                 "transaction index is invalid for chain "
                 + `${String(chainId)} block ${String(blockNumber)} transaction ${transaction.hash}`
             );
@@ -326,10 +267,10 @@ export class EthersBlockSource implements BlockSource {
             blockNumber,
             blockHash,
             index: transaction.index,
-            hash: asHash32(transaction.hash),
-            to: transaction.to === null ? null : asAddress(transaction.to),
-            from: asAddress(transaction.from),
-            data: asHexData(transaction.data),
+            hash: mapEndpointData(() => asHash32(transaction.hash)),
+            to: transaction.to === null ? null : mapEndpointData(() => asAddress(transaction.to)),
+            from: mapEndpointData(() => asAddress(transaction.from)),
+            data: mapEndpointData(() => asHexData(transaction.data)),
             value: transaction.value.toString(),
         };
     }
@@ -344,21 +285,27 @@ export class EthersBlockSource implements BlockSource {
 
         return logs.map((log) => {
             if (log.blockNumber !== blockNumber) {
-                throw new Error(`log block number mismatch for chain ${String(chainId)} block ${String(blockNumber)}`);
+                throw new RpcEndpointDataError(
+                    `log block number mismatch for chain ${String(chainId)} block ${String(blockNumber)}`
+                );
             }
 
             if (log.blockHash !== blockHash) {
-                throw new Error(`log block hash mismatch for chain ${String(chainId)} block ${String(blockNumber)}`);
+                throw new RpcEndpointDataError(
+                    `log block hash mismatch for chain ${String(chainId)} block ${String(blockNumber)}`
+                );
             }
 
             if (!Number.isInteger(log.transactionIndex) || log.transactionIndex < 0) {
-                throw new Error(
+                throw new RpcEndpointDataError(
                     `log transaction index is invalid for chain ${String(chainId)} block ${String(blockNumber)}`
                 );
             }
 
             if (!Number.isInteger(log.index) || log.index < 0) {
-                throw new Error(`log index is invalid for chain ${String(chainId)} block ${String(blockNumber)}`);
+                throw new RpcEndpointDataError(
+                    `log index is invalid for chain ${String(chainId)} block ${String(blockNumber)}`
+                );
             }
 
             return {
@@ -366,12 +313,78 @@ export class EthersBlockSource implements BlockSource {
                 blockNumber,
                 blockHash,
                 transactionIndex: log.transactionIndex,
-                transactionHash: asHash32(log.transactionHash),
-                address: asAddress(log.address),
-                data: asHexData(log.data),
-                topics: log.topics.map((topic) => asHash32(topic)),
+                transactionHash: mapEndpointData(() => asHash32(log.transactionHash)),
+                address: mapEndpointData(() => asAddress(log.address)),
+                data: mapEndpointData(() => asHexData(log.data)),
+                topics: log.topics.map((topic) => mapEndpointData(() => asHash32(topic))),
                 index: log.index,
             };
         });
+    }
+}
+
+function mapEndpointData<TResult>(map: () => TResult): TResult {
+    try {
+        return map();
+    } catch (error) {
+        throw new RpcEndpointDataError(asErrorMessage(error), { cause: error });
+    }
+}
+
+function logRpcPoolEvent(logger: Logger, event: RpcPoolLoggerEvent): void {
+    const endpoint = {
+        chainId: event.chainId,
+        endpointNumber: event.endpointNumber,
+        hostname: event.hostname,
+        timestamp: event.timestamp,
+    };
+
+    switch (event.type) {
+        case "request":
+            logger.debug("rpc_pool_request", {
+                ...endpoint,
+                method: event.method,
+                startedAt: event.startedAt,
+            });
+            break;
+        case "response":
+            logger.debug("rpc_pool_response", {
+                ...endpoint,
+                method: event.method,
+                startedAt: event.startedAt,
+                finishedAt: event.finishedAt,
+                durationMs: event.durationMs,
+            });
+            break;
+        case "error":
+            logger.warn("rpc_pool_error", {
+                ...endpoint,
+                method: event.method,
+                startedAt: event.startedAt,
+                finishedAt: event.finishedAt,
+                durationMs: event.durationMs,
+                category: event.category,
+                ...(event.httpStatus === undefined ? {} : { httpStatus: event.httpStatus }),
+                ...(event.retryAfterMs === undefined ? {} : { retryAfterMs: event.retryAfterMs }),
+            });
+            break;
+        case "switch":
+            logger.info("rpc_pool_endpoint_switched", {
+                ...endpoint,
+                category: event.category,
+                nextEndpointNumber: event.nextEndpointNumber,
+                nextHostname: event.nextHostname,
+            });
+            break;
+        case "cooldown":
+            logger.warn("rpc_pool_endpoint_cooldown_started", {
+                ...endpoint,
+                category: event.category,
+                cooldownUntil: event.cooldownUntil,
+            });
+            break;
+        case "recovery":
+            logger.info("rpc_pool_endpoint_recovered", endpoint);
+            break;
     }
 }

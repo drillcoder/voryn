@@ -1,4 +1,3 @@
-import { JsonRpcProvider } from "ethers";
 import { PostgresTransactionManager } from "../../src/postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../../src/repositories/postgres/block-jobs-repository.js";
 import { PostgresBlocksRepository } from "../../src/repositories/postgres/blocks-repository.js";
@@ -66,7 +65,7 @@ describeLive("live rpc pipeline", () => {
         const eventsRepository = new PostgresEventsRepository(db.pool);
 
         const source = await EthersBlockSource.create({
-            providerPairs: [{ provider: new JsonRpcProvider(rpcUrl) }],
+            networks: [{ chainId, rpcUrls: [rpcUrl] }],
         });
 
         const latest = await source.getLatestBlockNumber(chainId);
@@ -138,5 +137,7 @@ describeLive("live rpc pipeline", () => {
             "events",
             `chain_id = ${String(chainId)} AND block_number = ${String(latest)}`
         )).resolves.toBe(expected.logs.length);
+
+        await source.close();
     }, 30_000);
 });

@@ -4,6 +4,7 @@ import {
     createDevLogger,
     envNumber,
     envValue,
+    envValues,
     runWithErrorHandling,
     runWorkerLifecycle,
 } from "./runtime.js";
@@ -12,12 +13,14 @@ async function run(): Promise<void> {
     const options: CreateFetchWorkerOptions = {
         dbUrl: envValue("DATABASE_URL", ""),
         logger: createDevLogger(),
-        chainId: envNumber("VORYN_CHAIN_ID", "0"),
-        rpcConfig: {
-            rpcUrl: envValue("VORYN_FETCH_RPC_URL", ""),
-            fallbackRpcUrl: envValue("VORYN_FETCH_FALLBACK_RPC_URL", ""),
+        sourceConfig: {
+            network: {
+                chainId: envNumber("VORYN_CHAIN_ID", "0"),
+                rpcUrls: envValues("VORYN_FETCH_RPC_URLS", ""),
+            },
+            requestTimeoutMs: envNumber("VORYN_FETCH_RPC_REQUEST_TIMEOUT_MS", "30000"),
+            operationTimeoutMs: envNumber("VORYN_FETCH_RPC_OPERATION_TIMEOUT_MS", "60000"),
         },
-        rpcRequestTimeoutMs: envNumber("VORYN_FETCH_RPC_REQUEST_TIMEOUT_MS", "30000"),
         delayBetweenTicksMs: envNumber("VORYN_FETCH_DELAY_BETWEEN_TICKS_MS", "100"),
         fetchBatchSize: envNumber("VORYN_FETCH_BATCH_SIZE", "10"),
         fetchConcurrency: envNumber("VORYN_FETCH_CONCURRENCY", "1"),

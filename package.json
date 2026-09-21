@@ -57,6 +57,7 @@
 		"access": "public"
 	},
 	"dependencies": {
+		"@drillcoder/ethers-rpc-pool": "^1.0.0",
 		"@types/pg": "^8.21.0",
 		"ethers": "^6.16.0",
 		"pg": "^8.23.0"

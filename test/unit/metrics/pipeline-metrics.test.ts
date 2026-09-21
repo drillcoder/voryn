@@ -6,56 +6,31 @@ import {
     createNoopWorkerCursorsRepository,
 } from "../helpers/pipeline-test-helpers.js";
 import { asHash32 } from "../../../src/utils/hex.js";
-
-jest.mock("ethers", () => {
-    class FetchRequest {
-        readonly url: string;
-
-        constructor(url: string) {
-            this.url = url;
-        }
-    }
-
-    return {
-        FetchRequest,
-        isHexString: (value: unknown, length?: number) => (
-            typeof value === "string"
-            && /^0x[0-9a-fA-F]*$/.test(value)
-            && (length === undefined || value.length === 2 + length * 2)
-        ),
-        isAddress: (value: unknown) => (
-            typeof value === "string"
-            && /^0x[0-9a-fA-F]{40}$/.test(value)
-        ),
-        getBytes: (value: unknown) => {
-            if (typeof value !== "string" || !/^0x(?:[0-9a-fA-F]{2})*$/.test(value)) {
-                throw new Error("invalid bytes");
-            }
-
-            return new Uint8Array();
-        },
-        JsonRpcProvider: jest.fn().mockImplementation((request: { url: string }) => ({
-            getNetwork: async () => ({ chainId: BigInt(request.url.endsWith("/8") ? 8 : 7) }),
-            getBlock: async () => ({
-                number: request.url.endsWith("/8") ? 80 : 70,
-                hash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                parentHash: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-                timestamp: request.url.endsWith("/8") ? 800 : 700,
-                transactions: [],
-                prefetchedTransactions: [],
-            }),
-        })),
-    };
-});
+import type { BlockSource } from "../../../src/interfaces/block-source.js";
 
 const HASH = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+const source: BlockSource = {
+    getLatestBlockNumber: async (chainId) => chainId * 10,
+    getLatestBlock: async (chainId) => ({
+        chainId,
+        number: chainId * 10,
+        hash: HASH,
+        parentHash: HASH,
+        timestamp: chainId * 100,
+    }),
+    getBlock: async () => {
+        throw new Error("not expected");
+    },
+    getBlockData: async () => {
+        throw new Error("not expected");
+    },
+};
 
 const config = {
-    chainIds: [7, 8],
-    rpcConfigs: [
-        { rpcUrl: "http://127.0.0.1/7" },
-        { rpcUrl: "http://127.0.0.1/8" },
-    ],
+    sourceConfig: {
+        chainIds: [7, 8],
+        source,
+    },
 };
 
 test("pipeline metrics create wires aggregate service execution", async () => {
@@ -101,28 +76,18 @@ test("pipeline metrics returns prometheus text for all configured chains", async
 });
 
 test.each([
-    [{ chainIds: [], rpcConfigs: [] }, "Pipeline metrics chainIds config must not be empty"],
+    [{ sourceConfig: { chainIds: [], source } }, "Pipeline metrics chainIds config must not be empty"],
     [
-        { chainIds: [7, 8], rpcConfigs: [{ rpcUrl: "http://127.0.0.1/7" }] },
-        "Pipeline metrics chainIds and rpcConfigs must have the same length",
-    ],
-    [
-        {
-            chainIds: [7, 7],
-            rpcConfigs: [
-                { rpcUrl: "http://127.0.0.1/7" },
-                { rpcUrl: "http://127.0.0.1/8" },
-            ],
-        },
+        { sourceConfig: { chainIds: [7, 7], source } },
         "Pipeline metrics chain id is duplicated: 7",
     ],
     [
-        { chainIds: [0], rpcConfigs: [{ rpcUrl: "http://127.0.0.1/7" }] },
+        { sourceConfig: { chainIds: [0], source } },
         "Pipeline metrics chain id is invalid: 0",
     ],
     [
-        { chainIds: [7], rpcConfigs: [{ rpcUrl: " " }] },
-        "Ethers source rpcUrl is empty",
+        { sourceConfig: { networks: [{ chainId: 7, rpcUrls: [" "] }] } },
+        "networks[0].rpcUrls[0] must be a valid HTTP or HTTPS URL",
     ],
 ])("pipeline metrics rejects invalid source config", async (invalidConfig, expectedError) => {
     await expect(PipelineMetrics.create({

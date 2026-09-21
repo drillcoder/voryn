@@ -14,6 +14,13 @@ export function envNumber(name: string, defaultValue: string): number {
     return Number(envValue(name, defaultValue));
 }
 
+export function envValues(name: string, defaultValue: string): string[] {
+    return envValue(name, defaultValue)
+        .split(",")
+        .map((value) => value.trim())
+        .filter((value) => value !== "");
+}
+
 export function createDevLogger(): Logger {
     return new ConsoleLogger({ minLevel: envValue("VORYN_LOG_LEVEL", "info") as LogLevel });
 }

@@ -22,48 +22,23 @@ import {
     transactionManager,
 } from "../helpers/pipeline-test-helpers.js";
 import type { EventReactionHandler, TransactionReactionHandler } from "../../../src/interfaces/reaction.js";
-import type { FetchWorkerOptions, ReactionWorkerOptions } from "../../../src/interfaces/options.js";
+import type {
+    FetchWorkerOptions,
+    ReactionWorkerOptions,
+    SingleChainSourceConfig,
+} from "../../../src/interfaces/options.js";
 import type { WorkerCursorsRepository } from "../../../src/interfaces/repositories.js";
-
-jest.mock("ethers", () => {
-    class FetchRequest {
-        readonly url: string;
-
-        constructor(url: string) {
-            this.url = url;
-        }
-    }
-
-    return {
-        FetchRequest,
-        isHexString: (value: unknown, length?: number) => (
-            typeof value === "string"
-            && /^0x[0-9a-fA-F]*$/.test(value)
-            && (length === undefined || value.length === 2 + length * 2)
-        ),
-        isAddress: (value: unknown) => (
-            typeof value === "string"
-            && /^0x[0-9a-fA-F]{40}$/.test(value)
-        ),
-        getBytes: (value: unknown) => {
-            if (typeof value !== "string" || !/^0x(?:[0-9a-fA-F]{2})*$/.test(value)) {
-                throw new Error("invalid bytes");
-            }
-
-            return new Uint8Array();
-        },
-        JsonRpcProvider: jest.fn().mockImplementation(() => ({
-            getNetwork: async () => ({ chainId: 1n }),
-        })),
-    };
-});
+import { RpcPoolManager } from "@drillcoder/ethers-rpc-pool";
 
 jest.mock("../../../src/postgres/schema.js", () => ({
     validatePostgresSchema: jest.fn(async () => undefined),
 }));
 
-const fetchConfig: FetchWorkerOptions = {
-    chainId: 1,
+beforeEach(() => {
+    jest.mocked(validatePostgresSchema).mockClear();
+});
+
+const fetchConfig: Omit<FetchWorkerOptions, "sourceConfig"> = {
     delayBetweenTicksMs: 1000,
     fetchBatchSize: 1,
     fetchConcurrency: 1,
@@ -72,6 +47,13 @@ const fetchConfig: FetchWorkerOptions = {
     retryBaseDelayMs: 100,
     retryMaxDelayMs: 1000,
 };
+
+const rpcSourceConfig = (chainId = 1): SingleChainSourceConfig => ({
+    network: {
+        chainId,
+        rpcUrls: ["http://127.0.0.1:8545"],
+    },
+});
 
 const reactionConfig: ReactionWorkerOptions = {
     chainId: 1,
@@ -92,11 +74,11 @@ const workerCursorsRepository: WorkerCursorsRepository = {
     advance: async () => undefined,
 };
 
-test("fetch worker creates ethers source when rpcConfig is provided", async () => {
+test("fetch worker creates ethers source when an RPC source config is provided", async () => {
     const worker = await FetchWorker.create({
         logLevel: "error",
         ...fetchConfig,
-        rpcConfig: { rpcUrl: "http://127.0.0.1:8545" },
+        sourceConfig: rpcSourceConfig(),
         overrides: {
             blockJobsRepository: createNoopBlockJobsRepository(),
             blocksRepository: createNoopBlocksRepository(),
@@ -106,15 +88,21 @@ test("fetch worker creates ethers source when rpcConfig is provided", async () =
         },
     });
     const service = Reflect.get(worker, "service") as FetchService;
+    const source = Reflect.get(service, "source") as EthersBlockSource;
 
-    expect(Reflect.get(service, "source")).toBeInstanceOf(EthersBlockSource);
+    expect(source).toBeInstanceOf(EthersBlockSource);
     expect(validatePostgresSchema).not.toHaveBeenCalled();
+
+    await worker.stop();
+
+    const pool = Reflect.get(source, "pool") as { getSnapshot(): { closed: boolean } };
+    expect(pool.getSnapshot().closed).toBe(true);
 });
 
 test("fetch worker creates default logger with min level", async () => {
     const worker = await FetchWorker.create({
         ...fetchConfig,
-        rpcConfig: { rpcUrl: "http://127.0.0.1:8545" },
+        sourceConfig: rpcSourceConfig(),
         logLevel: "warn",
         overrides: {
             blockJobsRepository: createNoopBlockJobsRepository(),
@@ -134,6 +122,77 @@ test("fetch worker creates default logger with min level", async () => {
     }
     expect(Reflect.get(workerLogger, "minLevel")).toBe("warn");
     expect(serviceLogger).toBe(workerLogger);
+    await worker.stop();
+});
+
+test("fetch worker does not close a custom block source", async () => {
+    const close = jest.fn(async () => undefined);
+    const source = {
+        close,
+        getLatestBlockNumber: async () => 0,
+        getLatestBlock: async () => {
+            throw new Error("not expected");
+        },
+        getBlock: async () => {
+            throw new Error("not expected");
+        },
+        getBlockData: async () => {
+            throw new Error("not expected");
+        },
+    };
+    const worker = await FetchWorker.create({
+        logLevel: "error",
+        ...fetchConfig,
+        sourceConfig: { chainId: 1, source },
+        overrides: {
+            blockJobsRepository: createNoopBlockJobsRepository(),
+            blocksRepository: createNoopBlocksRepository(),
+            transactionsRepository: createNoopTransactionsRepository(),
+            eventsRepository: createNoopEventsRepository(),
+            transactionManager,
+        },
+    });
+
+    await worker.stop();
+
+    expect(close).not.toHaveBeenCalled();
+});
+
+test("RPC-backed workers close their pool when database initialization fails", async () => {
+    const initializationError = new Error("schema validation failed");
+    const closeSpy = jest.spyOn(RpcPoolManager.prototype, "close");
+    const dbUrl = "postgresql://voryn:voryn@127.0.0.1:5432/voryn";
+    const sourceConfig = rpcSourceConfig();
+
+    jest.mocked(validatePostgresSchema).mockRejectedValueOnce(initializationError);
+    await expect(FetchWorker.create({
+        logLevel: "error",
+        ...fetchConfig,
+        sourceConfig,
+        dbUrl,
+    })).rejects.toBe(initializationError);
+
+    jest.mocked(validatePostgresSchema).mockRejectedValueOnce(initializationError);
+    await expect(HeadWorker.create({
+        logLevel: "error",
+        confirmations: 0,
+        delayBetweenTicksMs: 1000,
+        depthBlocks: 10,
+        sourceConfig,
+        dbUrl,
+    })).rejects.toBe(initializationError);
+
+    jest.mocked(validatePostgresSchema).mockRejectedValueOnce(initializationError);
+    await expect(SequencerWorker.create({
+        logLevel: "error",
+        delayBetweenTicksMs: 1000,
+        maxBlocksPerTick: 1,
+        sourceConfig,
+        dbUrl,
+    })).rejects.toBe(initializationError);
+
+    expect(closeSpy).toHaveBeenCalledTimes(3);
+    closeSpy.mockRestore();
 });
 
 test("fetch worker merges db defaults with overrides and returns disposer", async () => {
@@ -141,7 +200,7 @@ test("fetch worker merges db defaults with overrides and returns disposer", asyn
     const worker = await FetchWorker.create({
         logLevel: "error",
         ...fetchConfig,
-        rpcConfig: { rpcUrl: "http://127.0.0.1:8545" },
+        sourceConfig: rpcSourceConfig(),
         dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
         overrides: {
             blockJobsRepository: {
@@ -181,11 +240,10 @@ test("event reaction worker creates leader lock from worker identity", async () 
 test("head worker with dbUrl returns singleton lock and disposer", async () => {
     const worker = await HeadWorker.create({
         logLevel: "error",
-        chainId: 7,
         confirmations: 1,
         delayBetweenTicksMs: 1000,
         depthBlocks: 10,
-        rpcConfig: { rpcUrl: "http://127.0.0.1:8545" },
+        sourceConfig: rpcSourceConfig(7),
         dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
         overrides: {
             leaderLock,
@@ -201,10 +259,9 @@ test("head worker with dbUrl returns singleton lock and disposer", async () => {
 test("sequencer worker with dbUrl returns singleton lock and disposer", async () => {
     const worker = await SequencerWorker.create({
         logLevel: "error",
-        chainId: 7,
         delayBetweenTicksMs: 1000,
         maxBlocksPerTick: 1,
-        rpcConfig: { rpcUrl: "http://127.0.0.1:8545" },
+        sourceConfig: rpcSourceConfig(7),
         dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
         overrides: {
             leaderLock,

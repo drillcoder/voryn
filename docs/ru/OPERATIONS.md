@@ -49,13 +49,23 @@ await worker.start();
 
 Общие options:
 
-- `chainId`: numeric chain id для воркера.
 - `delayBetweenTicksMs`: пауза между ticks воркера.
 - `dbUrl`: строка подключения к PostgreSQL, если зависимости не переданы через `overrides`.
 - `logLevel` или `logger`: встроенный уровень логирования или свой logger.
-- `rpcConfig` или `source`: block source для `HeadWorker`, `FetchWorker` и `SequencerWorker`. `rpcConfig` содержит
-  обязательный `rpcUrl` и опциональный `fallbackRpcUrl`.
-- `rpcRequestTimeoutMs`: таймаут одного HTTP-запроса к любому из настроенных RPC URL; по умолчанию `30_000`.
+- `sourceConfig`: конфигурация block source для `HeadWorker`, `FetchWorker` и `SequencerWorker`. Для пользовательского
+  source используется `{ chainId, source }`, для RPC — `{ network: { chainId, rpcUrls }, ...timeouts }`. Поле
+  `network` существует только в RPC-ветке.
+- `sourceConfig.requestTimeoutMs`: таймаут одного HTTP-запроса; по умолчанию `30_000`.
+- `sourceConfig.operationTimeoutMs`: общий deadline закреплённой операции, включая переключения endpoint и ожидание
+  cooldown; по умолчанию `60_000`.
+
+RPC pool полностью повторяет допустимую операцию на другом endpoint. Fetch pipeline повторяет block job только после
+ошибки pool operation. Оставляйте `fetchClaimTtlMs` заметно больше `operationTimeoutMs`, чтобы сохранить время на
+запись данных в БД.
+
+Активность pool попадает в настроенный logger Voryn как `rpc_pool_request`, `rpc_pool_response`, `rpc_pool_error`,
+`rpc_pool_endpoint_switched`, `rpc_pool_endpoint_cooldown_started` и `rpc_pool_endpoint_recovered`. События содержат
+`chainId`, `endpointNumber` и `hostname`, но не полный URL, query-параметры, данные авторизации или RPC payload.
 
 `HeadWorker`:
 

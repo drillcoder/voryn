@@ -1,17 +1,19 @@
 import type { CreatePipelineMetricsOptions } from "../src/index.js";
 import { PipelineMetrics } from "../src/index.js";
-import { createDevLogger, envNumber, envValue, runWithErrorHandling } from "./runtime.js";
+import { createDevLogger, envNumber, envValue, envValues, runWithErrorHandling } from "./runtime.js";
 
 async function run(): Promise<void> {
     const options: CreatePipelineMetricsOptions = {
         dbUrl: envValue("DATABASE_URL", ""),
         logger: createDevLogger(),
-        chainIds: [envNumber("VORYN_CHAIN_ID", "0")],
-        rpcConfigs: [{
-            rpcUrl: envValue("VORYN_METRICS_RPC_URL", ""),
-            fallbackRpcUrl: envValue("VORYN_METRICS_FALLBACK_RPC_URL", ""),
-        }],
-        rpcRequestTimeoutMs: envNumber("VORYN_METRICS_RPC_REQUEST_TIMEOUT_MS", "5000"),
+        sourceConfig: {
+            networks: [{
+                chainId: envNumber("VORYN_CHAIN_ID", "0"),
+                rpcUrls: envValues("VORYN_METRICS_RPC_URLS", ""),
+            }],
+            requestTimeoutMs: envNumber("VORYN_METRICS_RPC_REQUEST_TIMEOUT_MS", "5000"),
+            operationTimeoutMs: envNumber("VORYN_METRICS_RPC_OPERATION_TIMEOUT_MS", "60000"),
+        },
     };
     const metrics = await PipelineMetrics.create(options);
 

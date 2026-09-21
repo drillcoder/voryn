@@ -49,13 +49,24 @@ Use this order for a new environment:
 
 Common options:
 
-- `chainId`: numeric chain id for the worker.
 - `delayBetweenTicksMs`: pause between worker ticks.
 - `dbUrl`: PostgreSQL connection string, unless dependencies are provided through `overrides`.
 - `logLevel` or `logger`: built-in log level or custom logger.
-- `rpcConfig` or `source`: block source for `HeadWorker`, `FetchWorker`, and `SequencerWorker`. `rpcConfig`
-  contains the required `rpcUrl` and an optional `fallbackRpcUrl`.
-- `rpcRequestTimeoutMs`: timeout for one HTTP request to either configured RPC URL; defaults to `30_000`.
+- `sourceConfig`: block-source configuration for `HeadWorker`, `FetchWorker`, and `SequencerWorker`. Use either
+  `{ chainId, source }` for a custom source or `{ network: { chainId, rpcUrls }, ...timeouts }` for RPC. `network`
+  exists only in the RPC branch.
+- `sourceConfig.requestTimeoutMs`: timeout for one HTTP request; defaults to `30_000`.
+- `sourceConfig.operationTimeoutMs`: deadline for the complete pinned operation, including endpoint switches and
+  cooldown waits; defaults to `60_000`.
+
+The RPC pool retries an eligible operation from the beginning on another endpoint. The fetch pipeline retries the
+block job only after the pool operation fails. Keep `fetchClaimTtlMs` comfortably above `operationTimeoutMs` to leave
+time for database writes.
+
+Pool activity is emitted through the configured Voryn logger as `rpc_pool_request`, `rpc_pool_response`,
+`rpc_pool_error`, `rpc_pool_endpoint_switched`, `rpc_pool_endpoint_cooldown_started`, and
+`rpc_pool_endpoint_recovered`. Events include `chainId`, `endpointNumber`, and `hostname`, but never the full URL,
+query parameters, authorization data, or RPC payloads.
 
 `HeadWorker`:
 

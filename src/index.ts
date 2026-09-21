@@ -41,15 +41,15 @@ export type {
     BlockJobRecoveryOptions,
     FetchWorkerOptions,
     HeadWorkerOptions,
-    MultiSourceOptions,
+    MultiChainSourceConfig,
     PipelineMetricsOptions,
     ReactionWorkerOptions,
     RetentionWorkerOptions,
-    RpcConfig,
+    RpcNetworkConfig,
     RuntimeDbOptions,
     RuntimeLoggerOptions,
     SequencerWorkerOptions,
-    SingleSourceOptions,
+    SingleChainSourceConfig,
 } from "./interfaces/options.js";
 export type {
     EventReactionHandler,
@@ -106,17 +106,6 @@ export type {
 
 export { ConsoleLogger } from "./loggers/console-logger.js";
 export type { ConsoleLoggerOptions, ConsoleLogWriter, LogLevel } from "./loggers/console-logger.js";
-
-export { EthersBlockSource } from "./adapters/ethers-block-source.js";
-export type {
-    EthersBlockSourceOptions,
-    EthersBlockLike,
-    EthersLogLike,
-    EthersNetworkLike,
-    EthersProviderPair,
-    EthersProviderLike,
-    EthersTransactionLike,
-} from "./adapters/ethers-block-source.js";
 
 export { applySqlFileToPostgresDb, validatePostgresSchema } from "./postgres/schema.js";
 export type { ApplySqlFileToPostgresDbConfig, ValidatePostgresSchemaConfig } from "./postgres/schema.js";

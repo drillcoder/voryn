@@ -50,7 +50,7 @@ describe("integration workers: lifecycle and wiring", () => {
 
         const worker = await FetchWorker.create({
             logLevel: "error",
-            chainId: 1,
+            sourceConfig: { chainId: 1, source: idleSource },
             delayBetweenTicksMs: 1,
             fetchBatchSize: 1,
             fetchConcurrency: 1,
@@ -58,7 +58,6 @@ describe("integration workers: lifecycle and wiring", () => {
             retryMaxAttempts: 3,
             retryBaseDelayMs: 10,
             retryMaxDelayMs: 1000,
-            source: idleSource,
             overrides: {
                 blockJobsRepository,
                 blocksRepository,
@@ -81,7 +80,7 @@ describe("integration workers: lifecycle and wiring", () => {
 
         const worker = await FetchWorker.create({
             logLevel: "error",
-            chainId: 1,
+            sourceConfig: { chainId: 1, source: idleSource },
             delayBetweenTicksMs: 1,
             fetchBatchSize: 1,
             fetchConcurrency: 1,
@@ -89,7 +88,6 @@ describe("integration workers: lifecycle and wiring", () => {
             retryMaxAttempts: 3,
             retryBaseDelayMs: 10,
             retryMaxDelayMs: 1000,
-            source: idleSource,
             overrides: {
                 blockJobsRepository,
                 blocksRepository,
@@ -119,11 +117,10 @@ describe("integration workers: lifecycle and wiring", () => {
 
         const workerA = await HeadWorker.create({
             logLevel: "error",
-            chainId: 1,
+            sourceConfig: { chainId: 1, source: idleSource },
             confirmations: 10,
             delayBetweenTicksMs: 1,
             depthBlocks: 64,
-            source: idleSource,
             overrides: {
                 chainCursorRepository,
                 blockJobsRepository,
@@ -136,11 +133,10 @@ describe("integration workers: lifecycle and wiring", () => {
         });
         const workerB = await HeadWorker.create({
             logLevel: "error",
-            chainId: 1,
+            sourceConfig: { chainId: 1, source: idleSource },
             confirmations: 10,
             delayBetweenTicksMs: 1,
             depthBlocks: 64,
-            source: idleSource,
             overrides: {
                 chainCursorRepository,
                 blockJobsRepository,

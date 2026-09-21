@@ -16,7 +16,7 @@ Main commands:
 ## Docker (dev)
 
 For docker-compose, `VORYN_CHAIN_ID` is required (`is required`), and RPC variables are required per worker:
-`VORYN_HEAD_RPC_URL`, `VORYN_FETCH_RPC_URL`.
+`VORYN_HEAD_RPC_URLS`, `VORYN_FETCH_RPC_URLS`.
 They are read from the environment.
 Start with `dev/.env.example`:
 
@@ -53,18 +53,18 @@ Main environment variables:
 
 For `head`:
 
-- `VORYN_HEAD_RPC_URL` (`required`) — RPC URL for reading the current network head.
-- `VORYN_HEAD_FALLBACK_RPC_URL` (`required`) — fallback RPC URL used on an error.
+- `VORYN_HEAD_RPC_URLS` (`required`) — comma-separated RPC URLs for reading the current network head.
 - `VORYN_HEAD_RPC_REQUEST_TIMEOUT_MS` (`optional`, default `5_000`) — timeout for one HTTP RPC request.
+- `VORYN_HEAD_RPC_OPERATION_TIMEOUT_MS` (`optional`, default `60_000`) — deadline for one complete RPC operation.
 - `VORYN_HEAD_DELAY_BETWEEN_TICKS_MS` (`optional`, default `1_000`) — delay between ticks in milliseconds.
 - `VORYN_HEAD_CONFIRMATIONS` (`optional`, default `0`) — number of confirmations before enqueuing a block.
 - `VORYN_HEAD_DEPTH_BLOCKS` (`optional`, default `65_000`, must be `> 0`) — allowed lag from `safe head` in blocks. If `last_committed_block` falls below this range, `head` rebases to the available RPC history boundary.
 
 For `fetch`:
 
-- `VORYN_FETCH_RPC_URL` (`required`) — RPC URL for loading block data.
-- `VORYN_FETCH_FALLBACK_RPC_URL` (`required`) — fallback RPC URL used on an error.
+- `VORYN_FETCH_RPC_URLS` (`required`) — comma-separated RPC URLs for loading block data.
 - `VORYN_FETCH_RPC_REQUEST_TIMEOUT_MS` (`optional`, default `30_000`) — timeout for one HTTP RPC request.
+- `VORYN_FETCH_RPC_OPERATION_TIMEOUT_MS` (`optional`, default `60_000`) — deadline for one complete RPC operation.
 - `VORYN_FETCH_DELAY_BETWEEN_TICKS_MS` (`optional`, default `100`) — delay between ticks in milliseconds.
 - `VORYN_FETCH_BATCH_SIZE` (`optional`, default `10`) — maximum jobs per `tick`.
 - `VORYN_FETCH_CONCURRENCY` (`optional`, default `1`) — maximum jobs that `fetch` processes concurrently.
@@ -75,9 +75,9 @@ For `fetch`:
 
 For `sequencer`:
 
-- `VORYN_SEQUENCER_RPC_URL` (`optional`) — RPC URL for checking the current branch during chain reorganization.
-- `VORYN_SEQUENCER_FALLBACK_RPC_URL` (`required`) — fallback RPC URL used on an error.
+- `VORYN_SEQUENCER_RPC_URLS` (`required`) — comma-separated RPC URLs for checking the current branch during chain reorganization.
 - `VORYN_SEQUENCER_RPC_REQUEST_TIMEOUT_MS` (`optional`, default `5_000`) — timeout for one HTTP RPC request.
+- `VORYN_SEQUENCER_RPC_OPERATION_TIMEOUT_MS` (`optional`, default `60_000`) — deadline for one complete RPC operation.
 - `VORYN_SEQUENCER_DELAY_BETWEEN_TICKS_MS` (`optional`, default `100`) — delay between sequencer ticks.
 - `VORYN_SEQUENCER_MAX_BLOCKS_PER_TICK` (`optional`, default `10`) — maximum number of blocks the sequencer processes in one `tick`.
 
@@ -102,9 +102,9 @@ npm exec -- tsx --tsconfig dev/tsconfig.json dev/metrics.ts
 
 For `metrics`:
 
-- `VORYN_METRICS_RPC_URL` (`required`) — RPC URL for reading the current latest block.
-- `VORYN_METRICS_FALLBACK_RPC_URL` (`required`) — fallback RPC URL used on an error.
+- `VORYN_METRICS_RPC_URLS` (`required`) — comma-separated RPC URLs for reading the current latest block.
 - `VORYN_METRICS_RPC_REQUEST_TIMEOUT_MS` (`optional`, default `5_000`) — timeout for one HTTP RPC request.
+- `VORYN_METRICS_RPC_OPERATION_TIMEOUT_MS` (`optional`, default `60_000`) — deadline for one complete RPC operation.
 
 Return failed block jobs to processing:
 
@@ -127,7 +127,7 @@ Example:
 ```bash
 DATABASE_URL="postgres://user:pass@localhost:5432/voryn" \
 VORYN_CHAIN_ID=1 \
-VORYN_HEAD_RPC_URL="https://rpc.example.org" \
+VORYN_HEAD_RPC_URLS="https://rpc.example.org,https://fallback-rpc.example.org" \
 npm exec -- tsx --tsconfig dev/tsconfig.json dev/head.ts
 ```
 

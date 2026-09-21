@@ -5,8 +5,9 @@ const config = {
   testEnvironment: 'node',
   testMatch: ['<rootDir>/test/**/*.test.ts'],
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', { tsconfig: '<rootDir>/test/tsconfig.json' }],
+    '^.+\\.[tj]sx?$': ['ts-jest', { tsconfig: '<rootDir>/test/tsconfig.json' }],
   },
+  transformIgnorePatterns: ['/node_modules/(?!@drillcoder/ethers-rpc-pool/)'],
   collectCoverageFrom: ['<rootDir>/src/**/*.ts', '!<rootDir>/src/**/*.d.ts'],
   coverageDirectory: '<rootDir>/coverage',
   coverageReporters: ['text', 'lcov', 'html'],
@@ -19,6 +20,7 @@ const config = {
     },
   },
   moduleNameMapper: {
+    '^@drillcoder/ethers-rpc-pool$': '<rootDir>/node_modules/@drillcoder/ethers-rpc-pool/dist/index.js',
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
 };

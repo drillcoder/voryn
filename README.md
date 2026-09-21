@@ -122,26 +122,29 @@ The minimal ingestion pipeline consists of `head`, `fetch`, and `sequencer`. In 
 import { FetchWorker, HeadWorker, SequencerWorker } from "@drillcoder/voryn";
 
 const dbUrl = "postgres://user:pass@localhost:5432/voryn";
-const rpcConfig = {
-    rpcUrl: "https://rpc.example.org",
-    fallbackRpcUrl: "https://fallback-rpc.example.org",
-};
+const rpcUrls = ["https://rpc.example.org", "https://fallback-rpc.example.org"];
 const chainId = 1;
 const logLevel = "info";
 
 const headOptions = {
-    chainId,
+    sourceConfig: {
+        network: { chainId, rpcUrls },
+        requestTimeoutMs: 5_000,
+        operationTimeoutMs: 60_000,
+    },
     delayBetweenTicksMs: 1_000,
     confirmations: 12,
     depthBlocks: 65_000,
     logLevel,
     dbUrl,
-    rpcConfig,
-    rpcRequestTimeoutMs: 5_000,
 };
 
 const fetchOptions = {
-    chainId,
+    sourceConfig: {
+        network: { chainId, rpcUrls },
+        requestTimeoutMs: 30_000,
+        operationTimeoutMs: 60_000,
+    },
     delayBetweenTicksMs: 100,
     fetchBatchSize: 10,
     fetchConcurrency: 2,
@@ -151,18 +154,18 @@ const fetchOptions = {
     retryMaxDelayMs: 10_000,
     logLevel,
     dbUrl,
-    rpcConfig,
-    rpcRequestTimeoutMs: 30_000,
 };
 
 const sequencerOptions = {
-    chainId,
+    sourceConfig: {
+        network: { chainId, rpcUrls },
+        requestTimeoutMs: 5_000,
+        operationTimeoutMs: 60_000,
+    },
     delayBetweenTicksMs: 100,
     maxBlocksPerTick: 10,
     logLevel,
     dbUrl,
-    rpcConfig,
-    rpcRequestTimeoutMs: 5_000,
 };
 
 const head = await HeadWorker.create(headOptions);
@@ -257,18 +260,20 @@ const dbUrl = "postgres://user:pass@localhost:5432/voryn";
 
 const metrics = await PipelineMetrics.create({
     dbUrl,
-    chainIds: [1, 56],
-    rpcConfigs: [
-        {
-            rpcUrl: "https://mainnet-rpc.example.org",
-            fallbackRpcUrl: "https://mainnet-fallback-rpc.example.org",
-        },
-        {
-            rpcUrl: "https://bsc-rpc.example.org",
-            fallbackRpcUrl: "https://bsc-fallback-rpc.example.org",
-        },
-    ],
-    rpcRequestTimeoutMs: 5_000,
+    sourceConfig: {
+        networks: [
+            {
+                chainId: 1,
+                rpcUrls: ["https://mainnet-rpc.example.org", "https://mainnet-fallback-rpc.example.org"],
+            },
+            {
+                chainId: 56,
+                rpcUrls: ["https://bsc-rpc.example.org", "https://bsc-fallback-rpc.example.org"],
+            },
+        ],
+        requestTimeoutMs: 5_000,
+        operationTimeoutMs: 60_000,
+    },
 });
 
 const snapshot = await metrics.get();
@@ -286,26 +291,26 @@ Examples:
 - [Metrics](./examples/metrics.ts)
 - [BlockJobRecovery](./examples/block-job-recovery.ts)
 
-## EthersBlockSource
+## RPC block source
 
-Voryn includes an adapter for `ethers` v6:
+The RPC branch of `sourceConfig` makes Voryn create and own an internal RPC-pool-backed `BlockSource`. The pool pins every
+block-source operation to one endpoint. Eligible transport or endpoint-data failures retry the whole operation on
+another endpoint. Fetch job retries remain a separate pipeline-level recovery mechanism.
 
-```ts
-import { JsonRpcProvider } from "ethers";
-import { EthersBlockSource } from "@drillcoder/voryn";
+The internal adapter validates hashes, addresses, `data` fields, transaction indexes, and block number consistency.
+To use another data source, implement the public `BlockSource` interface. For direct RPC pool access, use
+`@drillcoder/ethers-rpc-pool`.
 
-const provider = new JsonRpcProvider("https://rpc.example.org");
-const fallbackProvider = new JsonRpcProvider("https://fallback-rpc.example.org");
+### Migrating to 1.1
 
-const source = await EthersBlockSource.create({
-    providerPairs: [{ provider, fallbackProvider }],
-});
-```
+Version 1.1 intentionally changes the source API. For a single-chain worker, replace top-level `chainId` plus
+`rpcUrl`/`fallbackRpcUrl` with `sourceConfig: { network: { chainId, rpcUrls: [rpcUrl, fallbackRpcUrl] } }`. Move
+`rpcRequestTimeoutMs` to `sourceConfig.requestTimeoutMs`; `sourceConfig.operationTimeoutMs` is the optional whole-operation
+deadline. A custom source uses `sourceConfig: { chainId, source }`, without `network`. Replace direct
+`EthersBlockSource` usage with one of these branches; for a custom integration, implement `BlockSource`.
 
-Pass one provider pair per chain. The fallback provider is optional and is used if the regular provider returns
-an error or invalid data.
-
-The adapter validates hashes, addresses, `data` fields, transaction indexes, and block number consistency. To use another data source, implement the `BlockSource` interface.
+For `PipelineMetrics`, use either `sourceConfig: { networks, requestTimeoutMs?, operationTimeoutMs? }` or
+`sourceConfig: { chainIds, source }`. RPC metrics derive chain IDs from `networks`; custom metrics require `chainIds`.
 
 ## Public API
 
@@ -316,7 +321,7 @@ Main exports:
 
 - workers: `HeadWorker`, `FetchWorker`, `SequencerWorker`, `RetentionWorker`, `EventReactionWorker`, `TransactionReactionWorker`;
 - data and reactions: `PipelineBlock`, `PipelineTransaction`, `PipelineEvent`, `EventReactionHandler`, `TransactionReactionHandler`;
-- infrastructure: `EthersBlockSource`, `ConsoleLogger`, `PostgresLeaderLock`, `PostgresTransactionManager`;
+- infrastructure: `BlockSource`, `ConsoleLogger`, `PostgresLeaderLock`, `PostgresTransactionManager`;
 - PostgreSQL repositories and schema helpers;
 - operational tools: `PipelineMetrics`, `BlockJobRecovery`.
 

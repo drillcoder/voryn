@@ -5,12 +5,14 @@ import { FetchWorker } from "@drillcoder/voryn";
     const options: CreateFetchWorkerOptions = {
         dbUrl: "postgres://user:pass@localhost:5432/voryn",
         logLevel: "info",
-        chainId: 1,
-        rpcConfig: {
-            rpcUrl: "https://rpc.example.org",
-            fallbackRpcUrl: "https://fallback-rpc.example.org",
+        sourceConfig: {
+            network: {
+                chainId: 1,
+                rpcUrls: ["https://rpc.example.org", "https://fallback-rpc.example.org"],
+            },
+            requestTimeoutMs: 30_000,
+            operationTimeoutMs: 60_000,
         },
-        rpcRequestTimeoutMs: 30_000,
         delayBetweenTicksMs: 100,
         fetchBatchSize: 10,
         fetchConcurrency: 1,

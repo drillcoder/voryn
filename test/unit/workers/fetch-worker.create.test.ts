@@ -13,8 +13,7 @@ import {
 
 test("fetch worker create wires service execution", async () => {
     const claimForFetch = jest.fn(async () => null);
-    const config: FetchWorkerOptions = {
-        chainId: 1,
+    const config: Omit<FetchWorkerOptions, "sourceConfig"> = {
         delayBetweenTicksMs: 1000,
         fetchBatchSize: 1,
         fetchConcurrency: 1,
@@ -39,7 +38,7 @@ test("fetch worker create wires service execution", async () => {
     const worker = await FetchWorker.create({
         logLevel: "error",
         ...config,
-        source,
+        sourceConfig: { chainId: 1, source },
         overrides: {
             blockJobsRepository: { ...createNoopBlockJobsRepository(), claimForFetch },
             blocksRepository: createNoopBlocksRepository(),

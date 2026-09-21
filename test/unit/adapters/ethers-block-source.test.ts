@@ -6,12 +6,66 @@ import type {
 } from "../../../src/adapters/ethers-block-source.js";
 import { EthersBlockSource } from "../../../src/adapters/ethers-block-source.js";
 import type { Logger } from "../../../src/interfaces/logger.js";
+import type {
+    RpcEndpointDataError as RpcEndpointDataErrorType,
+    UnknownNetworkError as UnknownNetworkErrorType,
+} from "@drillcoder/ethers-rpc-pool";
+
+const mockProvidersByChain = new Map<number, jest.Mocked<EthersProviderLike>[]>();
+const mockPoolConfigs: Array<{
+    logger?: (event: Record<string, unknown>) => void;
+    networks: readonly { chainId: number; rpcUrls: readonly string[] }[];
+    operationTimeoutMs: number;
+    requestTimeoutMs: number;
+}> = [];
+const mockPoolClose = jest.fn(async () => undefined);
+
+interface RpcPoolModule {
+    RpcEndpointDataError: typeof RpcEndpointDataErrorType;
+    UnknownNetworkError: typeof UnknownNetworkErrorType;
+}
+
+jest.mock("@drillcoder/ethers-rpc-pool", () => {
+    const actual = jest.requireActual<RpcPoolModule>("@drillcoder/ethers-rpc-pool");
+
+    return {
+        ...actual,
+        RpcPoolManager: jest.fn().mockImplementation((config: (typeof mockPoolConfigs)[number]) => {
+            mockPoolConfigs.push(config);
+            return {
+                close: mockPoolClose,
+                executeWithRetry: async <TResult>(
+                    chainId: number,
+                    callback: (provider: EthersProviderLike) => Promise<TResult>,
+                ): Promise<TResult> => {
+                    const providers = mockProvidersByChain.get(chainId) ?? [];
+                    let lastError: unknown;
+                    for (const provider of providers) {
+                        try {
+                            return await callback(provider);
+                        } catch (error) {
+                            lastError = error;
+                            if (!(error instanceof actual.RpcEndpointDataError)) {
+                                throw error;
+                            }
+                        }
+                    }
+
+                    if (lastError instanceof Error) {
+                        throw lastError;
+                    }
+
+                    throw new actual.UnknownNetworkError(chainId);
+                },
+            };
+        }),
+    };
+});
 
 const hash = (char: string): string => `0x${char.repeat(64)}`;
 const address = (char: string): string => `0x${char.repeat(40)}`;
 
 const createProviderMock = (): jest.Mocked<EthersProviderLike> => ({
-    getNetwork: jest.fn(),
     getBlockNumber: jest.fn(),
     getBlock: jest.fn(),
     getTransaction: jest.fn(),
@@ -24,11 +78,17 @@ const createSource = async (
     fallbackProvider?: jest.Mocked<EthersProviderLike>,
     logger?: Logger,
 ): Promise<EthersBlockSource> => {
-    provider.getNetwork.mockResolvedValue({ chainId });
-    fallbackProvider?.getNetwork.mockResolvedValue({ chainId });
+    mockProvidersByChain.set(Number(chainId), fallbackProvider === undefined
+        ? [provider]
+        : [provider, fallbackProvider]);
 
     return EthersBlockSource.create({
-        providerPairs: [{ provider, fallbackProvider }],
+        networks: [{
+            chainId: Number(chainId),
+            rpcUrls: fallbackProvider === undefined
+                ? ["https://rpc.example"]
+                : ["https://rpc.example", "https://fallback.example"],
+        }],
         logger,
     });
 };
@@ -40,12 +100,17 @@ const createLoggerMock = (): jest.Mocked<Logger> => ({
     error: jest.fn(),
 });
 
+beforeEach(() => {
+    mockProvidersByChain.clear();
+    mockPoolConfigs.length = 0;
+    mockPoolClose.mockClear();
+});
+
 test("maps latest block, transactions and logs from ethers provider", async () => {
     const blockCalls: Array<{ blockNumber: number; prefetchTxs?: boolean }> = [];
     const logCalls: Array<{ fromBlock: number; toBlock: number }> = [];
 
     const provider = createProviderMock();
-    provider.getNetwork.mockResolvedValue({ chainId: 7n });
     provider.getBlockNumber.mockResolvedValue(120);
     provider.getBlock.mockImplementation(async (blockNumber: number | "latest", prefetchTxs?: boolean) => {
         if (blockNumber === "latest") {
@@ -149,7 +214,6 @@ test("falls back to getTransaction when prefetched transactions are unavailable"
         },
     };
 
-    provider.getNetwork.mockResolvedValue({ chainId: 1n });
     provider.getBlock.mockResolvedValue(block);
     provider.getTransaction.mockImplementation(async (transactionHash: string) => {
         requestedHashes.push(transactionHash);
@@ -225,159 +289,131 @@ test("reads latest block number from a single provider", async () => {
     await expect(source.getLatestBlockNumber(42)).resolves.toBe(999);
 });
 
-test("uses fallback provider and logs provider failure", async () => {
+test("creates pool with network config and timeout defaults", async () => {
     const provider = createProviderMock();
-    provider.getBlockNumber.mockRejectedValue(new Error("provider unavailable"));
-    const fallbackProvider = createProviderMock();
-    fallbackProvider.getBlockNumber.mockResolvedValue(999);
-    const logger = createLoggerMock();
-    const source = await createSource(provider, 42n, fallbackProvider, logger);
 
-    await expect(source.getLatestBlockNumber(42)).resolves.toBe(999);
+    await createSource(provider, 42n);
 
-    expect(provider.getBlockNumber.mock.calls).toHaveLength(1);
-    expect(fallbackProvider.getBlockNumber.mock.calls).toHaveLength(1);
-    expect(logger.warn.mock.calls).toEqual([[
-        "ethers_source_provider_failed_fallback_started", {
-            chainId: 42,
-            operation: "getLatestBlockNumber",
-            error: "provider unavailable",
-        },
-    ]]);
+    expect(mockPoolConfigs[0]).toMatchObject({
+        networks: [{ chainId: 42, rpcUrls: ["https://rpc.example"] }],
+        requestTimeoutMs: 30_000,
+        operationTimeoutMs: 60_000,
+    });
 });
 
-test("does not call fallback provider when provider succeeds", async () => {
+test("passes configured timeouts to the pool and closes it", async () => {
+    const source = await EthersBlockSource.create({
+        networks: [{ chainId: 1, rpcUrls: ["https://rpc.example"] }],
+        requestTimeoutMs: 12_345,
+        operationTimeoutMs: 67_890,
+    });
+
+    expect(mockPoolConfigs[0]).toMatchObject({
+        requestTimeoutMs: 12_345,
+        operationTimeoutMs: 67_890,
+    });
+
+    await source.close();
+
+    expect(mockPoolClose).toHaveBeenCalledTimes(1);
+});
+
+test("maps safe pool events to stable Voryn log events", async () => {
+    const logger = createLoggerMock();
     const provider = createProviderMock();
-    provider.getBlockNumber.mockResolvedValue(100);
+    await createSource(provider, 1n, undefined, logger);
+    const poolLogger = mockPoolConfigs[0]?.logger;
+    if (poolLogger === undefined) {
+        throw new Error("Expected pool logger");
+    }
+    const base = { chainId: 1, endpointNumber: 2, hostname: "rpc.example", timestamp: 10 };
+
+    poolLogger({ ...base, type: "request", method: "eth_blockNumber", startedAt: 10 });
+    poolLogger({
+        ...base,
+        type: "response",
+        method: "eth_blockNumber",
+        startedAt: 10,
+        finishedAt: 15,
+        durationMs: 5,
+    });
+    poolLogger({
+        ...base,
+        type: "error",
+        method: "eth_getBlockByNumber",
+        startedAt: 20,
+        finishedAt: 30,
+        durationMs: 10,
+        category: "rate-limit",
+        httpStatus: 429,
+        retryAfterMs: 1000,
+    });
+    poolLogger({
+        ...base,
+        type: "error",
+        method: "eth_call",
+        startedAt: 31,
+        finishedAt: 35,
+        durationMs: 4,
+        category: "network",
+    });
+    poolLogger({
+        ...base,
+        type: "switch",
+        category: "rate-limit",
+        nextEndpointNumber: 3,
+        nextHostname: "fallback.example",
+    });
+    poolLogger({ ...base, type: "cooldown", category: "rate-limit", cooldownUntil: 5000 });
+    poolLogger({ ...base, type: "recovery" });
+
+    expect(logger.debug.mock.calls.map(([message]) => message)).toEqual([
+        "rpc_pool_request",
+        "rpc_pool_response",
+    ]);
+    expect(logger.warn.mock.calls.map(([message]) => message)).toEqual([
+        "rpc_pool_error",
+        "rpc_pool_error",
+        "rpc_pool_endpoint_cooldown_started",
+    ]);
+    expect(logger.info.mock.calls.map(([message]) => message)).toEqual([
+        "rpc_pool_endpoint_switched",
+        "rpc_pool_endpoint_recovered",
+    ]);
+    expect(logger.warn.mock.calls[0]?.[1]).toMatchObject({
+        chainId: 1,
+        endpointNumber: 2,
+        hostname: "rpc.example",
+        method: "eth_getBlockByNumber",
+        category: "rate-limit",
+        httpStatus: 429,
+        retryAfterMs: 1000,
+    });
+    expect(JSON.stringify([
+        ...logger.debug.mock.calls,
+        ...logger.info.mock.calls,
+        ...logger.warn.mock.calls,
+    ])).not.toContain("https://");
+});
+
+test("passes through a local callback error without trying another endpoint", async () => {
+    const provider = createProviderMock();
+    provider.getBlockNumber.mockRejectedValue(new Error("application failure"));
     const fallbackProvider = createProviderMock();
     const source = await createSource(provider, 42n, fallbackProvider);
 
-    await expect(source.getLatestBlockNumber(42)).resolves.toBe(100);
+    await expect(source.getLatestBlockNumber(42)).rejects.toThrow("application failure");
 
     expect(fallbackProvider.getBlockNumber.mock.calls).toHaveLength(0);
 });
 
-test("reports provider and fallback errors when both providers fail", async () => {
-    const provider = createProviderMock();
-    provider.getBlockNumber.mockRejectedValue(new Error("provider unavailable"));
-    const fallbackProvider = createProviderMock();
-    fallbackProvider.getBlockNumber.mockRejectedValue("fallback unavailable");
-    const source = await createSource(provider, 42n, fallbackProvider);
-
-    await expect(source.getLatestBlockNumber(42)).rejects.toThrow(
-        "Ethers source getLatestBlockNumber failed on provider and fallback provider for chain 42: "
-        + "provider: provider unavailable; fallback: fallback unavailable"
-    );
-
-    expect(provider.getBlockNumber.mock.calls).toHaveLength(1);
-    expect(fallbackProvider.getBlockNumber.mock.calls).toHaveLength(1);
-});
-
-test("throws when provider is missing for chain", async () => {
+test("throws when pool network is missing", async () => {
     const provider = createProviderMock();
     const source = await createSource(provider);
 
     await expect(source.getLatestBlockNumber(42)).rejects.toThrow(
-        "provider not found for chain 42"
+        "Network with chain ID 42 is not configured"
     );
-});
-
-test("creates source by detecting provider chain ids", async () => {
-    const providerA = createProviderMock();
-    providerA.getNetwork.mockResolvedValue({ chainId: 1n });
-    providerA.getBlockNumber.mockResolvedValue(100);
-    const providerB = createProviderMock();
-    providerB.getNetwork.mockResolvedValue({ chainId: 56n });
-    providerB.getBlockNumber.mockResolvedValue(200);
-
-    const source = await EthersBlockSource.create({
-        providerPairs: [
-            { provider: providerA },
-            { provider: providerB },
-        ],
-    });
-
-    await expect(source.getLatestBlockNumber(1)).resolves.toBe(100);
-    await expect(source.getLatestBlockNumber(56)).resolves.toBe(200);
-});
-
-test("rejects empty provider list", async () => {
-    await expect(EthersBlockSource.create({ providerPairs: [] })).rejects.toThrow(
-        "Ethers source providerPairs must not be empty"
-    );
-});
-
-test("rejects duplicated detected chain ids", async () => {
-    const providerA = createProviderMock();
-    providerA.getNetwork.mockResolvedValue({ chainId: 1n });
-    const providerB = createProviderMock();
-    providerB.getNetwork.mockResolvedValue({ chainId: 1n });
-
-    await expect(EthersBlockSource.create({
-        providerPairs: [
-            { provider: providerA },
-            { provider: providerB },
-        ],
-    })).rejects.toThrow(
-        "Ethers source chain id is duplicated: 1"
-    );
-});
-
-test("rejects invalid detected chain id", async () => {
-    const provider = createProviderMock();
-    provider.getNetwork.mockResolvedValue({ chainId: 0n });
-
-    await expect(EthersBlockSource.create({
-        providerPairs: [{ provider }],
-    })).rejects.toThrow(
-        "Ethers source chain id is invalid: 0"
-    );
-});
-
-test("rejects mismatched fallback provider chain id", async () => {
-    const provider = createProviderMock();
-    provider.getNetwork.mockResolvedValue({ chainId: 1n });
-    const fallbackProvider = createProviderMock();
-    fallbackProvider.getNetwork.mockResolvedValue({ chainId: 56n });
-
-    await expect(EthersBlockSource.create({
-        providerPairs: [{ provider, fallbackProvider }],
-    })).rejects.toThrow(
-        "Ethers fallback source chain id mismatch: expected 1, got 56"
-    );
-});
-
-test("rejects invalid fallback provider chain id", async () => {
-    const provider = createProviderMock();
-    provider.getNetwork.mockResolvedValue({ chainId: 1n });
-    const fallbackProvider = createProviderMock();
-    fallbackProvider.getNetwork.mockResolvedValue({ chainId: 0n });
-
-    await expect(EthersBlockSource.create({
-        providerPairs: [{ provider, fallbackProvider }],
-    })).rejects.toThrow(
-        "Ethers fallback source chain id is invalid: 0"
-    );
-});
-
-test("rejects unavailable provider during startup", async () => {
-    const provider = createProviderMock();
-    provider.getNetwork.mockRejectedValue(new Error("provider startup failed"));
-
-    await expect(EthersBlockSource.create({
-        providerPairs: [{ provider }],
-    })).rejects.toThrow("provider startup failed");
-});
-
-test("rejects unavailable fallback provider during startup", async () => {
-    const provider = createProviderMock();
-    provider.getNetwork.mockResolvedValue({ chainId: 1n });
-    const fallbackProvider = createProviderMock();
-    fallbackProvider.getNetwork.mockRejectedValue(new Error("fallback startup failed"));
-
-    await expect(EthersBlockSource.create({
-        providerPairs: [{ provider, fallbackProvider }],
-    })).rejects.toThrow("fallback startup failed");
 });
 
 test("reads block without prefetching transactions", async () => {
@@ -430,7 +466,6 @@ test("reads latest block without validating requested number", async () => {
 
 test("throws when block is missing", async () => {
     const provider = createProviderMock();
-    provider.getNetwork.mockResolvedValue({ chainId: 7n });
     provider.getBlock.mockResolvedValue(null);
 
     const source = await createSource(provider);
@@ -487,9 +522,25 @@ test("throws when requested block hash is missing", async () => {
     );
 });
 
+test("classifies malformed block hashes as endpoint data errors", async () => {
+    const provider = createProviderMock();
+    provider.getBlock.mockResolvedValue({
+        number: 55,
+        hash: "invalid",
+        parentHash: hash("b"),
+        timestamp: 1234,
+        transactions: [],
+        prefetchedTransactions: [],
+    });
+    const source = await createSource(provider);
+
+    await expect(source.getBlock(7, 55)).rejects.toMatchObject({
+        name: "RpcEndpointDataError",
+    });
+});
+
 test("throws on log block hash mismatch", async () => {
     const provider = createProviderMock();
-    provider.getNetwork.mockResolvedValue({ chainId: 7n });
     const block: EthersBlockLike = {
         number: 9,
         hash: hash("a"),
@@ -562,7 +613,6 @@ test("restarts the whole block data load on fallback after invalid logs", async 
 
 test("throws when block hash is missing", async () => {
     const provider = createProviderMock();
-    provider.getNetwork.mockResolvedValue({ chainId: 7n });
     provider.getBlock.mockResolvedValue({
         number: 21,
         hash: null,
@@ -581,7 +631,6 @@ test("throws when block hash is missing", async () => {
 
 test("throws when block number mismatches requested number", async () => {
     const provider = createProviderMock();
-    provider.getNetwork.mockResolvedValue({ chainId: 7n });
     provider.getBlock.mockResolvedValue({
         number: 22,
         hash: hash("a"),
@@ -612,7 +661,6 @@ test("throws when fallback transaction is not found", async () => {
         },
     };
 
-    provider.getNetwork.mockResolvedValue({ chainId: 1n });
     provider.getBlock.mockResolvedValue(block);
     provider.getTransaction.mockResolvedValue(null);
     provider.getLogs.mockResolvedValue([]);
@@ -626,7 +674,6 @@ test("throws when fallback transaction is not found", async () => {
 
 test("throws on transaction chain id mismatch", async () => {
     const provider = createProviderMock();
-    provider.getNetwork.mockResolvedValue({ chainId: 7n });
     provider.getBlock.mockResolvedValue({
         number: 9,
         hash: hash("a"),
@@ -656,7 +703,6 @@ test("throws on transaction chain id mismatch", async () => {
 
 test("allows transaction with null chain id", async () => {
     const provider = createProviderMock();
-    provider.getNetwork.mockResolvedValue({ chainId: 7n });
     provider.getBlock.mockResolvedValue({
         number: 9,
         hash: hash("a"),
@@ -701,7 +747,6 @@ test("allows transaction with null chain id", async () => {
 
 test("throws on transaction block number mismatch", async () => {
     const provider = createProviderMock();
-    provider.getNetwork.mockResolvedValue({ chainId: 7n });
     provider.getBlock.mockResolvedValue({
         number: 9,
         hash: hash("a"),
@@ -731,7 +776,6 @@ test("throws on transaction block number mismatch", async () => {
 
 test("throws on transaction block hash mismatch", async () => {
     const provider = createProviderMock();
-    provider.getNetwork.mockResolvedValue({ chainId: 7n });
     provider.getBlock.mockResolvedValue({
         number: 9,
         hash: hash("a"),
@@ -761,7 +805,6 @@ test("throws on transaction block hash mismatch", async () => {
 
 test("throws on negative transaction index", async () => {
     const provider = createProviderMock();
-    provider.getNetwork.mockResolvedValue({ chainId: 7n });
     provider.getBlock.mockResolvedValue({
         number: 9,
         hash: hash("a"),
@@ -791,7 +834,6 @@ test("throws on negative transaction index", async () => {
 
 test("throws on non-integer transaction index", async () => {
     const provider = createProviderMock();
-    provider.getNetwork.mockResolvedValue({ chainId: 7n });
     provider.getBlock.mockResolvedValue({
         number: 9,
         hash: hash("a"),
@@ -821,7 +863,6 @@ test("throws on non-integer transaction index", async () => {
 
 test("throws on log block number mismatch", async () => {
     const provider = createProviderMock();
-    provider.getNetwork.mockResolvedValue({ chainId: 7n });
     provider.getBlock.mockResolvedValue({
         number: 9,
         hash: hash("a"),
@@ -850,7 +891,6 @@ test("throws on log block number mismatch", async () => {
 
 test("throws on invalid log transaction index", async () => {
     const provider = createProviderMock();
-    provider.getNetwork.mockResolvedValue({ chainId: 7n });
     provider.getBlock.mockResolvedValue({
         number: 9,
         hash: hash("a"),
@@ -879,7 +919,6 @@ test("throws on invalid log transaction index", async () => {
 
 test("throws on invalid log index", async () => {
     const provider = createProviderMock();
-    provider.getNetwork.mockResolvedValue({ chainId: 7n });
     provider.getBlock.mockResolvedValue({
         number: 9,
         hash: hash("a"),

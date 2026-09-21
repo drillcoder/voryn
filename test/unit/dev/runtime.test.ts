@@ -1,5 +1,5 @@
 import type { Logger, WorkerLifecycle, WorkerLifecycleWithFailure } from "../../../src/index.js";
-import { runWorkerLifecycle, runWorkerLifecycleWithFailure } from "../../../dev/runtime.js";
+import { envValues, runWorkerLifecycle, runWorkerLifecycleWithFailure } from "../../../dev/runtime.js";
 
 const logger: Logger = {
     debug: () => undefined,
@@ -7,6 +7,20 @@ const logger: Logger = {
     warn: () => undefined,
     error: () => undefined,
 };
+
+test("envValues parses comma-separated values and removes blanks", () => {
+    process.env.VORYN_TEST_RPC_URLS = " https://one.example, ,https://two.example ";
+
+    expect(envValues("VORYN_TEST_RPC_URLS", "https://default.example")).toEqual([
+        "https://one.example",
+        "https://two.example",
+    ]);
+
+    delete process.env.VORYN_TEST_RPC_URLS;
+    expect(envValues("VORYN_TEST_RPC_URLS", "https://default.example")).toEqual([
+        "https://default.example",
+    ]);
+});
 
 test("worker runtime propagates worker failure", async () => {
     const stop = jest.fn(async () => undefined);

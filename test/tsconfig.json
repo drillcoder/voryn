@@ -2,6 +2,7 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "noEmit": true,
+    "allowJs": true,
     "isolatedModules": true,
     "types": ["node", "jest"],
     "module": "CommonJS",

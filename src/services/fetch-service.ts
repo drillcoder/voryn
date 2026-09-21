@@ -8,11 +8,19 @@ import type {
     EventsRepository,
     TransactionsRepository,
 } from "../interfaces/repositories.js";
-import type { FetchWorkerOptions } from "../interfaces/options.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
+import type { ChainId } from "../types/chain.js";
 import { asErrorMessage } from "../utils/errors.js";
 
-export interface FetchServiceConfig extends FetchWorkerOptions {
+export interface FetchServiceConfig {
+    chainId: ChainId;
+    delayBetweenTicksMs: number;
+    fetchBatchSize: number;
+    fetchConcurrency: number;
+    fetchClaimTtlMs: number;
+    retryMaxAttempts: number;
+    retryBaseDelayMs: number;
+    retryMaxDelayMs: number;
     instanceId: string;
 }
 

@@ -69,8 +69,10 @@ describe("e2e multi-chain isolation", () => {
         const workers = [
             await HeadWorker.create({
                 logLevel: "error",
-                 chainId: CHAIN_A, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 ,
-                source,
+                sourceConfig: { chainId: CHAIN_A, source },
+                delayBetweenTicksMs: 5,
+                confirmations: 0,
+                depthBlocks: 64,
                 overrides: {
                     chainCursorRepository,
                     blockJobsRepository,
@@ -83,7 +85,7 @@ describe("e2e multi-chain isolation", () => {
             }),
             await FetchWorker.create({
                 logLevel: "error",
-                chainId: CHAIN_A,
+                sourceConfig: { chainId: CHAIN_A, source },
                 delayBetweenTicksMs: 5,
                 fetchBatchSize: 2,
                 fetchConcurrency: 1,
@@ -91,7 +93,6 @@ describe("e2e multi-chain isolation", () => {
                 retryMaxAttempts: 3,
                 retryBaseDelayMs: 10,
                 retryMaxDelayMs: 100,
-                source,
                 overrides: {
                     blockJobsRepository,
                     blocksRepository,
@@ -102,8 +103,9 @@ describe("e2e multi-chain isolation", () => {
             }),
             await SequencerWorker.create({
                 logLevel: "error",
-                 chainId: CHAIN_A, delayBetweenTicksMs: 5, maxBlocksPerTick: 2 ,
-                source,
+                sourceConfig: { chainId: CHAIN_A, source },
+                delayBetweenTicksMs: 5,
+                maxBlocksPerTick: 2,
                 overrides: {
                     chainCursorRepository,
                     blocksRepository,
@@ -116,8 +118,10 @@ describe("e2e multi-chain isolation", () => {
             }),
             await HeadWorker.create({
                 logLevel: "error",
-                 chainId: CHAIN_B, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 ,
-                source,
+                sourceConfig: { chainId: CHAIN_B, source },
+                delayBetweenTicksMs: 5,
+                confirmations: 0,
+                depthBlocks: 64,
                 overrides: {
                     chainCursorRepository,
                     blockJobsRepository,
@@ -130,7 +134,7 @@ describe("e2e multi-chain isolation", () => {
             }),
             await FetchWorker.create({
                 logLevel: "error",
-                chainId: CHAIN_B,
+                sourceConfig: { chainId: CHAIN_B, source },
                 delayBetweenTicksMs: 5,
                 fetchBatchSize: 2,
                 fetchConcurrency: 1,
@@ -138,7 +142,6 @@ describe("e2e multi-chain isolation", () => {
                 retryMaxAttempts: 3,
                 retryBaseDelayMs: 10,
                 retryMaxDelayMs: 100,
-                source,
                 overrides: {
                     blockJobsRepository,
                     blocksRepository,
@@ -149,8 +152,9 @@ describe("e2e multi-chain isolation", () => {
             }),
             await SequencerWorker.create({
                 logLevel: "error",
-                 chainId: CHAIN_B, delayBetweenTicksMs: 5, maxBlocksPerTick: 2 ,
-                source,
+                sourceConfig: { chainId: CHAIN_B, source },
+                delayBetweenTicksMs: 5,
+                maxBlocksPerTick: 2,
                 overrides: {
                     chainCursorRepository,
                     blocksRepository,

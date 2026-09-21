@@ -1,12 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import type { Logger } from "../interfaces/logger.js";
-import type {
-    FetchWorkerOptions,
-    RuntimeDbOptions,
-    RuntimeLoggerOptions,
-    SingleSourceOptions
-} from "../interfaces/options.js";
+import type { FetchWorkerOptions, RuntimeDbOptions, RuntimeLoggerOptions } from "../interfaces/options.js";
 import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../repositories/postgres/block-jobs-repository.js";
 import { PostgresBlocksRepository } from "../repositories/postgres/blocks-repository.js";
@@ -14,7 +9,14 @@ import { PostgresEventsRepository } from "../repositories/postgres/events-reposi
 import { PostgresTransactionsRepository } from "../repositories/postgres/transactions-repository.js";
 import type { FetchServiceConfig } from "../services/fetch-service.js";
 import { FetchService } from "../services/fetch-service.js";
-import { resolveDbDependencies, resolveLogger, resolveSingleBlockSource } from "../runtime/resolvers.js";
+import {
+    combineDisposers,
+    disposeAfterError,
+    resolveDbDependencies,
+    resolveLogger,
+    resolveSingleChainId,
+    resolveSingleBlockSource,
+} from "../runtime/resolvers.js";
 import { PollingWorker } from "./polling-worker.js";
 import type {
     BlockJobsRepository,
@@ -35,47 +37,57 @@ export interface FetchWorkerDatabaseDependencies {
 export type CreateFetchWorkerOptions =
     RuntimeLoggerOptions
     & FetchWorkerOptions
-    & SingleSourceOptions
     & RuntimeDbOptions<FetchWorkerDatabaseDependencies>;
 
 export class FetchWorker extends PollingWorker {
     static async create(options: CreateFetchWorkerOptions): Promise<FetchWorker> {
         const logger = resolveLogger(options);
-        const source = await resolveSingleBlockSource(options, logger);
-        const { dependencies, dispose } = await resolveDbDependencies<FetchWorkerDatabaseDependencies>(
-            options,
-            logger,
-            (pool: Pool): FetchWorkerDatabaseDependencies => ({
-                blockJobsRepository: new PostgresBlockJobsRepository(pool),
-                blocksRepository: new PostgresBlocksRepository(pool),
-                transactionsRepository: new PostgresTransactionsRepository(pool),
-                eventsRepository: new PostgresEventsRepository(pool),
-                transactionManager: new PostgresTransactionManager(pool),
-            })
-        );
-        const serviceConfig: FetchServiceConfig = {
-            chainId: options.chainId,
-            delayBetweenTicksMs: options.delayBetweenTicksMs,
-            fetchBatchSize: options.fetchBatchSize,
-            fetchConcurrency: options.fetchConcurrency,
-            fetchClaimTtlMs: options.fetchClaimTtlMs,
-            retryMaxAttempts: options.retryMaxAttempts,
-            retryBaseDelayMs: options.retryBaseDelayMs,
-            retryMaxDelayMs: options.retryMaxDelayMs,
-            instanceId: randomUUID(),
-        };
-        const service = new FetchService(
-            serviceConfig,
-            source,
-            dependencies.blockJobsRepository,
-            dependencies.blocksRepository,
-            dependencies.transactionsRepository,
-            dependencies.eventsRepository,
-            dependencies.transactionManager,
-            logger,
-        );
+        const resolvedSource = await resolveSingleBlockSource(options.sourceConfig, logger);
+        let dbDispose: (() => Promise<void>) | undefined;
+        try {
+            const { dependencies, dispose } = await resolveDbDependencies<FetchWorkerDatabaseDependencies>(
+                options,
+                logger,
+                (pool: Pool): FetchWorkerDatabaseDependencies => ({
+                    blockJobsRepository: new PostgresBlockJobsRepository(pool),
+                    blocksRepository: new PostgresBlocksRepository(pool),
+                    transactionsRepository: new PostgresTransactionsRepository(pool),
+                    eventsRepository: new PostgresEventsRepository(pool),
+                    transactionManager: new PostgresTransactionManager(pool),
+                })
+            );
+            dbDispose = dispose;
+            const serviceConfig: FetchServiceConfig = {
+                chainId: resolveSingleChainId(options.sourceConfig),
+                delayBetweenTicksMs: options.delayBetweenTicksMs,
+                fetchBatchSize: options.fetchBatchSize,
+                fetchConcurrency: options.fetchConcurrency,
+                fetchClaimTtlMs: options.fetchClaimTtlMs,
+                retryMaxAttempts: options.retryMaxAttempts,
+                retryBaseDelayMs: options.retryBaseDelayMs,
+                retryMaxDelayMs: options.retryMaxDelayMs,
+                instanceId: randomUUID(),
+            };
+            const service = new FetchService(
+                serviceConfig,
+                resolvedSource.source,
+                dependencies.blockJobsRepository,
+                dependencies.blocksRepository,
+                dependencies.transactionsRepository,
+                dependencies.eventsRepository,
+                dependencies.transactionManager,
+                logger,
+            );
 
-        return new FetchWorker(serviceConfig, service, logger, dispose);
+            return new FetchWorker(
+                serviceConfig,
+                service,
+                logger,
+                combineDisposers(dbDispose, resolvedSource.dispose),
+            );
+        } catch (error) {
+            return await disposeAfterError(error, dbDispose, resolvedSource.dispose);
+        }
     }
 
     private constructor(

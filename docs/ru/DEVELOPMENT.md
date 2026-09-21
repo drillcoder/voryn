@@ -17,7 +17,7 @@
 
 Для docker-compose переменная `VORYN_CHAIN_ID` обязательна (`is required`),
 а RPC-переменные обязательны по воркеру:
-`VORYN_HEAD_RPC_URL`, `VORYN_FETCH_RPC_URL`.
+`VORYN_HEAD_RPC_URLS`, `VORYN_FETCH_RPC_URLS`.
 и берутся из окружения.
 Удобно начать с `dev/.env.example`:
 
@@ -54,18 +54,18 @@ docker compose --env-file dev/.env -f dev/docker-compose.yml logs -f head fetch 
 
 Дополнительно для `head`:
 
-- `VORYN_HEAD_RPC_URL` (`required`) — RPC URL для чтения текущего хеда сети.
-- `VORYN_HEAD_FALLBACK_RPC_URL` (`required`) — резервный RPC URL на случай ошибки.
+- `VORYN_HEAD_RPC_URLS` (`required`) — RPC URLs для чтения текущего хеда сети через запятую.
 - `VORYN_HEAD_RPC_REQUEST_TIMEOUT_MS` (`optional`, по умолчанию `5_000`) — таймаут одного HTTP RPC-запроса.
+- `VORYN_HEAD_RPC_OPERATION_TIMEOUT_MS` (`optional`, по умолчанию `60_000`) — deadline полной RPC-операции.
 - `VORYN_HEAD_DELAY_BETWEEN_TICKS_MS` (`optional`, по умолчанию `1_000`) — задержка между тиками в миллисекундах.
 - `VORYN_HEAD_CONFIRMATIONS` (`optional`, по умолчанию `0`) — число подтверждений перед постановкой блока в очередь.
 - `VORYN_HEAD_DEPTH_BLOCKS` (`optional`, по умолчанию `65_000`, должен быть `> 0`) — допустимое отставание от `safe head` в блоках. Если `last_committed_block` уходит глубже, `head` делает rebase к границе доступной истории RPC.
 
 Дополнительно для `fetch`:
 
-- `VORYN_FETCH_RPC_URL` (`required`) — RPC URL для загрузки данных блоков.
-- `VORYN_FETCH_FALLBACK_RPC_URL` (`required`) — резервный RPC URL на случай ошибки.
+- `VORYN_FETCH_RPC_URLS` (`required`) — RPC URLs для загрузки данных блоков через запятую.
 - `VORYN_FETCH_RPC_REQUEST_TIMEOUT_MS` (`optional`, по умолчанию `30_000`) — таймаут одного HTTP RPC-запроса.
+- `VORYN_FETCH_RPC_OPERATION_TIMEOUT_MS` (`optional`, по умолчанию `60_000`) — deadline полной RPC-операции.
 - `VORYN_FETCH_DELAY_BETWEEN_TICKS_MS` (`optional`, по умолчанию `100`) — задержка между тиками в миллисекундах.
 - `VORYN_FETCH_BATCH_SIZE` (`optional`, по умолчанию `10`) — максимум задач за один `tick`.
 - `VORYN_FETCH_CONCURRENCY` (`optional`, по умолчанию `1`) — максимум задач, которые `fetch` обрабатывает параллельно.
@@ -76,9 +76,9 @@ docker compose --env-file dev/.env -f dev/docker-compose.yml logs -f head fetch 
 
 Дополнительно для `sequencer`:
 
-- `VORYN_SEQUENCER_RPC_URL` (`optional`) — RPC URL для проверки актуальной ветки при реорганизации цепи.
-- `VORYN_SEQUENCER_FALLBACK_RPC_URL` (`required`) — резервный RPC URL на случай ошибки.
+- `VORYN_SEQUENCER_RPC_URLS` (`required`) — RPC URLs для проверки актуальной ветки при реорганизации цепи через запятую.
 - `VORYN_SEQUENCER_RPC_REQUEST_TIMEOUT_MS` (`optional`, по умолчанию `5_000`) — таймаут одного HTTP RPC-запроса.
+- `VORYN_SEQUENCER_RPC_OPERATION_TIMEOUT_MS` (`optional`, по умолчанию `60_000`) — deadline полной RPC-операции.
 - `VORYN_SEQUENCER_DELAY_BETWEEN_TICKS_MS` (`optional`, по умолчанию `100`) — задержка между тиками sequencer.
 - `VORYN_SEQUENCER_MAX_BLOCKS_PER_TICK` (`optional`, по умолчанию `10`) — максимальное число блоков, которое sequencer обрабатывает за один `tick`.
 
@@ -103,9 +103,9 @@ npm exec -- tsx --tsconfig dev/tsconfig.json dev/metrics.ts
 
 Дополнительно для `metrics`:
 
-- `VORYN_METRICS_RPC_URL` (`required`) — RPC URL для чтения текущего latest block.
-- `VORYN_METRICS_FALLBACK_RPC_URL` (`required`) — резервный RPC URL на случай ошибки.
+- `VORYN_METRICS_RPC_URLS` (`required`) — RPC URLs для чтения текущего latest block через запятую.
 - `VORYN_METRICS_RPC_REQUEST_TIMEOUT_MS` (`optional`, по умолчанию `5_000`) — таймаут одного HTTP RPC-запроса.
+- `VORYN_METRICS_RPC_OPERATION_TIMEOUT_MS` (`optional`, по умолчанию `60_000`) — deadline полной RPC-операции.
 
 Вернуть failed block jobs в обработку:
 
@@ -128,7 +128,7 @@ npm exec -- tsx --tsconfig dev/tsconfig.json dev/block-job-recovery.ts
 ```bash
 DATABASE_URL="postgres://user:pass@localhost:5432/voryn" \
 VORYN_CHAIN_ID=1 \
-VORYN_HEAD_RPC_URL="https://rpc.example.org" \
+VORYN_HEAD_RPC_URLS="https://rpc.example.org,https://fallback-rpc.example.org" \
 npm exec -- tsx --tsconfig dev/tsconfig.json dev/head.ts
 ```
 

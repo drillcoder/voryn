@@ -12,13 +12,15 @@ import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cu
 import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker-cursors-repository.js";
 import { PipelineMetricsService } from "../services/pipeline-metrics-service.js";
 import type { PipelineMetricsServiceConfig } from "../services/pipeline-metrics-service.js";
-import { resolveDbDependencies, resolveMultiBlockSource, resolveLogger } from "../runtime/resolvers.js";
-import type {
-    MultiSourceOptions,
-    PipelineMetricsOptions,
-    RuntimeDbOptions,
-    RuntimeLoggerOptions,
-} from "../interfaces/options.js";
+import {
+    combineDisposers,
+    disposeAfterError,
+    resolveDbDependencies,
+    resolveMultiBlockSource,
+    resolveLogger,
+} from "../runtime/resolvers.js";
+import type { PipelineMetricsOptions, RuntimeDbOptions, RuntimeLoggerOptions } from "../interfaces/options.js";
+import type { ChainId } from "../types/chain.js";
 import { formatPipelineMetricsPrometheus } from "./prometheus.js";
 
 export interface PipelineMetricsDatabaseDependencies {
@@ -31,37 +33,42 @@ export interface PipelineMetricsDatabaseDependencies {
 export type CreatePipelineMetricsOptions =
     RuntimeLoggerOptions
     & PipelineMetricsOptions
-    & MultiSourceOptions
     & RuntimeDbOptions<PipelineMetricsDatabaseDependencies>;
 
 export class PipelineMetrics {
     static async create(options: CreatePipelineMetricsOptions): Promise<PipelineMetrics> {
         const logger = resolveLogger(options);
         validatePipelineMetricsOptions(options);
-        const source = await resolveMultiBlockSource(options, logger);
+        const resolvedSource = await resolveMultiBlockSource(options.sourceConfig, logger);
         const serviceConfig: PipelineMetricsServiceConfig = {
-            chainIds: options.chainIds,
+            chainIds: getMetricsChainIds(options.sourceConfig),
         };
-        const { dependencies, dispose } = await resolveDbDependencies<PipelineMetricsDatabaseDependencies>(
-            options,
-            logger,
-            (pool: Pool): PipelineMetricsDatabaseDependencies => ({
-                chainCursorRepository: new PostgresChainCursorRepository(pool),
-                blockJobsRepository: new PostgresBlockJobsRepository(pool),
-                blocksRepository: new PostgresBlocksRepository(pool),
-                workerCursorsRepository: new PostgresWorkerCursorsRepository(pool),
-            })
-        );
-        const service = new PipelineMetricsService(
-            serviceConfig,
-            source,
-            dependencies.chainCursorRepository,
-            dependencies.blockJobsRepository,
-            dependencies.blocksRepository,
-            dependencies.workerCursorsRepository,
-        );
+        let dbDispose: (() => Promise<void>) | undefined;
+        try {
+            const { dependencies, dispose } = await resolveDbDependencies<PipelineMetricsDatabaseDependencies>(
+                options,
+                logger,
+                (pool: Pool): PipelineMetricsDatabaseDependencies => ({
+                    chainCursorRepository: new PostgresChainCursorRepository(pool),
+                    blockJobsRepository: new PostgresBlockJobsRepository(pool),
+                    blocksRepository: new PostgresBlocksRepository(pool),
+                    workerCursorsRepository: new PostgresWorkerCursorsRepository(pool),
+                })
+            );
+            dbDispose = dispose;
+            const service = new PipelineMetricsService(
+                serviceConfig,
+                resolvedSource.source,
+                dependencies.chainCursorRepository,
+                dependencies.blockJobsRepository,
+                dependencies.blocksRepository,
+                dependencies.workerCursorsRepository,
+            );
 
-        return new PipelineMetrics(service, dispose);
+            return new PipelineMetrics(service, combineDisposers(dbDispose, resolvedSource.dispose));
+        } catch (error) {
+            return await disposeAfterError(error, dbDispose, resolvedSource.dispose);
+        }
     }
 
     private constructor(
@@ -84,13 +91,15 @@ export class PipelineMetrics {
 }
 
 function validatePipelineMetricsOptions(options: CreatePipelineMetricsOptions): void {
-    if (options.chainIds.length === 0) {
+    const chainIds = getMetricsChainIds(options.sourceConfig);
+
+    if (chainIds.length === 0) {
         throw new Error("Pipeline metrics chainIds config must not be empty");
     }
 
     const seenChainIds = new Set<number>();
 
-    for (const chainId of options.chainIds) {
+    for (const chainId of chainIds) {
         if (!Number.isInteger(chainId) || chainId <= 0) {
             throw new Error(`Pipeline metrics chain id is invalid: ${String(chainId)}`);
         }
@@ -101,8 +110,10 @@ function validatePipelineMetricsOptions(options: CreatePipelineMetricsOptions): 
 
         seenChainIds.add(chainId);
     }
+}
 
-    if (options.rpcConfigs !== undefined && options.chainIds.length !== options.rpcConfigs.length) {
-        throw new Error("Pipeline metrics chainIds and rpcConfigs must have the same length");
-    }
+function getMetricsChainIds(config: PipelineMetricsOptions["sourceConfig"]): readonly ChainId[] {
+    return config.source === undefined
+        ? config.networks.map(({ chainId }) => chainId)
+        : config.chainIds;
 }

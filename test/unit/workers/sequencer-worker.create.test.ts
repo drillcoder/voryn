@@ -16,8 +16,7 @@ import {
 
 test("sequencer worker create wires service execution", async () => {
     const getCursor = jest.fn(async () => null);
-    const config: SequencerWorkerOptions = {
-        chainId: 10,
+    const config: Omit<SequencerWorkerOptions, "sourceConfig"> = {
         delayBetweenTicksMs: 1000,
         maxBlocksPerTick: 1,
     };
@@ -41,7 +40,7 @@ test("sequencer worker create wires service execution", async () => {
     const worker = await SequencerWorker.create({
         logLevel: "error",
         ...config,
-        source,
+        sourceConfig: { chainId: 10, source },
         overrides: {
             chainCursorRepository: { ...createNoopChainCursorRepository(), get: getCursor },
             blocksRepository: createNoopBlocksRepository(),

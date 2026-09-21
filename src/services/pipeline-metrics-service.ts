@@ -6,12 +6,13 @@ import type {
     ChainCursorRepository,
     WorkerCursorsRepository,
 } from "../interfaces/repositories.js";
-import type { PipelineMetricsOptions } from "../interfaces/options.js";
 import type { ChainId } from "../types/chain.js";
 
 const FAILED_BLOCKS_LIMIT = 25;
 
-export type PipelineMetricsServiceConfig = PipelineMetricsOptions;
+export interface PipelineMetricsServiceConfig {
+    chainIds: readonly ChainId[];
+}
 
 export class PipelineMetricsService {
     constructor(

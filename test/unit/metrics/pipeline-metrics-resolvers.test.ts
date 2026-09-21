@@ -3,51 +3,20 @@ import type { BlockJobsRepository } from "../../../src/interfaces/repositories.j
 import { PipelineMetrics } from "../../../src/metrics/pipeline-metrics.js";
 import { validatePostgresSchema } from "../../../src/postgres/schema.js";
 import { createNoopBlockJobsRepository } from "../helpers/pipeline-test-helpers.js";
-
-jest.mock("ethers", () => {
-    class FetchRequest {
-        readonly url: string;
-
-        constructor(url: string) {
-            this.url = url;
-        }
-    }
-
-    return {
-        FetchRequest,
-        isHexString: (value: unknown, length?: number) => (
-            typeof value === "string"
-            && /^0x[0-9a-fA-F]*$/.test(value)
-            && (length === undefined || value.length === 2 + length * 2)
-        ),
-        isAddress: (value: unknown) => (
-            typeof value === "string"
-            && /^0x[0-9a-fA-F]{40}$/.test(value)
-        ),
-        getBytes: (value: unknown) => {
-            if (typeof value !== "string" || !/^0x(?:[0-9a-fA-F]{2})*$/.test(value)) {
-                throw new Error("invalid bytes");
-            }
-
-            return new Uint8Array();
-        },
-        JsonRpcProvider: jest.fn().mockImplementation(() => ({
-            getNetwork: async () => ({ chainId: 7n }),
-        })),
-    };
-});
+import { RpcPoolManager } from "@drillcoder/ethers-rpc-pool";
 
 jest.mock("../../../src/postgres/schema.js", () => ({
     validatePostgresSchema: jest.fn(async () => undefined),
 }));
 
-const options = {
-    chainIds: [7],
-};
-
 interface PipelineMetricsInternals {
     service: {
         blockJobsRepository: BlockJobsRepository;
+        source: {
+            pool: {
+                getSnapshot(): { closed: boolean };
+            };
+        };
     };
 }
 
@@ -56,8 +25,9 @@ test("pipeline metrics merges db defaults with overrides and returns disposer", 
     const endSpy = jest.spyOn(Pool.prototype, "end");
     const metrics = await PipelineMetrics.create({
         logLevel: "error",
-        ...options,
-        rpcConfigs: [{ rpcUrl: "http://127.0.0.1:8545" }],
+        sourceConfig: {
+            networks: [{ chainId: 7, rpcUrls: ["http://127.0.0.1:8545"] }],
+        },
         dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
         overrides: {
             blockJobsRepository,
@@ -71,5 +41,23 @@ test("pipeline metrics merges db defaults with overrides and returns disposer", 
     await metrics.close();
 
     expect(endSpy).toHaveBeenCalledTimes(1);
+    expect(metricsInternals.service.source.pool.getSnapshot().closed).toBe(true);
     endSpy.mockRestore();
+});
+
+test("pipeline metrics closes its RPC pool when database initialization fails", async () => {
+    const initializationError = new Error("schema validation failed");
+    const closeSpy = jest.spyOn(RpcPoolManager.prototype, "close");
+    jest.mocked(validatePostgresSchema).mockRejectedValueOnce(initializationError);
+
+    await expect(PipelineMetrics.create({
+        logLevel: "error",
+        sourceConfig: {
+            networks: [{ chainId: 7, rpcUrls: ["http://127.0.0.1:8545"] }],
+        },
+        dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
+    })).rejects.toBe(initializationError);
+
+    expect(closeSpy).toHaveBeenCalledTimes(1);
+    closeSpy.mockRestore();
 });

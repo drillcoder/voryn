@@ -23,8 +23,7 @@ test("head worker create wires service execution", async () => {
         warn: jest.fn(),
         error: jest.fn(),
     };
-    const config: HeadWorkerOptions = {
-        chainId: 7,
+    const config: Omit<HeadWorkerOptions, "sourceConfig"> = {
         confirmations: 1,
         delayBetweenTicksMs: 1000,
         depthBlocks: 10,
@@ -45,7 +44,7 @@ test("head worker create wires service execution", async () => {
     const worker = await HeadWorker.create({
         logger,
         ...config,
-        source,
+        sourceConfig: { chainId: 7, source },
         overrides: {
             chainCursorRepository: createNoopChainCursorRepository(),
             blockJobsRepository: createNoopBlockJobsRepository(),

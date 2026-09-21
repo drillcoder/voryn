@@ -169,8 +169,10 @@ async function createWorkerSet(
 }> {
     const head = await HeadWorker.create({
         logLevel: "error",
-         chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 ,
-        source,
+        sourceConfig: { chainId: CHAIN_ID, source },
+        delayBetweenTicksMs: 5,
+        confirmations: 0,
+        depthBlocks: 64,
         overrides: {
             chainCursorRepository,
             blockJobsRepository,
@@ -183,7 +185,7 @@ async function createWorkerSet(
     });
     const fetch = await FetchWorker.create({
         logLevel: "error",
-        chainId: CHAIN_ID,
+        sourceConfig: { chainId: CHAIN_ID, source },
         delayBetweenTicksMs: 5,
         fetchBatchSize: 2,
         fetchConcurrency: 1,
@@ -191,7 +193,6 @@ async function createWorkerSet(
         retryMaxAttempts: 3,
         retryBaseDelayMs: 10,
         retryMaxDelayMs: 100,
-        source,
         overrides: {
             blockJobsRepository,
             blocksRepository,
@@ -202,8 +203,9 @@ async function createWorkerSet(
     });
     const sequencer = await SequencerWorker.create({
         logLevel: "error",
-         chainId: CHAIN_ID, delayBetweenTicksMs: 5, maxBlocksPerTick: 2 ,
-        source,
+        sourceConfig: { chainId: CHAIN_ID, source },
+        delayBetweenTicksMs: 5,
+        maxBlocksPerTick: 2,
         overrides: {
             chainCursorRepository,
             blocksRepository,

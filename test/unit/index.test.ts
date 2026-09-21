@@ -4,7 +4,6 @@ test("public entry point exports exact runtime APIs", () => {
     expect(Object.keys(voryn).sort()).toEqual([
         "BlockJobRecovery",
         "ConsoleLogger",
-        "EthersBlockSource",
         "EventReactionWorker",
         "FetchWorker",
         "HeadWorker",

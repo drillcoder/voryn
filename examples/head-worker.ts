@@ -5,12 +5,14 @@ import { HeadWorker } from "@drillcoder/voryn";
     const options: CreateHeadWorkerOptions = {
         dbUrl: "postgres://user:pass@localhost:5432/voryn",
         logLevel: "info",
-        chainId: 1,
-        rpcConfig: {
-            rpcUrl: "https://rpc.example.org",
-            fallbackRpcUrl: "https://fallback-rpc.example.org",
+        sourceConfig: {
+            network: {
+                chainId: 1,
+                rpcUrls: ["https://rpc.example.org", "https://fallback-rpc.example.org"],
+            },
+            requestTimeoutMs: 5_000,
+            operationTimeoutMs: 60_000,
         },
-        rpcRequestTimeoutMs: 5_000,
         delayBetweenTicksMs: 1_000,
         confirmations: 0,
         depthBlocks: 65_000,

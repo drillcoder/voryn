@@ -49,8 +49,10 @@ describe("e2e startup from empty state", () => {
 
         const headWorker = await HeadWorker.create({
             logLevel: "error",
-             chainId: CHAIN_ID, delayBetweenTicksMs: 5, confirmations: 0, depthBlocks: 64 ,
-            source,
+            sourceConfig: { chainId: CHAIN_ID, source },
+            delayBetweenTicksMs: 5,
+            confirmations: 0,
+            depthBlocks: 64,
             overrides: {
                 chainCursorRepository,
                 blockJobsRepository,

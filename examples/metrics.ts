@@ -5,18 +5,20 @@ import { PipelineMetrics } from "@drillcoder/voryn";
     const options: CreatePipelineMetricsOptions = {
         dbUrl: "postgres://user:pass@localhost:5432/voryn",
         logLevel: "info",
-        chainIds: [1, 56],
-        rpcConfigs: [
-            {
-                rpcUrl: "https://mainnet-rpc.example.org",
-                fallbackRpcUrl: "https://mainnet-fallback-rpc.example.org",
-            },
-            {
-                rpcUrl: "https://bsc-rpc.example.org",
-                fallbackRpcUrl: "https://bsc-fallback-rpc.example.org",
-            },
-        ],
-        rpcRequestTimeoutMs: 5_000,
+        sourceConfig: {
+            networks: [
+                {
+                    chainId: 1,
+                    rpcUrls: ["https://mainnet-rpc.example.org", "https://mainnet-fallback-rpc.example.org"],
+                },
+                {
+                    chainId: 56,
+                    rpcUrls: ["https://bsc-rpc.example.org", "https://bsc-fallback-rpc.example.org"],
+                },
+            ],
+            requestTimeoutMs: 5_000,
+            operationTimeoutMs: 60_000,
+        },
     };
 
     const metrics = await PipelineMetrics.create(options);

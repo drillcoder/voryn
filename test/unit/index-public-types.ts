@@ -33,13 +33,6 @@ import type {
     DataHex,
     DbExecutor,
     DbQueryResult,
-    EthersBlockLike,
-    EthersBlockSourceOptions,
-    EthersLogLike,
-    EthersNetworkLike,
-    EthersProviderPair,
-    EthersProviderLike,
-    EthersTransactionLike,
     EventReactionHandler,
     EventReactionWorkerDatabaseDependencies,
     EventsRepository,
@@ -53,7 +46,7 @@ import type {
     LeaderLock,
     Logger,
     LogLevel,
-    MultiSourceOptions,
+    MultiChainSourceConfig,
     PipelineBlock,
     PipelineEvent,
     PipelineFreshnessMetrics,
@@ -70,14 +63,14 @@ import type {
     RetentionPurgeResult,
     RetentionWorkerDatabaseDependencies,
     RetentionWorkerOptions,
-    RpcConfig,
+    RpcNetworkConfig,
     RetryAllFailedBlockJobsResult,
     RetryFailedBlockJobsResult,
     RuntimeDbOptions,
     RuntimeLoggerOptions,
     SequencerWorkerDatabaseDependencies,
     SequencerWorkerOptions,
-    SingleSourceOptions,
+    SingleChainSourceConfig,
     StreamType,
     TransactionManager,
     TransactionReactionHandler,
@@ -126,13 +119,6 @@ interface PublicApiTypesCompile {
     DataHex: DataHex;
     DbExecutor: DbExecutor;
     DbQueryResult: DbQueryResult;
-    EthersBlockLike: EthersBlockLike;
-    EthersBlockSourceOptions: EthersBlockSourceOptions;
-    EthersLogLike: EthersLogLike;
-    EthersNetworkLike: EthersNetworkLike;
-    EthersProviderPair: EthersProviderPair;
-    EthersProviderLike: EthersProviderLike;
-    EthersTransactionLike: EthersTransactionLike;
     EventReactionHandler: EventReactionHandler;
     EventReactionWorkerDatabaseDependencies: EventReactionWorkerDatabaseDependencies;
     EventsRepository: EventsRepository;
@@ -146,7 +132,7 @@ interface PublicApiTypesCompile {
     LeaderLock: LeaderLock;
     Logger: Logger;
     LogLevel: LogLevel;
-    MultiSourceOptions: MultiSourceOptions;
+    MultiChainSourceConfig: MultiChainSourceConfig;
     PipelineBlock: PipelineBlock;
     PipelineEvent: PipelineEvent;
     PipelineFreshnessMetrics: PipelineFreshnessMetrics;
@@ -163,14 +149,14 @@ interface PublicApiTypesCompile {
     RetentionPurgeResult: RetentionPurgeResult;
     RetentionWorkerDatabaseDependencies: RetentionWorkerDatabaseDependencies;
     RetentionWorkerOptions: RetentionWorkerOptions;
-    RpcConfig: RpcConfig;
+    RpcNetworkConfig: RpcNetworkConfig;
     RetryAllFailedBlockJobsResult: RetryAllFailedBlockJobsResult;
     RetryFailedBlockJobsResult: RetryFailedBlockJobsResult;
     RuntimeDbOptions: RuntimeDbOptions<Record<string, never>>;
     RuntimeLoggerOptions: RuntimeLoggerOptions;
     SequencerWorkerDatabaseDependencies: SequencerWorkerDatabaseDependencies;
     SequencerWorkerOptions: SequencerWorkerOptions;
-    SingleSourceOptions: SingleSourceOptions;
+    SingleChainSourceConfig: SingleChainSourceConfig;
     StreamType: StreamType;
     TransactionManager: TransactionManager;
     TransactionReactionHandler: TransactionReactionHandler;
@@ -196,27 +182,37 @@ const comparesDataWithDataHex: boolean = chainTransaction.data === dataHexLitera
 const comparesDataWithStringLiteral: boolean = chainTransaction.data === "0x";
 
 const blockSource = {} as BlockSource;
-const singleRpcFallbackOptions: SingleSourceOptions = {
-    rpcConfig: {
-        rpcUrl: "http://rpc.local",
-        fallbackRpcUrl: "http://fallback.local",
+const singleRpcPoolOptions: SingleChainSourceConfig = {
+    network: {
+        chainId: 1,
+        rpcUrls: ["http://rpc.local", "http://fallback.local"],
     },
 };
-const multiRpcFallbackOptions: MultiSourceOptions = {
-    rpcConfigs: [{
-        rpcUrl: "http://rpc.local",
-        fallbackRpcUrl: "http://fallback.local",
+const multiRpcPoolOptions: MultiChainSourceConfig = {
+    networks: [{
+        chainId: 1,
+        rpcUrls: ["http://rpc.local", "http://fallback.local"],
     }],
 };
 
-// @ts-expect-error A custom source cannot be combined with an RPC config.
-const invalidSingleSourceFallbackOptions: SingleSourceOptions = {
+const customSourceWithNetwork = {
+    chainId: 1,
     source: blockSource,
-    rpcConfig: { rpcUrl: "http://rpc.local" },
+    network: { chainId: 1, rpcUrls: ["http://rpc.local"] },
 };
+// @ts-expect-error The custom-source branch cannot include network, including through a variable.
+const invalidSingleCustomNetwork: SingleChainSourceConfig = customSourceWithNetwork;
 
-// @ts-expect-error A custom source cannot be combined with RPC configs.
-const invalidMultiSourceFallbackOptions: MultiSourceOptions = {
+const rpcNetworkWithTopLevelChainId = {
+    network: { chainId: 1, rpcUrls: ["http://rpc.local"] },
+    chainId: 1,
+};
+// @ts-expect-error The RPC branch cannot include a top-level chainId, including through a variable.
+const invalidSingleRpcChainId: SingleChainSourceConfig = rpcNetworkWithTopLevelChainId;
+
+// @ts-expect-error A custom source cannot be combined with RPC networks.
+const invalidMultiSourceFallbackOptions: MultiChainSourceConfig = {
+    chainIds: [1],
     source: blockSource,
-    rpcConfigs: [{ rpcUrl: "http://rpc.local" }],
+    networks: [{ chainId: 1, rpcUrls: ["http://rpc.local"] }],
 };

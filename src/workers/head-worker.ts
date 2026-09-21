@@ -8,12 +8,7 @@ import type {
     EventsRepository,
     TransactionsRepository,
 } from "../interfaces/repositories.js";
-import type {
-    HeadWorkerOptions,
-    RuntimeDbOptions,
-    RuntimeLoggerOptions,
-    SingleSourceOptions
-} from "../interfaces/options.js";
+import type { HeadWorkerOptions, RuntimeDbOptions, RuntimeLoggerOptions } from "../interfaces/options.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
@@ -25,7 +20,14 @@ import { PostgresTransactionsRepository } from "../repositories/postgres/transac
 import type { HeadServiceConfig } from "../services/head-service.js";
 import { HeadService } from "../services/head-service.js";
 import { HEAD_WORKER_LOCK_KEY_BASE } from "./worker-lock-keys.js";
-import { resolveDbDependencies, resolveLogger, resolveSingleBlockSource } from "../runtime/resolvers.js";
+import {
+    combineDisposers,
+    disposeAfterError,
+    resolveDbDependencies,
+    resolveLogger,
+    resolveSingleChainId,
+    resolveSingleBlockSource,
+} from "../runtime/resolvers.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
 export interface HeadWorkerDatabaseDependencies {
@@ -41,45 +43,56 @@ export interface HeadWorkerDatabaseDependencies {
 export type CreateHeadWorkerOptions =
     RuntimeLoggerOptions
     & HeadWorkerOptions
-    & SingleSourceOptions
     & RuntimeDbOptions<HeadWorkerDatabaseDependencies>;
 
 export class HeadWorker extends SingletonPollingWorker {
     static async create(options: CreateHeadWorkerOptions): Promise<HeadWorker> {
         const logger = resolveLogger(options);
-        const source = await resolveSingleBlockSource(options, logger);
+        const resolvedSource = await resolveSingleBlockSource(options.sourceConfig, logger);
         const serviceConfig: HeadServiceConfig = {
-            chainId: options.chainId,
+            chainId: resolveSingleChainId(options.sourceConfig),
             delayBetweenTicksMs: options.delayBetweenTicksMs,
             confirmations: options.confirmations,
             depthBlocks: options.depthBlocks,
         };
-        const { dependencies, dispose } = await resolveDbDependencies<HeadWorkerDatabaseDependencies>(
-            options,
-            logger,
-            (pool: Pool): HeadWorkerDatabaseDependencies => ({
-                chainCursorRepository: new PostgresChainCursorRepository(pool),
-                blockJobsRepository: new PostgresBlockJobsRepository(pool),
-                blocksRepository: new PostgresBlocksRepository(pool),
-                transactionsRepository: new PostgresTransactionsRepository(pool),
-                eventsRepository: new PostgresEventsRepository(pool),
-                transactionManager: new PostgresTransactionManager(pool),
-                leaderLock: new PostgresLeaderLock(pool, HEAD_WORKER_LOCK_KEY_BASE + BigInt(serviceConfig.chainId)),
-            })
-        );
-        const service = new HeadService(
-            serviceConfig,
-            source,
-            dependencies.chainCursorRepository,
-            dependencies.blockJobsRepository,
-            dependencies.blocksRepository,
-            dependencies.transactionsRepository,
-            dependencies.eventsRepository,
-            dependencies.transactionManager,
-            logger,
-        );
+        let dbDispose: (() => Promise<void>) | undefined;
+        try {
+            const { dependencies, dispose } = await resolveDbDependencies<HeadWorkerDatabaseDependencies>(
+                options,
+                logger,
+                (pool: Pool): HeadWorkerDatabaseDependencies => ({
+                    chainCursorRepository: new PostgresChainCursorRepository(pool),
+                    blockJobsRepository: new PostgresBlockJobsRepository(pool),
+                    blocksRepository: new PostgresBlocksRepository(pool),
+                    transactionsRepository: new PostgresTransactionsRepository(pool),
+                    eventsRepository: new PostgresEventsRepository(pool),
+                    transactionManager: new PostgresTransactionManager(pool),
+                    leaderLock: new PostgresLeaderLock(pool, HEAD_WORKER_LOCK_KEY_BASE + BigInt(serviceConfig.chainId)),
+                })
+            );
+            dbDispose = dispose;
+            const service = new HeadService(
+                serviceConfig,
+                resolvedSource.source,
+                dependencies.chainCursorRepository,
+                dependencies.blockJobsRepository,
+                dependencies.blocksRepository,
+                dependencies.transactionsRepository,
+                dependencies.eventsRepository,
+                dependencies.transactionManager,
+                logger,
+            );
 
-        return new HeadWorker(serviceConfig, service, dependencies.leaderLock, logger, dispose);
+            return new HeadWorker(
+                serviceConfig,
+                service,
+                dependencies.leaderLock,
+                logger,
+                combineDisposers(dbDispose, resolvedSource.dispose),
+            );
+        } catch (error) {
+            return await disposeAfterError(error, dbDispose, resolvedSource.dispose);
+        }
     }
 
     private constructor(
