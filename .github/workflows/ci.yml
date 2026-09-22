@@ -35,6 +35,9 @@ jobs:
       - name: Build tests
         run: make build-test
 
+      - name: Check release notes
+        run: make test-release-notes
+
       - name: Check package contents
         run: make pack-dry-run
 
