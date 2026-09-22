@@ -1,10 +1,29 @@
 ## [1.1.0](https://github.com/drillcoder/voryn/compare/v1.0.3...v1.1.0) (2026-09-22)
 
+### Features
+
+* integrate RPC endpoint pooling ([2c1c531](https://github.com/drillcoder/voryn/commit/2c1c53181de2fa9f83728d64a4d5c6edb82db6e1))
+* move confirmations to reaction workers and handle reorgs ([cd44dd4](https://github.com/drillcoder/voryn/commit/cd44dd46533f9f5db716354a2c5bf47de7a43783))
+
 ## [1.0.3](https://github.com/drillcoder/voryn/compare/v1.0.2...v1.0.3) (2026-09-07)
+
+### Bug Fixes
+
+* **package:** declare Node.js 22 support ([a840203](https://github.com/drillcoder/voryn/commit/a8402030d8b372997dda7fe0e495171d55437d6b))
+* **package:** validate TypeScript declarations ([8708d4c](https://github.com/drillcoder/voryn/commit/8708d4cb3aa70a3cbdcadede009e59e0028af8a5))
 
 ## [1.0.2](https://github.com/drillcoder/voryn/compare/v1.0.1...v1.0.2) (2026-09-02)
 
+### Bug Fixes
+
+* **reactions:** reduce tick log noise ([7d64495](https://github.com/drillcoder/voryn/commit/7d64495e520aaad8bc0ab3601fc5a6483b99dcb9))
+* **release:** pin compatible changelog preset ([9b3d69d](https://github.com/drillcoder/voryn/commit/9b3d69d806ced93a4bd96656a17b8457cf06b292))
+
 ## [1.0.1](https://github.com/drillcoder/voryn/compare/v1.0.0...v1.0.1) (2026-08-09)
+
+### Bug Fixes
+
+* **tests:** remove redundant type assertions ([7b738d3](https://github.com/drillcoder/voryn/commit/7b738d3469dbd84c0e59487bedaf33359be477dc))
 
 ## [1.0.0](https://github.com/drillcoder/voryn/compare/v0.5.1...v1.0.0) (2026-08-08)
 
