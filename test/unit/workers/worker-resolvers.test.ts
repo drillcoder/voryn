@@ -24,12 +24,10 @@ import {
     transactionManager,
 } from "../helpers/pipeline-test-helpers.js";
 import type { EventReactionHandler, TransactionReactionHandler } from "../../../src/interfaces/reaction.js";
-import type {
-    FetchWorkerOptions,
-    ReactionWorkerOptions,
-    SingleChainSourceConfig,
-} from "../../../src/interfaces/options.js";
+import type { SingleChainSourceConfig } from "../../../src/interfaces/source-config.js";
 import type { WorkerCursorsRepository } from "../../../src/interfaces/repositories.js";
+import type { ReactionServiceConfig } from "../../../src/services/reaction-service.js";
+import type { FetchWorkerOptions } from "../../../src/workers/fetch-worker.js";
 import { RpcPoolManager } from "@drillcoder/ethers-rpc-pool";
 
 vi.mock("../../../src/postgres/schema.js", () => ({
@@ -40,7 +38,16 @@ beforeEach(() => {
     vi.mocked(validatePostgresSchema).mockClear();
 });
 
-const fetchConfig: Omit<FetchWorkerOptions, "sourceConfig"> = {
+const fetchConfig: Pick<
+    FetchWorkerOptions,
+    | "delayBetweenTicksMs"
+    | "fetchBatchSize"
+    | "fetchClaimTtlMs"
+    | "fetchConcurrency"
+    | "retryBaseDelayMs"
+    | "retryMaxAttempts"
+    | "retryMaxDelayMs"
+> = {
     delayBetweenTicksMs: 1000,
     fetchBatchSize: 1,
     fetchConcurrency: 1,
@@ -57,7 +64,7 @@ const rpcSourceConfig = (chainId = 1): SingleChainSourceConfig => ({
     },
 });
 
-const reactionConfig: ReactionWorkerOptions = {
+const reactionConfig: ReactionServiceConfig = {
     chainId: 1,
     workerName: "reaction-worker",
     delayBetweenTicksMs: 1000,

@@ -1,5 +1,6 @@
-import type { Logger, LogLevel, WorkerLifecycle, WorkerLifecycleWithFailure } from "../src/index.js";
+import type { Logger, LogLevel } from "../src/index.js";
 import { ConsoleLogger } from "../src/index.js";
+import type { WorkerLifecycle, WorkerLifecycleWithFailure } from "../src/interfaces/worker-lifecycle.js";
 
 export function envValue(name: string, defaultValue: string): string {
     const value = process.env[name];

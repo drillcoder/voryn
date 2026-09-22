@@ -1,8 +1,8 @@
-import type { CreateBlockJobRecoveryOptions } from "@drillcoder/voryn";
+import type { BlockJobRecoveryOptions } from "@drillcoder/voryn";
 import { BlockJobRecovery } from "@drillcoder/voryn";
 
 (async () => {
-    const options: CreateBlockJobRecoveryOptions = {
+    const options: BlockJobRecoveryOptions = {
         dbUrl: "postgres://user:pass@localhost:5432/voryn",
         logLevel: "info",
         chainId: 1,

@@ -8,7 +8,8 @@ import type {
     EventsRepository,
     TransactionsRepository,
 } from "../interfaces/repositories.js";
-import type { HeadWorkerOptions, RuntimeDbOptions, RuntimeLoggerOptions } from "../interfaces/options.js";
+import type { SingleChainSourceConfig } from "../interfaces/source-config.js";
+import type { RuntimeDbOptions, RuntimeLoggerOptions } from "../runtime/options.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
@@ -40,13 +41,18 @@ export interface HeadWorkerDatabaseDependencies {
     leaderLock: LeaderLock;
 }
 
-export type CreateHeadWorkerOptions =
+export type HeadWorkerOptions =
     RuntimeLoggerOptions
-    & HeadWorkerOptions
-    & RuntimeDbOptions<HeadWorkerDatabaseDependencies>;
+    & RuntimeDbOptions<HeadWorkerDatabaseDependencies>
+    & {
+        sourceConfig: SingleChainSourceConfig;
+        delayBetweenTicksMs: number;
+        confirmations: number;
+        depthBlocks: number;
+    };
 
 export class HeadWorker extends SingletonPollingWorker {
-    static async create(options: CreateHeadWorkerOptions): Promise<HeadWorker> {
+    static async create(options: HeadWorkerOptions): Promise<HeadWorker> {
         const logger = resolveLogger(options);
         const resolvedSource = await resolveSingleBlockSource(options.sourceConfig, logger);
         const serviceConfig: HeadServiceConfig = {

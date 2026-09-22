@@ -1,8 +1,8 @@
-import type { CreateHeadWorkerOptions } from "@drillcoder/voryn";
+import type { HeadWorkerOptions } from "@drillcoder/voryn";
 import { HeadWorker } from "@drillcoder/voryn";
 
 (async () => {
-    const options: CreateHeadWorkerOptions = {
+    const options: HeadWorkerOptions = {
         dbUrl: "postgres://user:pass@localhost:5432/voryn",
         logLevel: "info",
         sourceConfig: {

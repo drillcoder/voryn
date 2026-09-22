@@ -1,8 +1,8 @@
-import type { CreateFetchWorkerOptions } from "@drillcoder/voryn";
+import type { FetchWorkerOptions } from "@drillcoder/voryn";
 import { FetchWorker } from "@drillcoder/voryn";
 
 (async () => {
-    const options: CreateFetchWorkerOptions = {
+    const options: FetchWorkerOptions = {
         dbUrl: "postgres://user:pass@localhost:5432/voryn",
         logLevel: "info",
         sourceConfig: {

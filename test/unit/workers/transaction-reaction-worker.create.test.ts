@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 
 import type { TransactionReactionHandler } from "../../../src/interfaces/reaction.js";
-import type { ReactionWorkerOptions } from "../../../src/interfaces/options.js";
+import type { ReactionServiceConfig } from "../../../src/services/reaction-service.js";
 import { TransactionReactionWorker } from "../../../src/workers/transaction-reaction-worker.js";
 import {
     ADDRESS,
@@ -18,7 +18,7 @@ import {
 
 test("transaction reaction worker create wires service execution", async () => {
     const handled: Array<[number, number]> = [];
-    const config: ReactionWorkerOptions = {
+    const config: ReactionServiceConfig = {
         chainId: 13,
         workerName: "transaction-reaction",
         delayBetweenTicksMs: 1000,

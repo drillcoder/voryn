@@ -1,7 +1,7 @@
 import type { Pool } from "pg";
 
 import type { BlockJobsRepository } from "../interfaces/repositories.js";
-import type { BlockJobRecoveryOptions, RuntimeDbOptions, RuntimeLoggerOptions } from "../interfaces/options.js";
+import type { RuntimeDbOptions, RuntimeLoggerOptions } from "../runtime/options.js";
 import type { BlockJobRecoveryServiceConfig } from "../services/block-job-recovery-service.js";
 import type { RetryAllFailedBlockJobsResult, RetryFailedBlockJobsResult } from "../interfaces/recovery.js";
 import type { BlockNumber } from "../types/chain.js";
@@ -13,13 +13,13 @@ export interface BlockJobRecoveryDatabaseDependencies {
     blockJobsRepository: BlockJobsRepository;
 }
 
-export type CreateBlockJobRecoveryOptions =
+export type BlockJobRecoveryOptions =
     RuntimeLoggerOptions
-    & BlockJobRecoveryOptions
+    & BlockJobRecoveryServiceConfig
     & RuntimeDbOptions<BlockJobRecoveryDatabaseDependencies>;
 
 export class BlockJobRecovery {
-    static async create(options: CreateBlockJobRecoveryOptions): Promise<BlockJobRecovery> {
+    static async create(options: BlockJobRecoveryOptions): Promise<BlockJobRecovery> {
         const logger = resolveLogger(options);
         const serviceConfig: BlockJobRecoveryServiceConfig = {
             chainId: options.chainId,

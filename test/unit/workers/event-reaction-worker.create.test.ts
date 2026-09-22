@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 
 import type { EventReactionHandler } from "../../../src/interfaces/reaction.js";
-import type { ReactionWorkerOptions } from "../../../src/interfaces/options.js";
+import type { ReactionServiceConfig } from "../../../src/services/reaction-service.js";
 import { EventReactionWorker } from "../../../src/workers/event-reaction-worker.js";
 import {
     ADDRESS,
@@ -18,7 +18,7 @@ import {
 
 test("event reaction worker create wires service execution", async () => {
     const handled: Array<[number, number, number]> = [];
-    const config: ReactionWorkerOptions = {
+    const config: ReactionServiceConfig = {
         chainId: 12,
         workerName: "event-reaction",
         delayBetweenTicksMs: 1000,
@@ -87,7 +87,7 @@ test("event reaction worker create wires service execution", async () => {
 });
 
 test("event reaction worker throws when cursor has no log index", async () => {
-    const config: ReactionWorkerOptions = {
+    const config: ReactionServiceConfig = {
         chainId: 12,
         workerName: "event-reaction",
         delayBetweenTicksMs: 1000,

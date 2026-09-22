@@ -22,7 +22,6 @@ test("public entry point exports exact runtime APIs", () => {
         "SequencerWorker",
         "TransactionReactionWorker",
         "applySqlFileToPostgresDb",
-        "formatPipelineMetricsPrometheus",
         "noopLogger",
         "validatePostgresSchema",
     ]);

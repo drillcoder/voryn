@@ -1,6 +1,7 @@
 import { expect, test, vi } from "vitest";
 
-import type { Logger, WorkerLifecycle, WorkerLifecycleWithFailure } from "../../../src/index.js";
+import type { Logger } from "../../../src/index.js";
+import type { WorkerLifecycle, WorkerLifecycleWithFailure } from "../../../src/interfaces/worker-lifecycle.js";
 import { envValues, runWorkerLifecycle, runWorkerLifecycleWithFailure } from "../../../dev/runtime.js";
 
 const logger: Logger = {

@@ -11,30 +11,21 @@ import type {
     BlockJobStatusCounts,
     BlockNumber,
     BlockSource,
-    BlockStageMetrics,
     BlocksRepository,
     ChainBlock,
     ChainCursor,
     ChainCursorRepository,
     ChainId,
     ChainLog,
-    ChainPipelineMetrics,
     ChainTransaction,
     ConsoleLoggerOptions,
     ConsoleLogWriter,
-    CreateBlockJobRecoveryOptions,
-    CreateEventReactionWorkerOptions,
-    CreateFetchWorkerOptions,
-    CreateHeadWorkerOptions,
-    CreatePipelineMetricsOptions,
-    CreateRetentionWorkerOptions,
-    CreateSequencerWorkerOptions,
-    CreateTransactionReactionWorkerOptions,
     DataHex,
     DbExecutor,
     DbQueryResult,
     EventReactionHandler,
     EventReactionWorkerDatabaseDependencies,
+    EventReactionWorkerOptions,
     EventsRepository,
     FailedBlockMetrics,
     FetchedBlock,
@@ -46,41 +37,29 @@ import type {
     LeaderLock,
     Logger,
     LogLevel,
-    MultiChainSourceConfig,
     PipelineBlock,
     PipelineEvent,
-    PipelineFreshnessMetrics,
-    PipelineMaxLagMetrics,
     PipelineMetricsDatabaseDependencies,
     PipelineMetricsOptions,
     PipelineMetricsResult,
-    PipelineReactionMetrics,
-    PipelineStageMetrics,
     PipelineTransaction,
-    ReactionContext,
     ReactionHandlerResult,
-    ReactionWorkerOptions,
-    RetentionPurgeResult,
     RetentionWorkerDatabaseDependencies,
     RetentionWorkerOptions,
-    RpcNetworkConfig,
     RetryAllFailedBlockJobsResult,
     RetryFailedBlockJobsResult,
-    RuntimeDbOptions,
-    RuntimeLoggerOptions,
     SequencerWorkerDatabaseDependencies,
     SequencerWorkerOptions,
-    SingleChainSourceConfig,
     StreamType,
     TransactionManager,
     TransactionReactionHandler,
     TransactionReactionWorkerDatabaseDependencies,
+    TransactionReactionWorkerOptions,
     TransactionsRepository,
     ValidatePostgresSchemaConfig,
     WorkerCursor,
     WorkerCursorPosition,
     WorkerCursorsRepository,
-    WorkerLifecycle,
 } from "../../src/index.js";
 
 type AssertNever<T extends never> = T;
@@ -97,30 +76,21 @@ interface PublicApiTypesCompile {
     BlockJobStatusCounts: BlockJobStatusCounts;
     BlockNumber: BlockNumber;
     BlockSource: BlockSource;
-    BlockStageMetrics: BlockStageMetrics;
     BlocksRepository: BlocksRepository;
     ChainBlock: ChainBlock;
     ChainCursor: ChainCursor;
     ChainCursorRepository: ChainCursorRepository;
     ChainId: ChainId;
     ChainLog: ChainLog;
-    ChainPipelineMetrics: ChainPipelineMetrics;
     ChainTransaction: ChainTransaction;
     ConsoleLoggerOptions: ConsoleLoggerOptions;
     ConsoleLogWriter: ConsoleLogWriter;
-    CreateBlockJobRecoveryOptions: CreateBlockJobRecoveryOptions;
-    CreateEventReactionWorkerOptions: CreateEventReactionWorkerOptions;
-    CreateFetchWorkerOptions: CreateFetchWorkerOptions;
-    CreateHeadWorkerOptions: CreateHeadWorkerOptions;
-    CreatePipelineMetricsOptions: CreatePipelineMetricsOptions;
-    CreateRetentionWorkerOptions: CreateRetentionWorkerOptions;
-    CreateSequencerWorkerOptions: CreateSequencerWorkerOptions;
-    CreateTransactionReactionWorkerOptions: CreateTransactionReactionWorkerOptions;
     DataHex: DataHex;
     DbExecutor: DbExecutor;
     DbQueryResult: DbQueryResult;
     EventReactionHandler: EventReactionHandler;
     EventReactionWorkerDatabaseDependencies: EventReactionWorkerDatabaseDependencies;
+    EventReactionWorkerOptions: EventReactionWorkerOptions;
     EventsRepository: EventsRepository;
     FailedBlockMetrics: FailedBlockMetrics;
     FetchedBlock: FetchedBlock;
@@ -132,41 +102,29 @@ interface PublicApiTypesCompile {
     LeaderLock: LeaderLock;
     Logger: Logger;
     LogLevel: LogLevel;
-    MultiChainSourceConfig: MultiChainSourceConfig;
     PipelineBlock: PipelineBlock;
     PipelineEvent: PipelineEvent;
-    PipelineFreshnessMetrics: PipelineFreshnessMetrics;
-    PipelineMaxLagMetrics: PipelineMaxLagMetrics;
     PipelineMetricsDatabaseDependencies: PipelineMetricsDatabaseDependencies;
     PipelineMetricsOptions: PipelineMetricsOptions;
     PipelineMetricsResult: PipelineMetricsResult;
-    PipelineReactionMetrics: PipelineReactionMetrics;
-    PipelineStageMetrics: PipelineStageMetrics;
     PipelineTransaction: PipelineTransaction;
-    ReactionContext: ReactionContext;
     ReactionHandlerResult: ReactionHandlerResult;
-    ReactionWorkerOptions: ReactionWorkerOptions;
-    RetentionPurgeResult: RetentionPurgeResult;
     RetentionWorkerDatabaseDependencies: RetentionWorkerDatabaseDependencies;
     RetentionWorkerOptions: RetentionWorkerOptions;
-    RpcNetworkConfig: RpcNetworkConfig;
     RetryAllFailedBlockJobsResult: RetryAllFailedBlockJobsResult;
     RetryFailedBlockJobsResult: RetryFailedBlockJobsResult;
-    RuntimeDbOptions: RuntimeDbOptions<Record<string, never>>;
-    RuntimeLoggerOptions: RuntimeLoggerOptions;
     SequencerWorkerDatabaseDependencies: SequencerWorkerDatabaseDependencies;
     SequencerWorkerOptions: SequencerWorkerOptions;
-    SingleChainSourceConfig: SingleChainSourceConfig;
     StreamType: StreamType;
     TransactionManager: TransactionManager;
     TransactionReactionHandler: TransactionReactionHandler;
     TransactionReactionWorkerDatabaseDependencies: TransactionReactionWorkerDatabaseDependencies;
+    TransactionReactionWorkerOptions: TransactionReactionWorkerOptions;
     TransactionsRepository: TransactionsRepository;
     ValidatePostgresSchemaConfig: ValidatePostgresSchemaConfig;
     WorkerCursor: WorkerCursor;
     WorkerCursorPosition: WorkerCursorPosition;
     WorkerCursorsRepository: WorkerCursorsRepository;
-    WorkerLifecycle: WorkerLifecycle;
 }
 
 type PublicApiTypeOnlyGuard = AssertNever<Extract<keyof PublicApiTypesCompile, RuntimePublicApiName>>;
@@ -182,13 +140,16 @@ const comparesDataWithDataHex: boolean = chainTransaction.data === dataHexLitera
 const comparesDataWithStringLiteral: boolean = chainTransaction.data === "0x";
 
 const blockSource = {} as BlockSource;
-const singleRpcPoolOptions: SingleChainSourceConfig = {
+type HeadWorkerSourceConfig = HeadWorkerOptions["sourceConfig"];
+type PipelineMetricsSourceConfig = PipelineMetricsOptions["sourceConfig"];
+
+const singleRpcPoolOptions: HeadWorkerSourceConfig = {
     network: {
         chainId: 1,
         rpcUrls: ["http://rpc.local", "http://fallback.local"],
     },
 };
-const multiRpcPoolOptions: MultiChainSourceConfig = {
+const multiRpcPoolOptions: PipelineMetricsSourceConfig = {
     networks: [{
         chainId: 1,
         rpcUrls: ["http://rpc.local", "http://fallback.local"],
@@ -201,17 +162,17 @@ const customSourceWithNetwork = {
     network: { chainId: 1, rpcUrls: ["http://rpc.local"] },
 };
 // @ts-expect-error The custom-source branch cannot include network, including through a variable.
-const invalidSingleCustomNetwork: SingleChainSourceConfig = customSourceWithNetwork;
+const invalidSingleCustomNetwork: HeadWorkerSourceConfig = customSourceWithNetwork;
 
 const rpcNetworkWithTopLevelChainId = {
     network: { chainId: 1, rpcUrls: ["http://rpc.local"] },
     chainId: 1,
 };
 // @ts-expect-error The RPC branch cannot include a top-level chainId, including through a variable.
-const invalidSingleRpcChainId: SingleChainSourceConfig = rpcNetworkWithTopLevelChainId;
+const invalidSingleRpcChainId: HeadWorkerSourceConfig = rpcNetworkWithTopLevelChainId;
 
 // @ts-expect-error A custom source cannot be combined with RPC networks.
-const invalidMultiSourceFallbackOptions: MultiChainSourceConfig = {
+const invalidMultiSourceFallbackOptions: PipelineMetricsSourceConfig = {
     chainIds: [1],
     source: blockSource,
     networks: [{ chainId: 1, rpcUrls: ["http://rpc.local"] }],

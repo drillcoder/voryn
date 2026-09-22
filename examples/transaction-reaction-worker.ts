@@ -1,7 +1,7 @@
 import type {
-    CreateTransactionReactionWorkerOptions,
     ReactionHandlerResult,
     TransactionReactionHandler,
+    TransactionReactionWorkerOptions,
 } from "@drillcoder/voryn";
 import { TransactionReactionWorker } from "@drillcoder/voryn";
 
@@ -16,7 +16,7 @@ import { TransactionReactionWorker } from "@drillcoder/voryn";
 
         return transaction.index === 10 ? "processed" : "skipped";
     };
-    const options: CreateTransactionReactionWorkerOptions = {
+    const options: TransactionReactionWorkerOptions = {
         dbUrl: "postgres://user:pass@localhost:5432/voryn",
         logLevel: "info",
         chainId: 1,

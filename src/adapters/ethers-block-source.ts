@@ -4,7 +4,7 @@ import type { Block, Log, TransactionResponse } from "ethers";
 import type { BlockSource } from "../interfaces/block-source.js";
 import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
-import type { RpcNetworkConfig } from "../interfaces/options.js";
+import type { RpcNetworkConfig } from "../interfaces/source-config.js";
 import type { BlockNumber, ChainId, HashHex } from "../types/chain.js";
 import type { ChainBlock, ChainLog, ChainTransaction, FetchedBlock } from "../interfaces/chain.js";
 import { asErrorMessage } from "../utils/errors.js";

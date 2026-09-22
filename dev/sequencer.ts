@@ -1,4 +1,4 @@
-import type { CreateSequencerWorkerOptions } from "../src/index.js";
+import type { SequencerWorkerOptions } from "../src/index.js";
 import { SequencerWorker } from "../src/index.js";
 import {
     createDevLogger,
@@ -10,7 +10,7 @@ import {
 } from "./runtime.js";
 
 async function run(): Promise<void> {
-    const options: CreateSequencerWorkerOptions = {
+    const options: SequencerWorkerOptions = {
         dbUrl: envValue("DATABASE_URL", ""),
         logger: createDevLogger(),
         sourceConfig: {

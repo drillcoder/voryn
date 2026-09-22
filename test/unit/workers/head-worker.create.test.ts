@@ -2,7 +2,7 @@ import { expect, test, vi } from "vitest";
 
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import type { Logger } from "../../../src/interfaces/logger.js";
-import type { HeadWorkerOptions } from "../../../src/interfaces/options.js";
+import type { HeadWorkerOptions } from "../../../src/workers/head-worker.js";
 import { HeadWorker } from "../../../src/workers/head-worker.js";
 import {
     createNoopBlockJobsRepository,
@@ -25,7 +25,7 @@ test("head worker create wires service execution", async () => {
         warn: vi.fn(),
         error: vi.fn(),
     };
-    const config: Omit<HeadWorkerOptions, "sourceConfig"> = {
+    const config: Pick<HeadWorkerOptions, "confirmations" | "delayBetweenTicksMs" | "depthBlocks"> = {
         confirmations: 1,
         delayBetweenTicksMs: 1000,
         depthBlocks: 10,

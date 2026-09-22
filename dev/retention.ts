@@ -1,4 +1,4 @@
-import type { CreateRetentionWorkerOptions } from "../src/index.js";
+import type { RetentionWorkerOptions } from "../src/index.js";
 import { RetentionWorker } from "../src/index.js";
 import {
     createDevLogger,
@@ -9,7 +9,7 @@ import {
 } from "./runtime.js";
 
 async function run(): Promise<void> {
-    const options: CreateRetentionWorkerOptions = {
+    const options: RetentionWorkerOptions = {
         dbUrl: envValue("DATABASE_URL", ""),
         logger: createDevLogger(),
         chainId: envNumber("VORYN_CHAIN_ID", "0"),

@@ -199,7 +199,7 @@ Reaction workers read only committed data. Each `workerName` has its own persist
 restarted safely.
 
 ```ts
-import type { CreateEventReactionWorkerOptions, EventReactionHandler, ReactionHandlerResult } from "@drillcoder/voryn";
+import type { EventReactionHandler, EventReactionWorkerOptions, ReactionHandlerResult } from "@drillcoder/voryn";
 import { EventReactionWorker } from "@drillcoder/voryn";
 
 const dbUrl = "postgres://user:pass@localhost:5432/voryn";
@@ -216,7 +216,7 @@ const handler: EventReactionHandler = async (event): Promise<ReactionHandlerResu
     return event.index === 10 ? "processed" : "skipped";
 };
 
-const options: CreateEventReactionWorkerOptions = {
+const options: EventReactionWorkerOptions = {
     chainId: 1,
     workerName: "contract-events",
     delayBetweenTicksMs: 500,
@@ -314,16 +314,23 @@ For `PipelineMetrics`, use either `sourceConfig: { networks, requestTimeoutMs?, 
 
 ## Public API
 
-The stable public API is imported from the package root, `@drillcoder/voryn`. Internal paths are not part of the
-stable API.
+Import the supported public API from the package root, `@drillcoder/voryn`. Package-internal paths are not stable.
 
-Main exports:
+The public API is grouped by use case:
 
-- workers: `HeadWorker`, `FetchWorker`, `SequencerWorker`, `RetentionWorker`, `EventReactionWorker`, `TransactionReactionWorker`;
-- data and reactions: `PipelineBlock`, `PipelineTransaction`, `PipelineEvent`, `EventReactionHandler`, `TransactionReactionHandler`;
-- infrastructure: `BlockSource`, `ConsoleLogger`, `PostgresLeaderLock`, `PostgresTransactionManager`;
-- PostgreSQL repositories and schema helpers;
-- operational tools: `PipelineMetrics`, `BlockJobRecovery`.
+- pipeline workers: `HeadWorker`, `FetchWorker`, `SequencerWorker`, and `RetentionWorker`, with a corresponding
+  `*Options` type for each `create()` factory;
+- reactions: `EventReactionWorker`, `TransactionReactionWorker`, their `*Options` and handler types, and the
+  `PipelineEvent` and `PipelineTransaction` records delivered to handlers;
+- block sources: `BlockSource` and the chain data types needed to implement a custom source;
+- operations: `PipelineMetrics`, `PipelineMetricsResult`, `BlockJobRecovery`, and their option and result types;
+- logging: `Logger`, `noopLogger`, `ConsoleLogger`, and its configuration types;
+- PostgreSQL infrastructure: repository interfaces and implementations, `LeaderLock`, `TransactionManager`,
+  database executor types, and schema helpers.
+
+The `*DatabaseDependencies` types describe the `overrides` accepted by factory options. They are useful when replacing
+one or more PostgreSQL-backed dependencies. Other exported data types are the inputs and results of these public
+extension points.
 
 ## Documentation
 

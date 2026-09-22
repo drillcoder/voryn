@@ -19,7 +19,8 @@ import {
     resolveMultiBlockSource,
     resolveLogger,
 } from "../runtime/resolvers.js";
-import type { PipelineMetricsOptions, RuntimeDbOptions, RuntimeLoggerOptions } from "../interfaces/options.js";
+import type { MultiChainSourceConfig } from "../interfaces/source-config.js";
+import type { RuntimeDbOptions, RuntimeLoggerOptions } from "../runtime/options.js";
 import type { ChainId } from "../types/chain.js";
 import { formatPipelineMetricsPrometheus } from "./prometheus.js";
 
@@ -30,13 +31,13 @@ export interface PipelineMetricsDatabaseDependencies {
     workerCursorsRepository: WorkerCursorsRepository;
 }
 
-export type CreatePipelineMetricsOptions =
+export type PipelineMetricsOptions =
     RuntimeLoggerOptions
-    & PipelineMetricsOptions
-    & RuntimeDbOptions<PipelineMetricsDatabaseDependencies>;
+    & RuntimeDbOptions<PipelineMetricsDatabaseDependencies>
+    & { sourceConfig: MultiChainSourceConfig; };
 
 export class PipelineMetrics {
-    static async create(options: CreatePipelineMetricsOptions): Promise<PipelineMetrics> {
+    static async create(options: PipelineMetricsOptions): Promise<PipelineMetrics> {
         const logger = resolveLogger(options);
         validatePipelineMetricsOptions(options);
         const resolvedSource = await resolveMultiBlockSource(options.sourceConfig, logger);
@@ -90,7 +91,7 @@ export class PipelineMetrics {
     }
 }
 
-function validatePipelineMetricsOptions(options: CreatePipelineMetricsOptions): void {
+function validatePipelineMetricsOptions(options: PipelineMetricsOptions): void {
     const chainIds = getMetricsChainIds(options.sourceConfig);
 
     if (chainIds.length === 0) {
@@ -112,7 +113,7 @@ function validatePipelineMetricsOptions(options: CreatePipelineMetricsOptions): 
     }
 }
 
-function getMetricsChainIds(config: PipelineMetricsOptions["sourceConfig"]): readonly ChainId[] {
+function getMetricsChainIds(config: MultiChainSourceConfig): readonly ChainId[] {
     return config.source === undefined
         ? config.networks.map(({ chainId }) => chainId)
         : config.chainIds;

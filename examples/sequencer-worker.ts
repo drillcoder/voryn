@@ -1,8 +1,8 @@
-import type { CreateSequencerWorkerOptions } from "@drillcoder/voryn";
+import type { SequencerWorkerOptions } from "@drillcoder/voryn";
 import { SequencerWorker } from "@drillcoder/voryn";
 
 (async () => {
-    const options: CreateSequencerWorkerOptions = {
+    const options: SequencerWorkerOptions = {
         dbUrl: "postgres://user:pass@localhost:5432/voryn",
         logLevel: "info",
         sourceConfig: {

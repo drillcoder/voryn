@@ -199,7 +199,7 @@ Reaction-воркеры читают только закоммиченные д�
 обработчик можно безопасно перезапускать.
 
 ```ts
-import type { CreateEventReactionWorkerOptions, EventReactionHandler, ReactionHandlerResult } from "@drillcoder/voryn";
+import type { EventReactionHandler, EventReactionWorkerOptions, ReactionHandlerResult } from "@drillcoder/voryn";
 import { EventReactionWorker } from "@drillcoder/voryn";
 
 const dbUrl = "postgres://user:pass@localhost:5432/voryn";
@@ -216,7 +216,7 @@ const handler: EventReactionHandler = async (event): Promise<ReactionHandlerResu
     return event.index === 10 ? "processed" : "skipped";
 };
 
-const options: CreateEventReactionWorkerOptions = {
+const options: EventReactionWorkerOptions = {
     chainId: 1,
     workerName: "contract-events",
     delayBetweenTicksMs: 500,
@@ -317,16 +317,24 @@ RPC-ветка `sourceConfig` заставляет Voryn создать и об�
 
 ## Публичный API
 
-Стабильный публичный API импортируется из корня пакета, `@drillcoder/voryn`. Внутренние пути не входят в
-стабильный API.
+Поддерживаемый публичный API импортируется из корня пакета, `@drillcoder/voryn`. Внутренние пути пакета не считаются
+стабильными.
 
-Основные экспорты:
+Публичный API сгруппирован по сценариям использования:
 
-- воркеры: `HeadWorker`, `FetchWorker`, `SequencerWorker`, `RetentionWorker`, `EventReactionWorker`, `TransactionReactionWorker`;
-- данные и реакции: `PipelineBlock`, `PipelineTransaction`, `PipelineEvent`, `EventReactionHandler`, `TransactionReactionHandler`;
-- инфраструктура: `BlockSource`, `ConsoleLogger`, `PostgresLeaderLock`, `PostgresTransactionManager`;
-- PostgreSQL-репозитории и schema helpers;
-- операционные инструменты: `PipelineMetrics`, `BlockJobRecovery`.
+- pipeline-воркеры: `HeadWorker`, `FetchWorker`, `SequencerWorker` и `RetentionWorker`, а также соответствующий
+  тип `*Options` для фабрики `create()` каждого воркера;
+- реакции: `EventReactionWorker`, `TransactionReactionWorker`, их `*Options` и типы обработчиков, а также записи
+  `PipelineEvent` и `PipelineTransaction`, передаваемые обработчикам;
+- источники блоков: `BlockSource` и типы данных сети, необходимые для реализации собственного источника;
+- эксплуатация: `PipelineMetrics`, `PipelineMetricsResult`, `BlockJobRecovery`, их параметры и типы результатов;
+- логирование: `Logger`, `noopLogger`, `ConsoleLogger` и типы его настроек;
+- инфраструктура PostgreSQL: интерфейсы и реализации репозиториев, `LeaderLock`, `TransactionManager`, типы исполнителя
+  запросов и schema helpers.
+
+Типы `*DatabaseDependencies` описывают `overrides` из параметров фабрик. Они нужны при замене одной или нескольких
+зависимостей с реализацией на PostgreSQL. Остальные экспортируемые типы описывают входные данные и результаты этих
+публичных точек расширения.
 
 ## Документация
 

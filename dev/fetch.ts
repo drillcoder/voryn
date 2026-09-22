@@ -1,4 +1,4 @@
-import type { CreateFetchWorkerOptions } from "../src/index.js";
+import type { FetchWorkerOptions } from "../src/index.js";
 import { FetchWorker } from "../src/index.js";
 import {
     createDevLogger,
@@ -10,7 +10,7 @@ import {
 } from "./runtime.js";
 
 async function run(): Promise<void> {
-    const options: CreateFetchWorkerOptions = {
+    const options: FetchWorkerOptions = {
         dbUrl: envValue("DATABASE_URL", ""),
         logger: createDevLogger(),
         sourceConfig: {

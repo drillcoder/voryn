@@ -1,4 +1,4 @@
-import type { CreateHeadWorkerOptions } from "../src/index.js";
+import type { HeadWorkerOptions } from "../src/index.js";
 import { HeadWorker } from "../src/index.js";
 import {
     createDevLogger,
@@ -10,7 +10,7 @@ import {
 } from "./runtime.js";
 
 async function run(): Promise<void> {
-    const options: CreateHeadWorkerOptions = {
+    const options: HeadWorkerOptions = {
         dbUrl: envValue("DATABASE_URL", ""),
         logger: createDevLogger(),
         sourceConfig: {

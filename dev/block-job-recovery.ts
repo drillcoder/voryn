@@ -1,5 +1,5 @@
 import type {
-    CreateBlockJobRecoveryOptions,
+    BlockJobRecoveryOptions,
     RetryAllFailedBlockJobsResult,
     RetryFailedBlockJobsResult,
 } from "../src/index.js";
@@ -7,7 +7,7 @@ import { BlockJobRecovery } from "../src/index.js";
 import { createDevLogger, envNumber, envValue, runWithErrorHandling } from "./runtime.js";
 
 async function run(): Promise<void> {
-    const options: CreateBlockJobRecoveryOptions = {
+    const options: BlockJobRecoveryOptions = {
         dbUrl: envValue("DATABASE_URL", ""),
         logger: createDevLogger(),
         chainId: envNumber("VORYN_CHAIN_ID", "0"),

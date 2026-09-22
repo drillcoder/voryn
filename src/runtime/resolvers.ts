@@ -7,12 +7,8 @@ import { validatePostgresSchema } from "../postgres/schema.js";
 import type { Pool } from "pg";
 import type { BlockSource } from "../interfaces/block-source.js";
 import type { Logger } from "../interfaces/logger.js";
-import type {
-    MultiChainSourceConfig,
-    RuntimeDbOptions,
-    RuntimeLoggerOptions,
-    SingleChainSourceConfig,
-} from "../interfaces/options.js";
+import type { MultiChainSourceConfig, SingleChainSourceConfig } from "../interfaces/source-config.js";
+import type { RuntimeDbOptions, RuntimeLoggerOptions } from "./options.js";
 import type { ChainId } from "../types/chain.js";
 
 type AsyncDisposer = () => Promise<void>;

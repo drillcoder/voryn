@@ -1,6 +1,6 @@
 import { expect, test, vi } from "vitest";
 
-import type { RetentionWorkerOptions } from "../../../src/interfaces/options.js";
+import type { RetentionWorkerOptions } from "../../../src/workers/retention-worker.js";
 import { RetentionWorker } from "../../../src/workers/retention-worker.js";
 import {
     createNoopBlockJobsRepository,
@@ -16,7 +16,7 @@ import {
 
 test("retention worker create wires service execution", async () => {
     const getCursor = vi.fn(async () => null);
-    const config: RetentionWorkerOptions = {
+    const config: Pick<RetentionWorkerOptions, "chainId" | "delayBetweenTicksMs" | "retentionDepthBlocks"> = {
         chainId: 11,
         delayBetweenTicksMs: 1000,
         retentionDepthBlocks: 100,

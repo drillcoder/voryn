@@ -9,7 +9,7 @@ import type {
     TransactionsRepository,
 } from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
-import type { RetentionWorkerOptions, RuntimeDbOptions, RuntimeLoggerOptions } from "../interfaces/options.js";
+import type { RuntimeDbOptions, RuntimeLoggerOptions } from "../runtime/options.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../repositories/postgres/block-jobs-repository.js";
@@ -33,13 +33,13 @@ export interface RetentionWorkerDatabaseDependencies {
     leaderLock: LeaderLock;
 }
 
-export type CreateRetentionWorkerOptions =
+export type RetentionWorkerOptions =
     RuntimeLoggerOptions
-    & RetentionWorkerOptions
+    & RetentionServiceConfig
     & RuntimeDbOptions<RetentionWorkerDatabaseDependencies>;
 
 export class RetentionWorker extends SingletonPollingWorker {
-    static async create(options: CreateRetentionWorkerOptions): Promise<RetentionWorker> {
+    static async create(options: RetentionWorkerOptions): Promise<RetentionWorker> {
         const logger = resolveLogger(options);
         const serviceConfig: RetentionServiceConfig = {
             chainId: options.chainId,

@@ -1,7 +1,7 @@
 import { expect, test, vi } from "vitest";
 
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
-import type { FetchWorkerOptions } from "../../../src/interfaces/options.js";
+import type { FetchWorkerOptions } from "../../../src/workers/fetch-worker.js";
 import { FetchWorker } from "../../../src/workers/fetch-worker.js";
 import {
     createNoopBlockJobsRepository,
@@ -15,7 +15,16 @@ import {
 
 test("fetch worker create wires service execution", async () => {
     const claimForFetch = vi.fn(async () => null);
-    const config: Omit<FetchWorkerOptions, "sourceConfig"> = {
+    const config: Pick<
+        FetchWorkerOptions,
+        | "delayBetweenTicksMs"
+        | "fetchBatchSize"
+        | "fetchClaimTtlMs"
+        | "fetchConcurrency"
+        | "retryBaseDelayMs"
+        | "retryMaxAttempts"
+        | "retryMaxDelayMs"
+    > = {
         delayBetweenTicksMs: 1000,
         fetchBatchSize: 1,
         fetchConcurrency: 1,

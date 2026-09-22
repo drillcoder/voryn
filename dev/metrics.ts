@@ -1,9 +1,9 @@
-import type { CreatePipelineMetricsOptions } from "../src/index.js";
+import type { PipelineMetricsOptions } from "../src/index.js";
 import { PipelineMetrics } from "../src/index.js";
 import { createDevLogger, envNumber, envValue, envValues, runWithErrorHandling } from "./runtime.js";
 
 async function run(): Promise<void> {
-    const options: CreatePipelineMetricsOptions = {
+    const options: PipelineMetricsOptions = {
         dbUrl: envValue("DATABASE_URL", ""),
         logger: createDevLogger(),
         sourceConfig: {

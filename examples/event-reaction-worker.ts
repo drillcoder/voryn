@@ -1,4 +1,4 @@
-import type { CreateEventReactionWorkerOptions, EventReactionHandler, ReactionHandlerResult } from "@drillcoder/voryn";
+import type { EventReactionHandler, EventReactionWorkerOptions, ReactionHandlerResult } from "@drillcoder/voryn";
 import { EventReactionWorker } from "@drillcoder/voryn";
 
 (async () => {
@@ -12,7 +12,7 @@ import { EventReactionWorker } from "@drillcoder/voryn";
 
         return event.index === 10 ? "processed" : "skipped";
     };
-    const options: CreateEventReactionWorkerOptions = {
+    const options: EventReactionWorkerOptions = {
         dbUrl: "postgres://user:pass@localhost:5432/voryn",
         logLevel: "info",
         chainId: 1,

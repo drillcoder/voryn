@@ -9,7 +9,8 @@ import type {
     TransactionsRepository,
 } from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
-import type { RuntimeDbOptions, RuntimeLoggerOptions, SequencerWorkerOptions } from "../interfaces/options.js";
+import type { SingleChainSourceConfig } from "../interfaces/source-config.js";
+import type { RuntimeDbOptions, RuntimeLoggerOptions } from "../runtime/options.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../repositories/postgres/block-jobs-repository.js";
@@ -40,13 +41,17 @@ export interface SequencerWorkerDatabaseDependencies {
     leaderLock: LeaderLock;
 }
 
-export type CreateSequencerWorkerOptions =
+export type SequencerWorkerOptions =
     RuntimeLoggerOptions
-    & SequencerWorkerOptions
-    & RuntimeDbOptions<SequencerWorkerDatabaseDependencies>;
+    & RuntimeDbOptions<SequencerWorkerDatabaseDependencies>
+    & {
+        sourceConfig: SingleChainSourceConfig;
+        delayBetweenTicksMs: number;
+        maxBlocksPerTick: number;
+    };
 
 export class SequencerWorker extends SingletonPollingWorker {
-    static async create(options: CreateSequencerWorkerOptions): Promise<SequencerWorker> {
+    static async create(options: SequencerWorkerOptions): Promise<SequencerWorker> {
         const logger = resolveLogger(options);
         const resolvedSource = await resolveSingleBlockSource(options.sourceConfig, logger);
         const serviceConfig: SequencerServiceConfig = {

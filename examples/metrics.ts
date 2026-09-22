@@ -1,8 +1,8 @@
-import type { CreatePipelineMetricsOptions } from "@drillcoder/voryn";
+import type { PipelineMetricsOptions } from "@drillcoder/voryn";
 import { PipelineMetrics } from "@drillcoder/voryn";
 
 (async () => {
-    const options: CreatePipelineMetricsOptions = {
+    const options: PipelineMetricsOptions = {
         dbUrl: "postgres://user:pass@localhost:5432/voryn",
         logLevel: "info",
         sourceConfig: {

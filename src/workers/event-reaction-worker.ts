@@ -3,7 +3,7 @@ import type { Logger } from "../interfaces/logger.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
 import type { EventReactionHandler } from "../interfaces/reaction.js";
 import type { ChainCursorRepository, EventsRepository, WorkerCursorsRepository } from "../interfaces/repositories.js";
-import type { ReactionWorkerOptions, RuntimeDbOptions, RuntimeLoggerOptions } from "../interfaces/options.js";
+import type { RuntimeDbOptions, RuntimeLoggerOptions } from "../runtime/options.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cursor-repository.js";
 import { PostgresEventsRepository } from "../repositories/postgres/events-repository.js";
@@ -21,14 +21,14 @@ export interface EventReactionWorkerDatabaseDependencies {
     leaderLock: LeaderLock;
 }
 
-export type CreateEventReactionWorkerOptions =
+export type EventReactionWorkerOptions =
     RuntimeLoggerOptions
-    & ReactionWorkerOptions
+    & ReactionServiceConfig
     & RuntimeDbOptions<EventReactionWorkerDatabaseDependencies>
     & { handler: EventReactionHandler };
 
 export class EventReactionWorker extends SingletonPollingWorker {
-    static async create(options: CreateEventReactionWorkerOptions): Promise<EventReactionWorker> {
+    static async create(options: EventReactionWorkerOptions): Promise<EventReactionWorker> {
         const logger = resolveLogger(options);
         const serviceConfig: ReactionServiceConfig = {
             chainId: options.chainId,

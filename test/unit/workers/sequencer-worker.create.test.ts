@@ -1,7 +1,7 @@
 import { expect, test, vi } from "vitest";
 
-import type { SequencerWorkerOptions } from "../../../src/interfaces/options.js";
 import type { BlockSource } from "../../../src/interfaces/block-source.js";
+import type { SequencerWorkerOptions } from "../../../src/workers/sequencer-worker.js";
 import { SequencerWorker } from "../../../src/workers/sequencer-worker.js";
 import {
     createNoopBlockJobsRepository,
@@ -18,7 +18,7 @@ import {
 
 test("sequencer worker create wires service execution", async () => {
     const getCursor = vi.fn(async () => null);
-    const config: Omit<SequencerWorkerOptions, "sourceConfig"> = {
+    const config: Pick<SequencerWorkerOptions, "delayBetweenTicksMs" | "maxBlocksPerTick"> = {
         delayBetweenTicksMs: 1000,
         maxBlocksPerTick: 1,
     };

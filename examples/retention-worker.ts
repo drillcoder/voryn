@@ -1,8 +1,8 @@
-import type { CreateRetentionWorkerOptions } from "@drillcoder/voryn";
+import type { RetentionWorkerOptions } from "@drillcoder/voryn";
 import { RetentionWorker } from "@drillcoder/voryn";
 
 (async () => {
-    const options: CreateRetentionWorkerOptions = {
+    const options: RetentionWorkerOptions = {
         dbUrl: "postgres://user:pass@localhost:5432/voryn",
         logLevel: "info",
         chainId: 1,

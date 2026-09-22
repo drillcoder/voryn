@@ -7,7 +7,7 @@ import type {
     TransactionsRepository,
     WorkerCursorsRepository,
 } from "../interfaces/repositories.js";
-import type { ReactionWorkerOptions, RuntimeDbOptions, RuntimeLoggerOptions } from "../interfaces/options.js";
+import type { RuntimeDbOptions, RuntimeLoggerOptions } from "../runtime/options.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cursor-repository.js";
 import { PostgresTransactionsRepository } from "../repositories/postgres/transactions-repository.js";
@@ -25,14 +25,14 @@ export interface TransactionReactionWorkerDatabaseDependencies {
     leaderLock: LeaderLock;
 }
 
-export type CreateTransactionReactionWorkerOptions =
+export type TransactionReactionWorkerOptions =
     RuntimeLoggerOptions
-    & ReactionWorkerOptions
+    & ReactionServiceConfig
     & RuntimeDbOptions<TransactionReactionWorkerDatabaseDependencies>
     & { handler: TransactionReactionHandler };
 
 export class TransactionReactionWorker extends SingletonPollingWorker {
-    static async create(options: CreateTransactionReactionWorkerOptions): Promise<TransactionReactionWorker> {
+    static async create(options: TransactionReactionWorkerOptions): Promise<TransactionReactionWorker> {
         const logger = resolveLogger(options);
         const serviceConfig: ReactionServiceConfig = {
             chainId: options.chainId,

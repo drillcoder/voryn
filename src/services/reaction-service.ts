@@ -13,10 +13,16 @@ import type {
     TransactionsRepository,
     WorkerCursorsRepository,
 } from "../interfaces/repositories.js";
-import type { ReactionWorkerOptions } from "../interfaces/options.js";
+import type { ChainId } from "../types/chain.js";
 import type { StreamType } from "../types/pipeline.js";
 
-export type ReactionServiceConfig = ReactionWorkerOptions;
+export interface ReactionServiceConfig {
+    chainId: ChainId;
+    delayBetweenTicksMs: number;
+    workerName: string;
+    batchSize: number;
+    skipFlushInterval: number;
+}
 
 interface ReactionServiceBaseOptions<TStreamType extends StreamType> {
     config: ReactionServiceConfig;

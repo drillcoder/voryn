@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import type { Logger } from "../interfaces/logger.js";
-import type { FetchWorkerOptions, RuntimeDbOptions, RuntimeLoggerOptions } from "../interfaces/options.js";
+import type { SingleChainSourceConfig } from "../interfaces/source-config.js";
+import type { RuntimeDbOptions, RuntimeLoggerOptions } from "../runtime/options.js";
 import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../repositories/postgres/block-jobs-repository.js";
 import { PostgresBlocksRepository } from "../repositories/postgres/blocks-repository.js";
@@ -34,13 +35,22 @@ export interface FetchWorkerDatabaseDependencies {
     transactionManager: TransactionManager;
 }
 
-export type CreateFetchWorkerOptions =
+export type FetchWorkerOptions =
     RuntimeLoggerOptions
-    & FetchWorkerOptions
-    & RuntimeDbOptions<FetchWorkerDatabaseDependencies>;
+    & RuntimeDbOptions<FetchWorkerDatabaseDependencies>
+    & {
+        sourceConfig: SingleChainSourceConfig;
+        delayBetweenTicksMs: number;
+        fetchBatchSize: number;
+        fetchConcurrency: number;
+        fetchClaimTtlMs: number;
+        retryMaxAttempts: number;
+        retryBaseDelayMs: number;
+        retryMaxDelayMs: number;
+    };
 
 export class FetchWorker extends PollingWorker {
-    static async create(options: CreateFetchWorkerOptions): Promise<FetchWorker> {
+    static async create(options: FetchWorkerOptions): Promise<FetchWorker> {
         const logger = resolveLogger(options);
         const resolvedSource = await resolveSingleBlockSource(options.sourceConfig, logger);
         let dbDispose: (() => Promise<void>) | undefined;
