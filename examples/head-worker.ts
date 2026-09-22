@@ -14,7 +14,6 @@ import { HeadWorker } from "@drillcoder/voryn";
             operationTimeoutMs: 60_000,
         },
         delayBetweenTicksMs: 1_000,
-        confirmations: 0,
         depthBlocks: 65_000,
     };
 

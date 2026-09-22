@@ -12,6 +12,7 @@ export interface ChainCursor {
     lastEnqueuedBlock: BlockNumber;
     lastCommittedBlock: BlockNumber;
     lastCommittedHash: HashHex;
+    reorgVersion: number;
     updatedAt: Date;
 }
 
@@ -62,7 +63,7 @@ export interface PipelineEvent {
 export interface WorkerCursorPosition {
     lastBlockNumber: BlockNumber;
     lastTransactionIndex: number;
-    lastLogIndex?: number | null;
+    lastLogIndex: number;
 }
 
 export interface WorkerCursor {
@@ -70,6 +71,7 @@ export interface WorkerCursor {
     chainId: ChainId;
     streamType: StreamType;
     position: WorkerCursorPosition;
+    reorgVersion: number;
     updatedAt: Date;
 }
 

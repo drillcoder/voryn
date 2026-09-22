@@ -50,6 +50,7 @@ describe("integration transaction manager", () => {
                     lastEnqueuedBlock: 600,
                     lastCommittedBlock: 599,
                     lastCommittedHash: hashFromNumber(599),
+                    reorgVersion: 0,
                 }, transaction);
                 await blockJobsRepository.enqueueRange(CHAIN_ID, 600, 600, transaction);
                 await blocksRepository.insert({

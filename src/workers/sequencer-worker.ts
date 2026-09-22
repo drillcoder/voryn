@@ -7,6 +7,7 @@ import type {
     ChainCursorRepository,
     EventsRepository,
     TransactionsRepository,
+    WorkerCursorsRepository,
 } from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import type { SingleChainSourceConfig } from "../interfaces/source-config.js";
@@ -18,6 +19,7 @@ import { PostgresBlocksRepository } from "../repositories/postgres/blocks-reposi
 import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cursor-repository.js";
 import { PostgresEventsRepository } from "../repositories/postgres/events-repository.js";
 import { PostgresTransactionsRepository } from "../repositories/postgres/transactions-repository.js";
+import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker-cursors-repository.js";
 import type { SequencerServiceConfig } from "../services/sequencer-service.js";
 import { SequencerService } from "../services/sequencer-service.js";
 import { SEQUENCER_WORKER_LOCK_KEY_BASE } from "./worker-lock-keys.js";
@@ -37,6 +39,7 @@ export interface SequencerWorkerDatabaseDependencies {
     transactionsRepository: TransactionsRepository;
     eventsRepository: EventsRepository;
     blockJobsRepository: BlockJobsRepository;
+    workerCursorsRepository: WorkerCursorsRepository;
     transactionManager: TransactionManager;
     leaderLock: LeaderLock;
 }
@@ -70,6 +73,7 @@ export class SequencerWorker extends SingletonPollingWorker {
                     transactionsRepository: new PostgresTransactionsRepository(pool),
                     eventsRepository: new PostgresEventsRepository(pool),
                     blockJobsRepository: new PostgresBlockJobsRepository(pool),
+                    workerCursorsRepository: new PostgresWorkerCursorsRepository(pool),
                     transactionManager: new PostgresTransactionManager(pool),
                     leaderLock: new PostgresLeaderLock(
                         pool,
@@ -86,6 +90,7 @@ export class SequencerWorker extends SingletonPollingWorker {
                 dependencies.transactionsRepository,
                 dependencies.eventsRepository,
                 dependencies.blockJobsRepository,
+                dependencies.workerCursorsRepository,
                 dependencies.transactionManager,
                 logger,
             );

@@ -11,6 +11,7 @@ import type {
     ChainCursorRepository,
     EventsRepository,
     TransactionsRepository,
+    WorkerCursorsRepository,
 } from "../../../src/interfaces/repositories.js";
 import type { SequencerServiceConfig } from "../../../src/services/sequencer-service.js";
 import type { TransactionManager } from "../../../src/interfaces/transaction-manager.js";
@@ -38,6 +39,7 @@ const createCursor = (
     lastEnqueuedBlock,
     lastCommittedBlock,
     lastCommittedHash,
+    reorgVersion: 0,
     updatedAt: new Date(),
 });
 
@@ -102,6 +104,7 @@ const createChainCursorRepository = (
     insert: async () => undefined,
     setLastEnqueued: async () => undefined,
     setPositions: async () => undefined,
+    setPositionsAndIncrementReorgVersion: async () => 1,
     advanceLastCommitted: async () => undefined,
     ...overrides,
 });
@@ -158,6 +161,17 @@ const createBlockJobsRepository = (overrides: Partial<BlockJobsRepository> = {})
     ...overrides,
 });
 
+const createWorkerCursorsRepository = (
+    overrides: Partial<WorkerCursorsRepository> = {},
+): WorkerCursorsRepository => ({
+    get: async () => null,
+    listByChain: async () => [],
+    insert: async () => undefined,
+    advanceIfVersion: async () => true,
+    rewindForReorg: async () => 0,
+    ...overrides,
+});
+
 const createService = (options: {
     source?: BlockSource;
     chainCursorRepository: ChainCursorRepository;
@@ -165,6 +179,7 @@ const createService = (options: {
     transactionsRepository?: TransactionsRepository;
     eventsRepository?: EventsRepository;
     blockJobsRepository?: BlockJobsRepository;
+    workerCursorsRepository?: WorkerCursorsRepository;
     transactionManager: TransactionManager;
     config?: Partial<SequencerServiceConfig>;
     logger?: Logger;
@@ -181,6 +196,7 @@ const createService = (options: {
     options.transactionsRepository ?? createTransactionsRepository(),
     options.eventsRepository ?? createEventsRepository(),
     options.blockJobsRepository ?? createBlockJobsRepository(),
+    options.workerCursorsRepository ?? createWorkerCursorsRepository(),
     options.transactionManager,
     options.logger,
 );
@@ -413,11 +429,19 @@ test("sequencer service rolls back to common ancestor on parent hash mismatch", 
             }
         ),
         chainCursorRepository: createChainCursorRepository(() => cursor, {
-            setPositions: async (_chainId, blockNumber, blockHash, lastEnqueuedBlock, tx) => {
+            setPositionsAndIncrementReorgVersion: async (
+                _chainId,
+                blockNumber,
+                blockHash,
+                lastEnqueuedBlock,
+                tx,
+            ) => {
                 calls.push(`set-cursor:${String(blockNumber)}:${String(tx === transaction)}`);
                 cursor.lastCommittedBlock = blockNumber;
                 cursor.lastCommittedHash = blockHash;
                 cursor.lastEnqueuedBlock = lastEnqueuedBlock;
+                cursor.reorgVersion += 1;
+                return cursor.reorgVersion;
             },
         }),
         blocksRepository: createBlocksRepository((_chainId, blockNumber) => {
@@ -454,6 +478,14 @@ test("sequencer service rolls back to common ancestor on parent hash mismatch", 
                 return 4;
             },
         }),
+        workerCursorsRepository: createWorkerCursorsRepository({
+            rewindForReorg: async (_chainId, rollbackFromBlock, reorgVersion, tx) => {
+                calls.push(
+                    `rewind-workers:${String(rollbackFromBlock)}:${String(reorgVersion)}:${String(tx === transaction)}`
+                );
+                return 2;
+            },
+        }),
         transactionManager: manager,
     });
 
@@ -468,6 +500,7 @@ test("sequencer service rolls back to common ancestor on parent hash mismatch", 
         "delete-blocks-range:10:11:true",
         "delete-jobs-range:10:11:true",
         "set-cursor:9:true",
+        "rewind-workers:10:1:true",
     ]);
 });
 
@@ -532,6 +565,8 @@ test("sequencer service logs rollback metadata for new tables", async () => {
         deletedBlocks: 3,
         deletedTransactions: 4,
         deletedEvents: 5,
+        reorgVersion: 1,
+        rewoundReactionCursors: 0,
     });
     expect(warn).toHaveBeenCalledWith("sequencer_parent_hash_mismatch", {
         chainId: 10,

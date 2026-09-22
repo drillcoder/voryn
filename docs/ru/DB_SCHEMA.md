@@ -10,6 +10,7 @@
 - `last_enqueued_block` (`BIGINT`): до какого блока задания уже поставлены в `block_jobs`.
 - `last_committed_block` (`BIGINT`): последний блок в committed-позиции.
 - `last_committed_hash` (`VARCHAR(66)`): хэш последнего блока в committed-позиции.
+- `reorg_version` (`BIGINT`): увеличивается при каждом rollback sequencer и инвалидирует устаревшие reaction batches.
 - `updated_at` (`TIMESTAMPTZ`): время последнего обновления строки.
 
 ## `block_jobs`
@@ -85,7 +86,8 @@
 - `stream_type` (`TEXT`): тип потока, `event` или `transaction`.
 - `last_block_number` (`BIGINT`): номер последнего обработанного блока.
 - `last_transaction_index` (`INT`): индекс последней обработанной транзакции.
-- `last_log_index` (`INT`, nullable): индекс последнего обработанного лога. Используется для `event`, для `transaction` остается `NULL`.
+- `last_log_index` (`INT`): индекс последнего обработанного лога для `event`; для `transaction` всегда равен `-1`.
+- `reorg_version` (`BIGINT`): version reorg цепи для version-aware продвижения cursor.
 - `updated_at` (`TIMESTAMPTZ`): время последнего обновления курсора.
 
 Ключи:

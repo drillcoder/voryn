@@ -57,6 +57,7 @@ describe("e2e fetch retry exhausted", () => {
             lastEnqueuedBlock: 9,
             lastCommittedBlock: 9,
             lastCommittedHash: committedHash,
+            reorgVersion: 0,
         });
 
         const source = createAlwaysFailingBlockSource(10, block10);
@@ -65,7 +66,6 @@ describe("e2e fetch retry exhausted", () => {
             logLevel: "error",
             sourceConfig: { chainId: CHAIN_ID, source },
             delayBetweenTicksMs: 5,
-            confirmations: 0,
             depthBlocks: 64,
             overrides: {
                 chainCursorRepository,

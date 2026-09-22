@@ -69,7 +69,6 @@ RPC pool полностью повторяет допустимую операц
 
 `HeadWorker`:
 
-- `confirmations`: сколько последних блоков не ставить в очередь.
 - `depthBlocks`: максимальное окно блоков, которое `head` держит доступным для постановки в очередь. Если committed progress отстает сильнее этого окна, `head` делает rebase к доступной границе.
 
 `FetchWorker`:
@@ -94,6 +93,7 @@ RPC pool полностью повторяет допустимую операц
 - `workerName`: стабильное имя reaction worker. Вместе с `chainId` и типом stream оно определяет cursor и lock.
 - `batchSize`: максимум stream items, которые worker читает за один tick.
 - `skipFlushInterval`: как часто skipped items сбрасывают cursor progress.
+- `confirmations`: обязательное целое значение `>= 0`, которое задает отставание этого worker от последнего хеда, увиденного `HeadWorker`.
 - `handler`: application callback для одного event или transaction.
 
 ## Масштабирование и настройки
@@ -141,7 +141,7 @@ Reaction workers запускают прикладную логику по commi
 
 - Reaction workers не блокируют `head`, `fetch` или `sequencer`.
 - Медленный reaction worker увеличивает reaction lag, но загрузка блоков продолжается.
-- Retention не ждет reaction cursors, поэтому reaction lag должен оставаться меньше `retentionDepthBlocks`.
+- Retention не ждет reaction cursors. Reaction lag включает намеренное ожидание confirmations и должен оставаться меньше `retentionDepthBlocks`.
 - Reorg может привести к повторной доставке той же transaction или event, если она снова попадет в committed-цепочку.
 
 ## Retention
@@ -152,6 +152,7 @@ retention-окно.
 
 Выбирайте глубину с учетом:
 
+- максимального `confirmations` среди reaction workers;
 - ожидаемого reaction lag;
 - времени реакции на инциденты;
 - ожидаемой глубины reorg для сети;
@@ -161,6 +162,14 @@ retention-окно.
 Слишком маленькое значение опасно. Если reaction worker сильно отстанет, старые строки могут стать недоступны до того,
 как handler их обработает. Следите за reaction lag и держите `retentionDepthBlocks` заметно выше максимального
 ожидаемого reaction lag.
+
+Используйте следующее требование:
+
+```text
+retentionDepthBlocks > max reaction confirmations + максимальный ожидаемый processing lag + операционный запас
+```
+
+Иначе retention может удалить строки, пока reaction worker намеренно ждет confirmations.
 
 Retention не ждет reaction cursors перед удалением старых строк. Считайте reaction lag операционным лимитом, который
 должен оставаться внутри retention-окна.
@@ -299,7 +308,7 @@ Prometheus-вывод включает такие gauges:
 
 Здоровое состояние обычно выглядит так:
 
-- `head` lag небольшой для сети и настроенного числа confirmations.
+- `head` lag небольшой для сети.
 - `fetch` lag не растет постоянно и уменьшается, когда fetch-воркерам хватает мощности.
 - `sequencer` lag не растет бесконечно.
 - Jobs в статусе `failed` не накапливаются.

@@ -13,6 +13,7 @@ import { PostgresBlocksRepository } from "../../../src/repositories/postgres/blo
 import { PostgresChainCursorRepository } from "../../../src/repositories/postgres/chain-cursor-repository.js";
 import { PostgresEventsRepository } from "../../../src/repositories/postgres/events-repository.js";
 import { PostgresTransactionsRepository } from "../../../src/repositories/postgres/transactions-repository.js";
+import { PostgresWorkerCursorsRepository } from "../../../src/repositories/postgres/worker-cursors-repository.js";
 import { FetchService } from "../../../src/services/fetch-service.js";
 import { HeadService } from "../../../src/services/head-service.js";
 import { SequencerService } from "../../../src/services/sequencer-service.js";
@@ -50,6 +51,7 @@ describe("integration services: head/fetch/sequencer", () => {
         const blocksRepository = new PostgresBlocksRepository(db.pool);
         const transactionsRepository = new PostgresTransactionsRepository(db.pool);
         const eventsRepository = new PostgresEventsRepository(db.pool);
+        const workerCursorsRepository = new PostgresWorkerCursorsRepository(db.pool);
 
         const committedHash = hashFromNumber(9);
         await chainCursorRepository.insert({
@@ -57,6 +59,7 @@ describe("integration services: head/fetch/sequencer", () => {
             lastEnqueuedBlock: 9,
             lastCommittedBlock: 9,
             lastCommittedHash: committedHash,
+            reorgVersion: 0,
         });
 
         const block10 = buildFetchedBlock(10, committedHash);
@@ -68,7 +71,6 @@ describe("integration services: head/fetch/sequencer", () => {
             {
                 chainId: CHAIN_ID,
                 delayBetweenTicksMs: 1,
-                confirmations: 0,
                 depthBlocks: 64,
             },
             source,
@@ -112,6 +114,7 @@ describe("integration services: head/fetch/sequencer", () => {
             transactionsRepository,
             eventsRepository,
             blockJobsRepository,
+            workerCursorsRepository,
             transactionManager,
         );
 
@@ -136,6 +139,7 @@ describe("integration services: head/fetch/sequencer", () => {
         const blockJobsRepository = new PostgresBlockJobsRepository(db.pool);
         const transactionsRepository = new PostgresTransactionsRepository(db.pool);
         const eventsRepository = new PostgresEventsRepository(db.pool);
+        const workerCursorsRepository = new PostgresWorkerCursorsRepository(db.pool);
         const committedHash = hashFromNumber(399);
         const wrongParentHash = hashFromNumber(12345);
         const committedBlock = buildFetchedBlock(399, hashFromNumber(398));
@@ -147,6 +151,7 @@ describe("integration services: head/fetch/sequencer", () => {
             lastEnqueuedBlock: 400,
             lastCommittedBlock: 399,
             lastCommittedHash: committedHash,
+            reorgVersion: 0,
         });
         await db.pool.query(
             `INSERT INTO block_jobs (chain_id, block_number, status)
@@ -184,6 +189,7 @@ describe("integration services: head/fetch/sequencer", () => {
             transactionsRepository,
             eventsRepository,
             blockJobsRepository,
+            workerCursorsRepository,
             transactionManager,
         );
 

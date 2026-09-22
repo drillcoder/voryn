@@ -15,6 +15,7 @@ import { PostgresBlocksRepository } from "../../src/repositories/postgres/blocks
 import { PostgresChainCursorRepository } from "../../src/repositories/postgres/chain-cursor-repository.js";
 import { PostgresEventsRepository } from "../../src/repositories/postgres/events-repository.js";
 import { PostgresTransactionsRepository } from "../../src/repositories/postgres/transactions-repository.js";
+import { PostgresWorkerCursorsRepository } from "../../src/repositories/postgres/worker-cursors-repository.js";
 import { FetchWorker } from "../../src/workers/fetch-worker.js";
 import { HeadWorker } from "../../src/workers/head-worker.js";
 import { SequencerWorker } from "../../src/workers/sequencer-worker.js";
@@ -49,6 +50,7 @@ describe("e2e multi-chain isolation", () => {
         const blocksRepository = new PostgresBlocksRepository(db.pool);
         const transactionsRepository = new PostgresTransactionsRepository(db.pool);
         const eventsRepository = new PostgresEventsRepository(db.pool);
+        const workerCursorsRepository = new PostgresWorkerCursorsRepository(db.pool);
 
         const chainACommittedHash = hashFromNumber(9);
         const chainBCommittedHash = hashFromNumber(99);
@@ -58,12 +60,14 @@ describe("e2e multi-chain isolation", () => {
             lastEnqueuedBlock: 9,
             lastCommittedBlock: 9,
             lastCommittedHash: chainACommittedHash,
+            reorgVersion: 0,
         });
         await chainCursorRepository.insert({
             chainId: CHAIN_B,
             lastEnqueuedBlock: 99,
             lastCommittedBlock: 99,
             lastCommittedHash: chainBCommittedHash,
+            reorgVersion: 0,
         });
 
         const chainABlock10 = withChainId(buildFetchedBlock(10, chainACommittedHash, 1), CHAIN_A);
@@ -80,7 +84,6 @@ describe("e2e multi-chain isolation", () => {
                 logLevel: "error",
                 sourceConfig: { chainId: CHAIN_A, source },
                 delayBetweenTicksMs: 5,
-                confirmations: 0,
                 depthBlocks: 64,
                 overrides: {
                     chainCursorRepository,
@@ -121,6 +124,7 @@ describe("e2e multi-chain isolation", () => {
                     transactionsRepository,
                     eventsRepository,
                     blockJobsRepository,
+                    workerCursorsRepository,
                     transactionManager,
                     leaderLock: createLeaderLock(),
                 },
@@ -129,7 +133,6 @@ describe("e2e multi-chain isolation", () => {
                 logLevel: "error",
                 sourceConfig: { chainId: CHAIN_B, source },
                 delayBetweenTicksMs: 5,
-                confirmations: 0,
                 depthBlocks: 64,
                 overrides: {
                     chainCursorRepository,
@@ -170,6 +173,7 @@ describe("e2e multi-chain isolation", () => {
                     transactionsRepository,
                     eventsRepository,
                     blockJobsRepository,
+                    workerCursorsRepository,
                     transactionManager,
                     leaderLock: createLeaderLock(),
                 },

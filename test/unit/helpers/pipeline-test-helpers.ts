@@ -69,6 +69,7 @@ export const createWorkerCursorPosition = (
 ): WorkerCursorPosition => ({
     lastBlockNumber: 1,
     lastTransactionIndex: 0,
+    lastLogIndex: -1,
     ...overrides,
 });
 
@@ -128,6 +129,7 @@ export const createNoopChainCursorRepository = (): ChainCursorRepository => ({
     insert: async () => undefined,
     setLastEnqueued: async () => undefined,
     setPositions: async () => undefined,
+    setPositionsAndIncrementReorgVersion: async () => 1,
     advanceLastCommitted: async () => undefined,
 });
 
@@ -149,5 +151,6 @@ export const createNoopWorkerCursorsRepository = (): WorkerCursorsRepository => 
     get: async () => null,
     listByChain: async () => [],
     insert: async () => undefined,
-    advance: async () => undefined,
+    advanceIfVersion: async () => true,
+    rewindForReorg: async () => 0,
 });

@@ -22,7 +22,6 @@ async function run(): Promise<void> {
             operationTimeoutMs: envNumber("VORYN_HEAD_RPC_OPERATION_TIMEOUT_MS", "60000"),
         },
         delayBetweenTicksMs: envNumber("VORYN_HEAD_DELAY_BETWEEN_TICKS_MS", "1000"),
-        confirmations: envNumber("VORYN_HEAD_CONFIRMATIONS", "0"),
         depthBlocks: envNumber("VORYN_HEAD_DEPTH_BLOCKS", "65000"),
     };
     const worker = await HeadWorker.create(options);

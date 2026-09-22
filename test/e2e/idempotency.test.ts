@@ -63,6 +63,7 @@ describe("e2e idempotency", () => {
             lastEnqueuedBlock: 9,
             lastCommittedBlock: 9,
             lastCommittedHash: committedHash,
+            reorgVersion: 0,
         });
 
         const block10 = buildFetchedBlock(10, committedHash, 2);
@@ -180,7 +181,6 @@ async function createWorkerSet(
         logLevel: "error",
         sourceConfig: { chainId: CHAIN_ID, source },
         delayBetweenTicksMs: 5,
-        confirmations: 0,
         depthBlocks: 64,
         overrides: {
             chainCursorRepository,
@@ -221,6 +221,7 @@ async function createWorkerSet(
             transactionsRepository,
             eventsRepository,
             blockJobsRepository,
+            workerCursorsRepository,
             transactionManager,
             leaderLock: createLeaderLock(),
         },
@@ -232,11 +233,13 @@ async function createWorkerSet(
         workerName: `reaction-event-${workerSuffix}`,
         batchSize: 2,
         skipFlushInterval: 2,
+        confirmations: 0,
         handler: eventHandler,
         overrides: {
             chainCursorRepository,
             eventsRepository,
             workerCursorsRepository,
+            transactionManager,
             leaderLock: createLeaderLock(),
         },
     });
@@ -247,11 +250,13 @@ async function createWorkerSet(
         workerName: `reaction-transaction-${workerSuffix}`,
         batchSize: 2,
         skipFlushInterval: 2,
+        confirmations: 0,
         handler: transactionHandler,
         overrides: {
             chainCursorRepository,
             transactionsRepository,
             workerCursorsRepository,
+            transactionManager,
             leaderLock: createLeaderLock(),
         },
     });

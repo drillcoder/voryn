@@ -4,6 +4,7 @@ import type { BlockSource } from "../../../src/interfaces/block-source.js";
 import type { Logger } from "../../../src/interfaces/logger.js";
 import type { HeadWorkerOptions } from "../../../src/workers/head-worker.js";
 import { HeadWorker } from "../../../src/workers/head-worker.js";
+import { asHash32 } from "../../../src/utils/hex.js";
 import {
     createNoopBlockJobsRepository,
     createNoopBlocksRepository,
@@ -25,8 +26,7 @@ test("head worker create wires service execution", async () => {
         warn: vi.fn(),
         error: vi.fn(),
     };
-    const config: Pick<HeadWorkerOptions, "confirmations" | "delayBetweenTicksMs" | "depthBlocks"> = {
-        confirmations: 1,
+    const config: Pick<HeadWorkerOptions, "delayBetweenTicksMs" | "depthBlocks"> = {
         delayBetweenTicksMs: 1000,
         depthBlocks: 10,
     };
@@ -35,9 +35,13 @@ test("head worker create wires service execution", async () => {
         getLatestBlock: async () => {
             throw new Error("not expected");
         },
-        getBlock: async () => {
-            throw new Error("not expected");
-        },
+        getBlock: async () => ({
+            chainId: 7,
+            number: 0,
+            hash: asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+            parentHash: asHash32("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
+            timestamp: 0,
+        }),
         getBlockData: async () => {
             throw new Error("not expected");
         },
@@ -63,11 +67,11 @@ test("head worker create wires service execution", async () => {
     expect(getLatestBlockNumber).toHaveBeenCalledWith(7);
     expect(debug.mock.calls.map(([message]) => message)).toEqual([
         "head_latest_block_number_load_completed",
-        "head_waiting_for_safe_head",
+        "head_tick_observed",
+        "head_cursor_initialization_required",
     ]);
     expect(invokeStartLogMeta(worker)).toEqual({
         chainId: 7,
-        confirmations: 1,
         depthBlocks: 10,
     });
 });

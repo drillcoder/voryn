@@ -14,6 +14,7 @@ import {
     invokeStartLogMeta,
     invokeTick,
     leaderLock,
+    transactionManager,
 } from "../helpers/pipeline-test-helpers.js";
 
 test("transaction reaction worker create wires service execution", async () => {
@@ -24,6 +25,7 @@ test("transaction reaction worker create wires service execution", async () => {
         delayBetweenTicksMs: 1000,
         batchSize: 10,
         skipFlushInterval: 10,
+        confirmations: 0,
     };
     const handler: TransactionReactionHandler = async (transaction) => {
         handled.push([transaction.blockNumber, transaction.index]);
@@ -43,6 +45,7 @@ test("transaction reaction worker create wires service execution", async () => {
                     lastEnqueuedBlock: 1,
                     lastCommittedBlock: 1,
                     lastCommittedHash: HASH_A,
+                    reorgVersion: 0,
                     updatedAt: new Date(),
                 }),
             },
@@ -68,11 +71,13 @@ test("transaction reaction worker create wires service execution", async () => {
                     workerName: "transaction-reaction",
                     chainId: 13,
                     streamType: "transaction",
-                    position: { lastBlockNumber: 0, lastTransactionIndex: 0 },
+                    position: { lastBlockNumber: 0, lastTransactionIndex: 0, lastLogIndex: -1 },
+                    reorgVersion: 0,
                     updatedAt: new Date(),
                 }),
             },
             leaderLock,
+            transactionManager,
         },
     });
 
@@ -83,5 +88,6 @@ test("transaction reaction worker create wires service execution", async () => {
         chainId: 13,
         workerName: "transaction-reaction",
         batchSize: 10,
+        confirmations: 0,
     });
 });

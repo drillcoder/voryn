@@ -13,6 +13,7 @@ import { PostgresBlocksRepository } from "../../src/repositories/postgres/blocks
 import { PostgresChainCursorRepository } from "../../src/repositories/postgres/chain-cursor-repository.js";
 import { PostgresEventsRepository } from "../../src/repositories/postgres/events-repository.js";
 import { PostgresTransactionsRepository } from "../../src/repositories/postgres/transactions-repository.js";
+import { PostgresWorkerCursorsRepository } from "../../src/repositories/postgres/worker-cursors-repository.js";
 import { FetchWorker } from "../../src/workers/fetch-worker.js";
 import { HeadWorker } from "../../src/workers/head-worker.js";
 import { SequencerWorker } from "../../src/workers/sequencer-worker.js";
@@ -51,6 +52,7 @@ describe("e2e concurrent fetch workers", () => {
         const blocksRepository = new PostgresBlocksRepository(db.pool);
         const transactionsRepository = new PostgresTransactionsRepository(db.pool);
         const eventsRepository = new PostgresEventsRepository(db.pool);
+        const workerCursorsRepository = new PostgresWorkerCursorsRepository(db.pool);
 
         const committedHash = hashFromNumber(9);
         await chainCursorRepository.insert({
@@ -58,6 +60,7 @@ describe("e2e concurrent fetch workers", () => {
             lastEnqueuedBlock: 9,
             lastCommittedBlock: 9,
             lastCommittedHash: committedHash,
+            reorgVersion: 0,
         });
 
         const blocks = [
@@ -75,7 +78,6 @@ describe("e2e concurrent fetch workers", () => {
             logLevel: "error",
             sourceConfig: { chainId: CHAIN_ID, source },
             delayBetweenTicksMs: 5,
-            confirmations: 0,
             depthBlocks: 64,
             overrides: {
                 chainCursorRepository,
@@ -134,6 +136,7 @@ describe("e2e concurrent fetch workers", () => {
                 transactionsRepository,
                 eventsRepository,
                 blockJobsRepository,
+                workerCursorsRepository,
                 transactionManager,
                 leaderLock: createLeaderLock(),
             },

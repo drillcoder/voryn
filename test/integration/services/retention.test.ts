@@ -47,6 +47,7 @@ describe("integration services: retention", () => {
             lastEnqueuedBlock: 10,
             lastCommittedBlock: 10,
             lastCommittedHash: hashFromNumber(10),
+            reorgVersion: 0,
         });
 
         await blockJobsRepository.enqueueRange(CHAIN_ID, 6, 8);
@@ -97,6 +98,7 @@ describe("integration services: retention", () => {
             lastEnqueuedBlock: 10,
             lastCommittedBlock: 10,
             lastCommittedHash: hashFromNumber(10),
+            reorgVersion: 0,
         });
         await blockJobsRepository.enqueueRange(CHAIN_ID, 6, 8);
 
@@ -141,6 +143,7 @@ describe("integration services: retention", () => {
             lastEnqueuedBlock: 10,
             lastCommittedBlock: 10,
             lastCommittedHash: hashFromNumber(10),
+            reorgVersion: 0,
         });
         await blockJobsRepository.enqueueRange(CHAIN_ID, 6, 8);
 

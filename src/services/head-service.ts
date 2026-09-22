@@ -15,7 +15,6 @@ import type { BlockNumber, ChainId } from "../types/chain.js";
 export interface HeadServiceConfig {
     chainId: ChainId;
     delayBetweenTicksMs: number;
-    confirmations: number;
     depthBlocks: number;
 }
 
@@ -34,7 +33,7 @@ export class HeadService {
     }
 
     async execute(): Promise<void> {
-        const { chainId, confirmations, depthBlocks } = this.config;
+        const { chainId, depthBlocks } = this.config;
         const latestBlock = await this.source.getLatestBlockNumber(chainId);
 
         this.logger.debug("head_latest_block_number_load_completed", {
@@ -42,27 +41,13 @@ export class HeadService {
             latestBlock,
         });
 
-        const safeHead = latestBlock - confirmations;
-
-        if (safeHead < 0) {
-            this.logger.debug("head_waiting_for_safe_head", {
-                chainId,
-                latestBlock,
-                confirmations,
-                safeHead,
-            });
-            return;
-        }
-
-        const floor = safeHead - depthBlocks + 1;
+        const floor = latestBlock - depthBlocks + 1;
         const floorBlock = floor > 0 ? floor : 0;
         const cursorBeforeTx = await this.chainCursorRepository.get(chainId);
 
         this.logger.debug("head_tick_observed", {
             chainId,
             latestBlock,
-            confirmations,
-            safeHead,
             depthBlocks,
             floorBlock,
             lastEnqueuedBlock: cursorBeforeTx?.lastEnqueuedBlock ?? null,
@@ -81,12 +66,12 @@ export class HeadService {
         if (cursorBeforeTx.lastCommittedBlock < floorBlock - 1) {
             this.logger.info("head_rebase_required", {
                 chainId,
-                safeHead,
+                latestBlock,
                 floorBlock,
                 lastEnqueuedBlock: cursorBeforeTx.lastEnqueuedBlock,
                 lastCommittedBlock: cursorBeforeTx.lastCommittedBlock,
             });
-            await this.rebaseCursorAndEnqueue(chainId, safeHead, floorBlock, depthBlocks);
+            await this.rebaseCursorAndEnqueue(chainId, latestBlock, floorBlock, depthBlocks);
             return;
         }
 
@@ -100,7 +85,7 @@ export class HeadService {
             if (chainCursor.lastCommittedBlock < floorBlock - 1) {
                 this.logger.info("head_enqueue_deferred_until_rebase", {
                     chainId,
-                    safeHead,
+                    latestBlock,
                     lastCommittedBlock: chainCursor.lastCommittedBlock,
                     lastEnqueuedBlock: chainCursor.lastEnqueuedBlock,
                     floorBlock,
@@ -112,7 +97,7 @@ export class HeadService {
                 chainId,
                 chainCursor.lastEnqueuedBlock,
                 floorBlock,
-                safeHead,
+                latestBlock,
                 transaction,
             );
         });
@@ -125,6 +110,7 @@ export class HeadService {
             lastEnqueuedBlock: latestBlock,
             lastCommittedBlock: latestBlock,
             lastCommittedHash: latestBlockData.hash,
+            reorgVersion: 0,
         });
 
         this.logger.info("chain_cursor_initialized", {
@@ -136,7 +122,7 @@ export class HeadService {
 
     private async rebaseCursorAndEnqueue(
         chainId: ChainId,
-        safeHead: BlockNumber,
+        latestBlock: BlockNumber,
         floorBlock: BlockNumber,
         depthBlocks: number,
     ): Promise<void> {
@@ -152,7 +138,7 @@ export class HeadService {
             if (chainCursor.lastCommittedBlock >= floorBlock - 1) {
                 this.logger.info("head_rebase_skipped_cursor_caught_up", {
                     chainId,
-                    safeHead,
+                    latestBlock,
                     floorBlock,
                     lastCommittedBlock: chainCursor.lastCommittedBlock,
                     lastEnqueuedBlock: chainCursor.lastEnqueuedBlock,
@@ -161,7 +147,7 @@ export class HeadService {
                     chainId,
                     chainCursor.lastEnqueuedBlock,
                     floorBlock,
-                    safeHead,
+                    latestBlock,
                     transaction,
                 );
                 return;
@@ -185,14 +171,14 @@ export class HeadService {
 
             this.logger.info("chain_cursor_rebased", {
                 chainId,
-                safeHead,
+                latestBlock,
                 depthBlocks,
                 floorBlock,
                 rebasedToBlock: rebaseTo,
                 floorParentHash,
             });
 
-            await this.enqueueMissingBlockJobs(chainId, rebaseTo, floorBlock, safeHead, transaction);
+            await this.enqueueMissingBlockJobs(chainId, rebaseTo, floorBlock, latestBlock, transaction);
         });
     }
 
@@ -200,29 +186,29 @@ export class HeadService {
         chainId: ChainId,
         lastEnqueuedBlock: BlockNumber,
         floorBlock: BlockNumber,
-        safeHead: BlockNumber,
+        latestBlock: BlockNumber,
         transaction: DbExecutor,
     ): Promise<void> {
         const fromBlock = Math.max(lastEnqueuedBlock + 1, floorBlock);
 
-        if (fromBlock > safeHead) {
-            this.logger.debug("head_enqueue_skipped_no_new_safe_blocks", {
+        if (fromBlock > latestBlock) {
+            this.logger.debug("head_enqueue_skipped_no_new_blocks", {
                 chainId,
                 lastEnqueuedBlock,
                 floorBlock,
-                safeHead,
+                latestBlock,
                 fromBlock,
             });
             return;
         }
 
-        await this.blockJobsRepository.enqueueRange(chainId, fromBlock, safeHead, transaction);
-        await this.chainCursorRepository.setLastEnqueued(chainId, safeHead, transaction);
+        await this.blockJobsRepository.enqueueRange(chainId, fromBlock, latestBlock, transaction);
+        await this.chainCursorRepository.setLastEnqueued(chainId, latestBlock, transaction);
 
         this.logger.info("enqueued_block_jobs", {
             chainId,
             fromBlock,
-            toBlock: safeHead,
+            toBlock: latestBlock,
         });
     }
 }

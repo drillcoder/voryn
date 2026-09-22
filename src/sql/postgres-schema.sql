@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS chain_cursor
     last_enqueued_block  BIGINT      NOT NULL,
     last_committed_block BIGINT      NOT NULL,
     last_committed_hash  VARCHAR(66) NOT NULL,
+    reorg_version        BIGINT      NOT NULL,
     updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -74,7 +75,8 @@ CREATE TABLE IF NOT EXISTS worker_cursors
     stream_type            TEXT        NOT NULL,
     last_block_number      BIGINT      NOT NULL,
     last_transaction_index INT         NOT NULL,
-    last_log_index         INT,
+    last_log_index         INT         NOT NULL,
+    reorg_version          BIGINT      NOT NULL,
     updated_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (worker_name, chain_id, stream_type)
 );

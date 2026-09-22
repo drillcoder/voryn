@@ -4,7 +4,9 @@ import type { LeaderLock } from "../interfaces/leader-lock.js";
 import type { EventReactionHandler } from "../interfaces/reaction.js";
 import type { ChainCursorRepository, EventsRepository, WorkerCursorsRepository } from "../interfaces/repositories.js";
 import type { RuntimeDbOptions, RuntimeLoggerOptions } from "../runtime/options.js";
+import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
+import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
 import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cursor-repository.js";
 import { PostgresEventsRepository } from "../repositories/postgres/events-repository.js";
 import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker-cursors-repository.js";
@@ -18,6 +20,7 @@ export interface EventReactionWorkerDatabaseDependencies {
     chainCursorRepository: ChainCursorRepository;
     eventsRepository: EventsRepository;
     workerCursorsRepository: WorkerCursorsRepository;
+    transactionManager: TransactionManager;
     leaderLock: LeaderLock;
 }
 
@@ -36,6 +39,7 @@ export class EventReactionWorker extends SingletonPollingWorker {
             workerName: options.workerName,
             batchSize: options.batchSize,
             skipFlushInterval: options.skipFlushInterval,
+            confirmations: options.confirmations,
         };
         const { dependencies, dispose } = await resolveDbDependencies<EventReactionWorkerDatabaseDependencies>(
             options,
@@ -44,6 +48,7 @@ export class EventReactionWorker extends SingletonPollingWorker {
                 chainCursorRepository: new PostgresChainCursorRepository(pool),
                 eventsRepository: new PostgresEventsRepository(pool),
                 workerCursorsRepository: new PostgresWorkerCursorsRepository(pool),
+                transactionManager: new PostgresTransactionManager(pool),
                 leaderLock: new PostgresLeaderLock(pool, buildReactionWorkerLockKey("event", serviceConfig)),
             })
         );
@@ -54,6 +59,7 @@ export class EventReactionWorker extends SingletonPollingWorker {
             chainCursorRepository: dependencies.chainCursorRepository,
             eventsRepository: dependencies.eventsRepository,
             workerCursorsRepository: dependencies.workerCursorsRepository,
+            transactionManager: dependencies.transactionManager,
             logger,
         });
 
@@ -85,6 +91,7 @@ export class EventReactionWorker extends SingletonPollingWorker {
             chainId: this.serviceConfig.chainId,
             workerName: this.serviceConfig.workerName,
             batchSize: this.serviceConfig.batchSize,
+            confirmations: this.serviceConfig.confirmations,
         };
     }
 }

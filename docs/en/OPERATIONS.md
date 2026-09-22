@@ -70,7 +70,6 @@ query parameters, authorization data, or RPC payloads.
 
 `HeadWorker`:
 
-- `confirmations`: number of latest blocks to leave unprocessed before enqueuing.
 - `depthBlocks`: maximum block window that `head` keeps available for enqueueing. If committed progress falls behind this window, `head` rebases to the available boundary.
 
 `FetchWorker`:
@@ -95,6 +94,7 @@ query parameters, authorization data, or RPC payloads.
 - `workerName`: stable reaction worker name. Together with `chainId` and stream type, it identifies the cursor and lock.
 - `batchSize`: maximum stream items read in one tick.
 - `skipFlushInterval`: how often skipped items flush cursor progress.
+- `confirmations`: required non-negative integer that controls how far this worker stays behind the latest head seen by `HeadWorker`.
 - `handler`: application callback for one event or transaction.
 
 ## Scaling and Tuning
@@ -143,7 +143,7 @@ Important operational points:
 
 - Reaction workers do not block `head`, `fetch`, or `sequencer`.
 - A slow reaction worker increases reaction lag but block ingestion continues.
-- Retention does not wait for reaction cursors, so reaction lag must stay below `retentionDepthBlocks`.
+- Retention does not wait for reaction cursors. Reaction lag includes intentional confirmation waiting and must stay below `retentionDepthBlocks`.
 - Reorgs can cause the same transaction or event to be delivered again if it is committed again after rollback.
 
 ## Retention
@@ -154,6 +154,7 @@ retention window.
 
 Choose a depth that covers:
 
+- the largest reaction `confirmations` value;
 - expected reaction lag;
 - incident response time;
 - expected reorg depth for the chain;
@@ -163,6 +164,14 @@ Choose a depth that covers:
 Too small a value is risky. If a reaction worker falls too far behind, old rows can become unavailable before the
 handler processes them. Monitor reaction lag and keep `retentionDepthBlocks` comfortably above the largest expected
 reaction lag.
+
+Use this requirement:
+
+```text
+retentionDepthBlocks > max reaction confirmations + maximum expected processing lag + operational reserve
+```
+
+Otherwise retention can delete rows while a reaction worker is intentionally waiting for confirmations.
 
 Retention does not wait for reaction cursors before deleting old rows. Treat reaction lag as an operational limit that
 must stay inside the retention window.
@@ -301,7 +310,7 @@ Failed block details are available in the JSON snapshot only. Prometheus exposes
 
 Healthy state usually looks like this:
 
-- `head` lag is small for the chain and configured confirmations.
+- `head` lag is small for the chain.
 - `fetch` lag does not grow continuously and decreases when fetch workers have enough capacity.
 - `sequencer` lag does not grow without bound.
 - `failed` jobs do not accumulate.

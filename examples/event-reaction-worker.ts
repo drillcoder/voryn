@@ -20,6 +20,7 @@ import { EventReactionWorker } from "@drillcoder/voryn";
         workerName: "event-reaction-worker",
         batchSize: 1000,
         skipFlushInterval: 100,
+        confirmations: 12,
         handler,
     };
 

@@ -12,6 +12,7 @@ import { PostgresBlocksRepository } from "../../src/repositories/postgres/blocks
 import { PostgresChainCursorRepository } from "../../src/repositories/postgres/chain-cursor-repository.js";
 import { PostgresEventsRepository } from "../../src/repositories/postgres/events-repository.js";
 import { PostgresTransactionsRepository } from "../../src/repositories/postgres/transactions-repository.js";
+import { PostgresWorkerCursorsRepository } from "../../src/repositories/postgres/worker-cursors-repository.js";
 import { EthersBlockSource } from "../../src/adapters/ethers-block-source.js";
 import { FetchService } from "../../src/services/fetch-service.js";
 import { SequencerService } from "../../src/services/sequencer-service.js";
@@ -71,6 +72,7 @@ describeLive("live rpc pipeline", () => {
         const blocksRepository = new PostgresBlocksRepository(db.pool);
         const transactionsRepository = new PostgresTransactionsRepository(db.pool);
         const eventsRepository = new PostgresEventsRepository(db.pool);
+        const workerCursorsRepository = new PostgresWorkerCursorsRepository(db.pool);
 
         const source = await EthersBlockSource.create({
             networks: [{ chainId, rpcUrls: [rpcUrl] }],
@@ -85,6 +87,7 @@ describeLive("live rpc pipeline", () => {
             lastEnqueuedBlock: latest - 1,
             lastCommittedBlock: latest - 1,
             lastCommittedHash: previous.block.hash,
+            reorgVersion: 0,
         });
         await blockJobsRepository.enqueueRange(chainId, latest, latest);
 
@@ -119,6 +122,7 @@ describeLive("live rpc pipeline", () => {
             transactionsRepository,
             eventsRepository,
             blockJobsRepository,
+            workerCursorsRepository,
             transactionManager,
         );
 

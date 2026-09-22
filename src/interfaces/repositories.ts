@@ -29,6 +29,14 @@ export interface ChainCursorRepository {
         transaction?: DbExecutor
     ): Promise<void>;
 
+    setPositionsAndIncrementReorgVersion(
+        chainId: ChainId,
+        lastCommittedBlock: BlockNumber,
+        lastCommittedHash: HashHex,
+        lastEnqueuedBlock: BlockNumber,
+        transaction: DbExecutor
+    ): Promise<number>;
+
     advanceLastCommitted(
         chainId: ChainId,
         expectedPreviousBlockNumber: BlockNumber,
@@ -174,14 +182,23 @@ export interface WorkerCursorsRepository {
         chainId: ChainId,
         streamType: StreamType,
         position: WorkerCursorPosition,
+        reorgVersion: number,
         transaction?: DbExecutor
     ): Promise<void>;
 
-    advance(
+    advanceIfVersion(
         workerName: string,
         chainId: ChainId,
         streamType: StreamType,
         position: WorkerCursorPosition,
+        expectedReorgVersion: number,
         transaction?: DbExecutor
-    ): Promise<void>;
+    ): Promise<boolean>;
+
+    rewindForReorg(
+        chainId: ChainId,
+        rollbackFromBlock: BlockNumber,
+        reorgVersion: number,
+        transaction: DbExecutor
+    ): Promise<number>;
 }

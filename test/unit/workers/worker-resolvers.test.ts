@@ -70,6 +70,7 @@ const reactionConfig: ReactionServiceConfig = {
     delayBetweenTicksMs: 1000,
     batchSize: 10,
     skipFlushInterval: 10,
+    confirmations: 0,
 };
 
 const eventHandler: EventReactionHandler = async () => "processed";
@@ -80,7 +81,8 @@ const workerCursorsRepository: WorkerCursorsRepository = {
     get: async () => null,
     listByChain: async () => [],
     insert: async () => undefined,
-    advance: async () => undefined,
+    advanceIfVersion: async () => true,
+    rewindForReorg: async () => 0,
 };
 
 test("fetch worker creates ethers source when an RPC source config is provided", async () => {
@@ -184,7 +186,6 @@ test("RPC-backed workers close their pool when database initialization fails", a
     vi.mocked(validatePostgresSchema).mockRejectedValueOnce(initializationError);
     await expect(HeadWorker.create({
         logLevel: "error",
-        confirmations: 0,
         delayBetweenTicksMs: 1000,
         depthBlocks: 10,
         sourceConfig,
@@ -249,7 +250,6 @@ test("event reaction worker creates leader lock from worker identity", async () 
 test("head worker with dbUrl returns singleton lock and disposer", async () => {
     const worker = await HeadWorker.create({
         logLevel: "error",
-        confirmations: 1,
         delayBetweenTicksMs: 1000,
         depthBlocks: 10,
         sourceConfig: rpcSourceConfig(7),

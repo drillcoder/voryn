@@ -72,18 +72,17 @@ Voryn — каркас индексатора для EVM-сетей.
 
 - Получает `latest` из `BlockSource`.
 - При первом запуске инициализирует `chain_cursor` текущим блоком.
-- Для обычного хода считает `safeHead = latest - confirmations`.
-- Считает нижнюю границу доступной глубины: `floorBlock = max(0, safeHead - depthBlocks + 1)`.
+- Считает нижнюю границу доступной глубины: `floorBlock = max(0, latest - depthBlocks + 1)`.
 - Если `last_committed_block < floorBlock - 1`, выполняет rebase:
   - читает `floorBlock` из RPC и берет `parentHash`,
   - в транзакции сдвигает `chain_cursor` на `floorBlock - 1`,
   - удаляет записи до этой границы из `block_jobs`, `blocks`, `transactions` и `events`,
-  - добавляет jobs в диапазоне `[floorBlock, safeHead]`,
+  - добавляет jobs в диапазоне `[floorBlock, latest]`,
   - обновляет `lastEnqueuedBlock`,
   - завершает тик.
 - В одной транзакции:
   - читает cursor,
-  - добавляет jobs в диапазоне `[max(lastEnqueuedBlock + 1, floorBlock), safeHead]`,
+  - добавляет jobs в диапазоне `[max(lastEnqueuedBlock + 1, floorBlock), latest]`,
   - обновляет `lastEnqueuedBlock`.
 
 ### `FetchService`
@@ -111,12 +110,13 @@ Voryn — каркас индексатора для EVM-сетей.
   - проверяет `parent_hash` против `last_committed_hash`,
   - двигает `last_committed_*` в `chain_cursor`,
   - помечает job как `committed`.
-- Если `parent_hash` отличается от `last_committed_hash`, ищет общий предок через `BlockSource`,
-  удаляет данные после него из `block_jobs`, `blocks`, `transactions`, `events` и возвращает `chain_cursor` к предку.
+- Если `parent_hash` отличается от `last_committed_hash`, ищет общий предок через `BlockSource`, удаляет данные после
+  него, возвращает `chain_cursor` к предку, увеличивает `reorg_version` и атомарно отматывает затронутые reaction
+  cursors. Отстающие reaction cursors сохраняют позицию, но получают новую version.
 
 ### `RetentionService`
 
-Очищает данные за пределами рабочей глубины хранения. Он использует committed-позицию и позиции reaction-воркеров, чтобы оставить данные, которые еще нужны для обработки.
+Очищает данные за пределами рабочей глубины хранения относительно committed-позиции. Reaction-воркеров он не ждет.
 
 - В транзакции считает границу purge по `last_committed_block - retentionDepthBlocks`.
 - Удаляет данные за границей retention из:
@@ -131,13 +131,17 @@ Reaction-контур запускает пользовательскую лог
 
 ### `ReactionService`
 
-- Перед чтением берет `chain_cursor.last_committed_block` и ограничивает выборку этой границей.
+- Для каждого reaction worker требует целое `confirmations >= 0`.
+- Ограничивает чтение границей `min(last_committed_block, last_enqueued_block - confirmations)`.
 - Читает элементы потока в порядке репозитория: события идут по `(block_number, transaction_index, log_index)`, транзакции - по `(block_number, transaction_index)`.
 - Ведет прогресс в `worker_cursors` с `stream_type = event` или `stream_type = transaction`.
 - Курсор событий хранит `last_block_number`, `last_transaction_index`, `last_log_index`.
-- Курсор транзакций хранит `last_block_number`, `last_transaction_index`.
-- При первом запуске нового `workerName` инициализирует курсор текущей committed-позицией.
+- Курсор транзакций хранит `last_block_number`, `last_transaction_index` и sentinel `-1` в `last_log_index`.
+- При первом запуске нового `workerName` блокирует `chain_cursor` и инициализирует cursor текущей committed-позицией
+  и `reorg_version`.
 - Вызывает пользовательский reaction handler и двигает курсор по результатам `"processed"` / `"skipped"`.
+- Продвигает cursor только при совпадении version. При конфликте version текущий batch прекращается, а следующий tick
+  читает уже отмотанное состояние.
 
 ## Операционные инструменты
 

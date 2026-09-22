@@ -57,6 +57,7 @@ const createValidSchemaFixture = (): SchemaFixture => ({
         column("chain_cursor", "last_enqueued_block", "bigint", "NO", "int8"),
         column("chain_cursor", "last_committed_block", "bigint", "NO", "int8"),
         column("chain_cursor", "last_committed_hash", "character varying", "NO", "varchar", 66),
+        column("chain_cursor", "reorg_version", "bigint", "NO", "int8"),
         column("chain_cursor", "updated_at", "timestamp with time zone", "NO", "timestamptz"),
         column("block_jobs", "chain_id", "integer", "NO", "int4"),
         column("block_jobs", "block_number", "bigint", "NO", "int8"),
@@ -96,7 +97,8 @@ const createValidSchemaFixture = (): SchemaFixture => ({
         column("worker_cursors", "stream_type", "text", "NO", "text"),
         column("worker_cursors", "last_block_number", "bigint", "NO", "int8"),
         column("worker_cursors", "last_transaction_index", "integer", "NO", "int4"),
-        column("worker_cursors", "last_log_index", "integer", "YES", "int4"),
+        column("worker_cursors", "last_log_index", "integer", "NO", "int4"),
+        column("worker_cursors", "reorg_version", "bigint", "NO", "int8"),
         column("worker_cursors", "updated_at", "timestamp with time zone", "NO", "timestamptz"),
     ],
     primaryKeys: [

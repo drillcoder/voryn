@@ -24,6 +24,7 @@ import { TransactionReactionWorker } from "@drillcoder/voryn";
         workerName: "transaction-reaction-worker",
         batchSize: 500,
         skipFlushInterval: 100,
+        confirmations: 12,
         handler,
     };
 

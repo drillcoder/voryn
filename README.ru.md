@@ -133,7 +133,6 @@ const headOptions = {
         operationTimeoutMs: 60_000,
     },
     delayBetweenTicksMs: 1_000,
-    confirmations: 12,
     depthBlocks: 65_000,
     logLevel,
     dbUrl,
@@ -222,6 +221,7 @@ const options: EventReactionWorkerOptions = {
     delayBetweenTicksMs: 500,
     batchSize: 1000,
     skipFlushInterval: 100,
+    confirmations: 12,
     logLevel,
     dbUrl,
     handler,
@@ -241,9 +241,17 @@ await worker.start();
 тоже считается безопасной позицией, но записи курсора группируются через `skipFlushInterval` и
 сохраняются в конце прохода или перед повторным выбросом ошибки обработчика.
 
-Обработчик может быть вызван повторно для того же элемента, если он упал до возврата результата или если воркер
-остановился до сохранения курсора для этого элемента. Поэтому побочные эффекты обработчика должны быть
+Обработчик может быть вызван повторно для того же элемента, если он упал до возврата результата, если воркер
+остановился до сохранения cursor или если reorg перенес этот элемент в новый committed-блок. При rollback затронутые
+reaction cursors отматываются, но внешние побочные эффекты отменить невозможно. Поэтому handlers должны быть
 идемпотентными.
+
+Каждый reaction worker задает собственное целое `confirmations >= 0`. Граница чтения равна меньшему из committed
+progress и `lastEnqueuedBlock - confirmations`. Retention не ждет reaction workers, поэтому должно выполняться:
+
+```text
+retentionDepthBlocks > max reaction confirmations + максимальный ожидаемый processing lag + операционный запас
+```
 
 Примеры:
 

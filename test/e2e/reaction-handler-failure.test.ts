@@ -8,6 +8,7 @@ import {
 } from "vitest";
 
 import type { EventReactionHandler } from "../../src/interfaces/reaction.js";
+import { PostgresTransactionManager } from "../../src/postgres/transaction-manager.js";
 import { PostgresChainCursorRepository } from "../../src/repositories/postgres/chain-cursor-repository.js";
 import { PostgresEventsRepository } from "../../src/repositories/postgres/events-repository.js";
 import { PostgresWorkerCursorsRepository } from "../../src/repositories/postgres/worker-cursors-repository.js";
@@ -38,6 +39,7 @@ describe("e2e reaction handler failure", () => {
         const chainCursorRepository = new PostgresChainCursorRepository(db.pool);
         const eventsRepository = new PostgresEventsRepository(db.pool);
         const workerCursorsRepository = new PostgresWorkerCursorsRepository(db.pool);
+        const transactionManager = new PostgresTransactionManager(db.pool);
 
         const block = buildFetchedBlock(100, hashFromNumber(99), 3);
         await chainCursorRepository.insert({
@@ -45,13 +47,15 @@ describe("e2e reaction handler failure", () => {
             lastEnqueuedBlock: block.block.number,
             lastCommittedBlock: block.block.number,
             lastCommittedHash: block.block.hash,
+            reorgVersion: 0,
         });
         await eventsRepository.insertMany(block.logs);
         await workerCursorsRepository.insert(
             "reaction-event-failure",
             CHAIN_ID,
             "event",
-            { lastBlockNumber: 99, lastTransactionIndex: -1, lastLogIndex: -1 }
+            { lastBlockNumber: 99, lastTransactionIndex: -1, lastLogIndex: -1 },
+            0
         );
 
         const handled: number[] = [];
@@ -75,11 +79,13 @@ describe("e2e reaction handler failure", () => {
             workerName: "reaction-event-failure",
             batchSize: 2,
             skipFlushInterval: 2,
+            confirmations: 0,
             handler,
             overrides: {
                 chainCursorRepository,
                 eventsRepository,
                 workerCursorsRepository,
+                transactionManager,
                 leaderLock: createLeaderLock(),
             },
         });

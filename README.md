@@ -133,7 +133,6 @@ const headOptions = {
         operationTimeoutMs: 60_000,
     },
     delayBetweenTicksMs: 1_000,
-    confirmations: 12,
     depthBlocks: 65_000,
     logLevel,
     dbUrl,
@@ -222,6 +221,7 @@ const options: EventReactionWorkerOptions = {
     delayBetweenTicksMs: 500,
     batchSize: 1000,
     skipFlushInterval: 100,
+    confirmations: 12,
     logLevel,
     dbUrl,
     handler,
@@ -241,8 +241,16 @@ Handlers may return `"processed"` or `"skipped"`. Processed items advance the wo
 items are safe to advance too, but their cursor writes are batched by `skipFlushInterval` and flushed at
 the end of the tick or before rethrowing a handler error.
 
-A handler can be called more than once for the same item if it fails before returning a result, or if the worker
-stops before the cursor write for the item is persisted. Keep handler side effects idempotent.
+A handler can be called more than once for the same item if it fails before returning a result, if the worker stops
+before the cursor write is persisted, or if a reorg moves the item to a new committed block. Reorg rollback rewinds
+affected reaction cursors, but it cannot undo external side effects. Keep handlers idempotent.
+
+Each reaction worker chooses its own non-negative integer `confirmations`. Its read boundary is the lower of committed
+progress and `lastEnqueuedBlock - confirmations`. Retention does not wait for reaction workers, so configure:
+
+```text
+retentionDepthBlocks > max reaction confirmations + maximum expected processing lag + operational reserve
+```
 
 Examples:
 

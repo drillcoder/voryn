@@ -1,6 +1,6 @@
 import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
-import type { WorkerCursorPosition } from "../interfaces/pipeline.js";
+import type { ChainCursor, WorkerCursor, WorkerCursorPosition } from "../interfaces/pipeline.js";
 import type {
     EventReactionHandler,
     ReactionContext,
@@ -13,6 +13,7 @@ import type {
     TransactionsRepository,
     WorkerCursorsRepository,
 } from "../interfaces/repositories.js";
+import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import type { ChainId } from "../types/chain.js";
 import type { StreamType } from "../types/pipeline.js";
 
@@ -22,6 +23,7 @@ export interface ReactionServiceConfig {
     workerName: string;
     batchSize: number;
     skipFlushInterval: number;
+    confirmations: number;
 }
 
 interface ReactionServiceBaseOptions<TStreamType extends StreamType> {
@@ -29,6 +31,7 @@ interface ReactionServiceBaseOptions<TStreamType extends StreamType> {
     streamType: TStreamType;
     chainCursorRepository: ChainCursorRepository;
     workerCursorsRepository: WorkerCursorsRepository;
+    transactionManager: TransactionManager;
     logger?: Logger;
 }
 
@@ -48,36 +51,50 @@ export class ReactionService {
     private readonly logger: Logger;
 
     constructor(private readonly options: ReactionServiceOptions) {
+        if (!Number.isInteger(options.config.confirmations) || options.config.confirmations < 0) {
+            throw new Error("Reaction confirmations must be a non-negative integer");
+        }
         this.logger = options.logger ?? noopLogger;
     }
 
     public async execute(): Promise<void> {
         const options = this.options;
         const { config, chainCursorRepository } = options;
-        const { workerName, chainId, batchSize } = config;
+        const { workerName, chainId, batchSize, confirmations } = config;
+        const { chainCursor, workerCursor: cursor } = await this.getOrCreateState(chainCursorRepository);
 
-        const chainCursor = await chainCursorRepository.get(chainId);
-        if (chainCursor === null) {
-            throw new Error(
-                `Chain cursor is missing for ${options.streamType} reaction chain ${String(chainId)}`
-            );
+        if (cursor.reorgVersion !== chainCursor.reorgVersion) {
+            this.logger.debug(`${options.streamType}_reaction_tick_stale_state`, {
+                chainId,
+                workerName,
+                chainReorgVersion: chainCursor.reorgVersion,
+                workerReorgVersion: cursor.reorgVersion,
+            });
+            return;
         }
 
-        const cursor = await this.getOrCreateCursor(chainCursor.lastCommittedBlock);
+        const maxBlockNumber = Math.min(
+            chainCursor.lastCommittedBlock,
+            chainCursor.lastEnqueuedBlock - confirmations
+        );
+        if (maxBlockNumber < 0 || maxBlockNumber < cursor.position.lastBlockNumber) {
+            this.logger.debug(`${options.streamType}_reaction_tick_waiting_for_confirmations`, {
+                chainId,
+                workerName,
+                confirmations,
+                maxBlockNumber,
+                cursorBlock: cursor.position.lastBlockNumber,
+            });
+            return;
+        }
 
         if (options.streamType === "event") {
-            if (cursor.lastLogIndex == null) {
-                throw new Error(
-                    `Event worker cursor has no log index for worker "${workerName}", chain ${String(chainId)}`
-                );
-            }
-
             const events = await options.eventsRepository.listAfterPosition(
                 chainId,
-                chainCursor.lastCommittedBlock,
-                cursor.lastBlockNumber,
-                cursor.lastTransactionIndex,
-                cursor.lastLogIndex,
+                maxBlockNumber,
+                cursor.position.lastBlockNumber,
+                cursor.position.lastTransactionIndex,
+                cursor.position.lastLogIndex,
                 batchSize
             );
             await this.processItems(
@@ -87,7 +104,8 @@ export class ReactionService {
                     lastTransactionIndex: event.transactionIndex,
                     lastLogIndex: event.index,
                 }),
-                options.handler
+                options.handler,
+                cursor.reorgVersion
             );
 
             return;
@@ -95,9 +113,9 @@ export class ReactionService {
 
         const transactions = await options.transactionsRepository.listAfterPosition(
             chainId,
-            chainCursor.lastCommittedBlock,
-            cursor.lastBlockNumber,
-            cursor.lastTransactionIndex,
+            maxBlockNumber,
+            cursor.position.lastBlockNumber,
+            cursor.position.lastTransactionIndex,
             batchSize
         );
         await this.processItems(
@@ -105,15 +123,18 @@ export class ReactionService {
             (transaction) => ({
                 lastBlockNumber: transaction.blockNumber,
                 lastTransactionIndex: transaction.index,
+                lastLogIndex: -1,
             }),
-            options.handler
+            options.handler,
+            cursor.reorgVersion
         );
     }
 
     private async processItems<TItem>(
         items: TItem[],
         getPosition: (item: TItem) => WorkerCursorPosition,
-        handle: (item: TItem, context: ReactionContext) => Promise<ReactionHandlerResult>
+        handle: (item: TItem, context: ReactionContext) => Promise<ReactionHandlerResult>,
+        reorgVersion: number,
     ): Promise<void> {
         const { config, streamType, workerCursorsRepository } = this.options;
         const { workerName, chainId } = config;
@@ -123,15 +144,37 @@ export class ReactionService {
         let skippedCount = 0;
         let lastAdvancedPosition: WorkerCursorPosition | null = null;
 
-        const flushSkipped = async (): Promise<void> => {
-            if (pendingSkippedPosition === null) {
-                return;
+        const advance = async (position: WorkerCursorPosition): Promise<boolean> => {
+            const advanced = await workerCursorsRepository.advanceIfVersion(
+                workerName,
+                chainId,
+                streamType,
+                position,
+                reorgVersion
+            );
+            if (!advanced) {
+                this.logger.debug(`${streamType}_reaction_batch_invalidated_by_reorg`, {
+                    chainId,
+                    workerName,
+                    reorgVersion,
+                });
             }
 
-            await workerCursorsRepository.advance(workerName, chainId, streamType, pendingSkippedPosition);
+            return advanced;
+        };
+
+        const flushSkipped = async (): Promise<boolean> => {
+            if (pendingSkippedPosition === null) {
+                return true;
+            }
+
+            if (!await advance(pendingSkippedPosition)) {
+                return false;
+            }
             lastAdvancedPosition = pendingSkippedPosition;
             pendingSkippedPosition = null;
             skippedSinceFlush = 0;
+            return true;
         };
 
         for (const item of items) {
@@ -145,10 +188,14 @@ export class ReactionService {
                     skippedCount += 1;
 
                     if (skippedSinceFlush >= config.skipFlushInterval) {
-                        await flushSkipped();
+                        if (!await flushSkipped()) {
+                            return;
+                        }
                     }
                 } else {
-                    await workerCursorsRepository.advance(workerName, chainId, streamType, position);
+                    if (!await advance(position)) {
+                        return;
+                    }
                     lastAdvancedPosition = position;
                     pendingSkippedPosition = null;
                     skippedSinceFlush = 0;
@@ -160,7 +207,9 @@ export class ReactionService {
             }
         }
 
-        await flushSkipped();
+        if (!await flushSkipped()) {
+            return;
+        }
 
         if (items.length > 0) {
             const message = `${this.options.streamType}_reaction_tick_scanned`;
@@ -182,28 +231,64 @@ export class ReactionService {
         }
     }
 
-    private async getOrCreateCursor(initialBlockNumber: number): Promise<WorkerCursorPosition> {
-        const { config, streamType, workerCursorsRepository } = this.options;
+    private async getOrCreateState(
+        chainCursorRepository: ChainCursorRepository
+    ): Promise<{ chainCursor: ChainCursor; workerCursor: WorkerCursor }> {
+        const { config, streamType, workerCursorsRepository, transactionManager } = this.options;
         const { workerName, chainId } = config;
+        const chainCursor = await chainCursorRepository.get(chainId);
+        if (chainCursor === null) {
+            throw new Error(
+                `Chain cursor is missing for ${streamType} reaction chain ${String(chainId)}`
+            );
+        }
         const current = await workerCursorsRepository.get(workerName, chainId, streamType);
         if (current !== null) {
-            return current.position;
+            return { chainCursor, workerCursor: current };
         }
 
-        const initialPosition: WorkerCursorPosition = streamType === "event"
-            ? {
-                lastBlockNumber: initialBlockNumber,
+        return transactionManager.run(async (transaction) => {
+            const lockedChainCursor = await chainCursorRepository.getForUpdate(chainId, transaction);
+            if (lockedChainCursor === null) {
+                throw new Error(
+                    `Chain cursor is missing for ${streamType} reaction chain ${String(chainId)}`
+                );
+            }
+            const existing = await workerCursorsRepository.get(workerName, chainId, streamType, transaction);
+            if (existing !== null) {
+                return { chainCursor: lockedChainCursor, workerCursor: existing };
+            }
+
+            const initialPosition: WorkerCursorPosition = {
+                lastBlockNumber: lockedChainCursor.lastCommittedBlock,
                 lastTransactionIndex: -1,
                 lastLogIndex: -1,
-            }
-            : {
-                lastBlockNumber: initialBlockNumber,
-                lastTransactionIndex: -1,
             };
-        await workerCursorsRepository.insert(workerName, chainId, streamType, initialPosition);
+            await workerCursorsRepository.insert(
+                workerName,
+                chainId,
+                streamType,
+                initialPosition,
+                lockedChainCursor.reorgVersion,
+                transaction
+            );
 
-        this.logger.info("worker_cursor_initialized", { workerName, chainId, initialPosition });
+            const workerCursor: WorkerCursor = {
+                workerName,
+                chainId,
+                streamType,
+                position: initialPosition,
+                reorgVersion: lockedChainCursor.reorgVersion,
+                updatedAt: new Date(),
+            };
+            this.logger.info("worker_cursor_initialized", {
+                workerName,
+                chainId,
+                initialPosition,
+                reorgVersion: lockedChainCursor.reorgVersion,
+            });
 
-        return initialPosition;
+            return { chainCursor: lockedChainCursor, workerCursor };
+        });
     }
 }

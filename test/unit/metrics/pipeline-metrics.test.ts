@@ -112,6 +112,7 @@ function createReadyChainCursorRepository() {
             lastEnqueuedBlock: chainId * 10,
             lastCommittedBlock: chainId * 10,
             lastCommittedHash: HASH,
+            reorgVersion: 0,
             updatedAt: new Date("2026-01-01T00:00:00.000Z"),
         }),
     };

@@ -60,7 +60,6 @@ describe("e2e startup from empty state", () => {
             logLevel: "error",
             sourceConfig: { chainId: CHAIN_ID, source },
             delayBetweenTicksMs: 5,
-            confirmations: 0,
             depthBlocks: 64,
             overrides: {
                 chainCursorRepository,
@@ -79,11 +78,13 @@ describe("e2e startup from empty state", () => {
             workerName: "reaction-event-startup",
             batchSize: 5,
             skipFlushInterval: 5,
+            confirmations: 0,
             handler: eventHandler,
             overrides: {
                 chainCursorRepository,
                 eventsRepository,
                 workerCursorsRepository,
+                transactionManager,
                 leaderLock: new PostgresLeaderLock(db.pool, 31_300_002n),
             },
         });
@@ -94,11 +95,13 @@ describe("e2e startup from empty state", () => {
             workerName: "reaction-transaction-startup",
             batchSize: 5,
             skipFlushInterval: 5,
+            confirmations: 0,
             handler: transactionHandler,
             overrides: {
                 chainCursorRepository,
                 transactionsRepository,
                 workerCursorsRepository,
+                transactionManager,
                 leaderLock: new PostgresLeaderLock(db.pool, 31_300_003n),
             },
         });
@@ -142,7 +145,7 @@ describe("e2e startup from empty state", () => {
             expect(transactionCursor?.position).toEqual({
                 lastBlockNumber: 20,
                 lastTransactionIndex: -1,
-                lastLogIndex: null,
+                lastLogIndex: -1,
             });
             await expect(db.countRows("block_jobs")).resolves.toBe(0);
         } finally {

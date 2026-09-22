@@ -127,7 +127,6 @@ describe("integration workers: lifecycle and wiring", () => {
         const workerA = await HeadWorker.create({
             logLevel: "error",
             sourceConfig: { chainId: 1, source: idleSource },
-            confirmations: 10,
             delayBetweenTicksMs: 1,
             depthBlocks: 64,
             overrides: {
@@ -143,7 +142,6 @@ describe("integration workers: lifecycle and wiring", () => {
         const workerB = await HeadWorker.create({
             logLevel: "error",
             sourceConfig: { chainId: 1, source: idleSource },
-            confirmations: 10,
             delayBetweenTicksMs: 1,
             depthBlocks: 64,
             overrides: {

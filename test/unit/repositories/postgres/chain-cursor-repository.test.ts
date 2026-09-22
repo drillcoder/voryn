@@ -23,6 +23,7 @@ test("get maps chain cursor row", async () => {
             last_enqueued_block: "12",
             last_committed_block: "11",
             last_committed_hash: HASH_A,
+            reorg_version: "0",
             updated_at: "2026-03-30T10:00:00.000Z",
         }],
         rowCount: 1,
@@ -34,6 +35,7 @@ test("get maps chain cursor row", async () => {
         lastEnqueuedBlock: 12,
         lastCommittedBlock: 11,
         lastCommittedHash: HASH_A,
+        reorgVersion: 0,
     });
 });
 
@@ -44,6 +46,7 @@ test("getForUpdate maps chain cursor row and locks it", async () => {
             last_enqueued_block: "12",
             last_committed_block: "11",
             last_committed_hash: HASH_A,
+            reorg_version: "0",
             updated_at: "2026-03-30T10:00:00.000Z",
         }],
         rowCount: 1,
@@ -55,6 +58,7 @@ test("getForUpdate maps chain cursor row and locks it", async () => {
         lastEnqueuedBlock: 12,
         lastCommittedBlock: 11,
         lastCommittedHash: HASH_A,
+        reorgVersion: 0,
     });
 
     const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
@@ -151,6 +155,35 @@ test("setPositions updates committed and enqueued values", async () => {
     expect(firstParams).toEqual([10, 12, HASH_A, 12]);
 });
 
+test("setPositionsAndIncrementReorgVersion returns the new version", async () => {
+    const query = vi.fn(async () => ({ rows: [{ reorg_version: "7" }], rowCount: 1 }));
+    const executor = createExecutor(query);
+    const repository = new PostgresChainCursorRepository(executor);
+
+    await expect(
+        repository.setPositionsAndIncrementReorgVersion(10, 12, HASH_A, 12, executor)
+    ).resolves.toBe(7);
+
+    const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
+    expect(calls[0]?.[0]).toContain("reorg_version = reorg_version + 1");
+    expect(calls[0]?.[0]).toContain("RETURNING reorg_version");
+    expect(calls[0]?.[1]).toEqual([10, 12, HASH_A, 12]);
+});
+
+test.each([
+    { rows: [], rowCount: 0 },
+    { rows: [], rowCount: null },
+    { rows: [], rowCount: 1 },
+])("setPositionsAndIncrementReorgVersion rejects an invalid update result", async (result) => {
+    const query = vi.fn(async () => result);
+    const executor = createExecutor(query);
+    const repository = new PostgresChainCursorRepository(executor);
+
+    await expect(
+        repository.setPositionsAndIncrementReorgVersion(10, 12, HASH_A, 12, executor)
+    ).rejects.toThrow("Chain cursor for chain 10 not found");
+});
+
 test("insert executes with on conflict", async () => {
     const query = vi.fn(async () => ({ rows: [], rowCount: 1 }));
     const repository = new PostgresChainCursorRepository(createExecutor(query));
@@ -160,9 +193,11 @@ test("insert executes with on conflict", async () => {
         lastEnqueuedBlock: 12,
         lastCommittedBlock: 11,
         lastCommittedHash: HASH_A,
+        reorgVersion: 3,
     });
 
     const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
     const firstQuery = calls[0]?.[0] ?? "";
     expect(firstQuery).toContain("ON CONFLICT (chain_id) DO NOTHING");
+    expect(calls[0]?.[1]).toEqual([10, 12, 11, HASH_A, 3]);
 });

@@ -38,6 +38,7 @@ test("pipeline metrics service maps pipeline stages and reaction block lag", asy
             lastEnqueuedBlock: 110,
             lastCommittedBlock: 100,
             lastCommittedHash: HASH,
+            reorgVersion: 0,
             updatedAt: new Date("2026-01-01T00:00:04.000Z"),
         }),
         createBlockJobsRepository(
@@ -76,6 +77,7 @@ test("pipeline metrics service maps pipeline stages and reaction block lag", asy
                     lastTransactionIndex: 4,
                     lastLogIndex: 9,
                 },
+                reorgVersion: 0,
                 updatedAt: new Date("2026-01-01T00:00:01.000Z"),
             },
             {
@@ -85,8 +87,9 @@ test("pipeline metrics service maps pipeline stages and reaction block lag", asy
                 position: {
                     lastBlockNumber: 95,
                     lastTransactionIndex: 2,
-                    lastLogIndex: null,
+                    lastLogIndex: -1,
                 },
+                reorgVersion: 0,
                 updatedAt: new Date("2026-01-01T00:00:02.000Z"),
             },
         ]),
@@ -178,6 +181,7 @@ test("pipeline metrics service keeps fetch progress null when no block data exis
             lastEnqueuedBlock: 55,
             lastCommittedBlock: 50,
             lastCommittedHash: HASH,
+            reorgVersion: 0,
             updatedAt: new Date("2026-01-01T00:00:10.000Z"),
         }),
         createBlockJobsRepository(createEmptyBlockStatusCounts()),
@@ -226,6 +230,7 @@ test("pipeline metrics service clamps future freshness and reaction timestamps t
             lastEnqueuedBlock: 10,
             lastCommittedBlock: 9,
             lastCommittedHash: HASH,
+            reorgVersion: 0,
             updatedAt: new Date("2026-01-01T00:00:20.000Z"),
         }),
         createBlockJobsRepository(createEmptyBlockStatusCounts()),
@@ -249,6 +254,7 @@ test("pipeline metrics service clamps future freshness and reaction timestamps t
                     lastTransactionIndex: 0,
                     lastLogIndex: 0,
                 },
+                reorgVersion: 0,
                 updatedAt: new Date("2026-01-01T00:00:20.000Z"),
             },
         ]),
@@ -300,6 +306,7 @@ function createChainCursorRepository(cursor: ChainCursor | null): ChainCursorRep
         insert: async () => undefined,
         setLastEnqueued: async () => undefined,
         setPositions: async () => undefined,
+        setPositionsAndIncrementReorgVersion: async () => 1,
         advanceLastCommitted: async () => undefined,
     };
 }
@@ -361,7 +368,8 @@ function createWorkerCursorsRepository(cursors: WorkerCursor[]): WorkerCursorsRe
         get: async () => null,
         listByChain: async () => cursors,
         insert: async () => undefined,
-        advance: async () => undefined,
+        advanceIfVersion: async () => true,
+        rewindForReorg: async () => 0,
     };
 }
 

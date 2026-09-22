@@ -51,12 +51,14 @@ const createCursorRepository = (lastCommittedBlock = 90): ChainCursorRepository 
         lastEnqueuedBlock: 100,
         lastCommittedBlock,
         lastCommittedHash: HASH_A,
+        reorgVersion: 0,
         updatedAt: new Date(),
     }),
     getForUpdate: async () => null,
     insert: async () => undefined,
     setLastEnqueued: async () => undefined,
     setPositions: async () => undefined,
+    setPositionsAndIncrementReorgVersion: async () => 1,
     advanceLastCommitted: async () => undefined,
 });
 
@@ -66,6 +68,7 @@ const createMissingCursorRepository = (): ChainCursorRepository => ({
     insert: async () => undefined,
     setLastEnqueued: async () => undefined,
     setPositions: async () => undefined,
+    setPositionsAndIncrementReorgVersion: async () => 1,
     advanceLastCommitted: async () => undefined,
 });
 

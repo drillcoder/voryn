@@ -57,8 +57,7 @@ For `head`:
 - `VORYN_HEAD_RPC_REQUEST_TIMEOUT_MS` (`optional`, default `5_000`) — timeout for one HTTP RPC request.
 - `VORYN_HEAD_RPC_OPERATION_TIMEOUT_MS` (`optional`, default `60_000`) — deadline for one complete RPC operation.
 - `VORYN_HEAD_DELAY_BETWEEN_TICKS_MS` (`optional`, default `1_000`) — delay between ticks in milliseconds.
-- `VORYN_HEAD_CONFIRMATIONS` (`optional`, default `0`) — number of confirmations before enqueuing a block.
-- `VORYN_HEAD_DEPTH_BLOCKS` (`optional`, default `65_000`, must be `> 0`) — allowed lag from `safe head` in blocks. If `last_committed_block` falls below this range, `head` rebases to the available RPC history boundary.
+- `VORYN_HEAD_DEPTH_BLOCKS` (`optional`, default `65_000`, must be `> 0`) — available block window behind the latest head. If `last_committed_block` falls below this range, `head` rebases to the available RPC history boundary.
 
 For `fetch`:
 

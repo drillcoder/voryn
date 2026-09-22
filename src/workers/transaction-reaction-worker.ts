@@ -8,7 +8,9 @@ import type {
     WorkerCursorsRepository,
 } from "../interfaces/repositories.js";
 import type { RuntimeDbOptions, RuntimeLoggerOptions } from "../runtime/options.js";
+import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
+import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
 import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cursor-repository.js";
 import { PostgresTransactionsRepository } from "../repositories/postgres/transactions-repository.js";
 import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker-cursors-repository.js";
@@ -22,6 +24,7 @@ export interface TransactionReactionWorkerDatabaseDependencies {
     chainCursorRepository: ChainCursorRepository;
     transactionsRepository: TransactionsRepository;
     workerCursorsRepository: WorkerCursorsRepository;
+    transactionManager: TransactionManager;
     leaderLock: LeaderLock;
 }
 
@@ -40,6 +43,7 @@ export class TransactionReactionWorker extends SingletonPollingWorker {
             workerName: options.workerName,
             batchSize: options.batchSize,
             skipFlushInterval: options.skipFlushInterval,
+            confirmations: options.confirmations,
         };
         const { dependencies, dispose } = await resolveDbDependencies<TransactionReactionWorkerDatabaseDependencies>(
             options,
@@ -48,6 +52,7 @@ export class TransactionReactionWorker extends SingletonPollingWorker {
                 chainCursorRepository: new PostgresChainCursorRepository(pool),
                 transactionsRepository: new PostgresTransactionsRepository(pool),
                 workerCursorsRepository: new PostgresWorkerCursorsRepository(pool),
+                transactionManager: new PostgresTransactionManager(pool),
                 leaderLock: new PostgresLeaderLock(pool, buildReactionWorkerLockKey("transaction", serviceConfig)),
             })
         );
@@ -58,6 +63,7 @@ export class TransactionReactionWorker extends SingletonPollingWorker {
             chainCursorRepository: dependencies.chainCursorRepository,
             transactionsRepository: dependencies.transactionsRepository,
             workerCursorsRepository: dependencies.workerCursorsRepository,
+            transactionManager: dependencies.transactionManager,
             logger,
         });
 
@@ -89,6 +95,7 @@ export class TransactionReactionWorker extends SingletonPollingWorker {
             chainId: this.serviceConfig.chainId,
             workerName: this.serviceConfig.workerName,
             batchSize: this.serviceConfig.batchSize,
+            confirmations: this.serviceConfig.confirmations,
         };
     }
 }

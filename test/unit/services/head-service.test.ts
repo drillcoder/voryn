@@ -21,7 +21,6 @@ const HASH_C = asHash32("0xccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
 const config: HeadServiceConfig = {
     chainId: 1,
-    confirmations: 2,
     delayBetweenTicksMs: 1000,
     depthBlocks: 5,
 };
@@ -136,15 +135,17 @@ test("head service enqueues and updates cursor in transaction", async () => {
         get: async () => ({
             chainId: 1,
             lastEnqueuedBlock: 10,
-            lastCommittedBlock: 8,
+            lastCommittedBlock: 10,
             lastCommittedHash: HASH_A,
+            reorgVersion: 0,
             updatedAt: new Date(),
         }),
         getForUpdate: async () => ({
             chainId: 1,
             lastEnqueuedBlock: 10,
-            lastCommittedBlock: 8,
+            lastCommittedBlock: 10,
             lastCommittedHash: HASH_A,
+            reorgVersion: 0,
             updatedAt: new Date(),
         }),
         insert: async () => undefined,
@@ -152,6 +153,7 @@ test("head service enqueues and updates cursor in transaction", async () => {
             calls.push(["setLastEnqueued", block, tx]);
         },
         setPositions: async () => undefined,
+        setPositionsAndIncrementReorgVersion: async () => 1,
         advanceLastCommitted: async () => undefined,
     };
 
@@ -175,12 +177,12 @@ test("head service enqueues and updates cursor in transaction", async () => {
     await worker.execute();
 
     expect(calls).toEqual([
-        ["enqueueRange", 11, 13, transaction],
-        ["setLastEnqueued", 13, transaction],
+        ["enqueueRange", 11, 15, transaction],
+        ["setLastEnqueued", 15, transaction],
     ]);
 });
 
-test("head service starts enqueue range from zero when depth exceeds safe head", async () => {
+test("head service starts enqueue range from zero when depth exceeds latest block", async () => {
     const calls: unknown[] = [];
     const { manager, transaction } = createPassThroughManager();
 
@@ -203,6 +205,7 @@ test("head service starts enqueue range from zero when depth exceeds safe head",
             lastEnqueuedBlock: 0,
             lastCommittedBlock: 0,
             lastCommittedHash: HASH_A,
+            reorgVersion: 0,
             updatedAt: new Date(),
         }),
         getForUpdate: async () => ({
@@ -210,6 +213,7 @@ test("head service starts enqueue range from zero when depth exceeds safe head",
             lastEnqueuedBlock: 0,
             lastCommittedBlock: 0,
             lastCommittedHash: HASH_A,
+            reorgVersion: 0,
             updatedAt: new Date(),
         }),
         insert: async () => undefined,
@@ -217,6 +221,7 @@ test("head service starts enqueue range from zero when depth exceeds safe head",
             calls.push(["setLastEnqueued", block, tx]);
         },
         setPositions: async () => undefined,
+        setPositionsAndIncrementReorgVersion: async () => 1,
         advanceLastCommitted: async () => undefined,
     };
 
@@ -238,8 +243,8 @@ test("head service starts enqueue range from zero when depth exceeds safe head",
     await worker.execute();
 
     expect(calls).toEqual([
-        ["enqueueRange", 1, 1, transaction],
-        ["setLastEnqueued", 1, transaction],
+        ["enqueueRange", 1, 3, transaction],
+        ["setLastEnqueued", 3, transaction],
     ]);
 });
 
@@ -270,6 +275,7 @@ test("head service bootstraps missing cursor", async () => {
         },
         setLastEnqueued: async () => undefined,
         setPositions: async () => undefined,
+        setPositionsAndIncrementReorgVersion: async () => 1,
         advanceLastCommitted: async () => undefined,
     };
 
@@ -299,6 +305,7 @@ test("head service bootstraps missing cursor", async () => {
             lastEnqueuedBlock: 20,
             lastCommittedBlock: 20,
             lastCommittedHash: HASH_A,
+            reorgVersion: 0,
         },
     ]);
     expect(logger.entries.map((entry) => entry.message)).toEqual([
@@ -309,15 +316,16 @@ test("head service bootstraps missing cursor", async () => {
     ]);
 });
 
-test("head service skips when cursor is already ahead of safe head", async () => {
+test("head service skips when cursor is already ahead of latest block", async () => {
     let enqueued = false;
     const logger = createLogger();
     const latestBlockLoad = createDeferred<number>();
     const chainCursor = {
         chainId: 1,
-        lastEnqueuedBlock: 11,
+        lastEnqueuedBlock: 13,
         lastCommittedBlock: 10,
         lastCommittedHash: HASH_A,
+        reorgVersion: 0,
         updatedAt: new Date(),
     };
     const chainCursorLoad = createDeferred<typeof chainCursor>();
@@ -341,6 +349,7 @@ test("head service skips when cursor is already ahead of safe head", async () =>
             insert: async () => undefined,
             setLastEnqueued: async () => undefined,
             setPositions: async () => undefined,
+            setPositionsAndIncrementReorgVersion: async () => 1,
             advanceLastCommitted: async () => undefined,
         },
         createBlockJobsRepository({
@@ -373,7 +382,7 @@ test("head service skips when cursor is already ahead of safe head", async () =>
     expect(logger.entries.map((entry) => entry.message)).toEqual([
         "head_latest_block_number_load_completed",
         "head_tick_observed",
-        "head_enqueue_skipped_no_new_safe_blocks",
+        "head_enqueue_skipped_no_new_blocks",
     ]);
     expect(logger.entries.find(
         (entry) => entry.message === "head_latest_block_number_load_completed"
@@ -389,21 +398,22 @@ test("head service skips when cursor is already ahead of safe head", async () =>
         meta: {
             chainId: 1,
             latestBlock: 12,
-            safeHead: 10,
-            floorBlock: 6,
-            lastEnqueuedBlock: 11,
+            depthBlocks: 5,
+            floorBlock: 8,
+            lastEnqueuedBlock: 13,
             lastCommittedBlock: 10,
         },
     });
     expect(
-        logger.entries.find((entry) => entry.message === "head_enqueue_skipped_no_new_safe_blocks")
+        logger.entries.find((entry) => entry.message === "head_enqueue_skipped_no_new_blocks")
     ).toMatchObject({
         level: "debug",
         meta: {
             chainId: 1,
-            lastEnqueuedBlock: 11,
-            safeHead: 10,
-            fromBlock: 12,
+            lastEnqueuedBlock: 13,
+            floorBlock: 8,
+            latestBlock: 12,
+            fromBlock: 14,
         },
     });
 });
@@ -422,6 +432,7 @@ test("head service rebases and enqueues new jobs when committed block is below f
                 lastEnqueuedBlock: 200,
                 lastCommittedBlock: 90,
                 lastCommittedHash: HASH_A,
+                reorgVersion: 0,
                 updatedAt: new Date(),
             };
         },
@@ -433,6 +444,7 @@ test("head service rebases and enqueues new jobs when committed block is below f
                 lastEnqueuedBlock: 200,
                 lastCommittedBlock: 90,
                 lastCommittedHash: HASH_A,
+                reorgVersion: 0,
                 updatedAt: new Date(),
             };
         },
@@ -443,6 +455,7 @@ test("head service rebases and enqueues new jobs when committed block is below f
         setPositions: async (_chainId, committed, committedHash, enqueued, tx) => {
             calls.push(["setPositions", committed, committedHash, enqueued, tx]);
         },
+        setPositionsAndIncrementReorgVersion: async () => 1,
         advanceLastCommitted: async () => undefined,
     };
 
@@ -455,7 +468,7 @@ test("head service rebases and enqueues new jobs when committed block is below f
             parentHash: HASH_B,
             timestamp: 1,
         }),
-        getBlock: async () => ({ chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1 }),
+        getBlock: async () => ({ chainId: 1, number: 116, hash: HASH_B, parentHash: HASH_C, timestamp: 1 }),
         getBlockData: async () => {
             throw new Error("not used");
         },
@@ -487,17 +500,17 @@ test("head service rebases and enqueues new jobs when committed block is below f
     expect(getCalls).toBe(1);
     expect(getForUpdateCalls).toBe(1);
     expect(calls).toEqual([
-        ["setPositions", 113, HASH_C, 113, transaction],
-        ["deleteEventsRange", 100, 113, transaction],
-        ["deleteTransactionsRange", 100, 113, transaction],
-        ["deleteBlocksRange", 100, 113, transaction],
-        ["deleteJobsRange", 100, 113, transaction],
-        ["enqueueRange", 114, 118, transaction],
-        ["setLastEnqueued", 118, transaction],
+        ["setPositions", 115, HASH_C, 115, transaction],
+        ["deleteEventsRange", 100, 115, transaction],
+        ["deleteTransactionsRange", 100, 115, transaction],
+        ["deleteBlocksRange", 100, 115, transaction],
+        ["deleteJobsRange", 100, 115, transaction],
+        ["enqueueRange", 116, 120, transaction],
+        ["setLastEnqueued", 120, transaction],
     ]);
 });
 
-test.each([null, 114])(
+test.each([null, 116])(
     "head service skips rebase deletes when oldest block does not form a purge range",
     async (oldestBlock) => {
         const calls: unknown[] = [];
@@ -509,6 +522,7 @@ test.each([null, 114])(
                 lastEnqueuedBlock: 200,
                 lastCommittedBlock: 90,
                 lastCommittedHash: HASH_A,
+                reorgVersion: 0,
                 updatedAt: new Date(),
             }),
             getForUpdate: async () => ({
@@ -516,6 +530,7 @@ test.each([null, 114])(
                 lastEnqueuedBlock: 200,
                 lastCommittedBlock: 90,
                 lastCommittedHash: HASH_A,
+                reorgVersion: 0,
                 updatedAt: new Date(),
             }),
             insert: async () => undefined,
@@ -525,6 +540,7 @@ test.each([null, 114])(
             setPositions: async (_chainId, committed, committedHash, enqueued, tx) => {
                 calls.push(["setPositions", committed, committedHash, enqueued, tx]);
             },
+            setPositionsAndIncrementReorgVersion: async () => 1,
             advanceLastCommitted: async () => undefined,
         };
 
@@ -537,7 +553,7 @@ test.each([null, 114])(
                 parentHash: HASH_B,
                 timestamp: 1,
             }),
-            getBlock: async () => ({ chainId: 1, number: 114, hash: HASH_B, parentHash: HASH_C, timestamp: 1 }),
+            getBlock: async () => ({ chainId: 1, number: 116, hash: HASH_B, parentHash: HASH_C, timestamp: 1 }),
             getBlockData: async () => {
                 throw new Error("not used");
             },
@@ -567,9 +583,9 @@ test.each([null, 114])(
         await worker.execute();
 
         expect(calls).toEqual([
-            ["setPositions", 113, HASH_C, 113, transaction],
-            ["enqueueRange", 114, 118, transaction],
-            ["setLastEnqueued", 118, transaction],
+            ["setPositions", 115, HASH_C, 115, transaction],
+            ["enqueueRange", 116, 120, transaction],
+            ["setLastEnqueued", 120, transaction],
         ]);
     }
 );
@@ -588,6 +604,7 @@ test("head service enqueues without rebase when cursor catches up before transac
                 lastEnqueuedBlock: 200,
                 lastCommittedBlock: 90,
                 lastCommittedHash: HASH_A,
+                reorgVersion: 0,
                 updatedAt: new Date(),
             };
         },
@@ -597,8 +614,9 @@ test("head service enqueues without rebase when cursor catches up before transac
             return {
                 chainId: 1,
                 lastEnqueuedBlock: 115,
-                lastCommittedBlock: 113,
+                lastCommittedBlock: 115,
                 lastCommittedHash: HASH_A,
+                reorgVersion: 0,
                 updatedAt: new Date(),
             };
         },
@@ -609,6 +627,7 @@ test("head service enqueues without rebase when cursor catches up before transac
         setPositions: async () => {
             calls.push("setPositions");
         },
+        setPositionsAndIncrementReorgVersion: async () => 1,
         advanceLastCommitted: async () => undefined,
     };
 
@@ -649,8 +668,8 @@ test("head service enqueues without rebase when cursor catches up before transac
     expect(getCalls).toBe(1);
     expect(getForUpdateCalls).toBe(1);
     expect(calls).toEqual([
-        ["enqueueRange", 116, 118, transaction],
-        ["setLastEnqueued", 118, transaction],
+        ["enqueueRange", 116, 120, transaction],
+        ["setLastEnqueued", 120, transaction],
     ]);
 });
 
@@ -675,15 +694,17 @@ test("head service defers enqueue when locked cursor needs rebase", async () => 
         get: async () => ({
             chainId: 1,
             lastEnqueuedBlock: 20,
-            lastCommittedBlock: 8,
+            lastCommittedBlock: 10,
             lastCommittedHash: HASH_A,
+            reorgVersion: 0,
             updatedAt: new Date(),
         }),
         getForUpdate: async () => ({
             chainId: 1,
-            lastEnqueuedBlock: 7,
-            lastCommittedBlock: 7,
+            lastEnqueuedBlock: 9,
+            lastCommittedBlock: 9,
             lastCommittedHash: HASH_A,
+            reorgVersion: 0,
             updatedAt: new Date(),
         }),
         insert: async () => undefined,
@@ -693,6 +714,7 @@ test("head service defers enqueue when locked cursor needs rebase", async () => 
         setPositions: async () => {
             calls.push("setPositions");
         },
+        setPositionsAndIncrementReorgVersion: async () => 1,
         advanceLastCommitted: async () => undefined,
     };
 
@@ -742,6 +764,7 @@ test("head service throws when cursor disappears inside enqueue transaction", as
                 lastEnqueuedBlock: 10,
                 lastCommittedBlock: 9,
                 lastCommittedHash: HASH_A,
+                reorgVersion: 0,
                 updatedAt: new Date(),
             };
         },
@@ -749,6 +772,7 @@ test("head service throws when cursor disappears inside enqueue transaction", as
         insert: async () => undefined,
         setLastEnqueued: async () => undefined,
         setPositions: async () => undefined,
+        setPositionsAndIncrementReorgVersion: async () => 1,
         advanceLastCommitted: async () => undefined,
     };
 
@@ -788,12 +812,14 @@ test("head service throws when cursor disappears inside rebase transaction", asy
             lastEnqueuedBlock: 200,
             lastCommittedBlock: 90,
             lastCommittedHash: HASH_A,
+            reorgVersion: 0,
             updatedAt: new Date(),
         }),
         getForUpdate: async () => null,
         insert: async () => undefined,
         setLastEnqueued: async () => undefined,
         setPositions: async () => undefined,
+        setPositionsAndIncrementReorgVersion: async () => 1,
         advanceLastCommitted: async () => undefined,
     };
 

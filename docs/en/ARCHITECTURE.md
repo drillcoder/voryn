@@ -72,18 +72,17 @@ The block processing pipeline consists of `HeadWorker`, `FetchService`, `Sequenc
 
 - Reads `latest` from `BlockSource`.
 - On the first run, initializes `chain_cursor` with the current block.
-- For regular operation, computes `safeHead = latest - confirmations`.
-- Computes the lower available-depth boundary: `floorBlock = max(0, safeHead - depthBlocks + 1)`.
+- Computes the lower available-depth boundary: `floorBlock = max(0, latest - depthBlocks + 1)`.
 - If `last_committed_block < floorBlock - 1`, performs a rebase:
   - reads `floorBlock` from RPC and uses its `parentHash`,
   - moves `chain_cursor` to `floorBlock - 1` in a transaction,
   - deletes records up to that boundary from `block_jobs`, `blocks`, `transactions`, and `events`,
-  - enqueues jobs in `[floorBlock, safeHead]`,
+  - enqueues jobs in `[floorBlock, latest]`,
   - updates `lastEnqueuedBlock`,
   - finishes the tick.
 - In one transaction:
   - reads the cursor,
-  - enqueues jobs in `[max(lastEnqueuedBlock + 1, floorBlock), safeHead]`,
+  - enqueues jobs in `[max(lastEnqueuedBlock + 1, floorBlock), latest]`,
   - updates `lastEnqueuedBlock`.
 
 ### `FetchService`
@@ -111,12 +110,14 @@ The block processing pipeline consists of `HeadWorker`, `FetchService`, `Sequenc
   - checks `parent_hash` against `last_committed_hash`,
   - advances `last_committed_*` in `chain_cursor`,
   - marks the job as `committed`.
-- If `parent_hash` differs from `last_committed_hash`, finds the common ancestor through `BlockSource`,
-  deletes data after it from `block_jobs`, `blocks`, `transactions`, `events`, and moves `chain_cursor` back to the ancestor.
+- If `parent_hash` differs from `last_committed_hash`, finds the common ancestor through `BlockSource`, deletes data
+  after it, moves `chain_cursor` back to the ancestor, increments `reorg_version`, and atomically rewinds affected
+  reaction cursors. Lagging reaction cursors keep their positions but receive the new version.
 
 ### `RetentionService`
 
-`RetentionService` removes data outside the working retention depth. It uses the committed position and reaction worker positions to keep data that is still needed for processing.
+`RetentionService` removes data outside the working retention depth relative to committed progress. It does not wait
+for reaction workers.
 
 - Computes the purge boundary in a transaction as `last_committed_block - retentionDepthBlocks`.
 - Deletes data beyond the retention boundary from:
@@ -131,13 +132,17 @@ The reaction pipeline runs user logic over data within the committed position. E
 
 ### `ReactionService`
 
-- Reads `chain_cursor.last_committed_block` before reading and limits the query to that boundary.
+- Requires a non-negative integer `confirmations` for each reaction worker.
+- Limits reads to `min(last_committed_block, last_enqueued_block - confirmations)`.
 - Reads stream items in repository order: events use `(block_number, transaction_index, log_index)`, transactions use `(block_number, transaction_index)`.
 - Tracks progress in `worker_cursors` with `stream_type = event` or `stream_type = transaction`.
 - The event cursor stores `last_block_number`, `last_transaction_index`, `last_log_index`.
-- The transaction cursor stores `last_block_number`, `last_transaction_index`.
-- On the first run for a new `workerName`, initializes the cursor with the current committed position.
+- The transaction cursor stores `last_block_number`, `last_transaction_index`, and the `-1` sentinel in `last_log_index`.
+- On the first run for a new `workerName`, locks `chain_cursor` and initializes the cursor with the current committed
+  position and `reorg_version`.
 - Calls the user-provided reaction handler and advances the cursor according to `"processed"` / `"skipped"` results.
+- Advances only when the cursor version still matches. A version conflict stops the current batch; the next tick reads
+  the rewound state.
 
 ## Operational Tools
 

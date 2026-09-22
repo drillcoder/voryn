@@ -60,6 +60,7 @@ describe("e2e pipeline", () => {
             lastEnqueuedBlock: 9,
             lastCommittedBlock: 9,
             lastCommittedHash: committedHash,
+            reorgVersion: 0,
         });
 
         const block10 = buildFetchedBlock(10, committedHash, 2);
@@ -90,11 +91,13 @@ describe("e2e pipeline", () => {
             workerName: REACTION_WORKER_EVENT,
             batchSize: 2,
             skipFlushInterval: 2,
+            confirmations: 0,
             handler: eventHandler,
             overrides: {
                 chainCursorRepository,
                 eventsRepository,
                 workerCursorsRepository,
+                transactionManager,
                 leaderLock: new PostgresLeaderLock(db.pool, 30_000_001n),
             },
         });
@@ -106,11 +109,13 @@ describe("e2e pipeline", () => {
             workerName: REACTION_WORKER_TRANSACTION,
             batchSize: 2,
             skipFlushInterval: 2,
+            confirmations: 0,
             handler: transactionHandler,
             overrides: {
                 chainCursorRepository,
                 transactionsRepository,
                 workerCursorsRepository,
+                transactionManager,
                 leaderLock: new PostgresLeaderLock(db.pool, 30_000_002n),
             },
         });
@@ -119,7 +124,6 @@ describe("e2e pipeline", () => {
             logLevel: "error",
             sourceConfig: { chainId: CHAIN_ID, source },
             delayBetweenTicksMs: 5,
-            confirmations: 0,
             depthBlocks: 64,
             overrides: {
                 chainCursorRepository,
@@ -162,6 +166,7 @@ describe("e2e pipeline", () => {
                 transactionsRepository,
                 eventsRepository,
                 blockJobsRepository,
+                workerCursorsRepository,
                 transactionManager,
                 leaderLock: new PostgresLeaderLock(db.pool, 30_000_004n),
             },

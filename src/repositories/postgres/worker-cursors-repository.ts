@@ -1,6 +1,6 @@
 import { parsePgInt, parsePgTimestamp } from "../../postgres/pg-parsers.js";
 import type { WorkerCursorsRepository } from "../../interfaces/repositories.js";
-import type { ChainId } from "../../types/chain.js";
+import type { BlockNumber, ChainId } from "../../types/chain.js";
 import type { StreamType } from "../../types/pipeline.js";
 import type { WorkerCursor, WorkerCursorPosition } from "../../interfaces/pipeline.js";
 import type { DbExecutor } from "../../interfaces/db.js";
@@ -11,7 +11,8 @@ interface WorkerCursorRow {
     stream_type: StreamType;
     last_block_number: bigint | number | string;
     last_transaction_index: number;
-    last_log_index: number | null;
+    last_log_index: number;
+    reorg_version: bigint | number | string;
     updated_at: Date | string;
 }
 
@@ -36,6 +37,7 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
                  last_block_number,
                  last_transaction_index,
                  last_log_index,
+                 reorg_version,
                  updated_at
              FROM worker_cursors
              WHERE worker_name = $1
@@ -57,6 +59,7 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
                 lastTransactionIndex: result.rows[0].last_transaction_index,
                 lastLogIndex: result.rows[0].last_log_index,
             },
+            reorgVersion: parsePgInt(result.rows[0].reorg_version),
             updatedAt: parsePgTimestamp(result.rows[0].updated_at),
         };
     }
@@ -71,6 +74,7 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
                  last_block_number,
                  last_transaction_index,
                  last_log_index,
+                 reorg_version,
                  updated_at
              FROM worker_cursors
              WHERE chain_id = $1
@@ -87,6 +91,7 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
                 lastTransactionIndex: row.last_transaction_index,
                 lastLogIndex: row.last_log_index,
             },
+            reorgVersion: parsePgInt(row.reorg_version),
             updatedAt: parsePgTimestamp(row.updated_at),
         }));
     }
@@ -96,31 +101,35 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
         chainId: ChainId,
         streamType: StreamType,
         position: WorkerCursorPosition,
+        reorgVersion: number,
         transaction?: DbExecutor
     ): Promise<void> {
         const executor = transaction ?? this.pool;
         await executor.query(
             `INSERT INTO worker_cursors
-                 (worker_name, chain_id, stream_type, last_block_number, last_transaction_index, last_log_index)
-             VALUES ($1, $2, $3, $4, $5, $6)`,
+                 (worker_name, chain_id, stream_type, last_block_number, last_transaction_index, last_log_index,
+                  reorg_version)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
             [
                 workerName,
                 chainId,
                 streamType,
                 position.lastBlockNumber,
                 position.lastTransactionIndex,
-                position.lastLogIndex ?? null,
+                position.lastLogIndex,
+                reorgVersion,
             ]
         );
     }
 
-    async advance(
+    async advanceIfVersion(
         workerName: string,
         chainId: ChainId,
         streamType: StreamType,
         position: WorkerCursorPosition,
+        expectedReorgVersion: number,
         transaction?: DbExecutor
-    ): Promise<void> {
+    ): Promise<boolean> {
         const executor = transaction ?? this.pool;
         const updated = await executor.query(
             `UPDATE worker_cursors
@@ -130,25 +139,62 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
                  updated_at = NOW()
              WHERE worker_name = $1
                AND chain_id = $2
-               AND stream_type = $3`,
+               AND stream_type = $3
+               AND reorg_version = $7`,
             [
                 workerName,
                 chainId,
                 streamType,
                 position.lastBlockNumber,
                 position.lastTransactionIndex,
-                position.lastLogIndex ?? null,
+                position.lastLogIndex,
+                expectedReorgVersion,
             ]
         );
 
         if ((updated.rowCount ?? 0) > 0) {
-            return;
+            return true;
         }
 
-        throw new Error(
-            `Worker cursor is missing for worker "${workerName}", ` +
-            `chain ${String(chainId)}, stream ${streamType}. ` +
-            "Call insert() before advance()"
+        const current = await this.get(workerName, chainId, streamType, transaction);
+        if (current === null) {
+            throw new Error(
+                `Worker cursor is missing for worker "${workerName}", ` +
+                `chain ${String(chainId)}, stream ${streamType}. ` +
+                "Call insert() before advanceIfVersion()"
+            );
+        }
+
+        return false;
+    }
+
+    async rewindForReorg(
+        chainId: ChainId,
+        rollbackFromBlock: BlockNumber,
+        reorgVersion: number,
+        transaction: DbExecutor
+    ): Promise<number> {
+        const updated = await transaction.query<{ rewound: boolean }>(
+            `UPDATE worker_cursors
+             SET last_block_number = CASE
+                     WHEN last_block_number >= $2 THEN $2
+                     ELSE last_block_number
+                 END,
+                 last_transaction_index = CASE
+                     WHEN last_block_number >= $2 THEN -1
+                     ELSE last_transaction_index
+                 END,
+                 last_log_index = CASE
+                     WHEN last_block_number >= $2 THEN -1
+                     ELSE last_log_index
+                 END,
+                 reorg_version = $3,
+                 updated_at = NOW()
+             WHERE chain_id = $1
+             RETURNING last_block_number = $2 AS rewound`,
+            [chainId, rollbackFromBlock, reorgVersion]
         );
+
+        return updated.rows.filter((row) => row.rewound).length;
     }
 }

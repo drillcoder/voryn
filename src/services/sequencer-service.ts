@@ -8,6 +8,7 @@ import type {
     ChainCursorRepository,
     EventsRepository,
     TransactionsRepository,
+    WorkerCursorsRepository,
 } from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import type { BlockNumber, ChainId, HashHex } from "../types/chain.js";
@@ -32,6 +33,7 @@ export class SequencerService {
         private readonly transactionsRepository: TransactionsRepository,
         private readonly eventsRepository: EventsRepository,
         private readonly blockJobsRepository: BlockJobsRepository,
+        private readonly workerCursorsRepository: WorkerCursorsRepository,
         private readonly transactionManager: TransactionManager,
         private readonly logger: Logger = noopLogger,
     ) {
@@ -268,11 +270,17 @@ export class SequencerService {
                 transaction
             );
 
-            await this.chainCursorRepository.setPositions(
+            const reorgVersion = await this.chainCursorRepository.setPositionsAndIncrementReorgVersion(
                 chainId,
                 ancestor.blockNumber,
                 ancestor.blockHash,
                 ancestor.blockNumber,
+                transaction
+            );
+            const rewoundReactionCursors = await this.workerCursorsRepository.rewindForReorg(
+                chainId,
+                rollbackFromBlock,
+                reorgVersion,
                 transaction
             );
 
@@ -285,6 +293,8 @@ export class SequencerService {
                 deletedBlocks,
                 deletedTransactions,
                 deletedEvents,
+                reorgVersion,
+                rewoundReactionCursors,
             };
         });
 

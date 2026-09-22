@@ -10,6 +10,8 @@ import {
 import { PostgresBlocksRepository } from "../../../src/repositories/postgres/blocks-repository.js";
 import { PostgresEventsRepository } from "../../../src/repositories/postgres/events-repository.js";
 import { PostgresTransactionsRepository } from "../../../src/repositories/postgres/transactions-repository.js";
+import { PostgresWorkerCursorsRepository } from "../../../src/repositories/postgres/worker-cursors-repository.js";
+import { PostgresTransactionManager } from "../../../src/postgres/transaction-manager.js";
 import type { PipelineBlock } from "../../../src/interfaces/pipeline.js";
 import type { FetchedBlock } from "../../../src/interfaces/chain.js";
 import { buildFetchedBlock, CHAIN_ID, hashFromNumber } from "../helpers/fixtures.js";
@@ -55,6 +57,66 @@ describe("integration repositories: postgres", () => {
         await expect(db.countRows("blocks")).resolves.toBe(1);
         await expect(db.countRows("transactions")).resolves.toBe(2);
         await expect(db.countRows("events")).resolves.toBe(2);
+    });
+
+    test("worker cursor advance and reorg rewind are ordered by version", async () => {
+        const workerCursorsRepository = new PostgresWorkerCursorsRepository(db.pool);
+        const transactionManager = new PostgresTransactionManager(db.pool);
+
+        await workerCursorsRepository.insert(
+            "event-worker",
+            CHAIN_ID,
+            "event",
+            { lastBlockNumber: 99, lastTransactionIndex: -1, lastLogIndex: -1 },
+            0
+        );
+        await workerCursorsRepository.insert(
+            "lagging-worker",
+            CHAIN_ID,
+            "transaction",
+            { lastBlockNumber: 98, lastTransactionIndex: 3, lastLogIndex: -1 },
+            0
+        );
+
+        await expect(workerCursorsRepository.advanceIfVersion(
+            "event-worker",
+            CHAIN_ID,
+            "event",
+            { lastBlockNumber: 101, lastTransactionIndex: 0, lastLogIndex: 0 },
+            0
+        )).resolves.toBe(true);
+
+        await transactionManager.run(async (transaction) => {
+            await expect(workerCursorsRepository.rewindForReorg(
+                CHAIN_ID,
+                100,
+                1,
+                transaction
+            )).resolves.toBe(1);
+        });
+
+        await expect(workerCursorsRepository.get("event-worker", CHAIN_ID, "event")).resolves.toMatchObject({
+            position: { lastBlockNumber: 100, lastTransactionIndex: -1, lastLogIndex: -1 },
+            reorgVersion: 1,
+        });
+        await expect(
+            workerCursorsRepository.get("lagging-worker", CHAIN_ID, "transaction")
+        ).resolves.toMatchObject({
+            position: { lastBlockNumber: 98, lastTransactionIndex: 3, lastLogIndex: -1 },
+            reorgVersion: 1,
+        });
+
+        await expect(workerCursorsRepository.advanceIfVersion(
+            "event-worker",
+            CHAIN_ID,
+            "event",
+            { lastBlockNumber: 101, lastTransactionIndex: 0, lastLogIndex: 0 },
+            0
+        )).resolves.toBe(false);
+        await expect(workerCursorsRepository.get("event-worker", CHAIN_ID, "event")).resolves.toMatchObject({
+            position: { lastBlockNumber: 100, lastTransactionIndex: -1, lastLogIndex: -1 },
+            reorgVersion: 1,
+        });
     });
 
 });

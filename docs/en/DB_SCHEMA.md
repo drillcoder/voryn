@@ -10,6 +10,7 @@ Current indexing progress for each network.
 - `last_enqueued_block` (`BIGINT`): the latest block for which jobs have been added to `block_jobs`.
 - `last_committed_block` (`BIGINT`): the latest block in the committed position.
 - `last_committed_hash` (`VARCHAR(66)`): hash of the latest block in the committed position.
+- `reorg_version` (`BIGINT`): increments after each sequencer rollback and invalidates stale reaction batches.
 - `updated_at` (`TIMESTAMPTZ`): last row update time.
 
 ## `block_jobs`
@@ -85,7 +86,8 @@ Reaction cursors tracked separately for each stream.
 - `stream_type` (`TEXT`): stream type, `event` or `transaction`.
 - `last_block_number` (`BIGINT`): latest processed block number.
 - `last_transaction_index` (`INT`): latest processed transaction index.
-- `last_log_index` (`INT`, nullable): latest processed log index. Used for `event`; remains `NULL` for `transaction`.
+- `last_log_index` (`INT`): latest processed log index for `event`; always `-1` for `transaction`.
+- `reorg_version` (`BIGINT`): chain reorg version used for version-aware cursor advances.
 - `updated_at` (`TIMESTAMPTZ`): last cursor update time.
 
 Keys:

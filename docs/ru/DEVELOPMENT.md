@@ -58,8 +58,7 @@ docker compose --env-file dev/.env -f dev/docker-compose.yml logs -f head fetch 
 - `VORYN_HEAD_RPC_REQUEST_TIMEOUT_MS` (`optional`, по умолчанию `5_000`) — таймаут одного HTTP RPC-запроса.
 - `VORYN_HEAD_RPC_OPERATION_TIMEOUT_MS` (`optional`, по умолчанию `60_000`) — deadline полной RPC-операции.
 - `VORYN_HEAD_DELAY_BETWEEN_TICKS_MS` (`optional`, по умолчанию `1_000`) — задержка между тиками в миллисекундах.
-- `VORYN_HEAD_CONFIRMATIONS` (`optional`, по умолчанию `0`) — число подтверждений перед постановкой блока в очередь.
-- `VORYN_HEAD_DEPTH_BLOCKS` (`optional`, по умолчанию `65_000`, должен быть `> 0`) — допустимое отставание от `safe head` в блоках. Если `last_committed_block` уходит глубже, `head` делает rebase к границе доступной истории RPC.
+- `VORYN_HEAD_DEPTH_BLOCKS` (`optional`, по умолчанию `65_000`, должен быть `> 0`) — доступное окно блоков позади последнего хеда. Если `last_committed_block` уходит глубже, `head` делает rebase к границе доступной истории RPC.
 
 Дополнительно для `fetch`:
 

@@ -47,7 +47,6 @@ export type HeadWorkerOptions =
     & {
         sourceConfig: SingleChainSourceConfig;
         delayBetweenTicksMs: number;
-        confirmations: number;
         depthBlocks: number;
     };
 
@@ -58,7 +57,6 @@ export class HeadWorker extends SingletonPollingWorker {
         const serviceConfig: HeadServiceConfig = {
             chainId: resolveSingleChainId(options.sourceConfig),
             delayBetweenTicksMs: options.delayBetweenTicksMs,
-            confirmations: options.confirmations,
             depthBlocks: options.depthBlocks,
         };
         let dbDispose: (() => Promise<void>) | undefined;
@@ -124,7 +122,6 @@ export class HeadWorker extends SingletonPollingWorker {
     protected override buildStartLogMeta(): Record<string, unknown> {
         return {
             chainId: this.serviceConfig.chainId,
-            confirmations: this.serviceConfig.confirmations,
             depthBlocks: this.serviceConfig.depthBlocks,
         };
     }
