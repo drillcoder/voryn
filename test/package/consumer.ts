@@ -45,9 +45,9 @@ const transactionReactionOptions: TransactionReactionWorkerOptions = {
     handler: async () => "processed",
 };
 
-void options;
-void create;
-void EventReactionWorker.create;
-void TransactionReactionWorker.create;
-void eventReactionOptions;
-void transactionReactionOptions;
+const createEventReaction = (
+    createOptions: EventReactionWorkerOptions,
+): Promise<EventReactionWorker> => EventReactionWorker.create(createOptions);
+const createTransactionReaction = (
+    createOptions: TransactionReactionWorkerOptions,
+): Promise<TransactionReactionWorker> => TransactionReactionWorker.create(createOptions);
