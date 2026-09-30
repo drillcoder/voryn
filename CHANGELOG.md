@@ -1,3 +1,9 @@
+## [1.1.2](https://github.com/drillcoder/voryn/compare/v1.1.1...v1.1.2) (2026-09-30)
+
+### Bug Fixes
+
+* **lint:** replace incompatible import plugins for ESLint 10 ([aae11ee](https://github.com/drillcoder/voryn/commit/aae11ee9a1a47344a26a29fefaa2179fce33583d))
+
 ## [1.1.1](https://github.com/drillcoder/voryn/compare/v1.1.0...v1.1.1) (2026-09-22)
 
 ### Bug Fixes
