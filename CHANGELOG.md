@@ -1,3 +1,9 @@
+## [1.2.0](https://github.com/drillcoder/voryn/compare/v1.1.2...v1.2.0) (2026-09-30)
+
+### Features
+
+* add initial blocks and reaction worker destruction ([2bc1ff6](https://github.com/drillcoder/voryn/commit/2bc1ff6e3e3733bef79744e09ffbe7977a515960))
+
 ## [1.1.2](https://github.com/drillcoder/voryn/compare/v1.1.1...v1.1.2) (2026-09-30)
 
 ### Bug Fixes
