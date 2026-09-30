@@ -1,6 +1,5 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import importPlugin from "eslint-plugin-import";
 import importNewlinesPlugin from "eslint-plugin-import-newlines";
 import nPlugin from "eslint-plugin-n";
 import eslintConfigPrettier from "eslint-config-prettier";
@@ -24,7 +23,6 @@ export default tseslint.config(
     {
         files: ["src/**/*.ts", "test/**/*.ts", "dev/**/*.ts"],
         plugins: {
-            import: importPlugin,
             "import-newlines": importNewlinesPlugin,
         },
         languageOptions: {
@@ -35,11 +33,6 @@ export default tseslint.config(
         },
         rules: {
             "@typescript-eslint/consistent-type-imports": "error",
-        },
-        settings: {
-            "import/resolver": {
-                typescript: {},
-            },
         },
     },
     eslintConfigPrettier,
@@ -70,7 +63,18 @@ export default tseslint.config(
                 },
             ],
             "@typescript-eslint/no-shadow": "error",
-            "import/no-default-export": "error",
+            "no-restricted-exports": [
+                "error",
+                {
+                    restrictDefaultExports: {
+                        direct: true,
+                        named: true,
+                        defaultFrom: true,
+                        namedFrom: true,
+                        namespaceFrom: true,
+                    },
+                },
+            ],
             "import-newlines/enforce": [
                 "error",
                 {
