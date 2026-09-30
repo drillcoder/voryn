@@ -44,6 +44,39 @@ describe("integration services: head/fetch/sequencer", () => {
         await db.close();
     });
 
+    test("head initializes a new chain from initialBlock inclusively", async () => {
+        const transactionManager = new PostgresTransactionManager(db.pool);
+        const chainCursorRepository = new PostgresChainCursorRepository(db.pool);
+        const blockJobsRepository = new PostgresBlockJobsRepository(db.pool);
+        const firstBlock = buildFetchedBlock(18, hashFromNumber(17));
+        const secondBlock = buildFetchedBlock(19, firstBlock.block.hash);
+        const latestBlock = buildFetchedBlock(20, secondBlock.block.hash);
+        const service = new HeadService(
+            { chainId: CHAIN_ID, delayBetweenTicksMs: 1, depthBlocks: 5, initialBlock: 18 },
+            createMapBlockSource(20, [firstBlock, secondBlock, latestBlock]),
+            chainCursorRepository,
+            blockJobsRepository,
+            new PostgresBlocksRepository(db.pool),
+            new PostgresTransactionsRepository(db.pool),
+            new PostgresEventsRepository(db.pool),
+            transactionManager,
+        );
+
+        await service.execute();
+
+        await expect(chainCursorRepository.get(CHAIN_ID)).resolves.toMatchObject({
+            lastCommittedBlock: 17,
+            lastCommittedHash: hashFromNumber(17),
+            lastEnqueuedBlock: 17,
+        });
+        await expect(db.countRows("block_jobs")).resolves.toBe(0);
+
+        await service.execute();
+
+        await expect(db.countRows("block_jobs")).resolves.toBe(3);
+        await expect(blockJobsRepository.get(CHAIN_ID, 18)).resolves.toMatchObject({ status: "pending" });
+    });
+
     test("head -> fetch -> sequencer commits a contiguous block range", async () => {
         const transactionManager = new PostgresTransactionManager(db.pool);
         const chainCursorRepository = new PostgresChainCursorRepository(db.pool);

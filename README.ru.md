@@ -134,6 +134,7 @@ const headOptions = {
     },
     delayBetweenTicksMs: 1_000,
     depthBlocks: 65_000,
+    // initialBlock: 20_000_000, // первый блок при создании курсора сети
     logLevel,
     dbUrl,
 };
@@ -222,6 +223,7 @@ const options: EventReactionWorkerOptions = {
     batchSize: 1000,
     skipFlushInterval: 100,
     confirmations: 12,
+    // initialBlock: 20_000_000, // первый блок, если у воркера нет курсора
     logLevel,
     dbUrl,
     handler,
@@ -246,8 +248,16 @@ await worker.start();
 reaction cursors отматываются, но внешние побочные эффекты отменить невозможно. Поэтому handlers должны быть
 идемпотентными.
 
-Каждый reaction worker задает собственное целое `confirmations >= 0`. Граница чтения равна меньшему из committed
-progress и `lastEnqueuedBlock - confirmations`. Retention не ждет reaction workers, поэтому должно выполняться:
+`initialBlock` необязателен для `HeadWorker` и обоих reaction-воркеров. Это первый обрабатываемый блок включительно.
+Параметр используется только при отсутствии соответствующего курсора; существующий курсор имеет приоритет.
+Для `HeadWorker` значение должно находиться в окне
+`[max(0, latestBlock - depthBlocks + 1), latestBlock]`. Первый тик `head` создаёт курсор, следующий ставит блоки
+в очередь, начиная с `initialBlock`. Значение вне окна вызывает ошибки тика без создания курсора или заданий.
+Без `initialBlock` новый курсор `HeadWorker` ставится на текущий хед и задания создаются только для следующих блоков.
+Новый reaction-воркер читает элементы текущего закоммиченного блока, но не более ранних блоков.
+
+Каждый reaction worker задает собственное безопасное целое `confirmations >= 0`. Граница чтения равна меньшему из
+committed progress и `lastEnqueuedBlock - confirmations`. Retention не ждет reaction workers, поэтому должно выполняться:
 
 ```text
 retentionDepthBlocks > max reaction confirmations + максимальный ожидаемый processing lag + операционный запас

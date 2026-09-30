@@ -106,6 +106,7 @@ const createWorkerCursorsRepository = (
             updatedAt: new Date(),
         },
     listByChain: async () => [],
+    delete: async () => false,
     insert: async () => undefined,
     advanceIfVersion: async () => true,
     rewindForReorg: async () => 0,
@@ -190,6 +191,38 @@ test("reaction service reads committed events by cursor and advances processed p
         { lastBlockNumber: 100, lastTransactionIndex: 0, lastLogIndex: 0 },
         { lastBlockNumber: 101, lastTransactionIndex: 0, lastLogIndex: 1 },
     ]);
+});
+
+test.each(["event", "transaction"] as const)("reaction service deletes its %s cursor", async (streamType) => {
+    const deleted: unknown[] = [];
+    const workerCursorsRepository = createWorkerCursorsRepository(null, streamType, {
+        delete: async (...args) => {
+            deleted.push(args);
+            return true;
+        },
+    });
+    const common = {
+        config,
+        chainCursorRepository: createChainCursorRepository(),
+        transactionManager,
+        workerCursorsRepository,
+    };
+    const service = streamType === "event"
+        ? new ReactionService({
+            ...common,
+            streamType,
+            handler: async () => "processed",
+            eventsRepository: createEventsRepository(),
+        })
+        : new ReactionService({
+            ...common,
+            streamType,
+            handler: async () => "processed",
+            transactionsRepository: createTransactionsRepository(),
+        });
+
+    await expect(service.deleteCursor()).resolves.toBe(true);
+    expect(deleted).toEqual([[config.workerName, config.chainId, streamType]]);
 });
 
 test("reaction service batches skipped transaction cursor advances", async () => {
@@ -424,6 +457,101 @@ test("reaction service creates transaction cursor at current committed block whe
     expect(listCalls).toEqual([[5, 33, 33, -1, 10]]);
 });
 
+test.each(["event", "transaction"] as const)(
+    "reaction service initializes %s cursor at initialBlock inclusively",
+    async (streamType) => {
+        const inserted: WorkerCursorPosition[] = [];
+        const eventList = vi.fn(async () => []);
+        const transactionList = vi.fn(async () => []);
+        const shared = {
+            config: { ...config, initialBlock: 20 },
+            chainCursorRepository: createChainCursorRepository(22),
+            transactionManager,
+            workerCursorsRepository: createWorkerCursorsRepository(null, streamType, {
+                insert: async (_name, _chainId, _type, position) => {
+                    inserted.push(position);
+                },
+            }),
+        };
+        const service = streamType === "event"
+            ? new ReactionService({
+                ...shared,
+                streamType,
+                handler: async () => "processed",
+                eventsRepository: createEventsRepository({ listAfterPosition: eventList }),
+            })
+            : new ReactionService({
+                ...shared,
+                streamType,
+                handler: async () => "processed",
+                transactionsRepository: createTransactionsRepository({ listAfterPosition: transactionList }),
+            });
+
+        await service.execute();
+
+        expect(inserted).toEqual([{ lastBlockNumber: 20, lastTransactionIndex: -1, lastLogIndex: -1 }]);
+        if (streamType === "event") {
+            expect(eventList).toHaveBeenCalledWith(5, 22, 20, -1, -1, 10);
+        } else {
+            expect(transactionList).toHaveBeenCalledWith(5, 22, 20, -1, 10);
+        }
+    }
+);
+
+test("reaction service ignores initialBlock when a cursor already exists", async () => {
+    const list = vi.fn(async () => []);
+    const insert = vi.fn(async () => undefined);
+    const service = new ReactionService({
+        config: { ...config, initialBlock: 10 },
+        streamType: "event",
+        handler: async () => "processed",
+        chainCursorRepository: createChainCursorRepository(22),
+        transactionManager,
+        workerCursorsRepository: createWorkerCursorsRepository(
+            { lastBlockNumber: 21, lastTransactionIndex: 0, lastLogIndex: 1 },
+            "event",
+            { insert }
+        ),
+        eventsRepository: createEventsRepository({ listAfterPosition: list }),
+    });
+
+    await service.execute();
+    expect(insert).not.toHaveBeenCalled();
+    expect(list).toHaveBeenCalledWith(5, 22, 21, 0, 1, 10);
+});
+
+test.each([-1, 1.5, Number.NaN])(
+    "reaction service rejects invalid initialBlock on initialization",
+    async (initialBlock) => {
+        const service = new ReactionService({
+            config: { ...config, initialBlock },
+            streamType: "event",
+            handler: async () => "processed",
+            chainCursorRepository: createChainCursorRepository(),
+            transactionManager,
+            workerCursorsRepository: createWorkerCursorsRepository(null),
+            eventsRepository: createEventsRepository(),
+        });
+        await expect(service.execute()).rejects.toThrow("Reaction initialBlock must be a non-negative safe integer");
+    }
+);
+
+test("reaction service ignores invalid initialBlock when a cursor already exists", async () => {
+    const service = new ReactionService({
+        config: { ...config, initialBlock: -1 },
+        streamType: "event",
+        handler: async () => "processed",
+        chainCursorRepository: createChainCursorRepository(),
+        transactionManager,
+        workerCursorsRepository: createWorkerCursorsRepository(
+            { lastBlockNumber: 100, lastTransactionIndex: 0, lastLogIndex: 0 }
+        ),
+        eventsRepository: createEventsRepository(),
+    });
+
+    await expect(service.execute()).resolves.toBeUndefined();
+});
+
 test("reaction service throws when chain cursor is missing", async () => {
     const service = new ReactionService({
         config,
@@ -457,19 +585,22 @@ test("reaction service reports transaction stream when transaction chain cursor 
     await expect(service.execute()).rejects.toThrow("Chain cursor is missing for transaction reaction chain 5");
 });
 
-test.each([-1, 1.5, Number.NaN])("reaction service rejects invalid confirmations", (confirmations) => {
-    expect(() => new ReactionService({
-        config: { ...config, confirmations },
-        streamType: "event",
-        handler: async () => "processed",
-        chainCursorRepository: createChainCursorRepository(),
-        transactionManager,
-        workerCursorsRepository: createWorkerCursorsRepository(
-            { lastBlockNumber: 1, lastTransactionIndex: 0, lastLogIndex: 0 }
-        ),
-        eventsRepository: createEventsRepository(),
-    })).toThrow("Reaction confirmations must be a non-negative integer");
-});
+test.each([-1, 1.5, Number.NaN, Number.MAX_SAFE_INTEGER + 1])(
+    "reaction service rejects invalid confirmations",
+    (confirmations) => {
+        expect(() => new ReactionService({
+            config: { ...config, confirmations },
+            streamType: "event",
+            handler: async () => "processed",
+            chainCursorRepository: createChainCursorRepository(),
+            transactionManager,
+            workerCursorsRepository: createWorkerCursorsRepository(
+                { lastBlockNumber: 1, lastTransactionIndex: 0, lastLogIndex: 0 }
+            ),
+            eventsRepository: createEventsRepository(),
+        })).toThrow("Reaction confirmations must be a non-negative safe integer");
+    }
+);
 
 test("reaction service limits reads by confirmations from the enqueued head", async () => {
     const listCalls: unknown[] = [];

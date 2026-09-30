@@ -13,6 +13,16 @@ test("get returns null when worker cursor is missing", async () => {
     await expect(repository.get("worker-a", 1, "transaction")).resolves.toBeNull();
 });
 
+test.each([0, 1, null])("delete reports whether the exact worker cursor existed", async (rowCount) => {
+    const query = vi.fn(async () => ({ rows: [], rowCount }));
+    const repository = new PostgresWorkerCursorsRepository(createExecutor(query));
+
+    await expect(repository.delete("worker-a", 1, "event")).resolves.toBe(rowCount === 1);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining("DELETE FROM worker_cursors"), [
+        "worker-a", 1, "event",
+    ]);
+});
+
 test("advance throws if cursor does not exist", async () => {
     const query = vi.fn(async () => ({ rows: [], rowCount: 0 }));
     const repository = new PostgresWorkerCursorsRepository(createExecutor(query));

@@ -96,6 +96,23 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
         }));
     }
 
+    async delete(
+        workerName: string,
+        chainId: ChainId,
+        streamType: StreamType,
+        transaction?: DbExecutor
+    ): Promise<boolean> {
+        const executor = transaction ?? this.pool;
+        const deleted = await executor.query(
+            `DELETE FROM worker_cursors
+             WHERE worker_name = $1
+               AND chain_id = $2
+               AND stream_type = $3`,
+            [workerName, chainId, streamType]
+        );
+        return (deleted.rowCount ?? 0) > 0;
+    }
+
     async insert(
         workerName: string,
         chainId: ChainId,

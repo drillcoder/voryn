@@ -80,6 +80,7 @@ const transactionHandler: TransactionReactionHandler = async () => "processed";
 const workerCursorsRepository: WorkerCursorsRepository = {
     get: async () => null,
     listByChain: async () => [],
+    delete: async () => false,
     insert: async () => undefined,
     advanceIfVersion: async () => true,
     rewindForReorg: async () => 0,
@@ -242,7 +243,9 @@ test("event reaction worker creates leader lock from worker identity", async () 
     const createdLeaderLock = Reflect.get(worker, "leaderLock") as LeaderLock;
 
     expect(createdLeaderLock).toBeInstanceOf(PostgresLeaderLock);
-    expect(Reflect.get(createdLeaderLock, "lockKey")).toBe(buildReactionWorkerLockKey("event", reactionConfig));
+    expect(Reflect.get(createdLeaderLock, "lockKey")).toBe(buildReactionWorkerLockKey(
+        "event", reactionConfig.chainId, reactionConfig.workerName
+    ));
     expect(Reflect.get(worker, "cleanupFn")).toBeDefined();
     await worker.stop();
 });
@@ -336,8 +339,12 @@ test("transaction reaction worker creates leader lock from worker identity", asy
     const createdLeaderLock = Reflect.get(worker, "leaderLock") as LeaderLock;
 
     expect(createdLeaderLock).toBeInstanceOf(PostgresLeaderLock);
-    expect(Reflect.get(createdLeaderLock, "lockKey")).toBe(buildReactionWorkerLockKey("transaction", reactionConfig));
-    expect(Reflect.get(createdLeaderLock, "lockKey")).not.toBe(buildReactionWorkerLockKey("event", reactionConfig));
+    expect(Reflect.get(createdLeaderLock, "lockKey")).toBe(buildReactionWorkerLockKey(
+        "transaction", reactionConfig.chainId, reactionConfig.workerName
+    ));
+    expect(Reflect.get(createdLeaderLock, "lockKey")).not.toBe(buildReactionWorkerLockKey(
+        "event", reactionConfig.chainId, reactionConfig.workerName
+    ));
     expect(Reflect.get(worker, "cleanupFn")).toBeDefined();
     await worker.stop();
 });

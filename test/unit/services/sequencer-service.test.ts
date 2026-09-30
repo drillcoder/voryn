@@ -166,6 +166,7 @@ const createWorkerCursorsRepository = (
 ): WorkerCursorsRepository => ({
     get: async () => null,
     listByChain: async () => [],
+    delete: async () => false,
     insert: async () => undefined,
     advanceIfVersion: async () => true,
     rewindForReorg: async () => 0,

@@ -7,6 +7,7 @@ import { PollingWorker } from "./polling-worker.js";
 export abstract class SingletonPollingWorker extends PollingWorker implements WorkerLifecycleWithFailure {
     private lockAcquired = false;
     private releasingLock = false;
+    private lockLost = false;
     private failureListener: ((error: Error) => void) | undefined;
 
     protected constructor(
@@ -43,12 +44,17 @@ export abstract class SingletonPollingWorker extends PollingWorker implements Wo
             }
 
             this.lockAcquired = true;
+            this.lockLost = false;
         }
 
         try {
             await super.start();
         } catch (error) {
-            await this.releaseLock();
+            try {
+                await super.stop();
+            } catch (cleanupError) {
+                throw new AggregateError([error, cleanupError], "Worker startup and cleanup failed");
+            }
             throw error;
         }
     }
@@ -57,10 +63,16 @@ export abstract class SingletonPollingWorker extends PollingWorker implements Wo
         await this.releaseLock();
     }
 
+    protected get hasLeaderLock(): boolean {
+        return this.lockAcquired && !this.lockLost;
+    }
+
     private handleLockLost(error: Error): void {
         if (!this.lockAcquired || this.releasingLock) {
             return;
         }
+
+        this.lockLost = true;
 
         this.failureListener?.(new Error(`Worker "${this.workerName}" lost its leader lock: ${error.message}`));
         void this.stop().catch(() => undefined);

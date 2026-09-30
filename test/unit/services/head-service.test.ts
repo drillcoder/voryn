@@ -14,6 +14,7 @@ import type { TransactionManager } from "../../../src/interfaces/transaction-man
 import type { HeadServiceConfig } from "../../../src/services/head-service.js";
 import { HeadService } from "../../../src/services/head-service.js";
 import { asHash32 } from "../../../src/utils/hex.js";
+import { createNoopChainCursorRepository, transactionManager } from "../helpers/pipeline-test-helpers.js";
 
 const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 const HASH_B = asHash32("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
@@ -112,6 +113,116 @@ const createBlockJobsRepository = (overrides?: Partial<BlockJobsRepository>): Bl
     retryAllFailed: async () => 0,
     deleteBlockNumberRange: async () => 0,
     ...overrides,
+});
+
+test("head service initializes before initialBlock without enqueueing jobs", async () => {
+    const calls: unknown[] = [];
+    const source: BlockSource = {
+        getLatestBlockNumber: async () => 100,
+        getLatestBlock: async () => { throw new Error("not used"); },
+        getBlock: async (_chainId, number) => ({
+            chainId: 1,
+            number,
+            hash: HASH_A,
+            parentHash: HASH_B,
+            timestamp: 0,
+        }),
+        getBlockData: async () => { throw new Error("not used"); },
+    };
+    const chainCursorRepository: ChainCursorRepository = {
+        ...createNoopChainCursorRepository(),
+        insert: async (cursor) => { calls.push(["insert", cursor]); },
+        setLastEnqueued: async (_chainId, block) => { calls.push(["setLastEnqueued", block]); },
+    };
+    const service = new HeadService(
+        { ...config, initialBlock: 96 },
+        source,
+        chainCursorRepository,
+        createBlockJobsRepository({
+            enqueueRange: async (_chainId, from, to) => { calls.push(["enqueueRange", from, to]); },
+        }),
+        createBlocksRepository(),
+        createTransactionsRepository(),
+        createEventsRepository(),
+        transactionManager,
+    );
+
+    await service.execute();
+
+    expect(calls).toEqual([
+        ["insert", {
+            chainId: 1,
+            lastEnqueuedBlock: 95,
+            lastCommittedBlock: 95,
+            lastCommittedHash: HASH_B,
+            reorgVersion: 0,
+        }],
+    ]);
+});
+
+test.each([95, 101])("head service rejects initialBlock %i outside its window", async (initialBlock) => {
+    const calls: string[] = [];
+    const source: BlockSource = {
+        getLatestBlockNumber: async () => 100,
+        getLatestBlock: async () => { throw new Error("not used"); },
+        getBlock: async () => { throw new Error("block must not be loaded"); },
+        getBlockData: async () => { throw new Error("not used"); },
+    };
+    const service = new HeadService(
+        { ...config, initialBlock },
+        source,
+        {
+            ...createNoopChainCursorRepository(),
+            insert: async () => { calls.push("insert"); },
+        },
+        createBlockJobsRepository({
+            enqueueRange: async () => { calls.push("enqueueRange"); },
+        }),
+        createBlocksRepository(),
+        createTransactionsRepository(),
+        createEventsRepository(),
+        transactionManager,
+    );
+
+    await expect(service.execute()).rejects.toThrow("outside available window [96, 100]");
+    expect(calls).toEqual([]);
+});
+
+test("head service ignores initialBlock when chain cursor exists", async () => {
+    const existing = {
+        chainId: 1,
+        lastEnqueuedBlock: 99,
+        lastCommittedBlock: 99,
+        lastCommittedHash: HASH_A,
+        reorgVersion: 0,
+        updatedAt: new Date(),
+    };
+    const calls: unknown[] = [];
+    const source: BlockSource = {
+        getLatestBlockNumber: async () => 100,
+        getLatestBlock: async () => { throw new Error("not used"); },
+        getBlock: async () => { throw new Error("not used"); },
+        getBlockData: async () => { throw new Error("not used"); },
+    };
+    const service = new HeadService(
+        { ...config, initialBlock: 1 },
+        source,
+        {
+            ...createNoopChainCursorRepository(),
+            get: async () => existing,
+            getForUpdate: async () => existing,
+        },
+        createBlockJobsRepository({
+            enqueueRange: async (_chainId, from, to) => { calls.push([from, to]); },
+        }),
+        createBlocksRepository(),
+        createTransactionsRepository(),
+        createEventsRepository(),
+        transactionManager,
+    );
+
+    await service.execute();
+    expect(calls).toEqual([[100, 100]]);
 });
 
 test("head service enqueues and updates cursor in transaction", async () => {

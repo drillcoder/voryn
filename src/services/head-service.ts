@@ -16,6 +16,7 @@ export interface HeadServiceConfig {
     chainId: ChainId;
     delayBetweenTicksMs: number;
     depthBlocks: number;
+    initialBlock?: BlockNumber;
 }
 
 export class HeadService {
@@ -59,7 +60,7 @@ export class HeadService {
                 chainId,
                 latestBlock,
             });
-            await this.initializeCursor(chainId, latestBlock);
+            await this.initializeCursor(latestBlock);
             return;
         }
 
@@ -103,20 +104,36 @@ export class HeadService {
         });
     }
 
-    private async initializeCursor(chainId: ChainId, latestBlock: BlockNumber): Promise<void> {
-        const latestBlockData = await this.source.getBlock(chainId, latestBlock);
+    private async initializeCursor(latestBlock: BlockNumber): Promise<void> {
+        const { chainId, initialBlock } = this.config;
+        if (initialBlock !== undefined) {
+            const floorBlock = Math.max(0, latestBlock - this.config.depthBlocks + 1);
+            if (!Number.isSafeInteger(initialBlock) || initialBlock < floorBlock || initialBlock > latestBlock) {
+                throw new Error(
+                    `Head initialBlock ${String(initialBlock)} is outside available window `
+                    + `[${String(floorBlock)}, ${String(latestBlock)}]`
+                );
+            }
+        }
+
+        const blockNumber = initialBlock ?? latestBlock;
+        const block = await this.source.getBlock(chainId, blockNumber);
+        const cursorBlock = initialBlock === undefined ? latestBlock : initialBlock - 1;
+        const cursorHash = initialBlock === undefined ? block.hash : block.parentHash;
         await this.chainCursorRepository.insert({
             chainId,
-            lastEnqueuedBlock: latestBlock,
-            lastCommittedBlock: latestBlock,
-            lastCommittedHash: latestBlockData.hash,
+            lastEnqueuedBlock: cursorBlock,
+            lastCommittedBlock: cursorBlock,
+            lastCommittedHash: cursorHash,
             reorgVersion: 0,
         });
 
         this.logger.info("chain_cursor_initialized", {
             chainId,
+            initialBlock,
             latestBlock,
-            latestBlockHash: latestBlockData.hash,
+            lastCommittedBlock: cursorBlock,
+            lastCommittedHash: cursorHash,
         });
     }
 

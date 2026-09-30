@@ -16,6 +16,7 @@ const options: HeadWorkerOptions = {
     },
     delayBetweenTicksMs: 1_000,
     depthBlocks: 64,
+    initialBlock: 10,
     dbUrl: "postgres://user:pass@localhost:5432/voryn",
     logLevel: "info",
 };
@@ -29,6 +30,7 @@ const eventReactionOptions: EventReactionWorkerOptions = {
     batchSize: 100,
     skipFlushInterval: 10,
     confirmations: 12,
+    initialBlock: 10,
     dbUrl: "postgres://user:pass@localhost:5432/voryn",
     logLevel: "info",
     handler: async () => "processed",
@@ -40,6 +42,7 @@ const transactionReactionOptions: TransactionReactionWorkerOptions = {
     batchSize: 100,
     skipFlushInterval: 10,
     confirmations: 24,
+    initialBlock: 10,
     dbUrl: "postgres://user:pass@localhost:5432/voryn",
     logLevel: "info",
     handler: async () => "processed",

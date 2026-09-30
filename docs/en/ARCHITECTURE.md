@@ -132,7 +132,7 @@ The reaction pipeline runs user logic over data within the committed position. E
 
 ### `ReactionService`
 
-- Requires a non-negative integer `confirmations` for each reaction worker.
+- Requires a non-negative safe integer `confirmations` for each reaction worker.
 - Limits reads to `min(last_committed_block, last_enqueued_block - confirmations)`.
 - Reads stream items in repository order: events use `(block_number, transaction_index, log_index)`, transactions use `(block_number, transaction_index)`.
 - Tracks progress in `worker_cursors` with `stream_type = event` or `stream_type = transaction`.

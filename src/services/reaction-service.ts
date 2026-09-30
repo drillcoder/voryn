@@ -14,7 +14,7 @@ import type {
     WorkerCursorsRepository,
 } from "../interfaces/repositories.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
-import type { ChainId } from "../types/chain.js";
+import type { BlockNumber, ChainId } from "../types/chain.js";
 import type { StreamType } from "../types/pipeline.js";
 
 export interface ReactionServiceConfig {
@@ -24,6 +24,7 @@ export interface ReactionServiceConfig {
     batchSize: number;
     skipFlushInterval: number;
     confirmations: number;
+    initialBlock?: BlockNumber;
 }
 
 interface ReactionServiceBaseOptions<TStreamType extends StreamType> {
@@ -51,8 +52,8 @@ export class ReactionService {
     private readonly logger: Logger;
 
     constructor(private readonly options: ReactionServiceOptions) {
-        if (!Number.isInteger(options.config.confirmations) || options.config.confirmations < 0) {
-            throw new Error("Reaction confirmations must be a non-negative integer");
+        if (!Number.isSafeInteger(options.config.confirmations) || options.config.confirmations < 0) {
+            throw new Error("Reaction confirmations must be a non-negative safe integer");
         }
         this.logger = options.logger ?? noopLogger;
     }
@@ -128,6 +129,11 @@ export class ReactionService {
             options.handler,
             cursor.reorgVersion
         );
+    }
+
+    public async deleteCursor(): Promise<boolean> {
+        const { config, streamType, workerCursorsRepository } = this.options;
+        return workerCursorsRepository.delete(config.workerName, config.chainId, streamType);
     }
 
     private async processItems<TItem>(
@@ -259,8 +265,13 @@ export class ReactionService {
                 return { chainCursor: lockedChainCursor, workerCursor: existing };
             }
 
+            if (config.initialBlock !== undefined
+                && (!Number.isSafeInteger(config.initialBlock) || config.initialBlock < 0)) {
+                throw new Error("Reaction initialBlock must be a non-negative safe integer");
+            }
+
             const initialPosition: WorkerCursorPosition = {
-                lastBlockNumber: lockedChainCursor.lastCommittedBlock,
+                lastBlockNumber: config.initialBlock ?? lockedChainCursor.lastCommittedBlock,
                 lastTransactionIndex: -1,
                 lastLogIndex: -1,
             };

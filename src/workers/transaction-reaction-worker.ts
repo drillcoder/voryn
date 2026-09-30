@@ -17,7 +17,7 @@ import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker
 import type { ReactionServiceConfig } from "../services/reaction-service.js";
 import { ReactionService } from "../services/reaction-service.js";
 import { resolveDbDependencies, resolveLogger } from "../runtime/resolvers.js";
-import { SingletonPollingWorker } from "./singleton-polling-worker.js";
+import { ReactionPollingWorker } from "./reaction-polling-worker.js";
 import { buildReactionWorkerLockKey } from "./worker-lock-keys.js";
 
 export interface TransactionReactionWorkerDatabaseDependencies {
@@ -34,7 +34,7 @@ export type TransactionReactionWorkerOptions =
     & RuntimeDbOptions<TransactionReactionWorkerDatabaseDependencies>
     & { handler: TransactionReactionHandler };
 
-export class TransactionReactionWorker extends SingletonPollingWorker {
+export class TransactionReactionWorker extends ReactionPollingWorker {
     static async create(options: TransactionReactionWorkerOptions): Promise<TransactionReactionWorker> {
         const logger = resolveLogger(options);
         const serviceConfig: ReactionServiceConfig = {
@@ -44,6 +44,7 @@ export class TransactionReactionWorker extends SingletonPollingWorker {
             batchSize: options.batchSize,
             skipFlushInterval: options.skipFlushInterval,
             confirmations: options.confirmations,
+            initialBlock: options.initialBlock,
         };
         const { dependencies, dispose } = await resolveDbDependencies<TransactionReactionWorkerDatabaseDependencies>(
             options,
@@ -53,7 +54,10 @@ export class TransactionReactionWorker extends SingletonPollingWorker {
                 transactionsRepository: new PostgresTransactionsRepository(pool),
                 workerCursorsRepository: new PostgresWorkerCursorsRepository(pool),
                 transactionManager: new PostgresTransactionManager(pool),
-                leaderLock: new PostgresLeaderLock(pool, buildReactionWorkerLockKey("transaction", serviceConfig)),
+                leaderLock: new PostgresLeaderLock(
+                    pool,
+                    buildReactionWorkerLockKey("transaction", serviceConfig.chainId, serviceConfig.workerName),
+                ),
             })
         );
         const service = new ReactionService({
@@ -72,7 +76,7 @@ export class TransactionReactionWorker extends SingletonPollingWorker {
 
     private constructor(
         private readonly serviceConfig: ReactionServiceConfig,
-        private readonly service: ReactionService,
+        service: ReactionService,
         leaderLock: LeaderLock,
         logger: Logger,
         dispose?: () => Promise<void>,
@@ -82,12 +86,9 @@ export class TransactionReactionWorker extends SingletonPollingWorker {
             serviceConfig.delayBetweenTicksMs,
             logger,
             leaderLock,
+            service,
             dispose
         );
-    }
-
-    protected async tick(): Promise<void> {
-        await this.service.execute();
     }
 
     protected override buildStartLogMeta(): Record<string, unknown> {

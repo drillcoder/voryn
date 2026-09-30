@@ -42,7 +42,7 @@ class TestSingletonWorker extends SingletonPollingWorker {
         logger: Logger,
         lock: LeaderLock,
         private readonly onTick: () => Promise<void>,
-        cleanup?: () => Promise<void>
+        cleanup?: () => Promise<void>,
     ) {
         super("singleton-worker", 1000, logger, lock, cleanup);
     }
@@ -51,6 +51,44 @@ class TestSingletonWorker extends SingletonPollingWorker {
         await this.onTick();
     }
 }
+
+test("singleton worker cleans up when startup logging fails", async () => {
+    const release = vi.fn(async () => undefined);
+    const cleanup = vi.fn(async () => undefined);
+    const startupError = new Error("startup logging failed");
+    const logger: Logger = {
+        debug: () => undefined,
+        info: () => { throw startupError; },
+        warn: () => undefined,
+        error: () => undefined,
+    };
+    const worker = new TestSingletonWorker(logger, {
+        tryAcquire: async () => true,
+        release,
+        onLost: ignoreLockLoss,
+    }, async () => undefined, cleanup);
+
+    await expect(worker.start()).rejects.toBe(startupError);
+    expect(release).toHaveBeenCalledTimes(1);
+    expect(cleanup).toHaveBeenCalledTimes(1);
+    await expect(worker.start()).rejects.toThrow("lifecycle is finalized");
+});
+
+test("singleton worker reports startup and cleanup errors together", async () => {
+    const logger: Logger = {
+        debug: () => undefined,
+        info: () => { throw new Error("startup failed"); },
+        warn: () => undefined,
+        error: () => undefined,
+    };
+    const worker = new TestSingletonWorker(logger, {
+        tryAcquire: async () => true,
+        release: async () => undefined,
+        onLost: ignoreLockLoss,
+    }, async () => undefined, async () => { throw new Error("cleanup failed"); });
+
+    await expect(worker.start()).rejects.toThrow("Worker startup and cleanup failed");
+});
 
 test("singleton worker rejects start when lock is held", async () => {
     const { logger, warnCalls } = createLogger();

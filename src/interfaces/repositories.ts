@@ -177,6 +177,8 @@ export interface WorkerCursorsRepository {
 
     listByChain(chainId: ChainId, transaction?: DbExecutor): Promise<WorkerCursor[]>;
 
+    delete(workerName: string, chainId: ChainId, streamType: StreamType, transaction?: DbExecutor): Promise<boolean>;
+
     insert(
         workerName: string,
         chainId: ChainId,

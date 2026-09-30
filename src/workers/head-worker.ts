@@ -11,6 +11,7 @@ import type {
 import type { SingleChainSourceConfig } from "../interfaces/source-config.js";
 import type { RuntimeDbOptions, RuntimeLoggerOptions } from "../runtime/options.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
+import type { BlockNumber } from "../types/chain.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
 import { PostgresBlockJobsRepository } from "../repositories/postgres/block-jobs-repository.js";
@@ -48,6 +49,7 @@ export type HeadWorkerOptions =
         sourceConfig: SingleChainSourceConfig;
         delayBetweenTicksMs: number;
         depthBlocks: number;
+        initialBlock?: BlockNumber;
     };
 
 export class HeadWorker extends SingletonPollingWorker {
@@ -58,6 +60,7 @@ export class HeadWorker extends SingletonPollingWorker {
             chainId: resolveSingleChainId(options.sourceConfig),
             delayBetweenTicksMs: options.delayBetweenTicksMs,
             depthBlocks: options.depthBlocks,
+            initialBlock: options.initialBlock,
         };
         let dbDispose: (() => Promise<void>) | undefined;
         try {

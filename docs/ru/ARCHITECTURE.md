@@ -131,7 +131,7 @@ Reaction-контур запускает пользовательскую лог
 
 ### `ReactionService`
 
-- Для каждого reaction worker требует целое `confirmations >= 0`.
+- Для каждого reaction worker требует безопасное целое `confirmations >= 0`.
 - Ограничивает чтение границей `min(last_committed_block, last_enqueued_block - confirmations)`.
 - Читает элементы потока в порядке репозитория: события идут по `(block_number, transaction_index, log_index)`, транзакции - по `(block_number, transaction_index)`.
 - Ведет прогресс в `worker_cursors` с `stream_type = event` или `stream_type = transaction`.

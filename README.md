@@ -134,6 +134,7 @@ const headOptions = {
     },
     delayBetweenTicksMs: 1_000,
     depthBlocks: 65_000,
+    // initialBlock: 20_000_000, // first block on a new chain cursor
     logLevel,
     dbUrl,
 };
@@ -222,6 +223,7 @@ const options: EventReactionWorkerOptions = {
     batchSize: 1000,
     skipFlushInterval: 100,
     confirmations: 12,
+    // initialBlock: 20_000_000, // first block when this worker has no cursor
     logLevel,
     dbUrl,
     handler,
@@ -245,7 +247,14 @@ A handler can be called more than once for the same item if it fails before retu
 before the cursor write is persisted, or if a reorg moves the item to a new committed block. Reorg rollback rewinds
 affected reaction cursors, but it cannot undo external side effects. Keep handlers idempotent.
 
-Each reaction worker chooses its own non-negative integer `confirmations`. Its read boundary is the lower of committed
+`initialBlock` is optional for `HeadWorker` and both reaction workers. It is used only when their cursor is missing;
+an existing cursor always resumes from its saved position. For `HeadWorker`, `initialBlock` must be within
+`[max(0, latestBlock - depthBlocks + 1), latestBlock]`. The first head tick initializes the cursor; the next
+enqueues blocks starting with `initialBlock`. An out-of-range value causes tick errors without creating a cursor or
+jobs. Without `initialBlock`, a new `HeadWorker` cursor starts at the latest block and enqueues only later blocks.
+A new reaction worker starts with items in the current committed block and skips earlier committed blocks.
+
+Each reaction worker chooses its own non-negative safe integer `confirmations`. Its read boundary is the lower of committed
 progress and `lastEnqueuedBlock - confirmations`. Retention does not wait for reaction workers, so configure:
 
 ```text

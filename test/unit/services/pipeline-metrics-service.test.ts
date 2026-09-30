@@ -367,6 +367,7 @@ function createWorkerCursorsRepository(cursors: WorkerCursor[]): WorkerCursorsRe
     return {
         get: async () => null,
         listByChain: async () => cursors,
+        delete: async () => false,
         insert: async () => undefined,
         advanceIfVersion: async () => true,
         rewindForReorg: async () => 0,

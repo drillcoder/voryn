@@ -75,3 +75,41 @@ test("head worker create wires service execution", async () => {
         depthBlocks: 10,
     });
 });
+
+test("head worker reports an invalid initialBlock from its tick without creating a cursor", async () => {
+    const insert = vi.fn(async () => undefined);
+    const enqueueRange = vi.fn(async () => undefined);
+    const error = vi.fn();
+    const source: BlockSource = {
+        getLatestBlockNumber: async () => 100,
+        getLatestBlock: async () => { throw new Error("not expected"); },
+        getBlock: async () => { throw new Error("not expected"); },
+        getBlockData: async () => { throw new Error("not expected"); },
+    };
+    const worker = await HeadWorker.create({
+        logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error },
+        sourceConfig: { chainId: 7, source },
+        delayBetweenTicksMs: 1000,
+        depthBlocks: 10,
+        initialBlock: 90,
+        overrides: {
+            chainCursorRepository: { ...createNoopChainCursorRepository(), insert },
+            blockJobsRepository: { ...createNoopBlockJobsRepository(), enqueueRange },
+            blocksRepository: createNoopBlocksRepository(),
+            transactionsRepository: createNoopTransactionsRepository(),
+            eventsRepository: createNoopEventsRepository(),
+            transactionManager,
+            leaderLock,
+        },
+    });
+
+    await worker.start();
+    await worker.stop();
+
+    expect(error).toHaveBeenCalledWith("worker_tick_failed", {
+        worker: "head:7",
+        error: "Head initialBlock 90 is outside available window [91, 100]",
+    });
+    expect(insert).not.toHaveBeenCalled();
+    expect(enqueueRange).not.toHaveBeenCalled();
+});

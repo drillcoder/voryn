@@ -71,6 +71,7 @@ query parameters, authorization data, or RPC payloads.
 `HeadWorker`:
 
 - `depthBlocks`: maximum block window that `head` keeps available for enqueueing. If committed progress falls behind this window, `head` rebases to the available boundary.
+- `initialBlock`: optional first block to process when no chain cursor exists. It must be within `[max(0, latestBlock - depthBlocks + 1), latestBlock]`; otherwise the head tick fails without writing a cursor or jobs. The first tick initializes the cursor; the next enqueues blocks starting with `initialBlock`. An existing cursor takes precedence.
 
 `FetchWorker`:
 
@@ -92,9 +93,10 @@ query parameters, authorization data, or RPC payloads.
 `EventReactionWorker` and `TransactionReactionWorker`:
 
 - `workerName`: stable reaction worker name. Together with `chainId` and stream type, it identifies the cursor and lock.
+- `initialBlock`: optional first block to read, inclusively, when this worker has no cursor. An existing cursor takes precedence.
 - `batchSize`: maximum stream items read in one tick.
 - `skipFlushInterval`: how often skipped items flush cursor progress.
-- `confirmations`: required non-negative integer that controls how far this worker stays behind the latest head seen by `HeadWorker`.
+- `confirmations`: required non-negative safe integer that controls how far this worker stays behind the latest head seen by `HeadWorker`.
 - `handler`: application callback for one event or transaction.
 
 ## Scaling and Tuning
@@ -128,6 +130,9 @@ Reaction workers run application logic over committed data:
 On the first start, a reaction worker creates its cursor at the current committed block. It does not process older
 already committed data before that point. Keep `workerName` stable across restarts if the worker should continue from
 the same cursor.
+
+Set `initialBlock` to read from an earlier committed block when creating a new cursor. `stop()` retains the cursor;
+`destroy()` waits for the current tick, deletes the cursor, and stops the worker.
 
 Each tick reads up to `batchSize` items after the saved cursor and no later than the current committed block. The
 handler returns:

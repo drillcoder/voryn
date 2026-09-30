@@ -107,6 +107,10 @@ export abstract class PollingWorker implements WorkerLifecycle {
         return this.finalized;
     }
 
+    protected get lifecycleActive(): boolean {
+        return this.active;
+    }
+
     protected beforeCleanup(): Promise<void> {
         return Promise.resolve();
     }
