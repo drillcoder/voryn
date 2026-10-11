@@ -146,7 +146,7 @@ test("singleton worker fails when PostgreSQL terminates its lock session", async
         expect(lockPid).toBeDefined();
 
         const terminateResult = await competitorPool.query<TerminateBackendRow>(
-            "SELECT pg_terminate_backend($1) AS terminated",
+            "SELECT pg_terminate_backend($1, 5000) AS terminated",
             [lockPid],
         );
         expect(terminateResult.rows[0]?.terminated).toBe(true);
