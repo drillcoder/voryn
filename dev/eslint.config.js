@@ -40,6 +40,7 @@ export default tseslint.config(
         files: ["src/**/*.ts", "test/**/*.ts"],
         rules: {
             "no-console": "error",
+            "function-call-argument-newline": ["error", "consistent"],
             "no-multiple-empty-lines": [
                 "error",
                 {

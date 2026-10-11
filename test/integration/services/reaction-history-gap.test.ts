@@ -49,13 +49,23 @@ describe("integration services: reaction history gaps", () => {
         const workerName = `gap-${streamType}`;
         await chainCursorRepository.insert({ chainId: CHAIN_ID, lastCommittedBlock: 90,
             lastEnqueuedBlock: 90, lastCommittedHash: hashFromNumber(90), reorgVersion: 0 });
-        await workerCursorsRepository.insert(workerName, CHAIN_ID, streamType,
-            { lastBlockNumber: 90, lastTransactionIndex: 0, lastLogIndex: -1 }, 0);
+        await workerCursorsRepository.insert(
+            workerName,
+            CHAIN_ID,
+            streamType,
+            { lastBlockNumber: 90, lastTransactionIndex: 0, lastLogIndex: -1 },
+            0,
+        );
         // A different network must neither change the boundary nor have its cursor moved.
         await blocksRepository.insert({ chainId: 2, blockNumber: 1, blockHash: hashFromNumber(1),
             parentHash: hashFromNumber(0), blockTimestamp: 1, fetchedAt: new Date() });
-        await workerCursorsRepository.insert(workerName, 2, streamType,
-            { lastBlockNumber: 0, lastTransactionIndex: -1, lastLogIndex: -1 }, 0);
+        await workerCursorsRepository.insert(
+            workerName,
+            2,
+            streamType,
+            { lastBlockNumber: 0, lastTransactionIndex: -1, lastLogIndex: -1 },
+            0,
+        );
         const warn = vi.fn();
         const handled: number[] = [];
         let fail = true;
@@ -99,8 +109,12 @@ describe("integration services: reaction history gaps", () => {
             if (cause === "head rebase") {
                 const head = new HeadService(
                     { chainId: CHAIN_ID, delayBetweenTicksMs: 1, depthBlocks: 2 },
-                    createMapBlockSource(101, [block100, block101]), f.chainCursorRepository,
-                    f.blockJobsRepository, f.blocksRepository, f.transactionsRepository, f.eventsRepository,
+                    createMapBlockSource(101, [block100, block101]),
+                    f.chainCursorRepository,
+                    f.blockJobsRepository,
+                    f.blocksRepository,
+                    f.transactionsRepository,
+                    f.eventsRepository,
                     f.transactionManager,
                 );
                 await head.execute();
@@ -114,8 +128,12 @@ describe("integration services: reaction history gaps", () => {
             if (cause === "retention") {
                 await new RetentionService(
                     { chainId: CHAIN_ID, delayBetweenTicksMs: 1, retentionDepthBlocks: 2 },
-                    f.chainCursorRepository, f.blockJobsRepository, f.blocksRepository,
-                    f.transactionsRepository, f.eventsRepository, f.transactionManager,
+                    f.chainCursorRepository,
+                    f.blockJobsRepository,
+                    f.blocksRepository,
+                    f.transactionsRepository,
+                    f.eventsRepository,
+                    f.transactionManager,
                 ).execute();
             }
             await expect(f.blocksRepository.getOldestBlockNumber(CHAIN_ID)).resolves.toBe(100);
@@ -173,8 +191,12 @@ describe("integration services: reaction history gaps", () => {
                 await held.promise;
                 retention = new RetentionService(
                     { chainId: CHAIN_ID, delayBetweenTicksMs: 1, retentionDepthBlocks: 1 },
-                    retentionCursorRepository, f.blockJobsRepository, f.blocksRepository,
-                    f.transactionsRepository, f.eventsRepository, f.transactionManager,
+                    retentionCursorRepository,
+                    f.blockJobsRepository,
+                    f.blocksRepository,
+                    f.transactionsRepository,
+                    f.eventsRepository,
+                    f.transactionManager,
                 ).execute();
                 await attempted.promise;
                 // Observe PostgreSQL's actual wait rather than assuming a scheduling delay.
