@@ -64,7 +64,7 @@ describe("integration transaction manager", () => {
                 await transactionsRepository.insertMany(payload.transactions, transaction);
                 await eventsRepository.insertMany(payload.logs, transaction);
                 throw new Error("force rollback");
-            })
+            }),
         ).rejects.toThrow("force rollback");
 
         await expect(db.countRows("chain_cursor")).resolves.toBe(0);

@@ -223,7 +223,7 @@ function withChainId(block: FetchedBlock, chainId: number): FetchedBlock {
 }
 
 function createMultiChainSource(
-    entries: ReadonlyArray<readonly [number, { latest: number; blocks: FetchedBlock[] }]>
+    entries: ReadonlyArray<readonly [number, { latest: number; blocks: FetchedBlock[] }]>,
 ): BlockSource {
     const chainLatest = new Map<number, number>();
     const chainBlocks = new Map<string, FetchedBlock>();

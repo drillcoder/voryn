@@ -427,7 +427,7 @@ test("sequencer service rolls back to common ancestor on parent hash mismatch", 
                 }
 
                 return createFetchedBlock(9, hash9, HASH_A, 9).block;
-            }
+            },
         ),
         chainCursorRepository: createChainCursorRepository(() => cursor, {
             setPositionsAndIncrementReorgVersion: async (
@@ -482,7 +482,7 @@ test("sequencer service rolls back to common ancestor on parent hash mismatch", 
         workerCursorsRepository: createWorkerCursorsRepository({
             rewindForReorg: async (_chainId, rollbackFromBlock, reorgVersion, tx) => {
                 calls.push(
-                    `rewind-workers:${String(rollbackFromBlock)}:${String(reorgVersion)}:${String(tx === transaction)}`
+                    `rewind-workers:${String(rollbackFromBlock)}:${String(reorgVersion)}:${String(tx === transaction)}`,
                 );
                 return 2;
             },

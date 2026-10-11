@@ -16,7 +16,7 @@ export class PostgresLeaderLock implements LeaderLock {
 
     constructor(
         private readonly pool: Pool,
-        private readonly lockKey: bigint
+        private readonly lockKey: bigint,
     ) {
     }
 
@@ -32,7 +32,7 @@ export class PostgresLeaderLock implements LeaderLock {
         try {
             const result = await client.query<{ acquired: boolean }>(
                 "SELECT pg_try_advisory_lock($1::BIGINT) AS acquired",
-                [this.lockKey.toString()]
+                [this.lockKey.toString()],
             );
 
             if (!result.rows[0]?.acquired) {
@@ -124,7 +124,7 @@ export class PostgresLeaderLock implements LeaderLock {
             if (!result.rows[0]?.held) {
                 this.handleClientError(
                     client,
-                    new Error(`Advisory lock with key ${this.lockKey.toString()} is no longer held by this session`)
+                    new Error(`Advisory lock with key ${this.lockKey.toString()} is no longer held by this session`),
                 );
                 return;
             }

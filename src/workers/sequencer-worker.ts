@@ -77,9 +77,9 @@ export class SequencerWorker extends SingletonPollingWorker {
                     transactionManager: new PostgresTransactionManager(pool),
                     leaderLock: new PostgresLeaderLock(
                         pool,
-                        SEQUENCER_WORKER_LOCK_KEY_BASE + BigInt(serviceConfig.chainId)
+                        SEQUENCER_WORKER_LOCK_KEY_BASE + BigInt(serviceConfig.chainId),
                     ),
-                })
+                }),
             );
             dbDispose = dispose;
             const service = new SequencerService(
@@ -119,7 +119,7 @@ export class SequencerWorker extends SingletonPollingWorker {
             serviceConfig.delayBetweenTicksMs,
             logger,
             leaderLock,
-            dispose
+            dispose,
         );
     }
 

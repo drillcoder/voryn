@@ -159,12 +159,12 @@ describe("e2e concurrent fetch workers", () => {
                  WHERE chain_id = $1
                    AND block_number BETWEEN 10 AND 16
                    AND attempts > 1`,
-                [CHAIN_ID]
+                [CHAIN_ID],
             );
 
             expect(Number(attemptsAboveOne.rows[0]?.count ?? "0")).toBe(0);
             await expect(
-                db.countRows("block_jobs", "status = 'committed' AND block_number BETWEEN 10 AND 16")
+                db.countRows("block_jobs", "status = 'committed' AND block_number BETWEEN 10 AND 16"),
             ).resolves.toBe(7);
             await expect(db.countRows("blocks", "block_number BETWEEN 10 AND 16")).resolves.toBe(7);
             await expect(db.countRows("transactions", "block_number BETWEEN 10 AND 16")).resolves.toBe(7);

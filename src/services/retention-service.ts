@@ -117,7 +117,7 @@ export class RetentionService {
                 chainId,
                 oldestBlock,
                 purgeToBlock,
-                transaction
+                transaction,
             );
 
             this.logger.debug("retention_purge_stage_started", {
@@ -131,7 +131,7 @@ export class RetentionService {
                 chainId,
                 oldestBlock,
                 purgeToBlock,
-                transaction
+                transaction,
             );
 
             this.logger.debug("retention_purge_stage_started", {
@@ -145,7 +145,7 @@ export class RetentionService {
                 chainId,
                 oldestBlock,
                 purgeToBlock,
-                transaction
+                transaction,
             );
 
             this.logger.debug("retention_purge_stage_started", {
@@ -159,7 +159,7 @@ export class RetentionService {
                 chainId,
                 oldestBlock,
                 purgeToBlock,
-                transaction
+                transaction,
             );
 
             return {

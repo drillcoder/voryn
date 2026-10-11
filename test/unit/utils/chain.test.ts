@@ -19,6 +19,6 @@ test.each([
 
 test("asChainId uses provided error label", () => {
     expect(() => asChainId(0, "Ethers source chain id")).toThrow(
-        "Ethers source chain id is invalid: 0"
+        "Ethers source chain id is invalid: 0",
     );
 });

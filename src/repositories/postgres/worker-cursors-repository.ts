@@ -26,7 +26,7 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
         workerName: string,
         chainId: ChainId,
         streamType: StreamType,
-        transaction?: DbExecutor
+        transaction?: DbExecutor,
     ): Promise<WorkerCursor | null> {
         const executor = transaction ?? this.pool;
         const result = await executor.query<WorkerCursorRow>(
@@ -43,7 +43,7 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
              WHERE worker_name = $1
                AND chain_id = $2
                AND stream_type = $3`,
-            [workerName, chainId, streamType]
+            [workerName, chainId, streamType],
         );
 
         if (result.rows.length === 0) {
@@ -79,7 +79,7 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
              FROM worker_cursors
              WHERE chain_id = $1
              ORDER BY worker_name, stream_type`,
-            [chainId]
+            [chainId],
         );
 
         return result.rows.map((row) => ({
@@ -100,7 +100,7 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
         workerName: string,
         chainId: ChainId,
         streamType: StreamType,
-        transaction?: DbExecutor
+        transaction?: DbExecutor,
     ): Promise<boolean> {
         const executor = transaction ?? this.pool;
         const deleted = await executor.query(
@@ -108,7 +108,7 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
              WHERE worker_name = $1
                AND chain_id = $2
                AND stream_type = $3`,
-            [workerName, chainId, streamType]
+            [workerName, chainId, streamType],
         );
         return (deleted.rowCount ?? 0) > 0;
     }
@@ -119,7 +119,7 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
         streamType: StreamType,
         position: WorkerCursorPosition,
         reorgVersion: number,
-        transaction?: DbExecutor
+        transaction?: DbExecutor,
     ): Promise<void> {
         const executor = transaction ?? this.pool;
         await executor.query(
@@ -135,7 +135,7 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
                 position.lastTransactionIndex,
                 position.lastLogIndex,
                 reorgVersion,
-            ]
+            ],
         );
     }
 
@@ -145,7 +145,7 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
         streamType: StreamType,
         position: WorkerCursorPosition,
         expectedReorgVersion: number,
-        transaction?: DbExecutor
+        transaction?: DbExecutor,
     ): Promise<boolean> {
         const executor = transaction ?? this.pool;
         const updated = await executor.query(
@@ -166,7 +166,7 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
                 position.lastTransactionIndex,
                 position.lastLogIndex,
                 expectedReorgVersion,
-            ]
+            ],
         );
 
         if ((updated.rowCount ?? 0) > 0) {
@@ -178,7 +178,7 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
             throw new Error(
                 `Worker cursor is missing for worker "${workerName}", ` +
                 `chain ${String(chainId)}, stream ${streamType}. ` +
-                "Call insert() before advanceIfVersion()"
+                "Call insert() before advanceIfVersion()",
             );
         }
 
@@ -189,7 +189,7 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
         chainId: ChainId,
         rollbackFromBlock: BlockNumber,
         reorgVersion: number,
-        transaction: DbExecutor
+        transaction: DbExecutor,
     ): Promise<number> {
         const updated = await transaction.query<{ rewound: boolean }>(
             `UPDATE worker_cursors
@@ -209,7 +209,7 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
                  updated_at = NOW()
              WHERE chain_id = $1
              RETURNING last_block_number = $2 AS rewound`,
-            [chainId, rollbackFromBlock, reorgVersion]
+            [chainId, rollbackFromBlock, reorgVersion],
         );
 
         return updated.rows.filter((row) => row.rewound).length;

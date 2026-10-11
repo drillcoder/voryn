@@ -34,7 +34,7 @@ export class PostgresBlocksRepository implements BlocksRepository {
     async get(
         chainId: ChainId,
         blockNumber: BlockNumber,
-        transaction?: DbExecutor
+        transaction?: DbExecutor,
     ): Promise<PipelineBlock | null> {
         const executor = transaction ?? this.pool;
         const result = await executor.query<BlockRow>(
@@ -42,7 +42,7 @@ export class PostgresBlocksRepository implements BlocksRepository {
              FROM blocks
              WHERE chain_id = $1
                AND block_number = $2`,
-            [chainId, blockNumber]
+            [chainId, blockNumber],
         );
 
         if (result.rows.length === 0) {
@@ -66,7 +66,7 @@ export class PostgresBlocksRepository implements BlocksRepository {
                  ORDER BY block_number DESC
                  LIMIT 1
              ) latest`,
-            [chainId]
+            [chainId],
         );
 
         if (result.rows.length === 0) {
@@ -80,7 +80,7 @@ export class PostgresBlocksRepository implements BlocksRepository {
         if (row.max_fetched_block_timestamp === null) {
             throw new Error(
                 `Fetched block timestamp is missing for chain ${String(chainId)} `
-                + `block ${String(row.max_fetched_block)}`
+                + `block ${String(row.max_fetched_block)}`,
             );
         }
         if (row.last_fetched_at === null) {
@@ -100,7 +100,7 @@ export class PostgresBlocksRepository implements BlocksRepository {
             `SELECT MIN(block_number) AS oldest_block
              FROM blocks
              WHERE chain_id = $1`,
-            [chainId]
+            [chainId],
         );
         const oldestBlock = result.rows[0]?.oldest_block ?? null;
 
@@ -120,7 +120,7 @@ export class PostgresBlocksRepository implements BlocksRepository {
                 block.parentHash,
                 block.blockTimestamp,
                 block.fetchedAt,
-            ]
+            ],
         );
     }
 
@@ -128,7 +128,7 @@ export class PostgresBlocksRepository implements BlocksRepository {
         chainId: ChainId,
         fromBlock: BlockNumber,
         toBlock: BlockNumber,
-        transaction?: DbExecutor
+        transaction?: DbExecutor,
     ): Promise<number> {
         if (fromBlock > toBlock) {
             return 0;
@@ -137,7 +137,7 @@ export class PostgresBlocksRepository implements BlocksRepository {
         const executor = transaction ?? this.pool;
         const deleted = await executor.query(
             `DELETE FROM blocks WHERE chain_id = $1 AND block_number BETWEEN $2 AND $3`,
-            [chainId, fromBlock, toBlock]
+            [chainId, fromBlock, toBlock],
         );
 
         return deleted.rowCount ?? 0;
@@ -146,12 +146,12 @@ export class PostgresBlocksRepository implements BlocksRepository {
     async deleteByBlockNumber(
         chainId: ChainId,
         blockNumber: BlockNumber,
-        transaction?: DbExecutor
+        transaction?: DbExecutor,
     ): Promise<number> {
         const executor = transaction ?? this.pool;
         const deleted = await executor.query(
             `DELETE FROM blocks WHERE chain_id = $1 AND block_number = $2`,
-            [chainId, blockNumber]
+            [chainId, blockNumber],
         );
 
         return deleted.rowCount ?? 0;

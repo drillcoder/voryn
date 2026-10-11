@@ -40,7 +40,7 @@ const createLogger = () => {
 class TestPollingWorker extends PollingWorker {
     constructor(
         logger: Logger,
-        private readonly onTick: () => Promise<void>
+        private readonly onTick: () => Promise<void>,
     ) {
         super("test-worker", 1000, logger);
     }
@@ -54,7 +54,7 @@ class TestPollingWorkerWithCleanup extends PollingWorker {
     constructor(
         logger: Logger,
         onTick: () => Promise<void>,
-        cleanup: () => Promise<void>
+        cleanup: () => Promise<void>,
     ) {
         super("test-worker", 1000, logger, cleanup);
         this.onTick = onTick;
@@ -188,6 +188,6 @@ test("polling worker cannot start after lifecycle is finalized", async () => {
     await worker.stop();
 
     await expect(worker.start()).rejects.toThrow(
-        'Worker "test-worker" cannot be started because its lifecycle is finalized'
+        'Worker "test-worker" cannot be started because its lifecycle is finalized',
     );
 });

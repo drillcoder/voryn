@@ -42,7 +42,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
     async get(
         chainId: ChainId,
         blockNumber: BlockNumber,
-        transaction?: DbExecutor
+        transaction?: DbExecutor,
     ): Promise<BlockJob | null> {
         const executor = transaction ?? this.pool;
         const result = await executor.query<BlockJobRow>(
@@ -50,7 +50,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
              FROM block_jobs
              WHERE chain_id = $1
                AND block_number = $2`,
-            [chainId, blockNumber]
+            [chainId, blockNumber],
         );
 
         if (result.rows.length === 0) {
@@ -64,7 +64,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
         chainId: ChainId,
         fromBlock: BlockNumber,
         toBlock: BlockNumber,
-        transaction?: DbExecutor
+        transaction?: DbExecutor,
     ): Promise<void> {
         if (fromBlock > toBlock) {
             return;
@@ -76,7 +76,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
              SELECT $1, gs, 'pending'
              FROM generate_series($2::BIGINT, $3::BIGINT) AS gs
              ON CONFLICT (chain_id, block_number) DO NOTHING`,
-            [chainId, fromBlock, toBlock]
+            [chainId, fromBlock, toBlock],
         );
     }
 
@@ -84,7 +84,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
         chainId: ChainId,
         instanceId: string,
         staleClaimedBefore: Date,
-        transaction?: DbExecutor
+        transaction?: DbExecutor,
     ): Promise<BlockJob | null> {
         const executor = transaction ?? this.pool;
         const result = await executor.query<BlockJobRow>(
@@ -121,7 +121,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
                  j.error,
                  j.claimed_at,
                  j.updated_at`,
-            [chainId, instanceId, staleClaimedBefore]
+            [chainId, instanceId, staleClaimedBefore],
         );
 
         if (result.rows.length === 0) {
@@ -135,7 +135,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
         chainId: ChainId,
         blockNumber: BlockNumber,
         instanceId: string,
-        transaction?: DbExecutor
+        transaction?: DbExecutor,
     ): Promise<void> {
         const executor = transaction ?? this.pool;
         const result = await executor.query(
@@ -150,12 +150,12 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
                AND block_number = $2
                AND status = 'fetching'
                AND claimed_by = $3`,
-            [chainId, blockNumber, instanceId]
+            [chainId, blockNumber, instanceId],
         );
 
         if ((result.rowCount ?? 0) === 0) {
             throw new Error(
-                `Cannot mark block job as fetched for chain ${String(chainId)} block ${String(blockNumber)}`
+                `Cannot mark block job as fetched for chain ${String(chainId)} block ${String(blockNumber)}`,
             );
         }
     }
@@ -166,7 +166,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
         instanceId: string,
         error: string,
         nextRetryAt: Date | null,
-        transaction?: DbExecutor
+        transaction?: DbExecutor,
     ): Promise<void> {
         const executor = transaction ?? this.pool;
         const result = await executor.query(
@@ -181,12 +181,12 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
                AND block_number = $2
                AND status = 'fetching'
                AND claimed_by = $3`,
-            [chainId, blockNumber, instanceId, error, nextRetryAt]
+            [chainId, blockNumber, instanceId, error, nextRetryAt],
         );
 
         if ((result.rowCount ?? 0) === 0) {
             throw new Error(
-                `Cannot mark block job as failed for chain ${String(chainId)} block ${String(blockNumber)}`
+                `Cannot mark block job as failed for chain ${String(chainId)} block ${String(blockNumber)}`,
             );
         }
     }
@@ -194,7 +194,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
     async markCommitted(
         chainId: ChainId,
         blockNumber: BlockNumber,
-        transaction?: DbExecutor
+        transaction?: DbExecutor,
     ): Promise<void> {
         const executor = transaction ?? this.pool;
         const updated = await executor.query(
@@ -204,12 +204,12 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
              WHERE chain_id = $1
                AND block_number = $2
                AND status <> 'committed'`,
-            [chainId, blockNumber]
+            [chainId, blockNumber],
         );
 
         if ((updated.rowCount ?? 0) !== 1) {
             throw new Error(
-                `Failed to mark block job as committed for chain ${String(chainId)} block ${String(blockNumber)}`
+                `Failed to mark block job as committed for chain ${String(chainId)} block ${String(blockNumber)}`,
             );
         }
     }
@@ -225,7 +225,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
                  COUNT(*) FILTER (WHERE status = 'failed') AS failed_count
              FROM block_jobs
              WHERE chain_id = $1`,
-            [chainId]
+            [chainId],
         );
         const row = result.rows[0];
 
@@ -241,7 +241,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
     async listFailedBlocks(
         chainId: ChainId,
         limit: number,
-        transaction?: DbExecutor
+        transaction?: DbExecutor,
     ): Promise<FailedBlockMetrics[]> {
         const executor = transaction ?? this.pool;
         const result = await executor.query<FailedBlockMetricsRow>(
@@ -251,7 +251,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
                AND status = 'failed'
              ORDER BY block_number ASC
              LIMIT $2`,
-            [chainId, limit]
+            [chainId, limit],
         );
 
         return result.rows.map((row) => ({
@@ -267,7 +267,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
         chainId: ChainId,
         fromBlock: BlockNumber,
         toBlock: BlockNumber,
-        transaction?: DbExecutor
+        transaction?: DbExecutor,
     ): Promise<number> {
         if (fromBlock > toBlock) {
             return 0;
@@ -284,7 +284,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
              WHERE chain_id = $1
                AND block_number BETWEEN $2 AND $3
                AND status = 'failed'`,
-            [chainId, fromBlock, toBlock]
+            [chainId, fromBlock, toBlock],
         );
 
         return updated.rowCount ?? 0;
@@ -301,7 +301,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
                  updated_at = NOW()
              WHERE chain_id = $1
                AND status = 'failed'`,
-            [chainId]
+            [chainId],
         );
 
         return updated.rowCount ?? 0;
@@ -311,7 +311,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
         chainId: ChainId,
         fromBlock: BlockNumber,
         toBlock: BlockNumber,
-        transaction?: DbExecutor
+        transaction?: DbExecutor,
     ): Promise<number> {
         if (fromBlock > toBlock) {
             return 0;
@@ -320,7 +320,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
         const executor = transaction ?? this.pool;
         const deleted = await executor.query(
             `DELETE FROM block_jobs WHERE chain_id = $1 AND block_number BETWEEN $2 AND $3`,
-            [chainId, fromBlock, toBlock]
+            [chainId, fromBlock, toBlock],
         );
 
         return deleted.rowCount ?? 0;

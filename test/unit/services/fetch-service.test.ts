@@ -107,7 +107,7 @@ const createBlocksRepository = (overrides?: Partial<BlocksRepository>): BlocksRe
 });
 
 const createTransactionsRepository = (
-    overrides?: Partial<TransactionsRepository>
+    overrides?: Partial<TransactionsRepository>,
 ): TransactionsRepository => ({
     listAfterPosition: async () => [],
     insertMany: async () => undefined,

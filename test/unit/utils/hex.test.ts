@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { asAddress, asHash32, asHexData, } from "../../../src/utils/hex.js";
+import { asAddress, asHash32, asHexData } from "../../../src/utils/hex.js";
 
 const hash = (char: string): string => `0x${char.repeat(64)}`;
 const address = (char: string): string => `0x${char.repeat(40)}`;
@@ -11,7 +11,7 @@ test("asHash32 accepts valid 32-byte hex", () => {
 
 test("asHash32 rejects invalid value", () => {
     expect(() => asHash32("0x1234")).toThrow(
-        "invalid hash: expected 0x-prefixed 32-byte hex"
+        "invalid hash: expected 0x-prefixed 32-byte hex",
     );
 });
 
@@ -21,7 +21,7 @@ test("asAddress accepts valid address", () => {
 
 test("asAddress rejects non-address value", () => {
     expect(() => asAddress("0x1234")).toThrow(
-        "invalid address: expected 0x-prefixed 20-byte address"
+        "invalid address: expected 0x-prefixed 20-byte address",
     );
 });
 
@@ -32,12 +32,12 @@ test("asHexData accepts valid byte data", () => {
 
 test("asHexData rejects odd-length hex data", () => {
     expect(() => asHexData("0x1")).toThrow(
-        "invalid hex data: expected 0x-prefixed byte data"
+        "invalid hex data: expected 0x-prefixed byte data",
     );
 });
 
 test("asHexData rejects non-string values", () => {
     expect(() => asHexData(123)).toThrow(
-        "invalid hex data: expected 0x-prefixed byte data"
+        "invalid hex data: expected 0x-prefixed byte data",
     );
 });

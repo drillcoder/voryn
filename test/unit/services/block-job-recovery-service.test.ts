@@ -5,7 +5,7 @@ import { BlockJobRecoveryService } from "../../../src/services/block-job-recover
 
 const createBlockJobsRepository = (
     retryFailed: BlockJobsRepository["retryFailed"],
-    retryAllFailed: BlockJobsRepository["retryAllFailed"] = async () => 0
+    retryAllFailed: BlockJobsRepository["retryAllFailed"] = async () => 0,
 ): BlockJobsRepository => ({
     enqueueRange: async () => undefined,
     get: async () => null,
@@ -79,7 +79,7 @@ test("block job recovery service retries all failed blocks", async () => {
             info,
             warn: vi.fn(),
             error: vi.fn(),
-        }
+        },
     );
 
     const result = await service.retryAllFailedBlocks();

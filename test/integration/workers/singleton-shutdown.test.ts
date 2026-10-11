@@ -74,7 +74,7 @@ test("singleton worker releases its PostgreSQL leader lock before ending the poo
             cleanupStarted.resolve();
             cleanupState.poolEndPromise = workerPool.end();
             await cleanupState.poolEndPromise;
-        }
+        },
     );
 
     try {
@@ -122,7 +122,7 @@ test("singleton worker fails when PostgreSQL terminates its lock session", async
         async () => {
             workerPoolEndPromise = workerPool.end();
             await workerPoolEndPromise;
-        }
+        },
     );
 
     try {
@@ -140,20 +140,20 @@ test("singleton worker fails when PostgreSQL terminates its lock session", async
                AND objsubid = 1
                AND mode = 'ExclusiveLock'
                AND granted`,
-            [lockKey.toString()]
+            [lockKey.toString()],
         );
         const lockPid = pidResult.rows[0]?.pid;
         expect(lockPid).toBeDefined();
 
         const terminateResult = await competitorPool.query<TerminateBackendRow>(
             "SELECT pg_terminate_backend($1) AS terminated",
-            [lockPid]
+            [lockPid],
         );
         expect(terminateResult.rows[0]?.terminated).toBe(true);
 
         const failureError = await failure;
         expect(failureError.message).toContain(
-            'Worker "integration-singleton-worker" lost its leader lock'
+            'Worker "integration-singleton-worker" lost its leader lock',
         );
         await expect(competitorLock.tryAcquire()).resolves.toBe(true);
     } finally {

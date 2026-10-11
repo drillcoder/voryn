@@ -29,7 +29,7 @@ export class BlockJobRecovery {
             logger,
             (pool: Pool): BlockJobRecoveryDatabaseDependencies => ({
                 blockJobsRepository: new PostgresBlockJobsRepository(pool),
-            })
+            }),
         );
         const service = new BlockJobRecoveryService(
             serviceConfig,

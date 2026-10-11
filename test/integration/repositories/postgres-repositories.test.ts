@@ -68,14 +68,14 @@ describe("integration repositories: postgres", () => {
             CHAIN_ID,
             "event",
             { lastBlockNumber: 99, lastTransactionIndex: -1, lastLogIndex: -1 },
-            0
+            0,
         );
         await workerCursorsRepository.insert(
             "lagging-worker",
             CHAIN_ID,
             "transaction",
             { lastBlockNumber: 98, lastTransactionIndex: 3, lastLogIndex: -1 },
-            0
+            0,
         );
 
         await expect(workerCursorsRepository.advanceIfVersion(
@@ -83,7 +83,7 @@ describe("integration repositories: postgres", () => {
             CHAIN_ID,
             "event",
             { lastBlockNumber: 101, lastTransactionIndex: 0, lastLogIndex: 0 },
-            0
+            0,
         )).resolves.toBe(true);
 
         await transactionManager.run(async (transaction) => {
@@ -91,7 +91,7 @@ describe("integration repositories: postgres", () => {
                 CHAIN_ID,
                 100,
                 1,
-                transaction
+                transaction,
             )).resolves.toBe(1);
         });
 
@@ -100,7 +100,7 @@ describe("integration repositories: postgres", () => {
             reorgVersion: 1,
         });
         await expect(
-            workerCursorsRepository.get("lagging-worker", CHAIN_ID, "transaction")
+            workerCursorsRepository.get("lagging-worker", CHAIN_ID, "transaction"),
         ).resolves.toMatchObject({
             position: { lastBlockNumber: 98, lastTransactionIndex: 3, lastLogIndex: -1 },
             reorgVersion: 1,
@@ -111,7 +111,7 @@ describe("integration repositories: postgres", () => {
             CHAIN_ID,
             "event",
             { lastBlockNumber: 101, lastTransactionIndex: 0, lastLogIndex: 0 },
-            0
+            0,
         )).resolves.toBe(false);
         await expect(workerCursorsRepository.get("event-worker", CHAIN_ID, "event")).resolves.toMatchObject({
             position: { lastBlockNumber: 100, lastTransactionIndex: -1, lastLogIndex: -1 },

@@ -31,7 +31,7 @@ export class PostgresTransactionsRepository implements TransactionsRepository {
         afterBlockNumber: BlockNumber,
         afterTransactionIndex: number,
         limit: number,
-        transaction?: DbExecutor
+        transaction?: DbExecutor,
     ): Promise<PipelineTransaction[]> {
         const safeLimit = Math.max(0, Math.floor(limit));
         if (safeLimit === 0) {
@@ -56,7 +56,7 @@ export class PostgresTransactionsRepository implements TransactionsRepository {
                AND (block_number, transaction_index) > ($3, $4)
              ORDER BY block_number, transaction_index
              LIMIT $5`,
-            [chainId, maxBlockNumber, afterBlockNumber, afterTransactionIndex, safeLimit]
+            [chainId, maxBlockNumber, afterBlockNumber, afterTransactionIndex, safeLimit],
         );
 
         return result.rows.map(mapTransaction);
@@ -90,7 +90,7 @@ export class PostgresTransactionsRepository implements TransactionsRepository {
                         data
                     )
                  VALUES ${placeholders}`,
-                params
+                params,
             );
         }
     }
@@ -99,7 +99,7 @@ export class PostgresTransactionsRepository implements TransactionsRepository {
         chainId: ChainId,
         fromBlock: BlockNumber,
         toBlock: BlockNumber,
-        transaction?: DbExecutor
+        transaction?: DbExecutor,
     ): Promise<number> {
         if (fromBlock > toBlock) {
             return 0;
@@ -108,7 +108,7 @@ export class PostgresTransactionsRepository implements TransactionsRepository {
         const executor = transaction ?? this.pool;
         const deleted = await executor.query(
             `DELETE FROM transactions WHERE chain_id = $1 AND block_number BETWEEN $2 AND $3`,
-            [chainId, fromBlock, toBlock]
+            [chainId, fromBlock, toBlock],
         );
 
         return deleted.rowCount ?? 0;
@@ -117,12 +117,12 @@ export class PostgresTransactionsRepository implements TransactionsRepository {
     async deleteByBlockNumber(
         chainId: ChainId,
         blockNumber: BlockNumber,
-        transaction?: DbExecutor
+        transaction?: DbExecutor,
     ): Promise<number> {
         const executor = transaction ?? this.pool;
         const deleted = await executor.query(
             `DELETE FROM transactions WHERE chain_id = $1 AND block_number = $2`,
-            [chainId, blockNumber]
+            [chainId, blockNumber],
         );
 
         return deleted.rowCount ?? 0;

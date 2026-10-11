@@ -54,7 +54,7 @@ export class PipelineMetrics {
                     blockJobsRepository: new PostgresBlockJobsRepository(pool),
                     blocksRepository: new PostgresBlocksRepository(pool),
                     workerCursorsRepository: new PostgresWorkerCursorsRepository(pool),
-                })
+                }),
             );
             dbDispose = dispose;
             const service = new PipelineMetricsService(

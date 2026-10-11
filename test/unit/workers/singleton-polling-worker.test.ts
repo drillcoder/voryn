@@ -102,7 +102,7 @@ test("singleton worker rejects start when lock is held", async () => {
     const worker = new TestSingletonWorker(logger, lock, async () => undefined);
 
     await expect(worker.start()).rejects.toThrow(
-        'Worker "singleton-worker" did not start: lock is already held'
+        'Worker "singleton-worker" did not start: lock is already held',
     );
     expect(warnCalls[0]?.message).toBe("worker_start_rejected_lock_held");
 });
@@ -133,7 +133,7 @@ test("singleton worker releases lock when start fails", async () => {
         async () => undefined,
         async () => {
             lifecycleOrder.push("cleanup");
-        }
+        },
     );
 
     await expect(worker.start()).rejects.toThrow("logger failed");
@@ -191,7 +191,7 @@ test("singleton worker coalesces concurrent stops and releases lock before clean
         async () => tick.promise,
         async () => {
             lifecycleOrder.push("cleanup");
-        }
+        },
     );
 
     await worker.start();
@@ -254,7 +254,7 @@ test("singleton worker logs release errors and clears lock state", async () => {
 
     await worker.stop();
     await expect(worker.start()).rejects.toThrow(
-        'Worker "singleton-worker" cannot be started because its lifecycle is finalized'
+        'Worker "singleton-worker" cannot be started because its lifecycle is finalized',
     );
 
     expect(acquireCount).toBe(1);
@@ -285,7 +285,7 @@ test("singleton worker stops with an error when its leader lock is lost", async 
     notifyLost(new Error("connection lost"));
 
     await expect(failure).resolves.toEqual(
-        new Error('Worker "singleton-worker" lost its leader lock: connection lost')
+        new Error('Worker "singleton-worker" lost its leader lock: connection lost'),
     );
     tick.resolve();
     await worker.stop();
@@ -342,7 +342,7 @@ test("lock loss interrupts a graceful stop that is draining a tick", async () =>
     notifyLost(new Error("backend terminated"));
 
     await expect(failure).resolves.toEqual(
-        new Error('Worker "singleton-worker" lost its leader lock: backend terminated')
+        new Error('Worker "singleton-worker" lost its leader lock: backend terminated'),
     );
     tick.resolve();
     await stopPromise;
@@ -366,7 +366,7 @@ test("a cleanup error after lock loss does not create an unhandled rejection", a
         async () => tick.promise,
         async () => {
             throw cleanupError;
-        }
+        },
     );
 
     await worker.start();

@@ -410,7 +410,7 @@ test("throws when pool network is missing", async () => {
     const source = await createSource(provider);
 
     await expect(source.getLatestBlockNumber(42)).rejects.toThrow(
-        "Network with chain ID 42 is not configured"
+        "Network with chain ID 42 is not configured",
     );
 });
 
@@ -469,7 +469,7 @@ test("throws when block is missing", async () => {
     const source = await createSource(provider);
 
     await expect(source.getBlockData(7, 42)).rejects.toThrow(
-        "block not found for chain 7 at number 42"
+        "block not found for chain 7 at number 42",
     );
 });
 
@@ -480,7 +480,7 @@ test("throws when requested block is missing", async () => {
     const source = await createSource(provider);
 
     await expect(source.getBlock(7, 42)).rejects.toThrow(
-        "block not found for chain 7 at 42"
+        "block not found for chain 7 at 42",
     );
 });
 
@@ -498,7 +498,7 @@ test("throws when requested block number mismatches", async () => {
     const source = await createSource(provider);
 
     await expect(source.getBlock(7, 42)).rejects.toThrow(
-        "block number mismatch for chain 7: expected 42, got 43"
+        "block number mismatch for chain 7: expected 42, got 43",
     );
 });
 
@@ -516,7 +516,7 @@ test("throws when requested block hash is missing", async () => {
     const source = await createSource(provider);
 
     await expect(source.getBlock(7, 42)).rejects.toThrow(
-        "block hash is missing for chain 7 at number 42"
+        "block hash is missing for chain 7 at number 42",
     );
 });
 
@@ -563,7 +563,7 @@ test("throws on log block hash mismatch", async () => {
     const source = await createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
-        "log block hash mismatch for chain 7 block 9"
+        "log block hash mismatch for chain 7 block 9",
     );
 });
 
@@ -623,7 +623,7 @@ test("throws when block hash is missing", async () => {
     const source = await createSource(provider);
 
     await expect(source.getBlockData(7, 21)).rejects.toThrow(
-        "block hash is missing for chain 7 at number 21"
+        "block hash is missing for chain 7 at number 21",
     );
 });
 
@@ -641,7 +641,7 @@ test("throws when block number mismatches requested number", async () => {
     const source = await createSource(provider);
 
     await expect(source.getBlockData(7, 21)).rejects.toThrow(
-        "block number mismatch for chain 7: expected 21, got 22"
+        "block number mismatch for chain 7: expected 21, got 22",
     );
 });
 
@@ -666,7 +666,7 @@ test("throws when fallback transaction is not found", async () => {
     const source = await createSource(provider, 1n);
 
     await expect(source.getBlockData(1, 55)).rejects.toThrow(
-        `transaction not found for chain 1 block 55 hash ${transactionHash}`
+        `transaction not found for chain 1 block 55 hash ${transactionHash}`,
     );
 });
 
@@ -695,7 +695,7 @@ test("throws on transaction chain id mismatch", async () => {
     const source = await createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
-        "transaction chain id mismatch for chain 7 block 9"
+        "transaction chain id mismatch for chain 7 block 9",
     );
 });
 
@@ -768,7 +768,7 @@ test("throws on transaction block number mismatch", async () => {
     const source = await createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
-        "transaction block number mismatch for chain 7 block 9"
+        "transaction block number mismatch for chain 7 block 9",
     );
 });
 
@@ -797,7 +797,7 @@ test("throws on transaction block hash mismatch", async () => {
     const source = await createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
-        "transaction block hash mismatch for chain 7 block 9"
+        "transaction block hash mismatch for chain 7 block 9",
     );
 });
 
@@ -826,7 +826,7 @@ test("throws on negative transaction index", async () => {
     const source = await createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
-        "transaction index is invalid for chain 7 block 9"
+        "transaction index is invalid for chain 7 block 9",
     );
 });
 
@@ -855,7 +855,7 @@ test("throws on non-integer transaction index", async () => {
     const source = await createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
-        "transaction index is invalid for chain 7 block 9"
+        "transaction index is invalid for chain 7 block 9",
     );
 });
 
@@ -883,7 +883,7 @@ test("throws on log block number mismatch", async () => {
     const source = await createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
-        "log block number mismatch for chain 7 block 9"
+        "log block number mismatch for chain 7 block 9",
     );
 });
 
@@ -911,7 +911,7 @@ test("throws on invalid log transaction index", async () => {
     const source = await createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
-        "log transaction index is invalid for chain 7 block 9"
+        "log transaction index is invalid for chain 7 block 9",
     );
 });
 
@@ -939,6 +939,6 @@ test("throws on invalid log index", async () => {
     const source = await createSource(provider);
 
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
-        "log index is invalid for chain 7 block 9"
+        "log index is invalid for chain 7 block 9",
     );
 });

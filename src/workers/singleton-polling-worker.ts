@@ -39,7 +39,7 @@ export abstract class SingletonPollingWorker extends PollingWorker implements Wo
                     worker: this.workerName,
                 });
                 throw new Error(
-                    `Worker "${this.workerName}" did not start: lock is already held`
+                    `Worker "${this.workerName}" did not start: lock is already held`,
                 );
             }
 

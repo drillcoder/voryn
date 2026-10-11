@@ -24,7 +24,7 @@ export class BlockJobRecoveryService {
         if (fromBlock > toBlock) {
             throw new Error(
                 `Cannot retry failed block jobs: fromBlock ${String(fromBlock)} is greater than `
-                + `toBlock ${String(toBlock)}`
+                + `toBlock ${String(toBlock)}`,
             );
         }
 

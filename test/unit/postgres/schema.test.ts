@@ -124,7 +124,7 @@ function column(
     dataType: string,
     isNullable: "YES" | "NO",
     udtName: string,
-    characterMaximumLength?: number
+    characterMaximumLength?: number,
 ): SchemaColumnFixture {
     return {
         tableName,
@@ -197,7 +197,7 @@ test("applySqlFileToPostgresDb executes sql from file", async () => {
     expect(logger.info).toHaveBeenCalledWith("db_sql_apply_started", { sqlFilePath });
     expect(logger.info).toHaveBeenCalledWith(
         "db_sql_apply_completed",
-        expect.objectContaining({ sqlFilePath })
+        expect.objectContaining({ sqlFilePath }),
     );
     expect(logger.error).not.toHaveBeenCalled();
 });
@@ -218,7 +218,7 @@ test("applySqlFileToPostgresDb logs and rethrows query error", async () => {
                 pool: pool as never,
                 sqlFilePath,
                 logger,
-            })
+            }),
         ).rejects.toThrow("db down");
     } finally {
         await rm(tempDir, { recursive: true, force: true });
@@ -230,7 +230,7 @@ test("applySqlFileToPostgresDb logs and rethrows query error", async () => {
         expect.objectContaining({
             sqlFilePath,
             error: "db down",
-        })
+        }),
     );
 });
 
@@ -250,7 +250,7 @@ test("applySqlFileToPostgresDb logs unknown query errors", async () => {
                 pool: pool as never,
                 sqlFilePath,
                 logger,
-            })
+            }),
         ).rejects.toBe("db down");
     } finally {
         await rm(tempDir, { recursive: true, force: true });
@@ -261,7 +261,7 @@ test("applySqlFileToPostgresDb logs unknown query errors", async () => {
         expect.objectContaining({
             sqlFilePath,
             error: "unknown error",
-        })
+        }),
     );
 });
 
@@ -270,7 +270,7 @@ test("validatePostgresSchema passes when required schema matches", async () => {
     const logger = createLogger();
 
     await expect(
-        validatePostgresSchema({ pool: pool as never, logger })
+        validatePostgresSchema({ pool: pool as never, logger }),
     ).resolves.toBeUndefined();
 
     expect(pool.query).toHaveBeenCalledTimes(4);
@@ -290,7 +290,7 @@ test("validatePostgresSchema throws when required table is missing", async () =>
     const logger = createLogger();
 
     await expect(
-        validatePostgresSchema({ pool: pool as never, logger })
+        validatePostgresSchema({ pool: pool as never, logger }),
     ).rejects.toThrow("postgres schema is invalid: missing table block_jobs");
 
     expect(logger.error).toHaveBeenCalledTimes(1);
@@ -303,13 +303,13 @@ test("validatePostgresSchema throws when required table is missing", async () =>
 test("validatePostgresSchema throws when required column is missing", async () => {
     const fixture = createValidSchemaFixture();
     fixture.columns = fixture.columns.filter(
-        (schemaColumn) => !(schemaColumn.tableName === "blocks" && schemaColumn.columnName === "parent_hash")
+        (schemaColumn) => !(schemaColumn.tableName === "blocks" && schemaColumn.columnName === "parent_hash"),
     );
     const pool = createSchemaPool(fixture);
     const logger = createLogger();
 
     await expect(
-        validatePostgresSchema({ pool: pool as never, logger })
+        validatePostgresSchema({ pool: pool as never, logger }),
     ).rejects.toThrow("missing column blocks.parent_hash");
 });
 
@@ -320,14 +320,14 @@ test("validatePostgresSchema throws when table column metadata is missing", asyn
     const logger = createLogger();
 
     await expect(
-        validatePostgresSchema({ pool: pool as never, logger })
+        validatePostgresSchema({ pool: pool as never, logger }),
     ).rejects.toThrow("missing column chain_cursor.chain_id");
 });
 
 test("validatePostgresSchema throws when column type does not match", async () => {
     const fixture = createValidSchemaFixture();
     const blockHashColumn = fixture.columns.find(
-        (schemaColumn) => schemaColumn.tableName === "blocks" && schemaColumn.columnName === "block_hash"
+        (schemaColumn) => schemaColumn.tableName === "blocks" && schemaColumn.columnName === "block_hash",
     );
     if (blockHashColumn === undefined) {
         throw new Error("test fixture is invalid");
@@ -339,14 +339,14 @@ test("validatePostgresSchema throws when column type does not match", async () =
     const logger = createLogger();
 
     await expect(
-        validatePostgresSchema({ pool: pool as never, logger })
+        validatePostgresSchema({ pool: pool as never, logger }),
     ).rejects.toThrow("column blocks.block_hash type mismatch: expected character varying(66), got text");
 });
 
 test("validatePostgresSchema throws when column nullable does not match", async () => {
     const fixture = createValidSchemaFixture();
     const attemptsColumn = fixture.columns.find(
-        (schemaColumn) => schemaColumn.tableName === "block_jobs" && schemaColumn.columnName === "attempts"
+        (schemaColumn) => schemaColumn.tableName === "block_jobs" && schemaColumn.columnName === "attempts",
     );
     if (attemptsColumn === undefined) {
         throw new Error("test fixture is invalid");
@@ -356,7 +356,7 @@ test("validatePostgresSchema throws when column nullable does not match", async 
     const logger = createLogger();
 
     await expect(
-        validatePostgresSchema({ pool: pool as never, logger })
+        validatePostgresSchema({ pool: pool as never, logger }),
     ).rejects.toThrow("column block_jobs.attempts nullable mismatch: expected not nullable, got nullable");
 });
 
@@ -371,9 +371,9 @@ test("validatePostgresSchema throws when primary key does not match", async () =
     const logger = createLogger();
 
     await expect(
-        validatePostgresSchema({ pool: pool as never, logger })
+        validatePostgresSchema({ pool: pool as never, logger }),
     ).rejects.toThrow(
-        "primary key block_jobs mismatch: expected (chain_id, block_number), got (block_number, chain_id)"
+        "primary key block_jobs mismatch: expected (chain_id, block_number), got (block_number, chain_id)",
     );
 });
 
@@ -384,10 +384,10 @@ test("validatePostgresSchema throws when required index is missing", async () =>
     const logger = createLogger();
 
     await expect(
-        validatePostgresSchema({ pool: pool as never, logger })
+        validatePostgresSchema({ pool: pool as never, logger }),
     ).rejects.toThrow(
         "index block_jobs_claim_idx mismatch: "
-        + "expected block_jobs(chain_id, status, next_retry_at, block_number), got none"
+        + "expected block_jobs(chain_id, status, next_retry_at, block_number), got none",
     );
 });
 
@@ -402,11 +402,11 @@ test("validatePostgresSchema throws when required index columns do not match", a
     const logger = createLogger();
 
     await expect(
-        validatePostgresSchema({ pool: pool as never, logger })
+        validatePostgresSchema({ pool: pool as never, logger }),
     ).rejects.toThrow(
         "index block_jobs_claim_idx mismatch: "
         + "expected block_jobs(chain_id, status, next_retry_at, block_number), "
-        + "got block_jobs(chain_id, status, block_number)"
+        + "got block_jobs(chain_id, status, block_number)",
     );
 });
 
@@ -414,7 +414,7 @@ test("validatePostgresSchema aggregates validation errors", async () => {
     const fixture = createValidSchemaFixture();
     fixture.tables = fixture.tables.filter((tableName) => tableName !== "events");
     fixture.columns = fixture.columns.filter(
-        (schemaColumn) => !(schemaColumn.tableName === "blocks" && schemaColumn.columnName === "parent_hash")
+        (schemaColumn) => !(schemaColumn.tableName === "blocks" && schemaColumn.columnName === "parent_hash"),
     );
     fixture.primaryKeys = fixture.primaryKeys.filter((primaryKey) => primaryKey.tableName !== "chain_cursor");
     fixture.indexes = [];
@@ -422,14 +422,14 @@ test("validatePostgresSchema aggregates validation errors", async () => {
     const logger = createLogger();
 
     await expect(
-        validatePostgresSchema({ pool: pool as never, logger })
+        validatePostgresSchema({ pool: pool as never, logger }),
     ).rejects.toThrow(
         "postgres schema is invalid: "
         + "primary key chain_cursor mismatch: expected (chain_id), got none; "
         + "missing column blocks.parent_hash; "
         + "missing table events; "
         + "index block_jobs_claim_idx mismatch: "
-        + "expected block_jobs(chain_id, status, next_retry_at, block_number), got none"
+        + "expected block_jobs(chain_id, status, next_retry_at, block_number), got none",
     );
 });
 
@@ -440,11 +440,11 @@ test("validatePostgresSchema logs unknown validation errors", async () => {
     const logger = createLogger();
 
     await expect(
-        validatePostgresSchema({ pool: pool as never, logger })
+        validatePostgresSchema({ pool: pool as never, logger }),
     ).rejects.toBe("db down");
 
     expect(logger.error).toHaveBeenCalledWith(
         "db_schema_validation_failed",
-        expect.objectContaining({ error: "unknown error" })
+        expect.objectContaining({ error: "unknown error" }),
     );
 });

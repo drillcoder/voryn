@@ -113,7 +113,7 @@ test("markFetchFailed throws when ownership is lost", async () => {
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
     await expect(repository.markFetchFailed(1, 99, "worker-a", "boom", null)).rejects.toThrow(
-        "Cannot mark block job as failed"
+        "Cannot mark block job as failed",
     );
 });
 
@@ -149,7 +149,7 @@ test("markFetched throws when ownership is lost", async () => {
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
     await expect(repository.markFetched(1, 7, "worker-a")).rejects.toThrow(
-        "Cannot mark block job as fetched"
+        "Cannot mark block job as fetched",
     );
 });
 
@@ -158,7 +158,7 @@ test("markFetched treats rowCount=null as not updated", async () => {
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
     await expect(repository.markFetched(1, 7, "worker-a")).rejects.toThrow(
-        "Cannot mark block job as fetched"
+        "Cannot mark block job as fetched",
     );
 });
 
@@ -174,7 +174,7 @@ test("markFetchFailed treats rowCount=null as not updated", async () => {
     const repository = new PostgresBlockJobsRepository(createExecutor(query));
 
     await expect(repository.markFetchFailed(1, 7, "worker-a", "boom", null)).rejects.toThrow(
-        "Cannot mark block job as failed"
+        "Cannot mark block job as failed",
     );
 });
 

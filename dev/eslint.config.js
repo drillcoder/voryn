@@ -37,6 +37,11 @@ export default tseslint.config(
     },
     eslintConfigPrettier,
     {
+        rules: {
+            "comma-dangle": ["error", "always-multiline"],
+        },
+    },
+    {
         files: ["src/**/*.ts", "test/**/*.ts"],
         rules: {
             "no-console": "error",
@@ -91,5 +96,5 @@ export default tseslint.config(
             "@typescript-eslint/array-type": "off",
             "@typescript-eslint/no-unused-vars": "off",
         },
-    }
+    },
 );

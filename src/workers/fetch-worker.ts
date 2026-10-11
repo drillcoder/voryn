@@ -64,7 +64,7 @@ export class FetchWorker extends PollingWorker {
                     transactionsRepository: new PostgresTransactionsRepository(pool),
                     eventsRepository: new PostgresEventsRepository(pool),
                     transactionManager: new PostgresTransactionManager(pool),
-                })
+                }),
             );
             dbDispose = dispose;
             const serviceConfig: FetchServiceConfig = {
@@ -110,7 +110,7 @@ export class FetchWorker extends PollingWorker {
             `fetch:${String(serviceConfig.chainId)}:${serviceConfig.instanceId}`,
             serviceConfig.delayBetweenTicksMs,
             logger,
-            dispose
+            dispose,
         );
     }
 

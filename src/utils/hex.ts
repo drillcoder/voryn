@@ -1,5 +1,5 @@
 import { getBytes, isAddress, isHexString } from "ethers";
-import type { AddressHex, DataHex, HashHex, } from "../types/chain.js";
+import type { AddressHex, DataHex, HashHex } from "../types/chain.js";
 
 export const asHash32 = (value: unknown): HashHex => {
     if (!isHexString(value, 32)) {

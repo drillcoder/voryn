@@ -68,7 +68,7 @@ describe("integration postgres leader lock", () => {
                    AND objsubid = 1
                    AND mode = 'ExclusiveLock'
                    AND granted`,
-                [lockKey.toString()]
+                [lockKey.toString()],
             );
 
             expect(lockPidResult.rowCount).toBe(1);
@@ -77,7 +77,7 @@ describe("integration postgres leader lock", () => {
 
             const terminateResult = await pool.query<TerminateBackendRow>(
                 "SELECT pg_terminate_backend($1) AS terminated",
-                [lockPid]
+                [lockPid],
             );
             expect(terminateResult.rows[0]?.terminated).toBe(true);
 

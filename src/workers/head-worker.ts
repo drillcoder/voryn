@@ -75,7 +75,7 @@ export class HeadWorker extends SingletonPollingWorker {
                     eventsRepository: new PostgresEventsRepository(pool),
                     transactionManager: new PostgresTransactionManager(pool),
                     leaderLock: new PostgresLeaderLock(pool, HEAD_WORKER_LOCK_KEY_BASE + BigInt(serviceConfig.chainId)),
-                })
+                }),
             );
             dbDispose = dispose;
             const service = new HeadService(
@@ -114,7 +114,7 @@ export class HeadWorker extends SingletonPollingWorker {
             serviceConfig.delayBetweenTicksMs,
             logger,
             leaderLock,
-            dispose
+            dispose,
         );
     }
 

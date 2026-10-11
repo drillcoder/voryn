@@ -21,7 +21,7 @@ export async function getBlockJob(
          FROM block_jobs
          WHERE chain_id = 1
            AND block_number = $1`,
-        [blockNumber]
+        [blockNumber],
     );
 
     if (result.rows.length === 0) {
@@ -44,7 +44,7 @@ export async function countRows(
 ): Promise<number> {
     const whereClause = where === undefined ? "" : ` WHERE ${where}`;
     const result = await db.pool.query<{ count: string }>(
-        `SELECT COUNT(*)::TEXT AS count FROM ${tableName}${whereClause}`
+        `SELECT COUNT(*)::TEXT AS count FROM ${tableName}${whereClause}`,
     );
 
     return Number(result.rows[0]?.count ?? "0");

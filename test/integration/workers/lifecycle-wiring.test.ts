@@ -110,7 +110,7 @@ describe("integration workers: lifecycle and wiring", () => {
         await worker.stop();
 
         await expect(worker.start()).rejects.toThrow(
-            /^Worker "fetch:1:.+" cannot be started because its lifecycle is finalized$/
+            /^Worker "fetch:1:.+" cannot be started because its lifecycle is finalized$/,
         );
     });
 

@@ -28,7 +28,7 @@ export class PipelineMetricsService {
     async get(): Promise<PipelineMetricsResult> {
         const observedAt = new Date();
         const chains = await Promise.all(
-            this.config.chainIds.map((chainId) => this.getChain(chainId, observedAt))
+            this.config.chainIds.map((chainId) => this.getChain(chainId, observedAt)),
         );
 
         return { observedAt, chains };

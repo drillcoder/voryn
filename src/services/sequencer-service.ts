@@ -75,7 +75,7 @@ export class SequencerService {
             const block = await this.blocksRepository.get(chainId, nextBlock);
             if (block === null) {
                 throw new Error(
-                    `Fetched block data is missing for chain ${String(chainId)} block ${String(nextBlock)}`
+                    `Fetched block data is missing for chain ${String(chainId)} block ${String(nextBlock)}`,
                 );
             }
 
@@ -105,7 +105,7 @@ export class SequencerService {
                 if (currentJob?.status !== "fetched") {
                     throw new Error(
                         `Fetched block job changed before commit for chain ${String(chainId)} `
-                        + `block ${String(nextBlock)}`
+                        + `block ${String(nextBlock)}`,
                     );
                 }
 
@@ -113,7 +113,7 @@ export class SequencerService {
                 if (currentBlock?.parentHash !== cursor.lastCommittedHash) {
                     throw new Error(
                         `Fetched block data changed before commit for chain ${String(chainId)} `
-                        + `block ${String(nextBlock)}`
+                        + `block ${String(nextBlock)}`,
                     );
                 }
 
@@ -123,7 +123,7 @@ export class SequencerService {
                     cursor.lastCommittedHash,
                     currentBlock.blockNumber,
                     currentBlock.blockHash,
-                    transaction
+                    transaction,
                 );
                 await this.blockJobsRepository.markCommitted(cursor.chainId, currentBlock.blockNumber, transaction);
                 return currentBlock.blockNumber;
@@ -249,25 +249,25 @@ export class SequencerService {
                 chainId,
                 rollbackFromBlock,
                 rollbackToBlock,
-                transaction
+                transaction,
             );
             const deletedTransactions = await this.transactionsRepository.deleteBlockNumberRange(
                 chainId,
                 rollbackFromBlock,
                 rollbackToBlock,
-                transaction
+                transaction,
             );
             const deletedBlocks = await this.blocksRepository.deleteBlockNumberRange(
                 chainId,
                 rollbackFromBlock,
                 rollbackToBlock,
-                transaction
+                transaction,
             );
             const deletedBlockJobs = await this.blockJobsRepository.deleteBlockNumberRange(
                 chainId,
                 rollbackFromBlock,
                 rollbackToBlock,
-                transaction
+                transaction,
             );
 
             const reorgVersion = await this.chainCursorRepository.setPositionsAndIncrementReorgVersion(
@@ -275,13 +275,13 @@ export class SequencerService {
                 ancestor.blockNumber,
                 ancestor.blockHash,
                 ancestor.blockNumber,
-                transaction
+                transaction,
             );
             const rewoundReactionCursors = await this.workerCursorsRepository.rewindForReorg(
                 chainId,
                 rollbackFromBlock,
                 reorgVersion,
-                transaction
+                transaction,
             );
 
             return {
@@ -339,7 +339,7 @@ export class SequencerService {
 
         throw new Error(
             `Cannot find common ancestor for chain ${String(cursor.chainId)} `
-            + `from block ${String(cursor.lastCommittedBlock)}`
+            + `from block ${String(cursor.lastCommittedBlock)}`,
         );
     }
 

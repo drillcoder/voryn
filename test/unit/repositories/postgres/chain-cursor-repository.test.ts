@@ -79,7 +79,7 @@ test("advanceLastCommitted throws when optimistic update fails", async () => {
     const repository = new PostgresChainCursorRepository(createExecutor(query));
 
     await expect(
-        repository.advanceLastCommitted(10, 11, HASH_A, 12, HASH_A)
+        repository.advanceLastCommitted(10, 11, HASH_A, 12, HASH_A),
     ).rejects.toThrow("Failed to advance chain cursor");
 });
 
@@ -88,7 +88,7 @@ test("advanceLastCommitted throws when rowCount is null", async () => {
     const repository = new PostgresChainCursorRepository(createExecutor(query));
 
     await expect(
-        repository.advanceLastCommitted(10, 11, HASH_A, 12, HASH_A)
+        repository.advanceLastCommitted(10, 11, HASH_A, 12, HASH_A),
     ).rejects.toThrow("Failed to advance chain cursor");
 });
 
@@ -97,7 +97,7 @@ test("advanceLastCommitted succeeds when one row is updated", async () => {
     const repository = new PostgresChainCursorRepository(createExecutor(query));
 
     await expect(
-        repository.advanceLastCommitted(10, 11, HASH_A, 12, HASH_A)
+        repository.advanceLastCommitted(10, 11, HASH_A, 12, HASH_A),
     ).resolves.toBeUndefined();
 });
 
@@ -127,7 +127,7 @@ test("setPositions throws when cursor is missing", async () => {
     const repository = new PostgresChainCursorRepository(createExecutor(query));
 
     await expect(repository.setPositions(10, 12, HASH_A, 12)).rejects.toThrow(
-        "Chain cursor for chain 10 not found"
+        "Chain cursor for chain 10 not found",
     );
 });
 
@@ -136,7 +136,7 @@ test("setPositions throws when rowCount is null", async () => {
     const repository = new PostgresChainCursorRepository(createExecutor(query));
 
     await expect(repository.setPositions(10, 12, HASH_A, 12)).rejects.toThrow(
-        "Chain cursor for chain 10 not found"
+        "Chain cursor for chain 10 not found",
     );
 });
 
@@ -161,7 +161,7 @@ test("setPositionsAndIncrementReorgVersion returns the new version", async () =>
     const repository = new PostgresChainCursorRepository(executor);
 
     await expect(
-        repository.setPositionsAndIncrementReorgVersion(10, 12, HASH_A, 12, executor)
+        repository.setPositionsAndIncrementReorgVersion(10, 12, HASH_A, 12, executor),
     ).resolves.toBe(7);
 
     const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
@@ -180,7 +180,7 @@ test.each([
     const repository = new PostgresChainCursorRepository(executor);
 
     await expect(
-        repository.setPositionsAndIncrementReorgVersion(10, 12, HASH_A, 12, executor)
+        repository.setPositionsAndIncrementReorgVersion(10, 12, HASH_A, 12, executor),
     ).rejects.toThrow("Chain cursor for chain 10 not found");
 });
 

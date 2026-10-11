@@ -116,7 +116,7 @@ test("getProgress throws when progress row is malformed", async () => {
 
     await expect(repository.getProgress(1)).rejects.toThrow("Fetched block progress block is missing for chain 1");
     await expect(repository.getProgress(1)).rejects.toThrow(
-        "Fetched block timestamp is missing for chain 1 block 123"
+        "Fetched block timestamp is missing for chain 1 block 123",
     );
     await expect(repository.getProgress(1)).rejects.toThrow("Fetched block time is missing for chain 1");
 });

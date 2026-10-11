@@ -157,7 +157,8 @@ test("formats reaction block lag without cursor internals", () => {
     const formatted = formatPipelineMetricsPrometheus(createSnapshot([metrics]));
 
     expect(formatted).toContain(
-        "voryn_pipeline_reaction_block{chain_id=\"1\",worker_name=\"transaction-worker\",stream_type=\"transaction\"} 9"
+        "voryn_pipeline_reaction_block{chain_id=\"1\",worker_name=\"transaction-worker\","
+        + "stream_type=\"transaction\"} 9",
     );
     expect(formatted).not.toContain("voryn_pipeline_reaction_position_transaction_index{");
     expect(formatted).not.toContain("voryn_pipeline_reaction_position_log_index{");
@@ -185,7 +186,7 @@ test("formats bigint metric values", () => {
     Object.defineProperty(metrics, "latestBlock", { value: 10n });
 
     expect(formatPipelineMetricsPrometheus(createSnapshot([metrics]))).toContain(
-        "voryn_pipeline_latest_block{chain_id=\"1\"} 10"
+        "voryn_pipeline_latest_block{chain_id=\"1\"} 10",
     );
 });
 

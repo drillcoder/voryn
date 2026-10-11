@@ -46,7 +46,7 @@ describe("integration postgres schema apply script", () => {
 async function hasTable(pool: Pool, tableName: string): Promise<boolean> {
     const result = await pool.query<{ exists: boolean }>(
         "SELECT to_regclass($1) IS NOT NULL AS exists",
-        [`public.${tableName}`]
+        [`public.${tableName}`],
     );
     return result.rows[0]?.exists ?? false;
 }
@@ -73,7 +73,7 @@ async function createEmptyDatabase(baseDatabaseUrlRaw: string): Promise<{
                  FROM pg_stat_activity
                  WHERE datname = $1
                    AND pid <> pg_backend_pid()`,
-                [databaseName]
+                [databaseName],
             );
             await adminPool.query(`DROP DATABASE IF EXISTS ${quoteIdentifier(databaseName)}`);
             await adminPool.end();

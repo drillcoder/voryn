@@ -254,7 +254,7 @@ test("resolveDbDependencies validates schema, merges overrides, and disposes poo
             },
         },
         logger,
-        buildDefaults
+        buildDefaults,
     );
 
     expect(validatePostgresSchema).toHaveBeenCalledTimes(1);
@@ -293,8 +293,8 @@ test("resolveDbDependencies closes pool and rethrows validation errors", async (
                 dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
             },
             logger,
-            buildDefaults
-        )
+            buildDefaults,
+        ),
     ).rejects.toBe(validationError);
 
     expect(buildDefaults).not.toHaveBeenCalled();

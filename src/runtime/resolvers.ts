@@ -114,7 +114,7 @@ export async function disposeAfterError(
 export async function resolveDbDependencies<TDependencies extends object>(
     options: RuntimeDbOptions<TDependencies>,
     logger: Logger,
-    buildDefaults: (pool: Pool) => TDependencies
+    buildDefaults: (pool: Pool) => TDependencies,
 ): Promise<ResolveDbDependenciesResult<TDependencies>> {
     if (options.dbUrl !== undefined) {
         const pool = new PostgresPool({

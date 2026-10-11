@@ -59,7 +59,7 @@ const serializeMeta = (meta: Record<string, unknown>): string => {
 const shouldColorize = (
     option: boolean | undefined,
     stdout: ConsoleLogWriter,
-    stderr: ConsoleLogWriter
+    stderr: ConsoleLogWriter,
 ): boolean => {
     if (option !== undefined) {
         return option;
@@ -86,7 +86,7 @@ const formatLine = (
     message: string,
     meta: Record<string, unknown> | undefined,
     includeTimestamp: boolean,
-    colorize: boolean
+    colorize: boolean,
 ): string => {
     const parts = [];
 

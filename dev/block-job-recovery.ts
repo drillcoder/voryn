@@ -24,7 +24,7 @@ async function run(): Promise<void> {
         }
         if (blockNumber !== null && (fromBlock !== null || toBlock !== null)) {
             throw new Error(
-                "Set either VORYN_RECOVERY_BLOCK or VORYN_RECOVERY_FROM_BLOCK/VORYN_RECOVERY_TO_BLOCK"
+                "Set either VORYN_RECOVERY_BLOCK or VORYN_RECOVERY_FROM_BLOCK/VORYN_RECOVERY_TO_BLOCK",
             );
         }
 

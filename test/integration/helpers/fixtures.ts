@@ -69,7 +69,7 @@ export function createMapBlockSource(
 export function buildFetchedBlock(
     blockNumber: number,
     parentHash: ReturnType<typeof asHash32>,
-    transactionAndLogCount = 1
+    transactionAndLogCount = 1,
 ): FetchedBlock {
     const blockHash = hashFromNumber(blockNumber);
     const transactions = Array.from({ length: transactionAndLogCount }, (_, index) => ({

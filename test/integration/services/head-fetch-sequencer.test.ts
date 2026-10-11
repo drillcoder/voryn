@@ -189,7 +189,7 @@ describe("integration services: head/fetch/sequencer", () => {
         await db.pool.query(
             `INSERT INTO block_jobs (chain_id, block_number, status)
              VALUES ($1, $2, 'fetched')`,
-            [CHAIN_ID, 400]
+            [CHAIN_ID, 400],
         );
         await blocksRepository.insert({
             chainId: CHAIN_ID,

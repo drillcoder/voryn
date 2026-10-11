@@ -119,20 +119,20 @@ export class EthersBlockSource implements BlockSource {
 
         if (!block) {
             throw new RpcEndpointDataError(
-                `block not found for chain ${String(chainId)} at number ${String(blockNumber)}`
+                `block not found for chain ${String(chainId)} at number ${String(blockNumber)}`,
             );
         }
 
         if (block.hash === null) {
             throw new RpcEndpointDataError(
-                `block hash is missing for chain ${String(chainId)} at number ${String(block.number)}`
+                `block hash is missing for chain ${String(chainId)} at number ${String(block.number)}`,
             );
         }
 
         if (block.number !== blockNumber) {
             throw new RpcEndpointDataError(
                 "block number mismatch for chain "
-                + `${String(chainId)}: expected ${String(blockNumber)}, got ${String(block.number)}`
+                + `${String(chainId)}: expected ${String(blockNumber)}, got ${String(block.number)}`,
             );
         }
 
@@ -162,20 +162,20 @@ export class EthersBlockSource implements BlockSource {
     ): ChainBlock {
         if (!block) {
             throw new RpcEndpointDataError(
-                `block not found for chain ${String(chainId)} at ${String(expectedBlock)}`
+                `block not found for chain ${String(chainId)} at ${String(expectedBlock)}`,
             );
         }
 
         if (expectedBlock !== "latest" && block.number !== expectedBlock) {
             throw new RpcEndpointDataError(
                 "block number mismatch for chain "
-                + `${String(chainId)}: expected ${String(expectedBlock)}, got ${String(block.number)}`
+                + `${String(chainId)}: expected ${String(expectedBlock)}, got ${String(block.number)}`,
             );
         }
 
         if (block.hash === null) {
             throw new RpcEndpointDataError(
-                `block hash is missing for chain ${String(chainId)} at number ${String(block.number)}`
+                `block hash is missing for chain ${String(chainId)} at number ${String(block.number)}`,
             );
         }
 
@@ -193,7 +193,7 @@ export class EthersBlockSource implements BlockSource {
         chainId: ChainId,
         blockNumber: BlockNumber,
         blockHash: HashHex,
-        block: EthersBlockLike
+        block: EthersBlockLike,
     ): Promise<ChainTransaction[]> {
         const transactions = await this.resolveTransactions(provider, chainId, blockNumber, block);
         return transactions.map((transaction) => this.mapTransaction(transaction, chainId, blockNumber, blockHash));
@@ -203,7 +203,7 @@ export class EthersBlockSource implements BlockSource {
         provider: EthersProviderLike,
         chainId: ChainId,
         blockNumber: BlockNumber,
-        block: EthersBlockLike
+        block: EthersBlockLike,
     ): Promise<EthersTransactionLike[]> {
         try {
             return block.prefetchedTransactions;
@@ -214,12 +214,12 @@ export class EthersBlockSource implements BlockSource {
                     if (!transaction) {
                         throw new RpcEndpointDataError(
                             "transaction not found for chain "
-                            + `${String(chainId)} block ${String(blockNumber)} hash ${hash}`
+                            + `${String(chainId)} block ${String(blockNumber)} hash ${hash}`,
                         );
                     }
 
                     return transaction;
-                })
+                }),
             );
         }
     }
@@ -228,7 +228,7 @@ export class EthersBlockSource implements BlockSource {
         transaction: EthersTransactionLike,
         chainId: ChainId,
         blockNumber: BlockNumber,
-        blockHash: HashHex
+        blockHash: HashHex,
     ): ChainTransaction {
         const transactionChainId = transaction.chainId;
         if (
@@ -237,28 +237,28 @@ export class EthersBlockSource implements BlockSource {
         ) {
             throw new RpcEndpointDataError(
                 "transaction chain id mismatch for chain "
-                + `${String(chainId)} block ${String(blockNumber)} transaction ${transaction.hash}`
+                + `${String(chainId)} block ${String(blockNumber)} transaction ${transaction.hash}`,
             );
         }
 
         if (transaction.blockNumber === null || transaction.blockNumber !== blockNumber) {
             throw new RpcEndpointDataError(
                 "transaction block number mismatch for chain "
-                + `${String(chainId)} block ${String(blockNumber)} transaction ${transaction.hash}`
+                + `${String(chainId)} block ${String(blockNumber)} transaction ${transaction.hash}`,
             );
         }
 
         if (transaction.blockHash === null || transaction.blockHash !== blockHash) {
             throw new RpcEndpointDataError(
                 "transaction block hash mismatch for chain "
-                + `${String(chainId)} block ${String(blockNumber)} transaction ${transaction.hash}`
+                + `${String(chainId)} block ${String(blockNumber)} transaction ${transaction.hash}`,
             );
         }
 
         if (!Number.isInteger(transaction.index) || transaction.index < 0) {
             throw new RpcEndpointDataError(
                 "transaction index is invalid for chain "
-                + `${String(chainId)} block ${String(blockNumber)} transaction ${transaction.hash}`
+                + `${String(chainId)} block ${String(blockNumber)} transaction ${transaction.hash}`,
             );
         }
 
@@ -279,32 +279,32 @@ export class EthersBlockSource implements BlockSource {
         provider: EthersProviderLike,
         chainId: ChainId,
         blockNumber: BlockNumber,
-        blockHash: HashHex
+        blockHash: HashHex,
     ): Promise<ChainLog[]> {
         const logs = await provider.getLogs({ fromBlock: blockNumber, toBlock: blockNumber });
 
         return logs.map((log) => {
             if (log.blockNumber !== blockNumber) {
                 throw new RpcEndpointDataError(
-                    `log block number mismatch for chain ${String(chainId)} block ${String(blockNumber)}`
+                    `log block number mismatch for chain ${String(chainId)} block ${String(blockNumber)}`,
                 );
             }
 
             if (log.blockHash !== blockHash) {
                 throw new RpcEndpointDataError(
-                    `log block hash mismatch for chain ${String(chainId)} block ${String(blockNumber)}`
+                    `log block hash mismatch for chain ${String(chainId)} block ${String(blockNumber)}`,
                 );
             }
 
             if (!Number.isInteger(log.transactionIndex) || log.transactionIndex < 0) {
                 throw new RpcEndpointDataError(
-                    `log transaction index is invalid for chain ${String(chainId)} block ${String(blockNumber)}`
+                    `log transaction index is invalid for chain ${String(chainId)} block ${String(blockNumber)}`,
                 );
             }
 
             if (!Number.isInteger(log.index) || log.index < 0) {
                 throw new RpcEndpointDataError(
-                    `log index is invalid for chain ${String(chainId)} block ${String(blockNumber)}`
+                    `log index is invalid for chain ${String(chainId)} block ${String(blockNumber)}`,
                 );
             }
 

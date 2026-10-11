@@ -58,9 +58,9 @@ export class RetentionWorker extends SingletonPollingWorker {
                 transactionManager: new PostgresTransactionManager(pool),
                 leaderLock: new PostgresLeaderLock(
                     pool,
-                    RETENTION_WORKER_LOCK_KEY_BASE + BigInt(serviceConfig.chainId)
+                    RETENTION_WORKER_LOCK_KEY_BASE + BigInt(serviceConfig.chainId),
                 ),
-            })
+            }),
         );
         try {
             const service = new RetentionService(
@@ -92,7 +92,7 @@ export class RetentionWorker extends SingletonPollingWorker {
             serviceConfig.delayBetweenTicksMs,
             logger,
             leaderLock,
-            dispose
+            dispose,
         );
     }
 

@@ -111,7 +111,7 @@ export class HeadService {
             if (!Number.isSafeInteger(initialBlock) || initialBlock < floorBlock || initialBlock > latestBlock) {
                 throw new Error(
                     `Head initialBlock ${String(initialBlock)} is outside available window `
-                    + `[${String(floorBlock)}, ${String(latestBlock)}]`
+                    + `[${String(floorBlock)}, ${String(latestBlock)}]`,
                 );
             }
         }

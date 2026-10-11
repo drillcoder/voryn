@@ -109,7 +109,7 @@ test("listAfterPosition throws when topics payload is invalid", async () => {
     const repository = new PostgresEventsRepository(createExecutor(query));
 
     await expect(repository.listAfterPosition(1, 10, 9, 0, 0, 5)).rejects.toThrow(
-        "invalid topics: expected array of hashes"
+        "invalid topics: expected array of hashes",
     );
 });
 

@@ -216,7 +216,7 @@ export async function validatePostgresSchema(config: ValidatePostgresSchemaConfi
              FROM information_schema.tables
              WHERE table_schema = 'public'
                AND table_name = ANY($1::text[])`,
-            [REQUIRED_SCHEMA_TABLES]
+            [REQUIRED_SCHEMA_TABLES],
         );
         const columnResult = await config.pool.query<SchemaColumnRow>(
             `SELECT
@@ -229,7 +229,7 @@ export async function validatePostgresSchema(config: ValidatePostgresSchemaConfi
              FROM information_schema.columns
              WHERE table_schema = 'public'
                AND table_name = ANY($1::text[])`,
-            [REQUIRED_SCHEMA_TABLES]
+            [REQUIRED_SCHEMA_TABLES],
         );
         const primaryKeyResult = await config.pool.query<SchemaKeyRow>(
              `SELECT
@@ -247,7 +247,7 @@ export async function validatePostgresSchema(config: ValidatePostgresSchemaConfi
                AND table_class.relname = ANY($1::text[])
                AND index_info.indisprimary
              GROUP BY table_class.relname`,
-            [REQUIRED_SCHEMA_TABLES]
+            [REQUIRED_SCHEMA_TABLES],
         );
         const indexResult = await config.pool.query<SchemaIndexRow>(
              `SELECT
@@ -266,14 +266,14 @@ export async function validatePostgresSchema(config: ValidatePostgresSchemaConfi
              WHERE table_namespace.nspname = 'public'
                AND index_class.relname = ANY($1::text[])
              GROUP BY table_class.relname, index_class.relname`,
-            [Object.keys(EXPECTED_INDEXES)]
+            [Object.keys(EXPECTED_INDEXES)],
         );
 
         const errors = collectSchemaValidationErrors(
             tableResult.rows,
             columnResult.rows,
             primaryKeyResult.rows,
-            indexResult.rows
+            indexResult.rows,
         );
 
         if (errors.length > 0) {
@@ -294,13 +294,13 @@ function collectSchemaValidationErrors(
     tableRows: readonly SchemaTableRow[],
     columnRows: readonly SchemaColumnRow[],
     primaryKeyRows: readonly SchemaKeyRow[],
-    indexRows: readonly SchemaIndexRow[]
+    indexRows: readonly SchemaIndexRow[],
 ): string[] {
     const errors: string[] = [];
     const existingTables = new Set(tableRows.map((row) => row.table_name));
     const columnsByTable = groupColumnsByTable(columnRows);
     const primaryKeysByTable = new Map(
-        primaryKeyRows.map((row) => [row.table_name, parseColumnNames(row.column_names)])
+        primaryKeyRows.map((row) => [row.table_name, parseColumnNames(row.column_names)]),
     );
     const indexesByName = new Map(
         indexRows.map((row) => [
@@ -309,7 +309,7 @@ function collectSchemaValidationErrors(
                 tableName: row.table_name,
                 columnNames: parseColumnNames(row.column_names),
             },
-        ])
+        ]),
     );
 
     for (const [tableName, expectedTable] of Object.entries(EXPECTED_SCHEMA)) {
@@ -348,7 +348,7 @@ function groupColumnsByTable(columnRows: readonly SchemaColumnRow[]): Map<string
 function validateColumns(
     tableName: string,
     expectedColumns: Record<string, ExpectedColumn>,
-    existingColumns: ReadonlyMap<string, SchemaColumnRow>
+    existingColumns: ReadonlyMap<string, SchemaColumnRow>,
 ): string[] {
     const errors: string[] = [];
 
@@ -374,7 +374,7 @@ function validateColumns(
         if (actualIsNullable !== expectedColumn.isNullable) {
             errors.push(
                 `column ${tableName}.${columnName} nullable mismatch: `
-                + `expected ${formatNullable(expectedColumn.isNullable)}, got ${formatNullable(actualIsNullable)}`
+                + `expected ${formatNullable(expectedColumn.isNullable)}, got ${formatNullable(actualIsNullable)}`,
             );
         }
     }
@@ -385,7 +385,7 @@ function validateColumns(
 function validatePrimaryKey(
     tableName: string,
     expectedColumns: readonly string[],
-    actualColumns: readonly string[] | undefined
+    actualColumns: readonly string[] | undefined,
 ): string[] {
     if (actualColumns === undefined) {
         return [`primary key ${tableName} mismatch: expected ${formatColumnList(expectedColumns)}, got none`];
@@ -404,7 +404,7 @@ function validatePrimaryKey(
 function validateIndex(
     indexName: string,
     expectedIndex: ExpectedIndex,
-    actualIndex: { tableName: string; columnNames: readonly string[] } | undefined
+    actualIndex: { tableName: string; columnNames: readonly string[] } | undefined,
 ): string[] {
     if (actualIndex === undefined) {
         return [

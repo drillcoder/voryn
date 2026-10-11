@@ -97,7 +97,7 @@ describe("integration services: fetch retries", () => {
              SET next_retry_at = NOW() - INTERVAL '1 second'
              WHERE chain_id = $1
                AND block_number = $2`,
-            [CHAIN_ID, targetBlock]
+            [CHAIN_ID, targetBlock],
         );
 
         await service.execute();
@@ -112,7 +112,7 @@ describe("integration services: fetch retries", () => {
              FROM block_jobs
              WHERE chain_id = $1
                AND block_number = $2`,
-            [CHAIN_ID, targetBlock]
+            [CHAIN_ID, targetBlock],
         );
 
         expect(result.rows[0]?.status).toBe("fetched");
@@ -137,7 +137,7 @@ describe("integration services: fetch retries", () => {
             `INSERT INTO block_jobs
              (chain_id, block_number, status, attempts, next_retry_at, claimed_by, claimed_at, error)
              VALUES ($1, $2, 'failed', 9, NOW() - INTERVAL '1 second', NULL, NULL, $3)`,
-            [CHAIN_ID, targetBlock, "duplicate key value violates unique constraint \"events_pkey\""]
+            [CHAIN_ID, targetBlock, "duplicate key value violates unique constraint \"events_pkey\""],
         );
         await eventsRepository.insertMany(payload.logs);
 
@@ -187,7 +187,7 @@ describe("integration services: fetch retries", () => {
              FROM block_jobs
              WHERE chain_id = $1
                AND block_number = $2`,
-            [CHAIN_ID, targetBlock]
+            [CHAIN_ID, targetBlock],
         );
 
         expect(result.rows[0]?.status).toBe("fetched");
@@ -211,7 +211,7 @@ describe("integration services: fetch retries", () => {
             `INSERT INTO block_jobs
              (chain_id, block_number, status, attempts, next_retry_at, claimed_by, claimed_at, error)
              VALUES ($1, $2, 'fetching', 1, NULL, 'stale-worker', NOW() - INTERVAL '2 hours', NULL)`,
-            [CHAIN_ID, targetBlock]
+            [CHAIN_ID, targetBlock],
         );
 
         const source: BlockSource = {
@@ -261,7 +261,7 @@ describe("integration services: fetch retries", () => {
              FROM block_jobs
              WHERE chain_id = $1
                AND block_number = $2`,
-            [CHAIN_ID, targetBlock]
+            [CHAIN_ID, targetBlock],
         );
 
         expect(result.rows[0]?.status).toBe("fetched");

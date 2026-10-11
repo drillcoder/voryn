@@ -29,7 +29,7 @@ export class PostgresChainCursorRepository implements ChainCursorRepository {
                     updated_at
              FROM chain_cursor
              WHERE chain_id = $1`,
-            [chainId]
+            [chainId],
         );
 
         if (result.rows.length === 0) {
@@ -57,7 +57,7 @@ export class PostgresChainCursorRepository implements ChainCursorRepository {
              FROM chain_cursor
              WHERE chain_id = $1
              FOR UPDATE`,
-            [chainId]
+            [chainId],
         );
 
         if (result.rows.length === 0) {
@@ -87,7 +87,7 @@ export class PostgresChainCursorRepository implements ChainCursorRepository {
                 cursor.lastCommittedBlock,
                 cursor.lastCommittedHash,
                 cursor.reorgVersion,
-            ]
+            ],
         );
     }
 
@@ -96,7 +96,7 @@ export class PostgresChainCursorRepository implements ChainCursorRepository {
         lastCommittedBlock: BlockNumber,
         lastCommittedHash: HashHex,
         lastEnqueuedBlock: BlockNumber,
-        transaction: DbExecutor
+        transaction: DbExecutor,
     ): Promise<number> {
         const updated = await transaction.query<{ reorg_version: bigint | number | string }>(
             `UPDATE chain_cursor
@@ -107,7 +107,7 @@ export class PostgresChainCursorRepository implements ChainCursorRepository {
                  updated_at = NOW()
              WHERE chain_id = $1
              RETURNING reorg_version`,
-            [chainId, lastCommittedBlock, lastCommittedHash, lastEnqueuedBlock]
+            [chainId, lastCommittedBlock, lastCommittedHash, lastEnqueuedBlock],
         );
 
         if ((updated.rowCount ?? 0) !== 1 || updated.rows.length !== 1) {
@@ -124,7 +124,7 @@ export class PostgresChainCursorRepository implements ChainCursorRepository {
              SET last_enqueued_block = GREATEST(last_enqueued_block, $2),
                  updated_at = NOW()
              WHERE chain_id = $1`,
-            [chainId, blockNumber]
+            [chainId, blockNumber],
         );
 
         if ((updated.rowCount ?? 0) === 0) {
@@ -137,7 +137,7 @@ export class PostgresChainCursorRepository implements ChainCursorRepository {
         lastCommittedBlock: BlockNumber,
         lastCommittedHash: HashHex,
         lastEnqueuedBlock: BlockNumber,
-        transaction?: DbExecutor
+        transaction?: DbExecutor,
     ): Promise<void> {
         const executor = transaction ?? this.pool;
         const updated = await executor.query(
@@ -147,7 +147,7 @@ export class PostgresChainCursorRepository implements ChainCursorRepository {
                  last_enqueued_block = $4,
                  updated_at = NOW()
              WHERE chain_id = $1`,
-            [chainId, lastCommittedBlock, lastCommittedHash, lastEnqueuedBlock]
+            [chainId, lastCommittedBlock, lastCommittedHash, lastEnqueuedBlock],
         );
 
         if ((updated.rowCount ?? 0) === 0) {
@@ -161,7 +161,7 @@ export class PostgresChainCursorRepository implements ChainCursorRepository {
         expectedPreviousHash: HashHex,
         blockNumber: BlockNumber,
         blockHash: HashHex,
-        transaction?: DbExecutor
+        transaction?: DbExecutor,
     ): Promise<void> {
         const executor = transaction ?? this.pool;
         const updated = await executor.query(
@@ -172,12 +172,12 @@ export class PostgresChainCursorRepository implements ChainCursorRepository {
              WHERE chain_id = $1
                AND last_committed_block = $2
                AND last_committed_hash = $3`,
-            [chainId, expectedPreviousBlockNumber, expectedPreviousHash, blockNumber, blockHash]
+            [chainId, expectedPreviousBlockNumber, expectedPreviousHash, blockNumber, blockHash],
         );
 
         if ((updated.rowCount ?? 0) !== 1) {
             throw new Error(
-                `Failed to advance chain cursor for chain ${String(chainId)} to block ${String(blockNumber)}`
+                `Failed to advance chain cursor for chain ${String(chainId)} to block ${String(blockNumber)}`,
             );
         }
     }

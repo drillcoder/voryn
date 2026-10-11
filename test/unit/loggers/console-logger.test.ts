@@ -74,7 +74,7 @@ test("console logger includes timestamp when enabled", () => {
 
     expect(stdout.lines).toHaveLength(1);
     expect(stdout.lines[0]).toMatch(
-        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z INFO hello\n$/
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z INFO hello\n$/,
     );
     expect(stderr.lines).toEqual([]);
 });
@@ -194,7 +194,7 @@ test("console logger uses default options when no options provided", () => {
 
         expect(stdoutWriteSpy).toHaveBeenCalledTimes(1);
         expect(stdoutWriteSpy.mock.calls[0][0]).toMatch(
-            /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z INFO defaults\n$/
+            /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z INFO defaults\n$/,
         );
         expect(stderrWriteSpy).not.toHaveBeenCalled();
     } finally {

@@ -55,7 +55,7 @@ test("pipeline metrics service maps pipeline stages and reaction block lag", asy
                 error: "rpc timeout",
                 nextRetryAt: new Date("2026-01-01T00:00:30.000Z"),
                 updatedAt: new Date("2026-01-01T00:00:03.000Z"),
-            }]
+            }],
         ),
         createBlocksRepository({
             progress: {
@@ -313,7 +313,7 @@ function createChainCursorRepository(cursor: ChainCursor | null): ChainCursorRep
 
 function createBlockJobsRepository(
     counts: BlockJobStatusCounts,
-    failedBlocks: FailedBlockMetrics[] = []
+    failedBlocks: FailedBlockMetrics[] = [],
 ): BlockJobsRepository {
     return {
         enqueueRange: async () => undefined,

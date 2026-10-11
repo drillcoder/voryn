@@ -496,7 +496,7 @@ test("head service skips when cursor is already ahead of latest block", async ()
         "head_enqueue_skipped_no_new_blocks",
     ]);
     expect(logger.entries.find(
-        (entry) => entry.message === "head_latest_block_number_load_completed"
+        (entry) => entry.message === "head_latest_block_number_load_completed",
     )).toMatchObject({
         level: "debug",
         meta: {
@@ -516,7 +516,7 @@ test("head service skips when cursor is already ahead of latest block", async ()
         },
     });
     expect(
-        logger.entries.find((entry) => entry.message === "head_enqueue_skipped_no_new_blocks")
+        logger.entries.find((entry) => entry.message === "head_enqueue_skipped_no_new_blocks"),
     ).toMatchObject({
         level: "debug",
         meta: {
@@ -698,7 +698,7 @@ test.each([null, 116])(
             ["enqueueRange", 116, 120, transaction],
             ["setLastEnqueued", 120, transaction],
         ]);
-    }
+    },
 );
 
 test("head service enqueues without rebase when cursor catches up before transactional check", async () => {

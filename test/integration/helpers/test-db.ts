@@ -64,13 +64,13 @@ export async function createIsolatedDbContext(databaseUrlRaw: string): Promise<I
                     block_jobs,
                     chain_cursor,
                     worker_cursors
-                 RESTART IDENTITY`
+                 RESTART IDENTITY`,
             );
         },
         countRows: async (tableName, where) => {
             const whereClause = where === undefined ? "" : ` WHERE ${where}`;
             const result = await pool.query<{ count: string }>(
-                `SELECT COUNT(*)::TEXT AS count FROM ${tableName}${whereClause}`
+                `SELECT COUNT(*)::TEXT AS count FROM ${tableName}${whereClause}`,
             );
             return Number(result.rows[0]?.count ?? "0");
         },
@@ -81,7 +81,7 @@ export async function createIsolatedDbContext(databaseUrlRaw: string): Promise<I
                  FROM pg_stat_activity
                  WHERE datname = $1
                    AND pid <> pg_backend_pid()`,
-                [testDatabaseName]
+                [testDatabaseName],
             );
             await adminPool.query(`DROP DATABASE IF EXISTS ${quoteIdentifier(testDatabaseName)}`);
             await adminPool.end();

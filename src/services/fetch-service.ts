@@ -62,7 +62,7 @@ export class FetchService {
             const job = await this.blockJobsRepository.claimForFetch(
                 chainId,
                 this.config.instanceId,
-                staleClaimedBefore
+                staleClaimedBefore,
             );
 
             if (job === null) {
@@ -157,7 +157,7 @@ export class FetchService {
                     chainId,
                     job.blockNumber,
                     this.config.instanceId,
-                    transaction
+                    transaction,
                 );
             });
             this.logger.debug("fetch_block_data_save_completed", {
