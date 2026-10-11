@@ -1,3 +1,4 @@
+import { Pool } from "pg";
 import { beforeEach, expect, test, vi } from "vitest";
 
 import { EthersBlockSource } from "../../../src/adapters/ethers-block-source.js";
@@ -393,3 +394,143 @@ test.each(["event", "transaction"] as const)(
         }
     }
 );
+
+const dbUrl = "postgresql://voryn:voryn@127.0.0.1:5432/voryn";
+const customDependencies = (lock: LeaderLock) => ({
+    chainCursorRepository: createNoopChainCursorRepository(),
+    blocksRepository: createNoopBlocksRepository(),
+    blockJobsRepository: createNoopBlockJobsRepository(),
+    eventsRepository: createNoopEventsRepository(),
+    transactionsRepository: createNoopTransactionsRepository(),
+    workerCursorsRepository,
+    transactionManager,
+    leaderLock: lock,
+});
+
+const databaseFactories = [
+    { name: "event", create: (lock: LeaderLock, url?: string, confirmations = 0) =>
+        EventReactionWorker.create({ ...reactionConfig, confirmations, logLevel: "error",
+            handler: eventHandler, dbUrl: url, overrides: customDependencies(lock) }) },
+    { name: "transaction", create: (lock: LeaderLock, url?: string, confirmations = 0) =>
+        TransactionReactionWorker.create({ ...reactionConfig, confirmations, logLevel: "error",
+            handler: transactionHandler, dbUrl: url, overrides: customDependencies(lock) }) },
+    { name: "retention", create: (lock: LeaderLock, url?: string) =>
+        RetentionWorker.create({ chainId: 1, delayBetweenTicksMs: 1000, retentionDepthBlocks: 10,
+            logLevel: "error", dbUrl: url, overrides: customDependencies(lock) }) },
+];
+
+const rpcFactories = [
+    { name: "head", create: (lock: LeaderLock, url?: string) => HeadWorker.create({
+        delayBetweenTicksMs: 1000, depthBlocks: 10, logLevel: "error",
+        sourceConfig: rpcSourceConfig(), dbUrl: url, overrides: customDependencies(lock),
+    }) },
+    { name: "sequencer", create: (lock: LeaderLock, url?: string) => SequencerWorker.create({
+        delayBetweenTicksMs: 1000, maxBlocksPerTick: 1, logLevel: "error",
+        sourceConfig: rpcSourceConfig(), dbUrl: url, overrides: customDependencies(lock),
+    }) },
+];
+
+const failingLock = (error: Error): LeaderLock => ({
+    ...leaderLock,
+    onLost: () => { throw error; },
+});
+
+test.each(databaseFactories.slice(0, 2))("$name closes its database pool for invalid confirmations",
+async ({ create }) => {
+    const end = vi.spyOn(Pool.prototype, "end").mockResolvedValue();
+    try {
+        const creation = create(leaderLock, dbUrl, -1);
+        await expect(creation).rejects.toThrow("Reaction confirmations must be a non-negative safe integer");
+        expect(end).toHaveBeenCalledTimes(1);
+    } finally {
+        end.mockRestore();
+    }
+});
+
+test.each([...databaseFactories, ...rpcFactories])("$name cleans up after constructor failure", async ({ create }) => {
+    const error = new Error("lock registration failed");
+    const end = vi.spyOn(Pool.prototype, "end").mockResolvedValue();
+    const close = vi.spyOn(RpcPoolManager.prototype, "close");
+    try {
+        await expect(create(failingLock(error), dbUrl)).rejects.toBe(error);
+        expect(end).toHaveBeenCalledTimes(1);
+        expect(close).toHaveBeenCalledTimes(rpcFactories.some(factory => factory.create === create) ? 1 : 0);
+    } finally {
+        end.mockRestore();
+        close.mockRestore();
+    }
+});
+
+test.each([...databaseFactories, ...rpcFactories])("$name preserves creation and cleanup errors",
+async ({ create }) => {
+    const error = new Error("lock registration failed");
+    const cleanupError = new Error("pool close failed");
+    const end = vi.spyOn(Pool.prototype, "end").mockRejectedValue(cleanupError);
+    const close = vi.spyOn(RpcPoolManager.prototype, "close");
+    try {
+        await expect(create(failingLock(error), dbUrl)).rejects.toMatchObject({
+            errors: [error, cleanupError],
+        });
+        expect(end).toHaveBeenCalledTimes(1);
+        expect(close).toHaveBeenCalledTimes(rpcFactories.some(factory => factory.create === create) ? 1 : 0);
+    } finally {
+        end.mockRestore();
+        close.mockRestore();
+    }
+});
+
+test.each(databaseFactories)("$name leaves supplied resources open after failure", async ({ create }) => {
+    const error = new Error("lock registration failed");
+    const end = vi.spyOn(Pool.prototype, "end");
+    const release = vi.fn(async () => undefined);
+    try {
+        await expect(create({ ...failingLock(error), release })).rejects.toBe(error);
+        expect(end).not.toHaveBeenCalled();
+        expect(release).not.toHaveBeenCalled();
+    } finally {
+        end.mockRestore();
+    }
+});
+
+test.each(databaseFactories)("$name closes its pool only when stopped after successful creation",
+async ({ create }) => {
+    const end = vi.spyOn(Pool.prototype, "end").mockResolvedValue();
+    try {
+        const worker = await create(leaderLock, dbUrl);
+        expect(end).not.toHaveBeenCalled();
+        await worker.stop();
+        expect(end).toHaveBeenCalledTimes(1);
+    } finally {
+        end.mockRestore();
+    }
+});
+
+test.each([false, true])("fetch cleans both resources after configuration failure (cleanup fails: %s)",
+async (cleanupFails) => {
+    const error = new Error("configuration read failed");
+    const cleanupError = new Error("pool close failed");
+    const end = vi.spyOn(Pool.prototype, "end");
+    if (cleanupFails) {
+        end.mockRejectedValue(cleanupError);
+    } else {
+        end.mockResolvedValue();
+    }
+    const close = vi.spyOn(RpcPoolManager.prototype, "close");
+    try {
+        const creation = FetchWorker.create({
+            ...fetchConfig, logLevel: "error", sourceConfig: rpcSourceConfig(), dbUrl,
+            get fetchBatchSize(): number { throw error; },
+        });
+        if (cleanupFails) {
+            await expect(creation).rejects.toBeInstanceOf(AggregateError);
+            await expect(creation).rejects.toMatchObject({ errors: [error, cleanupError] });
+        } else {
+            await expect(creation).rejects.toBe(error);
+        }
+        expect(end).toHaveBeenCalledTimes(1);
+        expect(close).toHaveBeenCalledTimes(1);
+    } finally {
+        end.mockRestore();
+        close.mockRestore();
+    }
+});

@@ -20,7 +20,7 @@ import { PostgresTransactionsRepository } from "../repositories/postgres/transac
 import type { RetentionServiceConfig } from "../services/retention-service.js";
 import { RetentionService } from "../services/retention-service.js";
 import { RETENTION_WORKER_LOCK_KEY_BASE } from "./worker-lock-keys.js";
-import { resolveDbDependencies, resolveLogger } from "../runtime/resolvers.js";
+import { disposeAfterError, resolveDbDependencies, resolveLogger } from "../runtime/resolvers.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
 export interface RetentionWorkerDatabaseDependencies {
@@ -62,18 +62,22 @@ export class RetentionWorker extends SingletonPollingWorker {
                 ),
             })
         );
-        const service = new RetentionService(
-            serviceConfig,
-            dependencies.chainCursorRepository,
-            dependencies.blockJobsRepository,
-            dependencies.blocksRepository,
-            dependencies.transactionsRepository,
-            dependencies.eventsRepository,
-            dependencies.transactionManager,
-            logger,
-        );
+        try {
+            const service = new RetentionService(
+                serviceConfig,
+                dependencies.chainCursorRepository,
+                dependencies.blockJobsRepository,
+                dependencies.blocksRepository,
+                dependencies.transactionsRepository,
+                dependencies.eventsRepository,
+                dependencies.transactionManager,
+                logger,
+            );
 
-        return new RetentionWorker(serviceConfig, service, dependencies.leaderLock, logger, dispose);
+            return new RetentionWorker(serviceConfig, service, dependencies.leaderLock, logger, dispose);
+        } catch (error) {
+            return await disposeAfterError(error, dispose);
+        }
     }
 
     private constructor(

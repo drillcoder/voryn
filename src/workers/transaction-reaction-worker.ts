@@ -18,7 +18,7 @@ import { PostgresTransactionsRepository } from "../repositories/postgres/transac
 import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker-cursors-repository.js";
 import type { ReactionServiceConfig } from "../services/reaction-service.js";
 import { ReactionService } from "../services/reaction-service.js";
-import { resolveDbDependencies, resolveLogger } from "../runtime/resolvers.js";
+import { disposeAfterError, resolveDbDependencies, resolveLogger } from "../runtime/resolvers.js";
 import { ReactionPollingWorker } from "./reaction-polling-worker.js";
 import { buildReactionWorkerLockKey } from "./worker-lock-keys.js";
 
@@ -64,19 +64,23 @@ export class TransactionReactionWorker extends ReactionPollingWorker {
                 ),
             })
         );
-        const service = new ReactionService({
-            config: serviceConfig,
-            streamType: "transaction",
-            handler: options.handler,
-            chainCursorRepository: dependencies.chainCursorRepository,
-            blocksRepository: dependencies.blocksRepository,
-            transactionsRepository: dependencies.transactionsRepository,
-            workerCursorsRepository: dependencies.workerCursorsRepository,
-            transactionManager: dependencies.transactionManager,
-            logger,
-        });
+        try {
+            const service = new ReactionService({
+                config: serviceConfig,
+                streamType: "transaction",
+                handler: options.handler,
+                chainCursorRepository: dependencies.chainCursorRepository,
+                blocksRepository: dependencies.blocksRepository,
+                transactionsRepository: dependencies.transactionsRepository,
+                workerCursorsRepository: dependencies.workerCursorsRepository,
+                transactionManager: dependencies.transactionManager,
+                logger,
+            });
 
-        return new TransactionReactionWorker(serviceConfig, service, dependencies.leaderLock, logger, dispose);
+            return new TransactionReactionWorker(serviceConfig, service, dependencies.leaderLock, logger, dispose);
+        } catch (error) {
+            return await disposeAfterError(error, dispose);
+        }
     }
 
     private constructor(
