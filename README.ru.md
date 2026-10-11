@@ -1,8 +1,6 @@
 # Voryn
 
-<p align="center">
-  <strong>TypeScript-библиотека для надежной индексации EVM-сетей через PostgreSQL.</strong>
-</p>
+**TypeScript-библиотека для надежной индексации EVM-сетей через PostgreSQL.**
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@drillcoder/voryn"><img alt="npm" src="https://img.shields.io/npm/v/%40drillcoder%2Fvoryn?style=flat-square"></a>
@@ -15,9 +13,7 @@
   <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-ready-4169e1?style=flat-square">
 </p>
 
-<p align="center">
-  <a href="./README.md">🇬🇧 English</a>&nbsp;&nbsp;|&nbsp;&nbsp;🇷🇺 Русский
-</p>
+[🇬🇧 English](./README.md) | 🇷🇺 Русский
 
 Voryn помогает строить индексаторы, которые читают блоки из EVM RPC, сохраняют нормализованные скачанные данные, последовательно коммитят прогресс цепочки и запускают пользовательские обработчики по транзакциям и событиям.
 

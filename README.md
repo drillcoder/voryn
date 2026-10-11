@@ -1,8 +1,6 @@
 # Voryn
 
-<p align="center">
-  <strong>A TypeScript library for reliable EVM indexing with PostgreSQL.</strong>
-</p>
+**A TypeScript library for reliable EVM indexing with PostgreSQL.**
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@drillcoder/voryn"><img alt="npm" src="https://img.shields.io/npm/v/%40drillcoder%2Fvoryn?style=flat-square"></a>
@@ -15,9 +13,7 @@
   <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-ready-4169e1?style=flat-square">
 </p>
 
-<p align="center">
-  🇬🇧 English&nbsp;&nbsp;|&nbsp;&nbsp;<a href="./README.ru.md">🇷🇺 Русский</a>
-</p>
+🇬🇧 English | [🇷🇺 Русский](./README.ru.md)
 
 Voryn helps you build indexers that read blocks from EVM RPC, store normalized fetched data, commit chain progress in strict order, and run your application logic on transactions and events.
 
