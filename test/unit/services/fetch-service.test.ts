@@ -462,6 +462,63 @@ test("fetch service marks failure with retry date", async () => {
     expect(failed[0]?.nextRetryAt).toBeInstanceOf(Date);
 });
 
+test.each([
+    { attempts: 1, limit: 1, base: 1000, max: 10000, delay: null },
+    { attempts: 1, limit: 3, base: 1000, max: 10000, delay: 1000 },
+    { attempts: 2, limit: 3, base: 1000, max: 10000, delay: 2000 },
+    { attempts: 3, limit: 3, base: 1000, max: 10000, delay: null },
+    { attempts: 5, limit: 6, base: 1000, max: 10000, delay: 10000 },
+    { attempts: 1, limit: 3, base: 0, max: 0, delay: 1 },
+    { attempts: 2, limit: 3, base: 1000, max: 100, delay: 1000 },
+])("fetch uses claimed attempt $attempts with limit $limit, base $base and max $max", async ({
+    attempts, limit, base, max, delay,
+}) => {
+    const now = 1_700_000_000_000;
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+    const markFetchFailed = vi.fn<BlockJobsRepository["markFetchFailed"]>();
+    const { logger, debug } = createLogger();
+    const nextRetryAt = delay === null ? null : new Date(now + delay);
+
+    try {
+        const worker = new FetchService(
+            { ...config, retryMaxAttempts: limit, retryBaseDelayMs: base, retryMaxDelayMs: max },
+            createSource(async () => {
+                throw new Error("rpc unavailable");
+            }),
+            createBlockJobsRepository({
+                claimForFetch: async () => ({
+                    chainId: 7,
+                    blockNumber: 33,
+                    status: "fetching",
+                    attempts,
+                    nextRetryAt: null,
+                    error: null,
+                    claimedAt: new Date(now),
+                    updatedAt: new Date(now),
+                }),
+                markFetchFailed,
+            }),
+            createBlocksRepository(),
+            createTransactionsRepository(),
+            createEventsRepository(),
+            createPassThroughManager(),
+            logger,
+        );
+
+        await worker.execute();
+
+        expect(markFetchFailed).toHaveBeenCalledExactlyOnceWith(
+            7, 33, "w1", "rpc unavailable", nextRetryAt,
+        );
+        expect(debug).toHaveBeenCalledWith("fetch_job_marked_failed", expect.objectContaining({
+            attemptNumber: attempts,
+            nextRetryAt,
+        }));
+    } finally {
+        clock.mockRestore();
+    }
+});
+
 test("fetch service swallows claim-lost race without failing tick", async () => {
     const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 
@@ -535,7 +592,7 @@ test("fetch service sets nextRetryAt=null when max attempts reached", async () =
                 chainId: 7,
                 blockNumber: 44,
                 status: "pending",
-                attempts: config.retryMaxAttempts - 1,
+                attempts: config.retryMaxAttempts,
                 nextRetryAt: null,
                 error: null,
                 claimedAt: new Date(),

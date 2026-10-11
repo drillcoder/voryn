@@ -21,7 +21,7 @@ import { HeadWorker } from "../../src/workers/head-worker.js";
 import { buildFetchedBlock, CHAIN_ID, hashFromNumber } from "../integration/helpers/fixtures.js";
 import type { IsolatedDbContext } from "../integration/helpers/test-db.js";
 import { createIsolatedDbContext, getRequiredDatabaseUrl } from "../integration/helpers/test-db.js";
-import { stopWorkers, waitFor } from "./helpers/async.js";
+import { sleep, stopWorkers, waitFor } from "./helpers/async.js";
 import { getBlockJob } from "./helpers/db.js";
 
 const DATABASE_URL = getRequiredDatabaseUrl();
@@ -102,15 +102,16 @@ describe("e2e fetch retry exhausted", () => {
 
             await waitFor(async () => {
                 const job = await getBlockJob(db, 10);
-                return job?.status === "failed" && job.attempts === 2 && job.nextRetryAt === null;
+                return job?.status === "failed" && job.attempts === 3 && job.nextRetryAt === null;
             });
 
+            await sleep(100);
             const job = await getBlockJob(db, 10);
             expect(job?.status).toBe("failed");
-            expect(job?.attempts).toBe(2);
+            expect(job?.attempts).toBe(3);
             expect(job?.nextRetryAt).toBeNull();
             expect(job?.error).toContain("permanent RPC error");
-            expect(source.blockFetchCalls).toBe(2);
+            expect(source.blockFetchCalls).toBe(3);
             await expect(db.countRows("blocks", "block_number = 10")).resolves.toBe(0);
         } finally {
             await stopWorkers([headWorker, fetchWorker]);

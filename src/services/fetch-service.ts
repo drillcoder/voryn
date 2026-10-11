@@ -187,7 +187,7 @@ export class FetchService {
                 return fetchJobProcessingResult.claimLost;
             }
 
-            const nextRetryAt = this.buildNextRetryAt(job.attempts + 1);
+            const nextRetryAt = this.buildNextRetryAt(job.attempts);
             try {
                 await this.blockJobsRepository.markFetchFailed(
                     chainId,
@@ -201,7 +201,7 @@ export class FetchService {
                     instanceId: this.config.instanceId,
                     blockNumber: job.blockNumber,
                     batchIndex,
-                    attemptNumber: job.attempts + 1,
+                    attemptNumber: job.attempts,
                     nextRetryAt,
                 });
                 return fetchJobProcessingResult.failed;
