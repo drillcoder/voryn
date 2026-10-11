@@ -195,13 +195,13 @@ Reaction workers read only committed data. Each `workerName` has its own persist
 restarted safely.
 
 ```ts
-import type { EventReactionHandler, EventReactionWorkerOptions, ReactionHandlerResult } from "@drillcoder/voryn";
+import type { EventReactionHandler, EventReactionWorkerOptions } from "@drillcoder/voryn";
 import { EventReactionWorker } from "@drillcoder/voryn";
 
 const dbUrl = "postgres://user:pass@localhost:5432/voryn";
 const logLevel = "info";
 
-const handler: EventReactionHandler = async (event): Promise<ReactionHandlerResult> => {
+const handler: EventReactionHandler = async (event, db, workerName): Promise<void> => {
     console.info("event_received", {
         blockNumber: event.blockNumber,
         transactionHash: event.transactionHash,
@@ -209,7 +209,11 @@ const handler: EventReactionHandler = async (event): Promise<ReactionHandlerResu
         address: event.address,
     });
 
-    return event.index === 10 ? "processed" : "skipped";
+    await db.query(
+        "INSERT INTO reaction_totals (worker_name, total) VALUES ($1, 1) "
+        + "ON CONFLICT (worker_name) DO UPDATE SET total = reaction_totals.total + 1",
+        [workerName]
+    );
 };
 
 const options: EventReactionWorkerOptions = {
@@ -217,11 +221,10 @@ const options: EventReactionWorkerOptions = {
     workerName: "contract-events",
     delayBetweenTicksMs: 500,
     batchSize: 1000,
-    skipFlushInterval: 100,
     confirmations: 12,
-    // initialBlock: 20_000_000, // first block when this worker has no cursor
     logLevel,
     dbUrl,
+    filter: (event) => event.index === 10,
     handler,
 };
 
@@ -235,13 +238,32 @@ worker.onFailure((error) => {
 await worker.start();
 ```
 
-Handlers may return `"processed"` or `"skipped"`. Processed items advance the worker cursor immediately. Skipped
-items are safe to advance too, but their cursor writes are batched by `skipFlushInterval` and flushed at
-the end of the tick or before rethrowing a handler error.
+The example uses an application-owned `reaction_totals` table. Create it before starting the worker:
 
-A handler can be called more than once for the same item if it fails before returning a result, if the worker stops
-before the cursor write is persisted, or if a reorg moves the item to a new committed block. Reorg rollback rewinds
-affected reaction cursors, but it cannot undo external side effects. Keep handlers idempotent.
+```sql
+CREATE TABLE reaction_totals (worker_name text PRIMARY KEY, total bigint NOT NULL);
+```
+
+Both reaction workers require a synchronous `filter(item): boolean`. The filter checks the loaded item and
+returns `true` or `false` without writing to the database, making external requests or changing external state.
+Use `filter: () => true` to accept everything. A nonboolean filter result, including a Promise, causes an error.
+Rejected items never call the handler or open a business transaction. Their final position is saved
+once at the end of each batch, or before propagating a filter/handler error. A fully rejected batch needs one
+cursor UPDATE. Saved batches keep progress moving even during long periods without matches; after a failure,
+only the unsaved tail needs scanning again, provided the same cursor is used and no reorg rewinds it.
+
+Accepted items call `handler(item, db, workerName): Promise<void>`. The second argument is the current
+transaction's `DbExecutor`; the third is the configured reaction name. A handler may declare only `(item, db)`.
+Each accepted item commits its awaited SQL writes through `db` and its cursor together in one transaction.
+Handler errors, cursor errors and reorg version conflicts roll back that item's writes; previous commits remain.
+A version conflict stops the batch, and the next tick reads the current cursor. A successful item covers earlier
+skips; only a later skipped tail requires a separate checkpoint.
+
+Use `db` only within the handler and await every query before returning. Do not save it for later, release it,
+or issue transaction control commands. HTTP calls and writes through other executors are outside this guarantee.
+Handlers can be called again after rollback, retry or reorg. Reorg rewinds cursors but does not compensate
+previously committed application aggregates. Removing a cursor or choosing a new `workerName` may replay data
+and create additional effects. External effects need application-level idempotency.
 
 `initialBlock` is optional for `HeadWorker` and both reaction workers. It is used only when their cursor is missing;
 an existing cursor always resumes from its saved position. For `HeadWorker`, `initialBlock` must be within

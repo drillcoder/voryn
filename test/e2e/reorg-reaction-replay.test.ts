@@ -86,14 +86,14 @@ describe("e2e reaction replay after reorg", () => {
         await db.pool.query(
             `INSERT INTO block_jobs (chain_id, block_number, status)
              VALUES ($1, $2, 'fetched')`,
-            [CHAIN_ID, 11]
+            [CHAIN_ID, 11],
         );
         await workerCursorsRepository.insert(
             "reorg-replay",
             CHAIN_ID,
             "transaction",
             { lastBlockNumber: 9, lastTransactionIndex: -1, lastLogIndex: -1 },
-            0
+            0,
         );
 
         const createReactionWorker = async (lockKey: bigint): Promise<TransactionReactionWorker> => (
@@ -103,11 +103,11 @@ describe("e2e reaction replay after reorg", () => {
                 workerName: "reorg-replay",
                 delayBetweenTicksMs: 5,
                 batchSize: 10,
-                skipFlushInterval: 10,
                 confirmations: 0,
+                filter: () => true,
                 handler: async (transaction) => {
                     handledHashes.push(transaction.hash);
-                    return "processed";
+                    return;
                 },
                 overrides: {
                     chainCursorRepository,
@@ -159,7 +159,7 @@ describe("e2e reaction replay after reorg", () => {
                 replacementTransactionHash,
             ]);
             await expect(
-                workerCursorsRepository.get("reorg-replay", CHAIN_ID, "transaction")
+                workerCursorsRepository.get("reorg-replay", CHAIN_ID, "transaction"),
             ).resolves.toMatchObject({
                 position: { lastBlockNumber: 10, lastTransactionIndex: 0, lastLogIndex: -1 },
                 reorgVersion: 1,

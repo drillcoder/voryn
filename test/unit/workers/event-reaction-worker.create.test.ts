@@ -20,23 +20,25 @@ import {
 
 test("event reaction worker create wires service execution", async () => {
     const handled: Array<[number, number, number]> = [];
+    const filtered: number[] = [];
+    let accept = true;
     const config: ReactionServiceConfig = {
         chainId: 12,
         workerName: "event-reaction",
         delayBetweenTicksMs: 1000,
         batchSize: 10,
-        skipFlushInterval: 10,
         confirmations: 0,
     };
     const handler: EventReactionHandler = async (event) => {
         handled.push([event.blockNumber, event.transactionIndex, event.index]);
 
-        return "processed";
+        return;
     };
 
     const worker = await EventReactionWorker.create({
         logLevel: "error",
         ...config,
+        filter: (item) => { filtered.push(item.index); return accept; },
         handler,
         overrides: {
             blocksRepository: createNoopBlocksRepository(),
@@ -85,6 +87,9 @@ test("event reaction worker create wires service execution", async () => {
 
     await invokeTick(worker);
 
+    accept = false;
+    await invokeTick(worker);
+    expect(filtered).toEqual([0, 0]);
     expect(handled).toEqual([[1, 0, 0]]);
     expect(invokeStartLogMeta(worker)).toEqual({
         chainId: 12,

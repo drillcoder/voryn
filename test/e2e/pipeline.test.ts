@@ -73,15 +73,15 @@ describe("e2e pipeline", () => {
         const handledEvents: string[] = [];
         const handledTransactions: string[] = [];
 
-        const eventHandler: EventReactionHandler = async (event): Promise<"processed"> => {
+        const eventHandler: EventReactionHandler = async (event): Promise<void> => {
             handledEvents.push(`${String(event.blockNumber)}:${String(event.index)}`);
 
-            return "processed";
+            return;
         };
-        const transactionHandler: TransactionReactionHandler = async (transaction): Promise<"processed"> => {
+        const transactionHandler: TransactionReactionHandler = async (transaction): Promise<void> => {
             handledTransactions.push(`${String(transaction.blockNumber)}:${String(transaction.index)}`);
 
-            return "processed";
+            return;
         };
 
         const eventWorker = await EventReactionWorker.create({
@@ -90,8 +90,8 @@ describe("e2e pipeline", () => {
             delayBetweenTicksMs: 5,
             workerName: REACTION_WORKER_EVENT,
             batchSize: 2,
-            skipFlushInterval: 2,
             confirmations: 0,
+            filter: () => true,
             handler: eventHandler,
             overrides: {
                 chainCursorRepository,
@@ -109,8 +109,8 @@ describe("e2e pipeline", () => {
             delayBetweenTicksMs: 5,
             workerName: REACTION_WORKER_TRANSACTION,
             batchSize: 2,
-            skipFlushInterval: 2,
             confirmations: 0,
+            filter: () => true,
             handler: transactionHandler,
             overrides: {
                 chainCursorRepository,

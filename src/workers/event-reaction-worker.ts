@@ -1,7 +1,7 @@
 import type { Pool } from "pg";
 import type { Logger } from "../interfaces/logger.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
-import type { EventReactionHandler } from "../interfaces/reaction.js";
+import type { EventReactionFilter, EventReactionHandler } from "../interfaces/reaction.js";
 import type {
     BlocksRepository,
     ChainCursorRepository,
@@ -35,7 +35,7 @@ export type EventReactionWorkerOptions =
     RuntimeLoggerOptions
     & ReactionServiceConfig
     & RuntimeDbOptions<EventReactionWorkerDatabaseDependencies>
-    & { handler: EventReactionHandler };
+    & { filter: EventReactionFilter; handler: EventReactionHandler };
 
 export class EventReactionWorker extends ReactionPollingWorker {
     static async create(options: EventReactionWorkerOptions): Promise<EventReactionWorker> {
@@ -45,7 +45,6 @@ export class EventReactionWorker extends ReactionPollingWorker {
             delayBetweenTicksMs: options.delayBetweenTicksMs,
             workerName: options.workerName,
             batchSize: options.batchSize,
-            skipFlushInterval: options.skipFlushInterval,
             confirmations: options.confirmations,
             initialBlock: options.initialBlock,
         };
@@ -62,12 +61,13 @@ export class EventReactionWorker extends ReactionPollingWorker {
                     pool,
                     buildReactionWorkerLockKey("event", serviceConfig.chainId, serviceConfig.workerName),
                 ),
-            })
+            }),
         );
         try {
             const service = new ReactionService({
                 config: serviceConfig,
                 streamType: "event",
+                filter: options.filter,
                 handler: options.handler,
                 chainCursorRepository: dependencies.chainCursorRepository,
                 blocksRepository: dependencies.blocksRepository,
@@ -96,7 +96,7 @@ export class EventReactionWorker extends ReactionPollingWorker {
             logger,
             leaderLock,
             service,
-            dispose
+            dispose,
         );
     }
 

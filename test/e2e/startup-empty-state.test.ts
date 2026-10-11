@@ -53,8 +53,8 @@ describe("e2e startup from empty state", () => {
         const latestBlock = buildFetchedBlock(20, hashFromNumber(19), 0);
         const source = createMapBlockSource(20, [latestBlock]);
 
-        const eventHandler: EventReactionHandler = async (): Promise<"processed"> => "processed";
-        const transactionHandler: TransactionReactionHandler = async (): Promise<"processed"> => "processed";
+        const eventHandler: EventReactionHandler = async (): Promise<void> => undefined;
+        const transactionHandler: TransactionReactionHandler = async (): Promise<void> => undefined;
 
         const headWorker = await HeadWorker.create({
             logLevel: "error",
@@ -77,8 +77,8 @@ describe("e2e startup from empty state", () => {
             delayBetweenTicksMs: 5,
             workerName: "reaction-event-startup",
             batchSize: 5,
-            skipFlushInterval: 5,
             confirmations: 0,
+            filter: () => true,
             handler: eventHandler,
             overrides: {
                 chainCursorRepository,
@@ -95,8 +95,8 @@ describe("e2e startup from empty state", () => {
             delayBetweenTicksMs: 5,
             workerName: "reaction-transaction-startup",
             batchSize: 5,
-            skipFlushInterval: 5,
             confirmations: 0,
+            filter: () => true,
             handler: transactionHandler,
             overrides: {
                 chainCursorRepository,
@@ -123,7 +123,7 @@ describe("e2e startup from empty state", () => {
                 const transactionCursor = await workerCursorsRepository.get(
                     "reaction-transaction-startup",
                     CHAIN_ID,
-                    "transaction"
+                    "transaction",
                 );
                 return eventCursor !== null && transactionCursor !== null;
             });
@@ -137,7 +137,7 @@ describe("e2e startup from empty state", () => {
             const transactionCursor = await workerCursorsRepository.get(
                 "reaction-transaction-startup",
                 CHAIN_ID,
-                "transaction"
+                "transaction",
             );
             expect(eventCursor?.position).toEqual({
                 lastBlockNumber: 20,

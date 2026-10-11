@@ -66,25 +66,25 @@ describe("integration services: reaction", () => {
             CHAIN_ID,
             "event",
             { lastBlockNumber: 499, lastTransactionIndex: -1, lastLogIndex: -1 },
-            0
+            0,
         );
         await workerCursorsRepository.insert(
             REACTION_WORKER_TRANSACTION,
             CHAIN_ID,
             "transaction",
             { lastBlockNumber: 499, lastTransactionIndex: -1, lastLogIndex: -1 },
-            0
+            0,
         );
 
-        const eventHandler: EventReactionHandler = async (event): Promise<"processed"> => {
+        const eventHandler: EventReactionHandler = async (event): Promise<void> => {
             handledEventIndexes.push(event.index);
 
-            return "processed";
+            return;
         };
-        const transactionHandler: TransactionReactionHandler = async (transaction): Promise<"processed"> => {
+        const transactionHandler: TransactionReactionHandler = async (transaction): Promise<void> => {
             handledTxIndexes.push(transaction.index);
 
-            return "processed";
+            return;
         };
 
         const eventService = new ReactionService({
@@ -93,10 +93,10 @@ describe("integration services: reaction", () => {
                 delayBetweenTicksMs: 1,
                 workerName: REACTION_WORKER_EVENT,
                 batchSize: 2,
-                skipFlushInterval: 2,
                 confirmations: 0,
             },
             streamType: "event",
+            filter: () => true,
             handler: eventHandler,
             blocksRepository: new PostgresBlocksRepository(db.pool),
             chainCursorRepository,
@@ -110,10 +110,10 @@ describe("integration services: reaction", () => {
                 delayBetweenTicksMs: 1,
                 workerName: REACTION_WORKER_TRANSACTION,
                 batchSize: 2,
-                skipFlushInterval: 2,
                 confirmations: 0,
             },
             streamType: "transaction",
+            filter: () => true,
             handler: transactionHandler,
             blocksRepository: new PostgresBlocksRepository(db.pool),
             chainCursorRepository,
@@ -134,7 +134,7 @@ describe("integration services: reaction", () => {
         const transactionCursor = await workerCursorsRepository.get(
             REACTION_WORKER_TRANSACTION,
             CHAIN_ID,
-            "transaction"
+            "transaction",
         );
         expect(eventCursor?.position).toEqual({
             lastBlockNumber: 500,
@@ -169,7 +169,7 @@ describe("integration services: reaction", () => {
             CHAIN_ID,
             "transaction",
             { lastBlockNumber: 500, lastTransactionIndex: -1, lastLogIndex: -1 },
-            0
+            0,
         );
 
         const service = new ReactionService({
@@ -178,13 +178,13 @@ describe("integration services: reaction", () => {
                 delayBetweenTicksMs: 1,
                 workerName: REACTION_WORKER_TRANSACTION,
                 batchSize: 10,
-                skipFlushInterval: 2,
                 confirmations: 0,
             },
             streamType: "transaction",
+            filter: () => true,
             handler: async (transaction) => {
                 handledHashes.push(transaction.hash);
-                return "processed";
+                return;
             },
             blocksRepository: new PostgresBlocksRepository(db.pool),
             chainCursorRepository,
@@ -202,7 +202,7 @@ describe("integration services: reaction", () => {
                 500,
                 hashFromNumber(500),
                 500,
-                transaction
+                transaction,
             );
             await workerCursorsRepository.rewindForReorg(CHAIN_ID, 501, reorgVersion, transaction);
         });
@@ -223,7 +223,7 @@ describe("integration services: reaction", () => {
             replacementTransactionHash,
         ]);
         await expect(
-            workerCursorsRepository.get(REACTION_WORKER_TRANSACTION, CHAIN_ID, "transaction")
+            workerCursorsRepository.get(REACTION_WORKER_TRANSACTION, CHAIN_ID, "transaction"),
         ).resolves.toMatchObject({
             position: { lastBlockNumber: 501, lastTransactionIndex: 0, lastLogIndex: -1 },
             reorgVersion: 1,

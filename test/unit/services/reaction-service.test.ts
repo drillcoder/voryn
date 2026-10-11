@@ -30,7 +30,6 @@ const config: ReactionServiceConfig = {
     workerName: "reaction-handler",
     delayBetweenTicksMs: 1000,
     batchSize: 10,
-    skipFlushInterval: 10,
     confirmations: 0,
 };
 
@@ -154,10 +153,11 @@ test("reaction service reads committed events by cursor and advances processed p
     const service = new ReactionService({
         config,
         streamType: "event",
+        filter: () => true,
         handler: async (event) => {
                 handled.push([event.blockNumber, event.transactionIndex, event.index]);
 
-                return "processed";
+                return;
         },
         blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(),
@@ -170,7 +170,7 @@ test("reaction service reads committed events by cursor and advances processed p
                     advanced.push(position);
                     return true;
                 },
-            }
+            },
         ),
         eventsRepository: createEventsRepository({
             listAfterPosition: async (...args) => {
@@ -213,13 +213,15 @@ test.each(["event", "transaction"] as const)("reaction service deletes its %s cu
         ? new ReactionService({
             ...common,
             streamType,
-            handler: async () => "processed",
+            filter: () => true,
+            handler: async () => undefined,
             eventsRepository: createEventsRepository(),
         })
         : new ReactionService({
             ...common,
             streamType,
-            handler: async () => "processed",
+            filter: () => true,
+            handler: async () => undefined,
             transactionsRepository: createTransactionsRepository(),
         });
 
@@ -230,9 +232,10 @@ test.each(["event", "transaction"] as const)("reaction service deletes its %s cu
 test("reaction service batches skipped transaction cursor advances", async () => {
     const advanced: WorkerCursorPosition[] = [];
     const service = new ReactionService({
-        config: { ...config, skipFlushInterval: 2 },
+        config,
         streamType: "transaction",
-        handler: async () => "skipped",
+        filter: () => false,
+        handler: async () => undefined,
         blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(),
         transactionManager,
@@ -244,7 +247,7 @@ test("reaction service batches skipped transaction cursor advances", async () =>
                     advanced.push(position);
                     return true;
                 },
-            }
+            },
         ),
         transactionsRepository: createTransactionsRepository({
             listAfterPosition: async () => [
@@ -258,7 +261,6 @@ test("reaction service batches skipped transaction cursor advances", async () =>
     await service.execute();
 
     expect(advanced).toEqual([
-        { lastBlockNumber: 100, lastTransactionIndex: 1, lastLogIndex: -1 },
         { lastBlockNumber: 101, lastTransactionIndex: 0, lastLogIndex: -1 },
     ]);
 });
@@ -268,9 +270,8 @@ test("reaction service advances processed transaction immediately after skipped"
     const service = new ReactionService({
         config,
         streamType: "transaction",
-        handler: async (transaction) => transaction.index === 0
-            ? "skipped"
-            : "processed",
+        filter: (transaction) => transaction.index !== 0,
+        handler: async () => undefined,
         blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(),
         transactionManager,
@@ -282,7 +283,7 @@ test("reaction service advances processed transaction immediately after skipped"
                     advanced.push(position);
                     return true;
                 },
-            }
+            },
         ),
         transactionsRepository: createTransactionsRepository({
             listAfterPosition: async () => [
@@ -304,12 +305,13 @@ test("reaction service logs batches with processed items at info level", async (
     const service = new ReactionService({
         config,
         streamType: "event",
-        handler: async (event) => event.index === 0 ? "skipped" : "processed",
+        filter: (event) => event.index !== 0,
+        handler: async () => undefined,
         blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
-            { lastBlockNumber: 99, lastTransactionIndex: 1, lastLogIndex: 2 }
+            { lastBlockNumber: 99, lastTransactionIndex: 1, lastLogIndex: 2 },
         ),
         eventsRepository: createEventsRepository({
             listAfterPosition: async () => [
@@ -337,12 +339,13 @@ test("reaction service logs batches with only skipped items at debug level", asy
     const service = new ReactionService({
         config,
         streamType: "event",
-        handler: async () => "skipped",
+        filter: () => false,
+        handler: async () => undefined,
         blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
-            { lastBlockNumber: 99, lastTransactionIndex: 1, lastLogIndex: 2 }
+            { lastBlockNumber: 99, lastTransactionIndex: 1, lastLogIndex: 2 },
         ),
         eventsRepository: createEventsRepository({
             listAfterPosition: async () => [createEvent(100, 0, 0)],
@@ -367,12 +370,13 @@ test("reaction service flushes skipped transaction position before handler failu
     const service = new ReactionService({
         config,
         streamType: "transaction",
+        filter: (transaction) => transaction.index === 1,
         handler: async (transaction) => {
                 if (transaction.index === 1) {
                     throw new Error("handler failed");
                 }
 
-                return "skipped";
+                return;
         },
         blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(),
@@ -385,7 +389,7 @@ test("reaction service flushes skipped transaction position before handler failu
                     advanced.push(position);
                     return true;
                 },
-            }
+            },
         ),
         transactionsRepository: createTransactionsRepository({
             listAfterPosition: async () => [
@@ -408,7 +412,8 @@ test("reaction service creates event cursor at current committed block when miss
     const service = new ReactionService({
         config,
         streamType: "event",
-        handler: async () => "processed" ,
+        filter: () => true,
+        handler: async () => undefined,
         blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(22),
         transactionManager,
@@ -440,7 +445,8 @@ test("reaction service creates transaction cursor at current committed block whe
     const service = new ReactionService({
         config,
         streamType: "transaction",
-        handler: async () => "processed" ,
+        filter: () => true,
+        handler: async () => undefined,
         blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(33),
         transactionManager,
@@ -487,13 +493,15 @@ test.each(["event", "transaction"] as const)(
             ? new ReactionService({
                 ...shared,
                 streamType,
-                handler: async () => "processed",
+                filter: () => true,
+                handler: async () => undefined,
                 eventsRepository: createEventsRepository({ listAfterPosition: eventList }),
             })
             : new ReactionService({
                 ...shared,
                 streamType,
-                handler: async () => "processed",
+                filter: () => true,
+                handler: async () => undefined,
                 transactionsRepository: createTransactionsRepository({ listAfterPosition: transactionList }),
             });
 
@@ -505,7 +513,7 @@ test.each(["event", "transaction"] as const)(
         } else {
             expect(transactionList).toHaveBeenCalledWith(5, 22, 20, -1, 10);
         }
-    }
+    },
 );
 
 test("reaction service ignores initialBlock when a cursor already exists", async () => {
@@ -514,14 +522,15 @@ test("reaction service ignores initialBlock when a cursor already exists", async
     const service = new ReactionService({
         config: { ...config, initialBlock: 10 },
         streamType: "event",
-        handler: async () => "processed",
+        filter: () => true,
+        handler: async () => undefined,
         blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(22),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
             { lastBlockNumber: 21, lastTransactionIndex: 0, lastLogIndex: 1 },
             "event",
-            { insert }
+            { insert },
         ),
         eventsRepository: createEventsRepository({ listAfterPosition: list }),
     });
@@ -537,7 +546,8 @@ test.each([-1, 1.5, Number.NaN])(
         const service = new ReactionService({
             config: { ...config, initialBlock },
             streamType: "event",
-            handler: async () => "processed",
+            filter: () => true,
+            handler: async () => undefined,
             blocksRepository: createNoopBlocksRepository(),
             chainCursorRepository: createChainCursorRepository(),
             transactionManager,
@@ -545,19 +555,20 @@ test.each([-1, 1.5, Number.NaN])(
             eventsRepository: createEventsRepository(),
         });
         await expect(service.execute()).rejects.toThrow("Reaction initialBlock must be a non-negative safe integer");
-    }
+    },
 );
 
 test("reaction service ignores invalid initialBlock when a cursor already exists", async () => {
     const service = new ReactionService({
         config: { ...config, initialBlock: -1 },
         streamType: "event",
-        handler: async () => "processed",
+        filter: () => true,
+        handler: async () => undefined,
         blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
-            { lastBlockNumber: 100, lastTransactionIndex: 0, lastLogIndex: 0 }
+            { lastBlockNumber: 100, lastTransactionIndex: 0, lastLogIndex: 0 },
         ),
         eventsRepository: createEventsRepository(),
     });
@@ -569,12 +580,13 @@ test("reaction service throws when chain cursor is missing", async () => {
     const service = new ReactionService({
         config,
         streamType: "event",
-        handler: async () => "processed" ,
+        filter: () => true,
+        handler: async () => undefined,
         blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(null),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
-            { lastBlockNumber: 1, lastTransactionIndex: 0, lastLogIndex: 0 }
+            { lastBlockNumber: 1, lastTransactionIndex: 0, lastLogIndex: 0 },
         ),
         eventsRepository: createEventsRepository(),
     });
@@ -586,13 +598,14 @@ test("reaction service reports transaction stream when transaction chain cursor 
     const service = new ReactionService({
         config,
         streamType: "transaction",
-        handler: async () => "processed" ,
+        filter: () => true,
+        handler: async () => undefined,
         blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(null),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
             { lastBlockNumber: 1, lastTransactionIndex: 0, lastLogIndex: -1 },
-            "transaction"
+            "transaction",
         ),
         transactionsRepository: createTransactionsRepository(),
     });
@@ -606,16 +619,17 @@ test.each([-1, 1.5, Number.NaN, Number.MAX_SAFE_INTEGER + 1])(
         expect(() => new ReactionService({
             config: { ...config, confirmations },
             streamType: "event",
-            handler: async () => "processed",
+            filter: () => true,
+            handler: async () => undefined,
             blocksRepository: createNoopBlocksRepository(),
             chainCursorRepository: createChainCursorRepository(),
             transactionManager,
             workerCursorsRepository: createWorkerCursorsRepository(
-                { lastBlockNumber: 1, lastTransactionIndex: 0, lastLogIndex: 0 }
+                { lastBlockNumber: 1, lastTransactionIndex: 0, lastLogIndex: 0 },
             ),
             eventsRepository: createEventsRepository(),
         })).toThrow("Reaction confirmations must be a non-negative safe integer");
-    }
+    },
 );
 
 test("reaction service limits reads by confirmations from the enqueued head", async () => {
@@ -623,12 +637,13 @@ test("reaction service limits reads by confirmations from the enqueued head", as
     const service = new ReactionService({
         config: { ...config, confirmations: 12 },
         streamType: "event",
-        handler: async () => "processed",
+        filter: () => true,
+        handler: async () => undefined,
         blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(100, 110),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
-            { lastBlockNumber: 97, lastTransactionIndex: 0, lastLogIndex: 0 }
+            { lastBlockNumber: 97, lastTransactionIndex: 0, lastLogIndex: 0 },
         ),
         eventsRepository: createEventsRepository({
             listAfterPosition: async (...args) => {
@@ -648,13 +663,14 @@ test("reaction service also limits reads by sequencer progress", async () => {
     const service = new ReactionService({
         config: { ...config, confirmations: 12 },
         streamType: "transaction",
-        handler: async () => "processed",
+        filter: () => true,
+        handler: async () => undefined,
         blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(95, 110),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
             { lastBlockNumber: 94, lastTransactionIndex: 0, lastLogIndex: -1 },
-            "transaction"
+            "transaction",
         ),
         transactionsRepository: createTransactionsRepository({
             listAfterPosition: async (...args) => {
@@ -682,12 +698,13 @@ test.each([
     const service = new ReactionService({
         config: { ...config, confirmations },
         streamType: "event",
-        handler: async () => "processed",
+        filter: () => true,
+        handler: async () => undefined,
         blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(committed, enqueued),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
-            { lastBlockNumber: cursorBlock, lastTransactionIndex: 0, lastLogIndex: 0 }
+            { lastBlockNumber: cursorBlock, lastTransactionIndex: 0, lastLogIndex: 0 },
         ),
         eventsRepository: createEventsRepository({ listAfterPosition: list }),
     });
@@ -702,12 +719,13 @@ test("reaction service ignores state snapshots from different reorg versions", a
     const service = new ReactionService({
         config,
         streamType: "event",
-        handler: async () => "processed",
+        filter: () => true,
+        handler: async () => undefined,
         blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(101, 101, 2),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
-            { lastBlockNumber: 99, lastTransactionIndex: 0, lastLogIndex: 0 }
+            { lastBlockNumber: 99, lastTransactionIndex: 0, lastLogIndex: 0 },
         ),
         eventsRepository: createEventsRepository({ listAfterPosition: list }),
     });
@@ -723,9 +741,10 @@ test("reaction service stops a processed batch after a reorg version conflict", 
     const service = new ReactionService({
         config,
         streamType: "event",
+        filter: () => true,
         handler: async (event) => {
             handled.push(event.blockNumber);
-            return "processed";
+            return;
         },
         blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(),
@@ -733,7 +752,7 @@ test("reaction service stops a processed batch after a reorg version conflict", 
         workerCursorsRepository: createWorkerCursorsRepository(
             { lastBlockNumber: 99, lastTransactionIndex: 0, lastLogIndex: 0 },
             "event",
-            { advanceIfVersion: advance }
+            { advanceIfVersion: advance },
         ),
         eventsRepository: createEventsRepository({
             listAfterPosition: async () => [createEvent(100, 0, 0), createEvent(101, 0, 0)],
@@ -750,19 +769,20 @@ test("reaction service stops when flushing skipped items after a reorg version c
     const handled: number[] = [];
     const advance = vi.fn(async () => false);
     const service = new ReactionService({
-        config: { ...config, skipFlushInterval: 2 },
+        config,
         streamType: "transaction",
-        handler: async (transaction) => {
+        filter: (transaction) => {
             handled.push(transaction.index);
-            return "skipped";
+            return false;
         },
+        handler: async () => undefined,
         blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
             { lastBlockNumber: 99, lastTransactionIndex: 0, lastLogIndex: -1 },
             "transaction",
-            { advanceIfVersion: advance }
+            { advanceIfVersion: advance },
         ),
         transactionsRepository: createTransactionsRepository({
             listAfterPosition: async () => [
@@ -775,7 +795,7 @@ test("reaction service stops when flushing skipped items after a reorg version c
 
     await service.execute();
 
-    expect(handled).toEqual([0, 1]);
+    expect(handled).toEqual([0, 1, 0]);
     expect(advance).toHaveBeenCalledTimes(1);
 });
 
@@ -784,14 +804,15 @@ test("reaction service stops when the final skipped flush has a reorg version co
     const service = new ReactionService({
         config,
         streamType: "transaction",
-        handler: async () => "skipped",
+        filter: () => false,
+        handler: async () => undefined,
         blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
             { lastBlockNumber: 99, lastTransactionIndex: 0, lastLogIndex: -1 },
             "transaction",
-            { advanceIfVersion: advance }
+            { advanceIfVersion: advance },
         ),
         transactionsRepository: createTransactionsRepository({
             listAfterPosition: async () => [createTransaction(100, 0)],
@@ -809,7 +830,8 @@ test("reaction service fails if the chain cursor disappears while creating a wor
     const service = new ReactionService({
         config,
         streamType: "event",
-        handler: async () => "processed",
+        filter: () => true,
+        handler: async () => undefined,
         chainCursorRepository,
         blocksRepository: createNoopBlocksRepository(),
         transactionManager,
@@ -818,7 +840,7 @@ test("reaction service fails if the chain cursor disappears while creating a wor
     });
 
     await expect(service.execute()).rejects.toThrow(
-        "Chain cursor is missing for event reaction chain 5"
+        "Chain cursor is missing for event reaction chain 5",
     );
 });
 
@@ -839,7 +861,8 @@ test("reaction service uses a worker cursor concurrently created under the chain
     const service = new ReactionService({
         config,
         streamType: "event",
-        handler: async () => "processed",
+        filter: () => true,
+        handler: async () => undefined,
         blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(),
         transactionManager,

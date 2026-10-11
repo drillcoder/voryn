@@ -72,13 +72,12 @@ const reactionConfig: ReactionServiceConfig = {
     workerName: "reaction-worker",
     delayBetweenTicksMs: 1000,
     batchSize: 10,
-    skipFlushInterval: 10,
     confirmations: 0,
 };
 
-const eventHandler: EventReactionHandler = async () => "processed";
+const eventHandler: EventReactionHandler = async () => undefined;
 
-const transactionHandler: TransactionReactionHandler = async () => "processed";
+const transactionHandler: TransactionReactionHandler = async () => undefined;
 
 const workerCursorsRepository: WorkerCursorsRepository = {
     get: async () => null,
@@ -235,6 +234,7 @@ test("event reaction worker creates leader lock from worker identity", async () 
     const worker = await EventReactionWorker.create({
         logLevel: "error",
         ...reactionConfig,
+        filter: () => true,
         handler: eventHandler,
         dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
         overrides: {
@@ -247,7 +247,7 @@ test("event reaction worker creates leader lock from worker identity", async () 
 
     expect(createdLeaderLock).toBeInstanceOf(PostgresLeaderLock);
     expect(Reflect.get(createdLeaderLock, "lockKey")).toBe(buildReactionWorkerLockKey(
-        "event", reactionConfig.chainId, reactionConfig.workerName
+        "event", reactionConfig.chainId, reactionConfig.workerName,
     ));
     expect(Reflect.get(worker, "cleanupFn")).toBeDefined();
     await worker.stop();
@@ -311,6 +311,7 @@ test("event reaction worker uses override leader lock when provided with dbUrl",
     const worker = await EventReactionWorker.create({
         logLevel: "error",
         ...reactionConfig,
+        filter: () => true,
         handler: eventHandler,
         dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
         overrides: {
@@ -331,6 +332,7 @@ test("transaction reaction worker creates leader lock from worker identity", asy
     const worker = await TransactionReactionWorker.create({
         logLevel: "error",
         ...reactionConfig,
+        filter: () => true,
         handler: transactionHandler,
         dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
         overrides: {
@@ -343,10 +345,10 @@ test("transaction reaction worker creates leader lock from worker identity", asy
 
     expect(createdLeaderLock).toBeInstanceOf(PostgresLeaderLock);
     expect(Reflect.get(createdLeaderLock, "lockKey")).toBe(buildReactionWorkerLockKey(
-        "transaction", reactionConfig.chainId, reactionConfig.workerName
+        "transaction", reactionConfig.chainId, reactionConfig.workerName,
     ));
     expect(Reflect.get(createdLeaderLock, "lockKey")).not.toBe(buildReactionWorkerLockKey(
-        "event", reactionConfig.chainId, reactionConfig.workerName
+        "event", reactionConfig.chainId, reactionConfig.workerName,
     ));
     expect(Reflect.get(worker, "cleanupFn")).toBeDefined();
     await worker.stop();
@@ -380,9 +382,10 @@ test.each(["event", "transaction"] as const)(
                     } } : {}),
                 };
                 const worker = streamType === "event"
-                    ? await EventReactionWorker.create({ ...common, handler: eventHandler,
+                    ? await EventReactionWorker.create({ ...common, filter: () => true, handler: eventHandler,
                         overrides: { ...overrides, eventsRepository: createNoopEventsRepository() } })
-                    : await TransactionReactionWorker.create({ ...common, handler: transactionHandler,
+                    : await TransactionReactionWorker.create({
+                        ...common, filter: () => true, handler: transactionHandler,
                         overrides: { ...overrides, transactionsRepository: createNoopTransactionsRepository() } });
                 await invokeTick(worker);
                 await worker.stop();
@@ -392,7 +395,7 @@ test.each(["event", "transaction"] as const)(
         } finally {
             oldestSpy.mockRestore();
         }
-    }
+    },
 );
 
 const dbUrl = "postgresql://voryn:voryn@127.0.0.1:5432/voryn";
@@ -410,9 +413,11 @@ const customDependencies = (lock: LeaderLock) => ({
 const databaseFactories = [
     { name: "event", create: (lock: LeaderLock, url?: string, confirmations = 0) =>
         EventReactionWorker.create({ ...reactionConfig, confirmations, logLevel: "error",
+            filter: () => true,
             handler: eventHandler, dbUrl: url, overrides: customDependencies(lock) }) },
     { name: "transaction", create: (lock: LeaderLock, url?: string, confirmations = 0) =>
         TransactionReactionWorker.create({ ...reactionConfig, confirmations, logLevel: "error",
+            filter: () => true,
             handler: transactionHandler, dbUrl: url, overrides: customDependencies(lock) }) },
     { name: "retention", create: (lock: LeaderLock, url?: string) =>
         RetentionWorker.create({ chainId: 1, delayBetweenTicksMs: 1000, retentionDepthBlocks: 10,

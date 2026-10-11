@@ -23,6 +23,7 @@ import type {
     DataHex,
     DbExecutor,
     DbQueryResult,
+    EventReactionFilter,
     EventReactionHandler,
     EventReactionWorkerDatabaseDependencies,
     EventReactionWorkerOptions,
@@ -43,7 +44,6 @@ import type {
     PipelineMetricsOptions,
     PipelineMetricsResult,
     PipelineTransaction,
-    ReactionHandlerResult,
     RetentionWorkerDatabaseDependencies,
     RetentionWorkerOptions,
     RetryAllFailedBlockJobsResult,
@@ -52,6 +52,7 @@ import type {
     SequencerWorkerOptions,
     StreamType,
     TransactionManager,
+    TransactionReactionFilter,
     TransactionReactionHandler,
     TransactionReactionWorkerDatabaseDependencies,
     TransactionReactionWorkerOptions,
@@ -88,6 +89,7 @@ interface PublicApiTypesCompile {
     DataHex: DataHex;
     DbExecutor: DbExecutor;
     DbQueryResult: DbQueryResult;
+    EventReactionFilter: EventReactionFilter;
     EventReactionHandler: EventReactionHandler;
     EventReactionWorkerDatabaseDependencies: EventReactionWorkerDatabaseDependencies;
     EventReactionWorkerOptions: EventReactionWorkerOptions;
@@ -108,7 +110,6 @@ interface PublicApiTypesCompile {
     PipelineMetricsOptions: PipelineMetricsOptions;
     PipelineMetricsResult: PipelineMetricsResult;
     PipelineTransaction: PipelineTransaction;
-    ReactionHandlerResult: ReactionHandlerResult;
     RetentionWorkerDatabaseDependencies: RetentionWorkerDatabaseDependencies;
     RetentionWorkerOptions: RetentionWorkerOptions;
     RetryAllFailedBlockJobsResult: RetryAllFailedBlockJobsResult;
@@ -117,6 +118,7 @@ interface PublicApiTypesCompile {
     SequencerWorkerOptions: SequencerWorkerOptions;
     StreamType: StreamType;
     TransactionManager: TransactionManager;
+    TransactionReactionFilter: TransactionReactionFilter;
     TransactionReactionHandler: TransactionReactionHandler;
     TransactionReactionWorkerDatabaseDependencies: TransactionReactionWorkerDatabaseDependencies;
     TransactionReactionWorkerOptions: TransactionReactionWorkerOptions;
@@ -177,3 +179,43 @@ const invalidMultiSourceFallbackOptions: PipelineMetricsSourceConfig = {
     source: blockSource,
     networks: [{ chainId: 1, rpcUrls: ["http://rpc.local"] }],
 };
+
+const eventFilter: EventReactionFilter = (event) => event.index === 10;
+const transactionFilter: TransactionReactionFilter = (transaction) => transaction.index === 10;
+const eventHandler: EventReactionHandler = async (event, db, workerName) => {
+    await db.query("SELECT $1, $2", [event.index, workerName]);
+};
+const transactionHandler: TransactionReactionHandler = async (transaction, db) => {
+    await db.query("SELECT $1", [transaction.index]);
+};
+// @ts-expect-error Filters must return a synchronous boolean.
+const asyncEventFilter: EventReactionFilter = async () => true;
+// @ts-expect-error Filters must return a synchronous boolean.
+const asyncTransactionFilter: TransactionReactionFilter = async () => true;
+// @ts-expect-error Handler results no longer contain processing statuses.
+const oldEventHandler: EventReactionHandler = async () => "processed";
+// @ts-expect-error Handler results no longer contain processing statuses.
+const oldTransactionHandler: TransactionReactionHandler = async () => "skipped";
+declare const validEventOptions: EventReactionWorkerOptions;
+declare const validTransactionOptions: TransactionReactionWorkerOptions;
+const { filter: removedEventFilter, ...missingEventFilter } = validEventOptions;
+const { filter: removedTransactionFilter, ...missingTransactionFilter } = validTransactionOptions;
+// @ts-expect-error Event options require a filter.
+const invalidEventOptions: EventReactionWorkerOptions = missingEventFilter;
+// @ts-expect-error Transaction options require a filter.
+const invalidTransactionOptions: TransactionReactionWorkerOptions = missingTransactionFilter;
+// @ts-expect-error Skip thresholds are no longer public options.
+type EventSkipInterval = EventReactionWorkerOptions["skipFlushInterval"];
+// @ts-expect-error Skip thresholds are no longer public options.
+type TransactionSkipInterval = TransactionReactionWorkerOptions["skipFlushInterval"];
+// @ts-expect-error Removed public context type.
+type RemovedReactionContext = publicApi.ReactionContext;
+// @ts-expect-error Removed public result type.
+type RemovedReactionResult = publicApi.ReactionHandlerResult;
+
+const { handler: removedEventHandler, ...missingEventHandler } = validEventOptions;
+const { handler: removedTransactionHandler, ...missingTransactionHandler } = validTransactionOptions;
+// @ts-expect-error Event options require a handler.
+const invalidEventHandlerOptions: EventReactionWorkerOptions = missingEventHandler;
+// @ts-expect-error Transaction options require a handler.
+const invalidTransactionHandlerOptions: TransactionReactionWorkerOptions = missingTransactionHandler;

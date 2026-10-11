@@ -1,7 +1,7 @@
 import type { Pool } from "pg";
 import type { Logger } from "../interfaces/logger.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
-import type { TransactionReactionHandler } from "../interfaces/reaction.js";
+import type { TransactionReactionFilter, TransactionReactionHandler } from "../interfaces/reaction.js";
 import type {
     BlocksRepository,
     ChainCursorRepository,
@@ -35,7 +35,7 @@ export type TransactionReactionWorkerOptions =
     RuntimeLoggerOptions
     & ReactionServiceConfig
     & RuntimeDbOptions<TransactionReactionWorkerDatabaseDependencies>
-    & { handler: TransactionReactionHandler };
+    & { filter: TransactionReactionFilter; handler: TransactionReactionHandler };
 
 export class TransactionReactionWorker extends ReactionPollingWorker {
     static async create(options: TransactionReactionWorkerOptions): Promise<TransactionReactionWorker> {
@@ -45,7 +45,6 @@ export class TransactionReactionWorker extends ReactionPollingWorker {
             delayBetweenTicksMs: options.delayBetweenTicksMs,
             workerName: options.workerName,
             batchSize: options.batchSize,
-            skipFlushInterval: options.skipFlushInterval,
             confirmations: options.confirmations,
             initialBlock: options.initialBlock,
         };
@@ -62,12 +61,13 @@ export class TransactionReactionWorker extends ReactionPollingWorker {
                     pool,
                     buildReactionWorkerLockKey("transaction", serviceConfig.chainId, serviceConfig.workerName),
                 ),
-            })
+            }),
         );
         try {
             const service = new ReactionService({
                 config: serviceConfig,
                 streamType: "transaction",
+                filter: options.filter,
                 handler: options.handler,
                 chainCursorRepository: dependencies.chainCursorRepository,
                 blocksRepository: dependencies.blocksRepository,
@@ -96,7 +96,7 @@ export class TransactionReactionWorker extends ReactionPollingWorker {
             logger,
             leaderLock,
             service,
-            dispose
+            dispose,
         );
     }
 

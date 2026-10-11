@@ -56,13 +56,16 @@ describe("e2e reaction handler failure", () => {
             CHAIN_ID,
             "event",
             { lastBlockNumber: 99, lastTransactionIndex: -1, lastLogIndex: -1 },
-            0
+            0,
         );
 
+        await db.pool.query("CREATE TABLE reaction_effects (item_index integer PRIMARY KEY, total integer NOT NULL)");
         const handled: number[] = [];
         let failures = 0;
 
-        const handler: EventReactionHandler = async (event): Promise<"processed"> => {
+        const handler: EventReactionHandler = async (event, executor): Promise<void> => {
+            await executor.query("INSERT INTO reaction_effects (item_index, total) VALUES ($1, 1) "
+                + "ON CONFLICT (item_index) DO UPDATE SET total = reaction_effects.total + 1", [event.index]);
             if (event.index === 1 && failures === 0) {
                 failures += 1;
                 throw new Error("handler temporary failure");
@@ -70,7 +73,7 @@ describe("e2e reaction handler failure", () => {
 
             handled.push(event.index);
 
-            return "processed";
+            return;
         };
 
         const worker = await EventReactionWorker.create({
@@ -79,8 +82,8 @@ describe("e2e reaction handler failure", () => {
             delayBetweenTicksMs: 5,
             workerName: "reaction-event-failure",
             batchSize: 2,
-            skipFlushInterval: 2,
             confirmations: 0,
+            filter: () => true,
             handler,
             overrides: {
                 chainCursorRepository,
@@ -106,6 +109,11 @@ describe("e2e reaction handler failure", () => {
 
             expect(failures).toBe(1);
             expect(handled).toEqual([0, 1, 2]);
+            await worker.stop();
+            const effects = await db.pool.query<{ item_index: number; total: number }>(
+                "SELECT item_index, total FROM reaction_effects ORDER BY item_index",
+            );
+            expect(effects.rows).toEqual([0, 1, 2].map((item_index) => ({ item_index, total: 1 })));
         } finally {
             await stopWorkers([worker]);
         }

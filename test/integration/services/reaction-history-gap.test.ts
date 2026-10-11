@@ -56,7 +56,6 @@ describe("integration services: reaction history gaps", () => {
             { lastBlockNumber: 90, lastTransactionIndex: 0, lastLogIndex: -1 },
             0,
         );
-        // A different network must neither change the boundary nor have its cursor moved.
         await blocksRepository.insert({ chainId: 2, blockNumber: 1, blockHash: hashFromNumber(1),
             parentHash: hashFromNumber(0), blockTimestamp: 1, fetchedAt: new Date() });
         await workerCursorsRepository.insert(
@@ -69,16 +68,16 @@ describe("integration services: reaction history gaps", () => {
         const warn = vi.fn();
         const handled: number[] = [];
         let fail = true;
-        const handler = async (item: { blockNumber: number }): Promise<"processed"> => {
+        const handler = async (item: { blockNumber: number }): Promise<void> => {
             handled.push(item.blockNumber);
             const cursor = await workerCursorsRepository.get(workerName, CHAIN_ID, streamType);
             expect(cursor?.position).toEqual({ lastBlockNumber: 100, lastTransactionIndex: -1, lastLogIndex: -1 });
             if (fail) { throw new Error("handler failed"); }
-            return "processed";
+            return;
         };
         const common = {
-            config: { chainId: CHAIN_ID, workerName, delayBetweenTicksMs: 1, batchSize: 1,
-                skipFlushInterval: 1, confirmations: 0 },
+            config: { chainId: CHAIN_ID, workerName, delayBetweenTicksMs: 1, batchSize: 1, confirmations: 0 },
+            filter: () => true,
             chainCursorRepository, blocksRepository, workerCursorsRepository, transactionManager,
             logger: { debug: vi.fn(), info: vi.fn(), warn, error: vi.fn() },
         };
@@ -199,12 +198,11 @@ describe("integration services: reaction history gaps", () => {
                     f.transactionManager,
                 ).execute();
                 await attempted.promise;
-                // Observe PostgreSQL's actual wait rather than assuming a scheduling delay.
                 await vi.waitFor(async () => {
                     const waiting = await db.pool.query<{ count: string }>(
                         `SELECT count(*)::text AS count FROM pg_stat_activity
                          WHERE pid = $1 AND cardinality(pg_blocking_pids(pid)) > 0`,
-                        [retentionPid]
+                        [retentionPid],
                     );
                     expect(Number(waiting.rows[0]?.count)).toBeGreaterThan(0);
                 });

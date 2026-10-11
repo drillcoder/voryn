@@ -148,7 +148,23 @@ The reaction pipeline runs user logic over data within the committed position. E
 - Uses `blocksRepository.getOldestBlockNumber` once per tick to detect a cursor before available committed history.
 - Rechecks a candidate gap under the chain cursor lock and saves `(firstAvailableBlock, -1, -1)` before the handler.
   After commit, logs `reaction_history_gap`; empty streams and confirmation waiting also account for gaps.
-- Calls the user-provided reaction handler and advances the cursor according to `"processed"` / `"skipped"` results.
+- Calls the required synchronous `filter(item): boolean` outside business transactions, in stream order.
+  The filter checks the loaded item and returns `true` or `false` without writing to the database,
+  making external requests or changing external state.
+- Keeps one cursor: rejected items accumulate a position in memory and never call the handler. A fully rejected
+  batch saves its final position with one conditional UPDATE. Pending skips are also
+  checkpointed before propagating filter/handler errors. A failed checkpoint stops the tick.
+- Calls `handler(item, db, workerName): Promise<void>` for each accepted item inside its own transaction.
+  The configured reaction name is passed as the third argument. Handler SQL and cursor advancement use the same
+  executor and commit together; counts and pending skips change only after commit. A rejected tail is saved
+  with one checkpoint.
+- Handler/cursor errors and version conflicts roll back the current item's SQL, preserving earlier commits.
+  The executor lives only within the handler: await every query, do not retain or release it or control transactions.
+- Saved rejected batches advance regularly without matches. Restart with the same cursor rescans only the unsaved
+  batch tail, unless reorg or an intentional rewind changes the cursor. Initialization and history-gap accounting
+  retain their infrastructure transactions.
+- Atomicity applies only to SQL through the supplied executor. Other pools, HTTP effects and replay with a new
+  cursor are outside the guarantee. Reorg does not compensate already committed application aggregates.
 - Advances only when the cursor version still matches. A version conflict stops the current batch; the next tick reads
   the rewound state.
 

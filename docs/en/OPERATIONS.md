@@ -95,9 +95,10 @@ query parameters, authorization data, or RPC payloads.
 - `workerName`: stable reaction worker name. Together with `chainId` and stream type, it identifies the cursor and lock.
 - `initialBlock`: optional first block to read, inclusively, when this worker has no cursor. An existing cursor takes precedence.
 - `batchSize`: maximum stream items read in one tick.
-- `skipFlushInterval`: how often skipped items flush cursor progress.
 - `confirmations`: required non-negative safe integer that controls how far this worker stays behind the latest head seen by `HeadWorker`.
-- `handler`: application callback for one event or transaction.
+- `filter`: required synchronous `(item) => boolean`. Checks the item without writing to the database,
+  making external requests or changing external state. Use `() => true` to accept all items.
+- `handler`: async `(item, db, workerName) => Promise<void>` for an accepted item.
 
 ## Scaling and Tuning
 
@@ -134,15 +135,16 @@ the same cursor.
 Set `initialBlock` to read from an earlier committed block when creating a new cursor. `stop()` retains the cursor;
 `destroy()` waits for the current tick, deletes the cursor, and stops the worker.
 
-Each tick reads up to `batchSize` items after the saved cursor and no later than the current committed block. The
-handler returns:
+Each tick reads up to `batchSize` items after the saved cursor, bounded by committed data and confirmations.
+The required synchronous filter rejects irrelevant items without handlers or business transactions. One cursor
+UPDATE saves a fully rejected batch at the end. A skipped tail is also checkpointed before a filter/handler error.
+Accepted items commit awaited queries through the supplied `db` with cursor progress in one transaction per item.
 
-- `"processed"`: cursor is advanced after this item.
-- `"skipped"`: item is intentionally skipped; cursor progress is flushed according to `skipFlushInterval` and at the end of the tick.
-
-If the handler throws, the worker stops the current tick and keeps the cursor at the last flushed position. The same
-item can be delivered again after restart or retry. Handlers must be idempotent, especially when they write to external
-systems.
+A handler/cursor error rolls back the current item while keeping previous commits. A version conflict also rolls
+back the current item and stops the batch; the next tick reads current state. A checkpoint error stops scanning.
+After restart with the same cursor, saved batches are skipped and only the unsaved tail is reread, unless reorg
+rewinds progress. Keep `db` within its handler and await every query. External effects and writes through another
+executor need application-level idempotency. Reorg does not compensate previously committed aggregates.
 
 Important operational points:
 

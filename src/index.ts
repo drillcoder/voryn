@@ -25,7 +25,12 @@ export type {
     RetentionWorkerOptions,
 } from "./workers/retention-worker.js";
 
-export type { EventReactionHandler, ReactionHandlerResult, TransactionReactionHandler } from "./interfaces/reaction.js";
+export type {
+    EventReactionFilter,
+    EventReactionHandler,
+    TransactionReactionFilter,
+    TransactionReactionHandler,
+} from "./interfaces/reaction.js";
 export { TransactionReactionWorker } from "./workers/transaction-reaction-worker.js";
 export type {
     TransactionReactionWorkerDatabaseDependencies,

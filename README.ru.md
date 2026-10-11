@@ -195,13 +195,13 @@ Reaction-воркеры читают только закоммиченные д�
 обработчик можно безопасно перезапускать.
 
 ```ts
-import type { EventReactionHandler, EventReactionWorkerOptions, ReactionHandlerResult } from "@drillcoder/voryn";
+import type { EventReactionHandler, EventReactionWorkerOptions } from "@drillcoder/voryn";
 import { EventReactionWorker } from "@drillcoder/voryn";
 
 const dbUrl = "postgres://user:pass@localhost:5432/voryn";
 const logLevel = "info";
 
-const handler: EventReactionHandler = async (event): Promise<ReactionHandlerResult> => {
+const handler: EventReactionHandler = async (event, db, workerName): Promise<void> => {
     console.info("event_received", {
         blockNumber: event.blockNumber,
         transactionHash: event.transactionHash,
@@ -209,7 +209,11 @@ const handler: EventReactionHandler = async (event): Promise<ReactionHandlerResu
         address: event.address,
     });
 
-    return event.index === 10 ? "processed" : "skipped";
+    await db.query(
+        "INSERT INTO reaction_totals (worker_name, total) VALUES ($1, 1) "
+        + "ON CONFLICT (worker_name) DO UPDATE SET total = reaction_totals.total + 1",
+        [workerName]
+    );
 };
 
 const options: EventReactionWorkerOptions = {
@@ -217,11 +221,10 @@ const options: EventReactionWorkerOptions = {
     workerName: "contract-events",
     delayBetweenTicksMs: 500,
     batchSize: 1000,
-    skipFlushInterval: 100,
     confirmations: 12,
-    // initialBlock: 20_000_000, // первый блок, если у воркера нет курсора
     logLevel,
     dbUrl,
+    filter: (event) => event.index === 10,
     handler,
 };
 
@@ -235,14 +238,35 @@ worker.onFailure((error) => {
 await worker.start();
 ```
 
-Обработчик может вернуть `"processed"` или `"skipped"`. Для `"processed"` курсор двигается сразу. `"skipped"`
-тоже считается безопасной позицией, но записи курсора группируются через `skipFlushInterval` и
-сохраняются в конце прохода или перед повторным выбросом ошибки обработчика.
+В примере используется таблица приложения `reaction_totals`. Создайте её перед запуском воркера:
 
-Обработчик может быть вызван повторно для того же элемента, если он упал до возврата результата, если воркер
-остановился до сохранения cursor или если reorg перенес этот элемент в новый committed-блок. При rollback затронутые
-reaction cursors отматываются, но внешние побочные эффекты отменить невозможно. Поэтому handlers должны быть
-идемпотентными.
+```sql
+CREATE TABLE reaction_totals (worker_name text PRIMARY KEY, total bigint NOT NULL);
+```
+
+Оба reaction-воркера требуют синхронный `filter(item): boolean`. Фильтр проверяет загруженный элемент и
+возвращает `true` или `false`, не записывая в БД, не отправляя внешние запросы и не меняя внешнее состояние.
+Для обработки всех элементов задайте `filter: () => true`. Результат фильтра другого типа,
+включая Promise, вызывает ошибку.
+Отклонённые элементы не вызывают handler и не открывают бизнес-транзакцию.
+Их последняя позиция сохраняется в конце batch или перед передачей ошибки фильтра/handler.
+Полностью отфильтрованный batch сохраняется одним UPDATE курсора. Сохранённые batch обеспечивают прогресс
+при длительном отсутствии совпадений; после сбоя повторно сканируется только несохранённый хвост,
+если используется тот же курсор и reorg не отмотал его позицию.
+
+Для принятого элемента вызывается `handler(item, db, workerName): Promise<void>`. Второй аргумент —
+`DbExecutor` текущей транзакции, третий — имя реакции из опций. Handler может объявлять только `(item, db)`.
+Ожидаемые SQL-запросы через `db` и курсор элемента сохраняются одной транзакцией. Ошибка handler,
+ошибка записи курсора или конфликт версии reorg откатывают записи этого элемента; предыдущие commit сохраняются.
+Конфликт версии прекращает batch, и следующий tick читает актуальный курсор. Успешно обработанный элемент
+покрывает предыдущие пропуски; последующий пропущенный хвост сохраняется отдельным checkpoint.
+
+Используйте `db` только внутри handler и дожидайтесь каждого запроса перед возвратом. Не сохраняйте executor
+для последующей работы, не освобождайте его и не выполняйте команды управления транзакцией.
+HTTP-запросы и записи через другой executor не входят в эту гарантию. Handler может быть вызван повторно
+после rollback, retry или reorg. Reorg отматывает курсоры, но не компенсирует ранее сохранённые агрегаты приложения.
+Удаление курсора или новое имя `workerName` могут привести к повторной обработке и дополнительным эффектам.
+Для внешних эффектов нужна идемпотентность на уровне приложения.
 
 `initialBlock` необязателен для `HeadWorker` и обоих reaction-воркеров. Это первый обрабатываемый блок включительно.
 Параметр используется только при отсутствии соответствующего курсора; существующий курсор имеет приоритет.

@@ -62,14 +62,14 @@ const createWorker = async (
         workerName: "reaction-test",
         delayBetweenTicksMs: 1000,
         batchSize: 10,
-        skipFlushInterval: 10,
         confirmations: 0,
     };
 
     if (streamType === "event") {
         return EventReactionWorker.create({
             ...common,
-            handler: async () => { await onHandle(); return "processed"; },
+            filter: () => true,
+            handler: async () => { await onHandle(); return; },
             overrides: {
                 chainCursorRepository,
             blocksRepository: createNoopBlocksRepository(),
@@ -86,7 +86,8 @@ const createWorker = async (
 
     return TransactionReactionWorker.create({
         ...common,
-        handler: async () => { await onHandle(); return "processed"; },
+        filter: () => true,
+        handler: async () => { await onHandle(); return; },
         overrides: {
             chainCursorRepository,
             blocksRepository: createNoopBlocksRepository(),
@@ -130,7 +131,7 @@ test.each(["event", "transaction"] as const)(
         expect(order).toEqual(["handled", "delete", "release"]);
         await worker.destroy();
         expect(deleteCursor).toHaveBeenCalledTimes(1);
-    }
+    },
 );
 
 test.each(["event", "transaction"] as const)(
@@ -152,7 +153,7 @@ test.each(["event", "transaction"] as const)(
         finish.resolve();
         await stopping;
         expect(deleteCursor).not.toHaveBeenCalled();
-    }
+    },
 );
 
 test("destroy reports deletion failure and still releases the lock", async () => {

@@ -70,18 +70,21 @@ describe("e2e idempotency", () => {
         const block11 = buildFetchedBlock(11, block10.block.hash, 1);
         const source = createMapBlockSource(11, [block10, block11]);
 
+        await db.pool.query("CREATE TABLE reaction_effects (stream text NOT NULL, total integer NOT NULL)");
         const firstEventHandled: string[] = [];
         const firstTxHandled: string[] = [];
 
-        const firstEventHandler: EventReactionHandler = async (event): Promise<"processed"> => {
+        const firstEventHandler: EventReactionHandler = async (event, executor): Promise<void> => {
+            await executor.query("INSERT INTO reaction_effects (stream, total) VALUES ($1, 1)", ["event"]);
             firstEventHandled.push(`${String(event.blockNumber)}:${String(event.index)}`);
 
-            return "processed";
+            return;
         };
-        const firstTxHandler: TransactionReactionHandler = async (transaction): Promise<"processed"> => {
+        const firstTxHandler: TransactionReactionHandler = async (transaction, executor): Promise<void> => {
+            await executor.query("INSERT INTO reaction_effects (stream, total) VALUES ($1, 1)", ["transaction"]);
             firstTxHandled.push(`${String(transaction.blockNumber)}:${String(transaction.index)}`);
 
-            return "processed";
+            return;
         };
 
         const firstRunWorkers = await createWorkerSet(
@@ -115,15 +118,17 @@ describe("e2e idempotency", () => {
 
             const secondEventHandled: string[] = [];
             const secondTxHandled: string[] = [];
-            const secondEventHandler: EventReactionHandler = async (event): Promise<"processed"> => {
+            const secondEventHandler: EventReactionHandler = async (event, executor): Promise<void> => {
+                await executor.query("INSERT INTO reaction_effects (stream, total) VALUES ($1, 1)", ["event"]);
                 secondEventHandled.push(`${String(event.blockNumber)}:${String(event.index)}`);
 
-                return "processed";
+                return;
             };
-            const secondTxHandler: TransactionReactionHandler = async (transaction): Promise<"processed"> => {
+            const secondTxHandler: TransactionReactionHandler = async (transaction, executor): Promise<void> => {
+                await executor.query("INSERT INTO reaction_effects (stream, total) VALUES ($1, 1)", ["transaction"]);
                 secondTxHandled.push(`${String(transaction.blockNumber)}:${String(transaction.index)}`);
 
-                return "processed";
+                return;
             };
 
             const secondRunWorkers = await createWorkerSet(
@@ -147,6 +152,10 @@ describe("e2e idempotency", () => {
                 await stopWorkers(secondRunWorkers.all);
             }
 
+            const effects = await db.pool.query<{ stream: string; total: string }>(
+                "SELECT stream, SUM(total)::text AS total FROM reaction_effects GROUP BY stream ORDER BY stream",
+            );
+            expect(effects.rows).toEqual([{ stream: "event", total: "3" }, { stream: "transaction", total: "3" }]);
             const afterRestart = await snapshotCounts(db);
             expect(afterRestart).toEqual(baseline);
             expect(secondEventHandled).toEqual([]);
@@ -232,8 +241,8 @@ async function createWorkerSet(
         delayBetweenTicksMs: 5,
         workerName: `reaction-event-${workerSuffix}`,
         batchSize: 2,
-        skipFlushInterval: 2,
         confirmations: 0,
+        filter: () => true,
         handler: eventHandler,
         overrides: {
             chainCursorRepository,
@@ -250,8 +259,8 @@ async function createWorkerSet(
         delayBetweenTicksMs: 5,
         workerName: `reaction-transaction-${workerSuffix}`,
         batchSize: 2,
-        skipFlushInterval: 2,
         confirmations: 0,
+        filter: () => true,
         handler: transactionHandler,
         overrides: {
             chainCursorRepository,

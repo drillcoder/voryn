@@ -16,6 +16,8 @@ archive_path="$archive_dir/$archive_name"
 
 npm install --prefix "$consumer_dir" --ignore-scripts --no-audit --no-fund "$archive_path"
 cp test/package/consumer.ts "$consumer_dir/consumer.mts"
+cp examples/event-reaction-worker.ts "$consumer_dir/event-reaction-worker.mts"
+cp examples/transaction-reaction-worker.ts "$consumer_dir/transaction-reaction-worker.mts"
 
 "$typescript_bin" \
     --noEmit \
@@ -24,7 +26,9 @@ cp test/package/consumer.ts "$consumer_dir/consumer.mts"
     --target ES2022 \
     --module NodeNext \
     --moduleResolution NodeNext \
-    "$consumer_dir/consumer.mts"
+    "$consumer_dir/consumer.mts" \
+    "$consumer_dir/event-reaction-worker.mts" \
+    "$consumer_dir/transaction-reaction-worker.mts"
 
 cd "$consumer_dir"
 node --input-type=module -e '

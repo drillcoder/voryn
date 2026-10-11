@@ -1,10 +1,11 @@
+import type { DbExecutor } from "../interfaces/db.js";
 import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
 import type { ChainCursor, WorkerCursor, WorkerCursorPosition } from "../interfaces/pipeline.js";
 import type {
     EventReactionHandler,
-    ReactionContext,
-    ReactionHandlerResult,
+    EventReactionFilter,
+    TransactionReactionFilter,
     TransactionReactionHandler,
 } from "../interfaces/reaction.js";
 import type {
@@ -23,7 +24,6 @@ export interface ReactionServiceConfig {
     delayBetweenTicksMs: number;
     workerName: string;
     batchSize: number;
-    skipFlushInterval: number;
     confirmations: number;
     initialBlock?: BlockNumber;
 }
@@ -41,11 +41,13 @@ interface ReactionServiceBaseOptions<TStreamType extends StreamType> {
 type ReactionServiceOptions = EventReactionServiceOptions | TransactionReactionServiceOptions;
 
 interface EventReactionServiceOptions extends ReactionServiceBaseOptions<"event"> {
+    filter: EventReactionFilter;
     handler: EventReactionHandler;
     eventsRepository: EventsRepository;
 }
 
 interface TransactionReactionServiceOptions extends ReactionServiceBaseOptions<"transaction"> {
+    filter: TransactionReactionFilter;
     handler: TransactionReactionHandler;
     transactionsRepository: TransactionsRepository;
 }
@@ -54,6 +56,8 @@ interface ReactionState {
     chainCursor: ChainCursor;
     workerCursor: WorkerCursor;
 }
+
+class InvalidatedReactionBatch extends Error {}
 
 export class ReactionService {
     private readonly logger: Logger;
@@ -89,7 +93,7 @@ export class ReactionService {
 
         const maxBlockNumber = Math.min(
             chainCursor.lastCommittedBlock,
-            chainCursor.lastEnqueuedBlock - confirmations
+            chainCursor.lastEnqueuedBlock - confirmations,
         );
         if (maxBlockNumber < 0 || maxBlockNumber < cursor.position.lastBlockNumber) {
             this.logger.debug(`${options.streamType}_reaction_tick_waiting_for_confirmations`, {
@@ -109,7 +113,7 @@ export class ReactionService {
                 cursor.position.lastBlockNumber,
                 cursor.position.lastTransactionIndex,
                 cursor.position.lastLogIndex,
-                batchSize
+                batchSize,
             );
             await this.processItems(
                 events,
@@ -118,8 +122,9 @@ export class ReactionService {
                     lastTransactionIndex: event.transactionIndex,
                     lastLogIndex: event.index,
                 }),
+                options.filter,
                 options.handler,
-                cursor.reorgVersion
+                cursor.reorgVersion,
             );
 
             return;
@@ -130,7 +135,7 @@ export class ReactionService {
             maxBlockNumber,
             cursor.position.lastBlockNumber,
             cursor.position.lastTransactionIndex,
-            batchSize
+            batchSize,
         );
         await this.processItems(
             transactions,
@@ -139,8 +144,9 @@ export class ReactionService {
                 lastTransactionIndex: transaction.index,
                 lastLogIndex: -1,
             }),
+            options.filter,
             options.handler,
-            cursor.reorgVersion
+            cursor.reorgVersion,
         );
     }
 
@@ -152,24 +158,25 @@ export class ReactionService {
     private async processItems<TItem>(
         items: TItem[],
         getPosition: (item: TItem) => WorkerCursorPosition,
-        handle: (item: TItem, context: ReactionContext) => Promise<ReactionHandlerResult>,
+        filter: (item: TItem) => boolean,
+        handle: (item: TItem, db: DbExecutor, workerName: string) => Promise<void>,
         reorgVersion: number,
     ): Promise<void> {
         const { config, streamType, workerCursorsRepository } = this.options;
         const { workerName, chainId } = config;
         let pendingSkippedPosition: WorkerCursorPosition | null = null;
-        let skippedSinceFlush = 0;
         let processedCount = 0;
         let skippedCount = 0;
         let lastAdvancedPosition: WorkerCursorPosition | null = null;
 
-        const advance = async (position: WorkerCursorPosition): Promise<boolean> => {
+        const advance = async (position: WorkerCursorPosition, db?: DbExecutor): Promise<boolean> => {
             const advanced = await workerCursorsRepository.advanceIfVersion(
                 workerName,
                 chainId,
                 streamType,
                 position,
-                reorgVersion
+                reorgVersion,
+                db,
             );
             if (!advanced) {
                 this.logger.debug(`${streamType}_reaction_batch_invalidated_by_reorg`, {
@@ -192,7 +199,6 @@ export class ReactionService {
             }
             lastAdvancedPosition = pendingSkippedPosition;
             pendingSkippedPosition = null;
-            skippedSinceFlush = 0;
             return true;
         };
 
@@ -200,27 +206,29 @@ export class ReactionService {
             const position = getPosition(item);
 
             try {
-                const result = await handle(item, { workerName });
-                if (result === "skipped") {
-                    pendingSkippedPosition = position;
-                    skippedSinceFlush += 1;
-                    skippedCount += 1;
-
-                    if (skippedSinceFlush >= config.skipFlushInterval) {
-                        if (!await flushSkipped()) {
-                            return;
-                        }
-                    }
-                } else {
-                    if (!await advance(position)) {
-                        return;
-                    }
-                    lastAdvancedPosition = position;
-                    pendingSkippedPosition = null;
-                    skippedSinceFlush = 0;
-                    processedCount += 1;
+                const accepted = filter(item);
+                if (typeof accepted !== "boolean") {
+                    throw new Error("Reaction filter must return a boolean synchronously");
                 }
+                if (!accepted) {
+                    pendingSkippedPosition = position;
+                    skippedCount += 1;
+                    continue;
+                }
+
+                await this.options.transactionManager.run(async (db) => {
+                    await handle(item, db, workerName);
+                    if (!await advance(position, db)) {
+                        throw new InvalidatedReactionBatch();
+                    }
+                });
+                lastAdvancedPosition = position;
+                pendingSkippedPosition = null;
+                processedCount += 1;
             } catch (error) {
+                if (error instanceof InvalidatedReactionBatch) {
+                    return;
+                }
                 await flushSkipped();
                 throw error;
             }
@@ -256,7 +264,7 @@ export class ReactionService {
         const chainCursor = await chainCursorRepository.get(chainId);
         if (chainCursor === null) {
             throw new Error(
-                `Chain cursor is missing for ${streamType} reaction chain ${String(chainId)}`
+                `Chain cursor is missing for ${streamType} reaction chain ${String(chainId)}`,
             );
         }
         const current = await workerCursorsRepository.get(workerName, chainId, streamType);
@@ -268,7 +276,7 @@ export class ReactionService {
             const lockedChainCursor = await chainCursorRepository.getForUpdate(chainId, transaction);
             if (lockedChainCursor === null) {
                 throw new Error(
-                    `Chain cursor is missing for ${streamType} reaction chain ${String(chainId)}`
+                    `Chain cursor is missing for ${streamType} reaction chain ${String(chainId)}`,
                 );
             }
             const existing = await workerCursorsRepository.get(workerName, chainId, streamType, transaction);
@@ -292,7 +300,7 @@ export class ReactionService {
                 streamType,
                 initialPosition,
                 lockedChainCursor.reorgVersion,
-                transaction
+                transaction,
             );
 
             const workerCursor: WorkerCursor = {
@@ -347,7 +355,7 @@ export class ReactionService {
                 lastLogIndex: -1,
             };
             const advanced = await workerCursorsRepository.advanceIfVersion(
-                workerName, chainId, streamType, position, chainCursor.reorgVersion, transaction
+                workerName, chainId, streamType, position, chainCursor.reorgVersion, transaction,
             );
             if (!advanced) {
                 return null;

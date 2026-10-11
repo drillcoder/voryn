@@ -42,13 +42,14 @@ const fixture = (streamType: StreamType = "event") => {
         return true;
     });
     const warn = vi.fn(() => { order.push("warn"); });
-    const handler = vi.fn(async (): Promise<"processed"> => { order.push("handler"); return "processed"; });
+    const handler = vi.fn(async (): Promise<void> => { order.push("handler"); return; });
     const eventList = vi.fn(async () => [createPipelineEvent({ blockNumber: 100, index: 0, transactionIndex: 0 })]);
     const transactionList = vi.fn(async () => [createPipelineTransaction({ blockNumber: 100, index: 0 })]);
     const common = {
+        filter: () => true,
         config: {
             chainId: 7, workerName: "gap-test", delayBetweenTicksMs: 1,
-            batchSize: 10, skipFlushInterval: 10, confirmations: 0,
+            batchSize: 10, confirmations: 0,
         },
         chainCursorRepository: {
             ...createNoopChainCursorRepository(), get: async () => chain, getForUpdate,
@@ -93,7 +94,7 @@ for (const stream of ["event", "transaction"] as const) {
         const f = fixture(stream);
         const previousPosition = f.getCursorState()?.position;
         await f.createService().execute();
-        expect(f.order).toEqual(["save", "commit", "warn", "handler", "save"]);
+        expect(f.order).toEqual(["save", "commit", "warn", "handler", "save", "commit"]);
         expect(f.advanceIfVersion.mock.calls[0]?.[3]).toEqual(position(100));
         expect(f.warn).toHaveBeenCalledWith("reaction_history_gap", {
             chainId: 7, workerName: "gap-test", streamType: stream, previousPosition,
@@ -206,7 +207,7 @@ for (const stream of ["event", "transaction"] as const) {
             expect(f.advanceIfVersion).not.toHaveBeenCalled();
             expect(f.warn).not.toHaveBeenCalled();
             expect(f.handler).not.toHaveBeenCalled();
-        }
+        },
     );
 
     test.each([null, 102, 90])(`${stream} rechecks changed oldest block %s inside the transaction`, async (oldest) => {

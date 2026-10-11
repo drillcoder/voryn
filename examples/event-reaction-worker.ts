@@ -1,8 +1,8 @@
-import type { EventReactionHandler, EventReactionWorkerOptions, ReactionHandlerResult } from "@drillcoder/voryn";
+import type { EventReactionHandler, EventReactionWorkerOptions } from "@drillcoder/voryn";
 import { EventReactionWorker } from "@drillcoder/voryn";
 
 (async () => {
-    const handler: EventReactionHandler = async (event): Promise<ReactionHandlerResult> => {
+    const handler: EventReactionHandler = async (event, db, workerName): Promise<void> => {
         console.info("event_received", {
             chainId: event.chainId,
             blockNumber: event.blockNumber,
@@ -10,7 +10,11 @@ import { EventReactionWorker } from "@drillcoder/voryn";
             logIndex: event.index,
         });
 
-        return event.index === 10 ? "processed" : "skipped";
+        await db.query(
+            "INSERT INTO reaction_totals (worker_name, total) VALUES ($1, 1) "
+            + "ON CONFLICT (worker_name) DO UPDATE SET total = reaction_totals.total + 1",
+            [workerName]
+        );
     };
     const options: EventReactionWorkerOptions = {
         dbUrl: "postgres://user:pass@localhost:5432/voryn",
@@ -19,8 +23,8 @@ import { EventReactionWorker } from "@drillcoder/voryn";
         delayBetweenTicksMs: 500,
         workerName: "event-reaction-worker",
         batchSize: 1000,
-        skipFlushInterval: 100,
         confirmations: 12,
+        filter: (event) => event.index === 10,
         handler,
     };
 

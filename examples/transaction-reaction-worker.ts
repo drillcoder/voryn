@@ -1,12 +1,11 @@
 import type {
-    ReactionHandlerResult,
     TransactionReactionHandler,
     TransactionReactionWorkerOptions,
 } from "@drillcoder/voryn";
 import { TransactionReactionWorker } from "@drillcoder/voryn";
 
 (async () => {
-    const handler: TransactionReactionHandler = async (transaction): Promise<ReactionHandlerResult> => {
+    const handler: TransactionReactionHandler = async (transaction, db, workerName): Promise<void> => {
         console.info("transaction_received", {
             chainId: transaction.chainId,
             blockNumber: transaction.blockNumber,
@@ -14,7 +13,11 @@ import { TransactionReactionWorker } from "@drillcoder/voryn";
             transactionIndex: transaction.index,
         });
 
-        return transaction.index === 10 ? "processed" : "skipped";
+        await db.query(
+            "INSERT INTO reaction_totals (worker_name, total) VALUES ($1, 1) "
+            + "ON CONFLICT (worker_name) DO UPDATE SET total = reaction_totals.total + 1",
+            [workerName]
+        );
     };
     const options: TransactionReactionWorkerOptions = {
         dbUrl: "postgres://user:pass@localhost:5432/voryn",
@@ -23,8 +26,8 @@ import { TransactionReactionWorker } from "@drillcoder/voryn";
         delayBetweenTicksMs: 500,
         workerName: "transaction-reaction-worker",
         batchSize: 500,
-        skipFlushInterval: 100,
         confirmations: 12,
+        filter: (transaction) => transaction.index === 10,
         handler,
     };
 

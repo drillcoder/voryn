@@ -30,24 +30,26 @@ const eventReactionOptions: EventReactionWorkerOptions = {
     workerName: "events",
     delayBetweenTicksMs: 1_000,
     batchSize: 100,
-    skipFlushInterval: 10,
+
     confirmations: 12,
     initialBlock: 10,
     dbUrl: "postgres://user:pass@localhost:5432/voryn",
     logLevel: "info",
-    handler: async () => "processed",
+    filter: () => true,
+    handler: async () => undefined,
 };
 const transactionReactionOptions: TransactionReactionWorkerOptions = {
     chainId: 1,
     workerName: "transactions",
     delayBetweenTicksMs: 1_000,
     batchSize: 100,
-    skipFlushInterval: 10,
+
     confirmations: 24,
     initialBlock: 10,
     dbUrl: "postgres://user:pass@localhost:5432/voryn",
     logLevel: "info",
-    handler: async () => "processed",
+    filter: () => true,
+    handler: async () => undefined,
 };
 
 const createEventReaction = (
