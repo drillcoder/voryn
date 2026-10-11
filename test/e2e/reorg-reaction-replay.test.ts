@@ -111,6 +111,7 @@ describe("e2e reaction replay after reorg", () => {
                 },
                 overrides: {
                     chainCursorRepository,
+                    blocksRepository,
                     transactionsRepository,
                     workerCursorsRepository,
                     transactionManager,

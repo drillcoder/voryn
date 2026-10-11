@@ -95,6 +95,7 @@ describe("e2e pipeline", () => {
             handler: eventHandler,
             overrides: {
                 chainCursorRepository,
+                blocksRepository,
                 eventsRepository,
                 workerCursorsRepository,
                 transactionManager,
@@ -113,6 +114,7 @@ describe("e2e pipeline", () => {
             handler: transactionHandler,
             overrides: {
                 chainCursorRepository,
+                blocksRepository,
                 transactionsRepository,
                 workerCursorsRepository,
                 transactionManager,

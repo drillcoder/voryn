@@ -151,6 +151,18 @@ Important operational points:
 - Retention does not wait for reaction cursors. Reaction lag includes intentional confirmation waiting and must stay below `retentionDepthBlocks`.
 - Reorgs can cause the same transaction or event to be delivered again if it is committed again after rollback.
 
+Before reading each batch, reactions check the first stored block. If the cursor is before that block and the block
+is already committed, the worker saves `(firstAvailableBlock, -1, -1)`, then logs `reaction_history_gap` at `warn` level.
+The first available item remains eligible for processing. This also works with an empty stream or while waiting for
+confirmations; a handler failure or restart does not repeat a gap already recorded in the cursor.
+
+The warning includes `chainId`, `workerName`, `streamType`, `previousPosition`, `fromBlock`, `toBlock`, and
+`firstAvailableBlock`. It reports unavailable block history, not a confirmed loss of specific events or transactions.
+The previous position includes indexes because part of its block may have been processed already. Blocks still being
+fetched above the committed position do not establish a gap; an empty `blocks` table does not establish a boundary.
+Accounting for a gap updates the cursor's `updatedAt` and its progress freshness metric without processing an item.
+A process crash between the cursor commit and logging can prevent the warning from being written.
+
 ## Retention
 
 `retentionDepthBlocks` is the number of committed blocks to keep behind the current committed position.

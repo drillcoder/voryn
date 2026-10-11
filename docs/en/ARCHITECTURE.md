@@ -121,8 +121,9 @@ The block processing pipeline consists of `HeadWorker`, `FetchService`, `Sequenc
 ### `RetentionService`
 
 `RetentionService` removes data outside the working retention depth relative to committed progress. It does not wait
-for reaction workers.
+for reactions to catch up.
 
+- Locks the chain cursor during cleanup to coordinate with Head, reorg, and reaction history-gap updates.
 - Computes the purge boundary in a transaction as `last_committed_block - retentionDepthBlocks`.
 - Deletes data beyond the retention boundary from:
   - `block_jobs`
@@ -144,6 +145,9 @@ The reaction pipeline runs user logic over data within the committed position. E
 - The transaction cursor stores `last_block_number`, `last_transaction_index`, and the `-1` sentinel in `last_log_index`.
 - On the first run for a new `workerName`, locks `chain_cursor` and initializes the cursor with the current committed
   position and `reorg_version`.
+- Uses `blocksRepository.getOldestBlockNumber` once per tick to detect a cursor before available committed history.
+- Rechecks a candidate gap under the chain cursor lock and saves `(firstAvailableBlock, -1, -1)` before the handler.
+  After commit, logs `reaction_history_gap`; empty streams and confirmation waiting also account for gaps.
 - Calls the user-provided reaction handler and advances the cursor according to `"processed"` / `"skipped"` results.
 - Advances only when the cursor version still matches. A version conflict stops the current batch; the next tick reads
   the rewound state.

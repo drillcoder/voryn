@@ -35,7 +35,7 @@ export class RetentionService {
         const depthBlocks = this.config.retentionDepthBlocks;
 
         const result = await this.transactionManager.run(async (transaction): Promise<RetentionPurgeResult> => {
-            const cursor = await this.cursorRepository.get(chainId, transaction);
+            const cursor = await this.cursorRepository.getForUpdate(chainId, transaction);
             if (cursor === null) {
                 this.logger.debug("retention_purge_skipped_cursor_missing", {
                     chainId,

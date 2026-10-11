@@ -9,6 +9,7 @@ import {
 
 import type { EventReactionHandler } from "../../src/interfaces/reaction.js";
 import { PostgresTransactionManager } from "../../src/postgres/transaction-manager.js";
+import { PostgresBlocksRepository } from "../../src/repositories/postgres/blocks-repository.js";
 import { PostgresChainCursorRepository } from "../../src/repositories/postgres/chain-cursor-repository.js";
 import { PostgresEventsRepository } from "../../src/repositories/postgres/events-repository.js";
 import { PostgresWorkerCursorsRepository } from "../../src/repositories/postgres/worker-cursors-repository.js";
@@ -83,6 +84,7 @@ describe("e2e reaction handler failure", () => {
             handler,
             overrides: {
                 chainCursorRepository,
+                blocksRepository: new PostgresBlocksRepository(db.pool),
                 eventsRepository,
                 workerCursorsRepository,
                 transactionManager,

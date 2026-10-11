@@ -82,6 +82,7 @@ describe("e2e startup from empty state", () => {
             handler: eventHandler,
             overrides: {
                 chainCursorRepository,
+                blocksRepository,
                 eventsRepository,
                 workerCursorsRepository,
                 transactionManager,
@@ -99,6 +100,7 @@ describe("e2e startup from empty state", () => {
             handler: transactionHandler,
             overrides: {
                 chainCursorRepository,
+                blocksRepository,
                 transactionsRepository,
                 workerCursorsRepository,
                 transactionManager,

@@ -26,7 +26,7 @@ test("retention worker create wires service execution", async () => {
         logLevel: "error",
         ...config,
         overrides: {
-            chainCursorRepository: { ...createNoopChainCursorRepository(), get: getCursor },
+            chainCursorRepository: { ...createNoopChainCursorRepository(), getForUpdate: getCursor },
             blockJobsRepository: createNoopBlockJobsRepository(),
             blocksRepository: createNoopBlocksRepository(),
             transactionsRepository: createNoopTransactionsRepository(),

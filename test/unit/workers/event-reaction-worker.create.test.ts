@@ -5,6 +5,7 @@ import type { ReactionServiceConfig } from "../../../src/services/reaction-servi
 import { EventReactionWorker } from "../../../src/workers/event-reaction-worker.js";
 import {
     ADDRESS,
+    createNoopBlocksRepository,
     createNoopChainCursorRepository,
     createNoopEventsRepository,
     createNoopWorkerCursorsRepository,
@@ -38,6 +39,7 @@ test("event reaction worker create wires service execution", async () => {
         ...config,
         handler,
         overrides: {
+            blocksRepository: createNoopBlocksRepository(),
             chainCursorRepository: {
                 ...createNoopChainCursorRepository(),
                 get: async () => ({

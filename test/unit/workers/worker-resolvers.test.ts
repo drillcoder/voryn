@@ -3,6 +3,7 @@ import { beforeEach, expect, test, vi } from "vitest";
 import { EthersBlockSource } from "../../../src/adapters/ethers-block-source.js";
 import type { LeaderLock } from "../../../src/interfaces/leader-lock.js";
 import { ConsoleLogger } from "../../../src/loggers/console-logger.js";
+import { PostgresBlocksRepository } from "../../../src/repositories/postgres/blocks-repository.js";
 import { PostgresLeaderLock } from "../../../src/postgres/leader-lock.js";
 import { validatePostgresSchema } from "../../../src/postgres/schema.js";
 import type { FetchService } from "../../../src/services/fetch-service.js";
@@ -19,6 +20,7 @@ import {
     createNoopChainCursorRepository,
     createNoopEventsRepository,
     createNoopTransactionsRepository,
+    HASH_A,
     invokeTick,
     leaderLock,
     transactionManager,
@@ -348,3 +350,46 @@ test("transaction reaction worker creates leader lock from worker identity", asy
     expect(Reflect.get(worker, "cleanupFn")).toBeDefined();
     await worker.stop();
 });
+
+test.each(["event", "transaction"] as const)(
+    "%s reaction uses the default blocks repository and permits an override", async (streamType) => {
+        const oldestSpy = vi.spyOn(PostgresBlocksRepository.prototype, "getOldestBlockNumber").mockResolvedValue(null);
+        const chainCursorRepository = {
+            ...createNoopChainCursorRepository(),
+            get: async () => ({ chainId: 1, lastEnqueuedBlock: 10, lastCommittedBlock: 10,
+                lastCommittedHash: HASH_A, reorgVersion: 0, updatedAt: new Date() }),
+        };
+        const cursors = {
+            ...workerCursorsRepository,
+            get: async () => ({ workerName: reactionConfig.workerName, chainId: 1, streamType,
+                position: { lastBlockNumber: 10, lastTransactionIndex: -1, lastLogIndex: -1 },
+                reorgVersion: 0, updatedAt: new Date() }),
+        };
+        const oldestOverride = vi.fn(async () => null);
+        try {
+            for (const useOverride of [false, true]) {
+                const common = {
+                    logLevel: "error" as const, ...reactionConfig,
+                    dbUrl: "postgresql://voryn:voryn@127.0.0.1:5432/voryn",
+                };
+                const overrides = {
+                    chainCursorRepository, workerCursorsRepository: cursors,
+                    ...(useOverride ? { blocksRepository: {
+                        ...createNoopBlocksRepository(), getOldestBlockNumber: oldestOverride,
+                    } } : {}),
+                };
+                const worker = streamType === "event"
+                    ? await EventReactionWorker.create({ ...common, handler: eventHandler,
+                        overrides: { ...overrides, eventsRepository: createNoopEventsRepository() } })
+                    : await TransactionReactionWorker.create({ ...common, handler: transactionHandler,
+                        overrides: { ...overrides, transactionsRepository: createNoopTransactionsRepository() } });
+                await invokeTick(worker);
+                await worker.stop();
+            }
+            expect(oldestSpy).toHaveBeenCalledExactlyOnceWith(1);
+            expect(oldestOverride).toHaveBeenCalledExactlyOnceWith(1);
+        } finally {
+            oldestSpy.mockRestore();
+        }
+    }
+);

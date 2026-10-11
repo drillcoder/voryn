@@ -8,6 +8,7 @@ import type {
     TransactionReactionHandler,
 } from "../interfaces/reaction.js";
 import type {
+    BlocksRepository,
     ChainCursorRepository,
     EventsRepository,
     TransactionsRepository,
@@ -31,6 +32,7 @@ interface ReactionServiceBaseOptions<TStreamType extends StreamType> {
     config: ReactionServiceConfig;
     streamType: TStreamType;
     chainCursorRepository: ChainCursorRepository;
+    blocksRepository: BlocksRepository;
     workerCursorsRepository: WorkerCursorsRepository;
     transactionManager: TransactionManager;
     logger?: Logger;
@@ -48,6 +50,11 @@ interface TransactionReactionServiceOptions extends ReactionServiceBaseOptions<"
     transactionsRepository: TransactionsRepository;
 }
 
+interface ReactionState {
+    chainCursor: ChainCursor;
+    workerCursor: WorkerCursor;
+}
+
 export class ReactionService {
     private readonly logger: Logger;
 
@@ -62,17 +69,23 @@ export class ReactionService {
         const options = this.options;
         const { config, chainCursorRepository } = options;
         const { workerName, chainId, batchSize, confirmations } = config;
-        const { chainCursor, workerCursor: cursor } = await this.getOrCreateState(chainCursorRepository);
+        const initialState = await this.getOrCreateState(chainCursorRepository);
 
-        if (cursor.reorgVersion !== chainCursor.reorgVersion) {
+        if (initialState.workerCursor.reorgVersion !== initialState.chainCursor.reorgVersion) {
             this.logger.debug(`${options.streamType}_reaction_tick_stale_state`, {
                 chainId,
                 workerName,
-                chainReorgVersion: chainCursor.reorgVersion,
-                workerReorgVersion: cursor.reorgVersion,
+                chainReorgVersion: initialState.chainCursor.reorgVersion,
+                workerReorgVersion: initialState.workerCursor.reorgVersion,
             });
             return;
         }
+
+        const state = await this.accountForHistoryGap(initialState);
+        if (state === null) {
+            return;
+        }
+        const { chainCursor, workerCursor: cursor } = state;
 
         const maxBlockNumber = Math.min(
             chainCursor.lastCommittedBlock,
@@ -237,9 +250,7 @@ export class ReactionService {
         }
     }
 
-    private async getOrCreateState(
-        chainCursorRepository: ChainCursorRepository
-    ): Promise<{ chainCursor: ChainCursor; workerCursor: WorkerCursor }> {
+    private async getOrCreateState(chainCursorRepository: ChainCursorRepository): Promise<ReactionState> {
         const { config, streamType, workerCursorsRepository, transactionManager } = this.options;
         const { workerName, chainId } = config;
         const chainCursor = await chainCursorRepository.get(chainId);
@@ -301,5 +312,76 @@ export class ReactionService {
 
             return { chainCursor: lockedChainCursor, workerCursor };
         });
+    }
+
+    private async accountForHistoryGap(initialState: ReactionState): Promise<ReactionState | null> {
+        const {
+            config, streamType, blocksRepository, chainCursorRepository, workerCursorsRepository, transactionManager,
+        } = this.options;
+        const { chainId, workerName } = config;
+        const oldestBlock = await blocksRepository.getOldestBlockNumber(chainId);
+        if (!this.isHistoryGap(oldestBlock, initialState)) {
+            return initialState;
+        }
+
+        const result = await transactionManager.run(async (transaction) => {
+            const chainCursor = await chainCursorRepository.getForUpdate(chainId, transaction);
+            const workerCursor = await workerCursorsRepository.get(workerName, chainId, streamType, transaction);
+            if (
+                chainCursor === null
+                || workerCursor === null
+                || chainCursor.reorgVersion !== initialState.chainCursor.reorgVersion
+                || workerCursor.reorgVersion !== chainCursor.reorgVersion
+            ) {
+                return null;
+            }
+            const state = { chainCursor, workerCursor };
+            const firstAvailableBlock = await blocksRepository.getOldestBlockNumber(chainId, transaction);
+            if (!this.isHistoryGap(firstAvailableBlock, state)) {
+                return { state, previousPosition: null };
+            }
+
+            const position: WorkerCursorPosition = {
+                lastBlockNumber: firstAvailableBlock,
+                lastTransactionIndex: -1,
+                lastLogIndex: -1,
+            };
+            const advanced = await workerCursorsRepository.advanceIfVersion(
+                workerName, chainId, streamType, position, chainCursor.reorgVersion, transaction
+            );
+            if (!advanced) {
+                return null;
+            }
+            return {
+                state: { chainCursor, workerCursor: { ...workerCursor, position, updatedAt: new Date() } },
+                previousPosition: workerCursor.position,
+            };
+        });
+
+        if (result === null) {
+            return null;
+        }
+        if (result.previousPosition !== null) {
+            const firstAvailableBlock = result.state.workerCursor.position.lastBlockNumber;
+            this.logger.warn("reaction_history_gap", {
+                chainId,
+                workerName,
+                streamType,
+                previousPosition: result.previousPosition,
+                fromBlock: Math.max(0, result.previousPosition.lastBlockNumber),
+                toBlock: firstAvailableBlock - 1,
+                firstAvailableBlock,
+            });
+        }
+        return result.state;
+    }
+
+    private isHistoryGap(
+        firstAvailableBlock: BlockNumber | null,
+        state: ReactionState,
+    ): firstAvailableBlock is BlockNumber {
+        return firstAvailableBlock !== null
+            && firstAvailableBlock <= state.chainCursor.lastCommittedBlock
+            && state.workerCursor.position.lastBlockNumber < firstAvailableBlock;
     }
 }

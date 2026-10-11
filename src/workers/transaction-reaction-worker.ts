@@ -3,6 +3,7 @@ import type { Logger } from "../interfaces/logger.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
 import type { TransactionReactionHandler } from "../interfaces/reaction.js";
 import type {
+    BlocksRepository,
     ChainCursorRepository,
     TransactionsRepository,
     WorkerCursorsRepository,
@@ -11,6 +12,7 @@ import type { RuntimeDbOptions, RuntimeLoggerOptions } from "../runtime/options.
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
+import { PostgresBlocksRepository } from "../repositories/postgres/blocks-repository.js";
 import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cursor-repository.js";
 import { PostgresTransactionsRepository } from "../repositories/postgres/transactions-repository.js";
 import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker-cursors-repository.js";
@@ -22,6 +24,7 @@ import { buildReactionWorkerLockKey } from "./worker-lock-keys.js";
 
 export interface TransactionReactionWorkerDatabaseDependencies {
     chainCursorRepository: ChainCursorRepository;
+    blocksRepository: BlocksRepository;
     transactionsRepository: TransactionsRepository;
     workerCursorsRepository: WorkerCursorsRepository;
     transactionManager: TransactionManager;
@@ -51,6 +54,7 @@ export class TransactionReactionWorker extends ReactionPollingWorker {
             logger,
             (pool: Pool): TransactionReactionWorkerDatabaseDependencies => ({
                 chainCursorRepository: new PostgresChainCursorRepository(pool),
+                blocksRepository: new PostgresBlocksRepository(pool),
                 transactionsRepository: new PostgresTransactionsRepository(pool),
                 workerCursorsRepository: new PostgresWorkerCursorsRepository(pool),
                 transactionManager: new PostgresTransactionManager(pool),
@@ -65,6 +69,7 @@ export class TransactionReactionWorker extends ReactionPollingWorker {
             streamType: "transaction",
             handler: options.handler,
             chainCursorRepository: dependencies.chainCursorRepository,
+            blocksRepository: dependencies.blocksRepository,
             transactionsRepository: dependencies.transactionsRepository,
             workerCursorsRepository: dependencies.workerCursorsRepository,
             transactionManager: dependencies.transactionManager,

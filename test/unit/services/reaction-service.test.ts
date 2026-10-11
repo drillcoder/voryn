@@ -17,7 +17,7 @@ import type {
 import type { ReactionServiceConfig } from "../../../src/services/reaction-service.js";
 import { ReactionService } from "../../../src/services/reaction-service.js";
 import type { StreamType } from "../../../src/types/pipeline.js";
-import { transactionManager } from "../helpers/pipeline-test-helpers.js";
+import { createNoopBlocksRepository, transactionManager } from "../helpers/pipeline-test-helpers.js";
 import { asAddress, asHash32, asHexData } from "../../../src/utils/hex.js";
 
 const HASH_A = asHash32("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
@@ -159,6 +159,7 @@ test("reaction service reads committed events by cursor and advances processed p
 
                 return "processed";
         },
+        blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
@@ -203,6 +204,7 @@ test.each(["event", "transaction"] as const)("reaction service deletes its %s cu
     });
     const common = {
         config,
+        blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(),
         transactionManager,
         workerCursorsRepository,
@@ -231,6 +233,7 @@ test("reaction service batches skipped transaction cursor advances", async () =>
         config: { ...config, skipFlushInterval: 2 },
         streamType: "transaction",
         handler: async () => "skipped",
+        blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
@@ -268,6 +271,7 @@ test("reaction service advances processed transaction immediately after skipped"
         handler: async (transaction) => transaction.index === 0
             ? "skipped"
             : "processed",
+        blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
@@ -301,6 +305,7 @@ test("reaction service logs batches with processed items at info level", async (
         config,
         streamType: "event",
         handler: async (event) => event.index === 0 ? "skipped" : "processed",
+        blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
@@ -333,6 +338,7 @@ test("reaction service logs batches with only skipped items at debug level", asy
         config,
         streamType: "event",
         handler: async () => "skipped",
+        blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
@@ -368,6 +374,7 @@ test("reaction service flushes skipped transaction position before handler failu
 
                 return "skipped";
         },
+        blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
@@ -402,6 +409,7 @@ test("reaction service creates event cursor at current committed block when miss
         config,
         streamType: "event",
         handler: async () => "processed" ,
+        blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(22),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(null, "event", {
@@ -433,6 +441,7 @@ test("reaction service creates transaction cursor at current committed block whe
         config,
         streamType: "transaction",
         handler: async () => "processed" ,
+        blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(33),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(null, "transaction", {
@@ -465,6 +474,7 @@ test.each(["event", "transaction"] as const)(
         const transactionList = vi.fn(async () => []);
         const shared = {
             config: { ...config, initialBlock: 20 },
+            blocksRepository: createNoopBlocksRepository(),
             chainCursorRepository: createChainCursorRepository(22),
             transactionManager,
             workerCursorsRepository: createWorkerCursorsRepository(null, streamType, {
@@ -505,6 +515,7 @@ test("reaction service ignores initialBlock when a cursor already exists", async
         config: { ...config, initialBlock: 10 },
         streamType: "event",
         handler: async () => "processed",
+        blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(22),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
@@ -527,6 +538,7 @@ test.each([-1, 1.5, Number.NaN])(
             config: { ...config, initialBlock },
             streamType: "event",
             handler: async () => "processed",
+            blocksRepository: createNoopBlocksRepository(),
             chainCursorRepository: createChainCursorRepository(),
             transactionManager,
             workerCursorsRepository: createWorkerCursorsRepository(null),
@@ -541,6 +553,7 @@ test("reaction service ignores invalid initialBlock when a cursor already exists
         config: { ...config, initialBlock: -1 },
         streamType: "event",
         handler: async () => "processed",
+        blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
@@ -557,6 +570,7 @@ test("reaction service throws when chain cursor is missing", async () => {
         config,
         streamType: "event",
         handler: async () => "processed" ,
+        blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(null),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
@@ -573,6 +587,7 @@ test("reaction service reports transaction stream when transaction chain cursor 
         config,
         streamType: "transaction",
         handler: async () => "processed" ,
+        blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(null),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
@@ -592,6 +607,7 @@ test.each([-1, 1.5, Number.NaN, Number.MAX_SAFE_INTEGER + 1])(
             config: { ...config, confirmations },
             streamType: "event",
             handler: async () => "processed",
+            blocksRepository: createNoopBlocksRepository(),
             chainCursorRepository: createChainCursorRepository(),
             transactionManager,
             workerCursorsRepository: createWorkerCursorsRepository(
@@ -608,6 +624,7 @@ test("reaction service limits reads by confirmations from the enqueued head", as
         config: { ...config, confirmations: 12 },
         streamType: "event",
         handler: async () => "processed",
+        blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(100, 110),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
@@ -632,6 +649,7 @@ test("reaction service also limits reads by sequencer progress", async () => {
         config: { ...config, confirmations: 12 },
         streamType: "transaction",
         handler: async () => "processed",
+        blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(95, 110),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
@@ -665,6 +683,7 @@ test.each([
         config: { ...config, confirmations },
         streamType: "event",
         handler: async () => "processed",
+        blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(committed, enqueued),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
@@ -684,6 +703,7 @@ test("reaction service ignores state snapshots from different reorg versions", a
         config,
         streamType: "event",
         handler: async () => "processed",
+        blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(101, 101, 2),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
@@ -707,6 +727,7 @@ test("reaction service stops a processed batch after a reorg version conflict", 
             handled.push(event.blockNumber);
             return "processed";
         },
+        blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
@@ -735,6 +756,7 @@ test("reaction service stops when flushing skipped items after a reorg version c
             handled.push(transaction.index);
             return "skipped";
         },
+        blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
@@ -763,6 +785,7 @@ test("reaction service stops when the final skipped flush has a reorg version co
         config,
         streamType: "transaction",
         handler: async () => "skipped",
+        blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(
@@ -788,6 +811,7 @@ test("reaction service fails if the chain cursor disappears while creating a wor
         streamType: "event",
         handler: async () => "processed",
         chainCursorRepository,
+        blocksRepository: createNoopBlocksRepository(),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(null),
         eventsRepository: createEventsRepository(),
@@ -816,6 +840,7 @@ test("reaction service uses a worker cursor concurrently created under the chain
         config,
         streamType: "event",
         handler: async () => "processed",
+        blocksRepository: createNoopBlocksRepository(),
         chainCursorRepository: createChainCursorRepository(),
         transactionManager,
         workerCursorsRepository: createWorkerCursorsRepository(null, "event", { get, insert }),

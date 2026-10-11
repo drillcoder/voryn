@@ -9,6 +9,7 @@ import {
 
 import type { EventReactionHandler, TransactionReactionHandler } from "../../../src/interfaces/reaction.js";
 import { PostgresTransactionManager } from "../../../src/postgres/transaction-manager.js";
+import { PostgresBlocksRepository } from "../../../src/repositories/postgres/blocks-repository.js";
 import { PostgresChainCursorRepository } from "../../../src/repositories/postgres/chain-cursor-repository.js";
 import { PostgresEventsRepository } from "../../../src/repositories/postgres/events-repository.js";
 import { PostgresTransactionsRepository } from "../../../src/repositories/postgres/transactions-repository.js";
@@ -97,6 +98,7 @@ describe("integration services: reaction", () => {
             },
             streamType: "event",
             handler: eventHandler,
+            blocksRepository: new PostgresBlocksRepository(db.pool),
             chainCursorRepository,
             eventsRepository,
             workerCursorsRepository,
@@ -113,6 +115,7 @@ describe("integration services: reaction", () => {
             },
             streamType: "transaction",
             handler: transactionHandler,
+            blocksRepository: new PostgresBlocksRepository(db.pool),
             chainCursorRepository,
             transactionsRepository,
             workerCursorsRepository,
@@ -183,6 +186,7 @@ describe("integration services: reaction", () => {
                 handledHashes.push(transaction.hash);
                 return "processed";
             },
+            blocksRepository: new PostgresBlocksRepository(db.pool),
             chainCursorRepository,
             transactionsRepository,
             workerCursorsRepository,

@@ -1,7 +1,9 @@
 import { EventReactionWorker, HeadWorker, TransactionReactionWorker } from "@drillcoder/voryn";
 import type {
+    EventReactionWorkerDatabaseDependencies,
     EventReactionWorkerOptions,
     HeadWorkerOptions,
+    TransactionReactionWorkerDatabaseDependencies,
     TransactionReactionWorkerOptions,
 } from "@drillcoder/voryn";
 
@@ -54,3 +56,20 @@ const createEventReaction = (
 const createTransactionReaction = (
     createOptions: TransactionReactionWorkerOptions,
 ): Promise<TransactionReactionWorker> => TransactionReactionWorker.create(createOptions);
+
+const withEventOverrides = (
+    overrides: EventReactionWorkerDatabaseDependencies,
+): EventReactionWorkerOptions => ({
+    ...eventReactionOptions, dbUrl: undefined, overrides,
+});
+const withTransactionOverrides = (
+    overrides: TransactionReactionWorkerDatabaseDependencies,
+): TransactionReactionWorkerOptions => ({
+    ...transactionReactionOptions, dbUrl: undefined, overrides,
+});
+const eventBlocksRepository = (
+    dependencies: EventReactionWorkerDatabaseDependencies,
+) => dependencies.blocksRepository;
+const transactionBlocksRepository = (
+    dependencies: TransactionReactionWorkerDatabaseDependencies,
+) => dependencies.blocksRepository;

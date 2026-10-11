@@ -46,7 +46,8 @@ const createPassThroughManager = (): TransactionManager => {
 };
 
 const createCursorRepository = (lastCommittedBlock = 90): ChainCursorRepository => ({
-    get: async () => ({
+    get: async () => null,
+    getForUpdate: async () => ({
         chainId: 1,
         lastEnqueuedBlock: 100,
         lastCommittedBlock,
@@ -54,7 +55,6 @@ const createCursorRepository = (lastCommittedBlock = 90): ChainCursorRepository 
         reorgVersion: 0,
         updatedAt: new Date(),
     }),
-    getForUpdate: async () => null,
     insert: async () => undefined,
     setLastEnqueued: async () => undefined,
     setPositions: async () => undefined,
@@ -134,9 +134,12 @@ test("retention service purges committed data and logs result", async () => {
     const deleteBlocks = vi.fn(async () => 3);
     const deleteTransactions = vi.fn(async () => 2);
     const deleteEvents = vi.fn(async () => 1);
+    const cursorRepository = createCursorRepository();
+    const getForUpdate = vi.spyOn(cursorRepository, "getForUpdate");
+    const get = vi.spyOn(cursorRepository, "get");
     const worker = new RetentionService(
         config,
-        createCursorRepository(),
+        cursorRepository,
         createBlockJobsRepository(4, deleteBlockJobs),
         createBlocksRepository(3, 48, deleteBlocks),
         createTransactionsRepository(2, deleteTransactions),
@@ -147,6 +150,8 @@ test("retention service purges committed data and logs result", async () => {
 
     await worker.execute();
 
+    expect(getForUpdate).toHaveBeenCalledExactlyOnceWith(1, expect.any(Object));
+    expect(get).not.toHaveBeenCalled();
     expect(deleteBlockJobs).toHaveBeenCalledWith(1, 48, 48, expect.any(Object));
     expect(deleteBlocks).toHaveBeenCalledWith(1, 48, 48, expect.any(Object));
     expect(deleteTransactions).toHaveBeenCalledWith(1, 48, 48, expect.any(Object));

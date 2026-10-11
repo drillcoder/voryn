@@ -5,6 +5,7 @@ import type { WorkerCursorsRepository } from "../../../src/interfaces/repositori
 import { EventReactionWorker } from "../../../src/workers/event-reaction-worker.js";
 import { TransactionReactionWorker } from "../../../src/workers/transaction-reaction-worker.js";
 import {
+    createNoopBlocksRepository,
     createNoopChainCursorRepository,
     createNoopEventsRepository,
     createNoopTransactionsRepository,
@@ -71,6 +72,7 @@ const createWorker = async (
             handler: async () => { await onHandle(); return "processed"; },
             overrides: {
                 chainCursorRepository,
+            blocksRepository: createNoopBlocksRepository(),
                 eventsRepository: {
                     ...createNoopEventsRepository(),
                     listAfterPosition: async () => [createPipelineEvent({ chainId: 7 })],
@@ -87,6 +89,7 @@ const createWorker = async (
         handler: async () => { await onHandle(); return "processed"; },
         overrides: {
             chainCursorRepository,
+            blocksRepository: createNoopBlocksRepository(),
             transactionsRepository: {
                 ...createNoopTransactionsRepository(),
                 listAfterPosition: async () => [createPipelineTransaction({ chainId: 7 })],

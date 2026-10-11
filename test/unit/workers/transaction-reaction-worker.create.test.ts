@@ -5,6 +5,7 @@ import type { ReactionServiceConfig } from "../../../src/services/reaction-servi
 import { TransactionReactionWorker } from "../../../src/workers/transaction-reaction-worker.js";
 import {
     ADDRESS,
+    createNoopBlocksRepository,
     createNoopChainCursorRepository,
     createNoopTransactionsRepository,
     createNoopWorkerCursorsRepository,
@@ -38,6 +39,7 @@ test("transaction reaction worker create wires service execution", async () => {
         ...config,
         handler,
         overrides: {
+            blocksRepository: createNoopBlocksRepository(),
             chainCursorRepository: {
                 ...createNoopChainCursorRepository(),
                 get: async () => ({

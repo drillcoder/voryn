@@ -237,6 +237,7 @@ async function createWorkerSet(
         handler: eventHandler,
         overrides: {
             chainCursorRepository,
+            blocksRepository,
             eventsRepository,
             workerCursorsRepository,
             transactionManager,
@@ -254,6 +255,7 @@ async function createWorkerSet(
         handler: transactionHandler,
         overrides: {
             chainCursorRepository,
+            blocksRepository,
             transactionsRepository,
             workerCursorsRepository,
             transactionManager,

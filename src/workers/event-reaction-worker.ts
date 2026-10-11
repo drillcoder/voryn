@@ -2,11 +2,17 @@ import type { Pool } from "pg";
 import type { Logger } from "../interfaces/logger.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
 import type { EventReactionHandler } from "../interfaces/reaction.js";
-import type { ChainCursorRepository, EventsRepository, WorkerCursorsRepository } from "../interfaces/repositories.js";
+import type {
+    BlocksRepository,
+    ChainCursorRepository,
+    EventsRepository,
+    WorkerCursorsRepository,
+} from "../interfaces/repositories.js";
 import type { RuntimeDbOptions, RuntimeLoggerOptions } from "../runtime/options.js";
 import type { TransactionManager } from "../interfaces/transaction-manager.js";
 import { PostgresLeaderLock } from "../postgres/leader-lock.js";
 import { PostgresTransactionManager } from "../postgres/transaction-manager.js";
+import { PostgresBlocksRepository } from "../repositories/postgres/blocks-repository.js";
 import { PostgresChainCursorRepository } from "../repositories/postgres/chain-cursor-repository.js";
 import { PostgresEventsRepository } from "../repositories/postgres/events-repository.js";
 import { PostgresWorkerCursorsRepository } from "../repositories/postgres/worker-cursors-repository.js";
@@ -18,6 +24,7 @@ import { buildReactionWorkerLockKey } from "./worker-lock-keys.js";
 
 export interface EventReactionWorkerDatabaseDependencies {
     chainCursorRepository: ChainCursorRepository;
+    blocksRepository: BlocksRepository;
     eventsRepository: EventsRepository;
     workerCursorsRepository: WorkerCursorsRepository;
     transactionManager: TransactionManager;
@@ -47,6 +54,7 @@ export class EventReactionWorker extends ReactionPollingWorker {
             logger,
             (pool: Pool): EventReactionWorkerDatabaseDependencies => ({
                 chainCursorRepository: new PostgresChainCursorRepository(pool),
+                blocksRepository: new PostgresBlocksRepository(pool),
                 eventsRepository: new PostgresEventsRepository(pool),
                 workerCursorsRepository: new PostgresWorkerCursorsRepository(pool),
                 transactionManager: new PostgresTransactionManager(pool),
@@ -61,6 +69,7 @@ export class EventReactionWorker extends ReactionPollingWorker {
             streamType: "event",
             handler: options.handler,
             chainCursorRepository: dependencies.chainCursorRepository,
+            blocksRepository: dependencies.blocksRepository,
             eventsRepository: dependencies.eventsRepository,
             workerCursorsRepository: dependencies.workerCursorsRepository,
             transactionManager: dependencies.transactionManager,
