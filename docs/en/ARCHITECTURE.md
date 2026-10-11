@@ -24,7 +24,7 @@ and then advances the chain committed position in strict order. Reaction workers
 ## Code Layers
 
 - `src/types` — base types (`ChainId`, `HashHex`, statuses, and so on).
-- `src/interfaces` — contracts for domain entities, repositories, runtime configs, and infrastructure.
+- `src/interfaces` — contracts for domain entities, repositories, reactions, data sources, and infrastructure.
 - `src/services` — one-`tick` domain logic for block processing, reactions, retention, metrics, and recovery.
 - `src/repositories/postgres` — PostgreSQL repositories, grouped by table.
 - `src/postgres` — PostgreSQL infrastructure (`LeaderLock`, `TransactionManager`, parsers).
@@ -42,7 +42,7 @@ and then advances the chain committed position in strict order. Reaction workers
 
 `src/types/pipeline.ts` defines limited pipeline types: reaction stream type and block job status. These types act as the shared state dictionary across all layers.
 
-`src/interfaces/runtime.ts` contains worker configuration contracts. It groups parameters that control process behavior: `chainId`, polling intervals, batch sizes, retry settings, and retention/reaction worker parameters.
+Public worker options are defined in `src/workers/*-worker.ts`, alongside each worker. Service configuration contracts are defined in `src/services/*-service.ts`, alongside each service. These contracts describe polling intervals, batch sizes, retry settings, and retention/reaction parameters. `src/runtime/options.ts` provides shared database and logger options for the `create(...)` factories.
 
 ## Repositories
 
@@ -71,8 +71,12 @@ The block processing pipeline consists of `HeadWorker`, `FetchService`, `Sequenc
 `HeadWorker` tracks network height and enqueues blocks that should be fetched. It updates the queued boundary in `chain_cursor.last_enqueued_block`.
 
 - Reads `latest` from `BlockSource`.
-- On the first run, initializes `chain_cursor` with the current block.
 - Computes the lower available-depth boundary: `floorBlock = max(0, latest - depthBlocks + 1)`.
+- When no cursor exists, initializes `chain_cursor` and finishes the tick without enqueuing jobs:
+  - without `initialBlock`, sets both block positions to `latest` and the committed hash to that block's hash,
+  - with `initialBlock`, requires a safe integer in `[floorBlock, latest]`, sets both block positions to `initialBlock - 1`, and uses that block's `parentHash` as the committed hash; the next tick can enqueue starting with `initialBlock`,
+  - an invalid `initialBlock` fails the tick without writing a cursor or jobs.
+- An existing cursor takes precedence over `initialBlock`.
 - If `last_committed_block < floorBlock - 1`, performs a rebase:
   - reads `floorBlock` from RPC and uses its `parentHash`,
   - moves `chain_cursor` to `floorBlock - 1` in a transaction,

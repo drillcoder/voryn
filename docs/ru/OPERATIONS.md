@@ -209,7 +209,7 @@ const recovery = await BlockJobRecovery.create({
     chainId: 1,
 });
 
-await recovery.retryFailedRange(124, 130);
+await recovery.retryFailedBlockRange(124, 130);
 await recovery.close();
 ```
 
