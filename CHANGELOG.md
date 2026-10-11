@@ -1,3 +1,15 @@
+## [1.3.0](https://github.com/drillcoder/voryn/compare/v1.2.0...v1.3.0) (2026-10-11)
+
+### Features
+
+* **reactions:** add filtered transactional handlers ([e3080ef](https://github.com/drillcoder/voryn/commit/e3080efaecbce2084a12223741962888289278c0))
+* **reactions:** warn on history gaps and coordinate retention ([49dd47f](https://github.com/drillcoder/voryn/commit/49dd47f1e0d94043e14c30de703e9eb7a0488b55))
+
+### Bug Fixes
+
+* **fetch:** correct retry attempt counting ([bfd9093](https://github.com/drillcoder/voryn/commit/bfd9093dc6ba074dd565617b967349c663ab7721))
+* **workers:** clean up resources after factory failures ([26076e1](https://github.com/drillcoder/voryn/commit/26076e19bca8f3cf8c16466464a9ed9eba467571))
+
 ## [1.2.0](https://github.com/drillcoder/voryn/compare/v1.1.2...v1.2.0) (2026-09-30)
 
 ### Features
