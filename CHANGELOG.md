@@ -1,3 +1,10 @@
+## [1.4.0](https://github.com/drillcoder/voryn/compare/v1.3.0...v1.4.0) (2026-10-13)
+
+### Features
+
+* **reactions:** add optional batch preparation with typed context ([db248c7](https://github.com/drillcoder/voryn/commit/db248c7dc7e80bc80c84b6d8fb5cdbdf5fcf5509))
+* **reactions:** make filters optional ([8bf5fdb](https://github.com/drillcoder/voryn/commit/8bf5fdb5bd20146ec34e536515afdfe4266d5d72))
+
 ## [1.3.0](https://github.com/drillcoder/voryn/compare/v1.2.0...v1.3.0) (2026-10-11)
 
 ### Features
