@@ -72,7 +72,7 @@ describe("integration: transactional reactions", () => {
             config: { chainId: CHAIN_ID, workerName: "aggregate", delayBetweenTicksMs: 1,
                 batchSize: 3, confirmations: 0 },
             ...(prepare === undefined ? {} : { prepare }),
-            filter: () => true, handler, transactionManager, chainCursorRepository, workerCursorsRepository,
+            handler, transactionManager, chainCursorRepository, workerCursorsRepository,
             blocksRepository: new PostgresBlocksRepository(pool),
         };
         const createService = () => streamType === "event"

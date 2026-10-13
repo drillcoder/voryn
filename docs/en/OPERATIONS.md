@@ -97,9 +97,12 @@ query parameters, authorization data, or RPC payloads.
 - `batchSize`: maximum stream items read in one tick.
 - `confirmations`: required non-negative safe integer that controls how far this worker stays behind the latest head seen by `HeadWorker`.
 - `prepare`: optional async `(items) => Promise<TContext>` for batch data used by filter and handler.
-- `filter`: required synchronous `(item) => boolean`. Checks the item without writing to the database,
-  making external requests or changing external state. Use `() => true` to accept all items.
+- `filter`: optional synchronous `(item) => boolean`. Checks the item without writing to the database,
+  making external requests or changing external state. Omit it to accept all loaded items.
 - `handler`: async `(item, db, workerName) => Promise<void>` for an accepted item.
+
+You can use prepare and handler without a filter.
+Returning early from a handler still commits its cursor in a business transaction; use a filter for cheap skips.
 
 ## Scaling and Tuning
 
@@ -137,7 +140,7 @@ Set `initialBlock` to read from an earlier committed block when creating a new c
 `destroy()` waits for the current tick, deletes the cursor, and stops the worker.
 
 Each tick reads up to `batchSize` items after the saved cursor, bounded by committed data and confirmations.
-The required synchronous filter rejects irrelevant items without handlers or business transactions. One cursor
+The optional synchronous filter rejects irrelevant items without handlers or business transactions. One cursor
 UPDATE saves a fully rejected batch at the end. A skipped tail is also checkpointed before a filter/handler error.
 Accepted items commit awaited queries through the supplied `db` with cursor progress in one transaction per item.
 

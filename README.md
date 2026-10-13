@@ -244,9 +244,10 @@ The example uses an application-owned `reaction_totals` table. Create it before 
 CREATE TABLE reaction_totals (worker_name text PRIMARY KEY, total bigint NOT NULL);
 ```
 
-Both reaction workers require a synchronous `filter(item): boolean`. The filter checks the loaded item and
+Both reaction workers support an optional synchronous `filter(item): boolean`. The filter checks the loaded item and
 returns `true` or `false` without writing to the database, making external requests or changing external state.
-Use `filter: () => true` to accept everything. A nonboolean filter result, including a Promise, causes an error.
+Omit `filter` to accept every loaded item. A nonboolean filter result, including a Promise, causes an error.
+A handler that returns early still commits progress in its business transaction; use a filter for cheap skips.
 Rejected items never call the handler or open a business transaction. Their final position is saved
 once at the end of each batch, or before propagating a filter/handler error. A fully rejected batch needs one
 cursor UPDATE. Saved batches keep progress moving even during long periods without matches; after a failure,
@@ -286,9 +287,13 @@ Examples:
 
 ### Batch preparation
 
-Use optional `prepare(items)` when a filter or handler needs additional data for the batch.
-Return those data from prepare; Voryn passes the result as `context` to both callbacks.
-The context type is inferred from the return value and includes undefined, so check it before use.
+`prepare(items)` lets you prepare shared data once for the entire batch, such as loading rules
+from a database or external service. Voryn waits for preparation before processing items and passes
+its result to `filter` and `handler` as the batch context.
+
+Both `prepare` and `filter` are optional: the prepared data may be needed only by the handler.
+The result type is inferred automatically; callback arguments include `undefined`, so the example
+uses `?.` to check access to the address set.
 
 ```ts
 const worker = await EventReactionWorker.create({

@@ -71,11 +71,11 @@ const fixture = (streamType: StreamType, count = 3, batchSize = count) => {
             advanceIfVersion: advance,
         },
     };
-    const createService = () => streamType === "event"
-        ? new ReactionService({ ...common, streamType,
+    const createService = (withFilter = true) => streamType === "event"
+        ? new ReactionService({ ...common, filter: withFilter ? filter : undefined, streamType,
             eventsRepository: { ...createNoopEventsRepository(), listAfterPosition: async () =>
                 (await list()).filter((item): item is PipelineEvent => "topics" in item) } })
-        : new ReactionService({ ...common, streamType,
+        : new ReactionService({ ...common, filter: withFilter ? filter : undefined, streamType,
             transactionsRepository: { ...createNoopTransactionsRepository(), listAfterPosition: async () =>
                 (await list()).filter((item): item is PipelineTransaction => "hash" in item) } });
     return { createService, items, db, order, filter, handler, advance, run, list, getPosition: () => position };
@@ -83,6 +83,31 @@ const fixture = (streamType: StreamType, count = 3, batchSize = count) => {
 
 for (const streamType of ["event", "transaction"] as const) {
     describe(`${streamType} filtered transactional reactions`, () => {
+        test("accepts all items without a filter and resumes from committed progress", async () => {
+            const f = fixture(streamType);
+            const service = f.createService(false);
+            await service.execute();
+            expect(f.filter).not.toHaveBeenCalled();
+            expect(f.handler.mock.calls.map(([item]) => item.index)).toEqual([0, 1, 2]);
+            for (const item of f.items) {
+                expect(f.handler).toHaveBeenCalledWith(item, f.db, "filtered-reaction", undefined);
+            }
+            expect(f.run).toHaveBeenCalledTimes(3);
+            expect(f.advance.mock.calls.map((call) => call[5])).toEqual([f.db, f.db, f.db]);
+            expect(f.getPosition().lastTransactionIndex).toBe(2);
+            await service.execute();
+            expect(f.handler).toHaveBeenCalledTimes(3);
+            expect(f.run).toHaveBeenCalledTimes(3);
+        });
+
+        test("does not open transactions for an empty batch without a filter", async () => {
+            const f = fixture(streamType, 0);
+            await f.createService(false).execute();
+            expect(f.handler).not.toHaveBeenCalled();
+            expect(f.advance).not.toHaveBeenCalled();
+            expect(f.run).not.toHaveBeenCalled();
+        });
+
         test("filters in stream order before opening a transaction, using the same executor", async () => {
             const f = fixture(streamType);
             f.filter.mockImplementation((item) => {
@@ -140,7 +165,7 @@ for (const streamType of ["event", "transaction"] as const) {
             expect(f.handler).toHaveBeenCalledTimes(failure === "filter" ? 0 : 1);
         });
 
-        test.each([Promise.resolve(true), 1, null])(
+        test.each([Promise.resolve(true), 1, null, undefined])(
             "rejects nonboolean JavaScript filter results (%s)", async (value) => {
             const f = fixture(streamType);
             // @ts-expect-error Simulate an invalid JavaScript filter result.

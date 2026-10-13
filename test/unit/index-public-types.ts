@@ -203,10 +203,8 @@ declare const validEventOptions: EventReactionWorkerOptions;
 declare const validTransactionOptions: TransactionReactionWorkerOptions;
 const { filter: removedEventFilter, ...missingEventFilter } = validEventOptions;
 const { filter: removedTransactionFilter, ...missingTransactionFilter } = validTransactionOptions;
-// @ts-expect-error Event options require a filter.
-const invalidEventOptions: EventReactionWorkerOptions = missingEventFilter;
-// @ts-expect-error Transaction options require a filter.
-const invalidTransactionOptions: TransactionReactionWorkerOptions = missingTransactionFilter;
+const unfilteredEventOptions: EventReactionWorkerOptions = missingEventFilter;
+const unfilteredTransactionOptions: TransactionReactionWorkerOptions = missingTransactionFilter;
 // @ts-expect-error Skip thresholds are no longer public options.
 type EventSkipInterval = EventReactionWorkerOptions["skipFlushInterval"];
 // @ts-expect-error Skip thresholds are no longer public options.
@@ -320,3 +318,23 @@ const eventWorkerWithContextType: Promise<EventReactionWorker<Set<AddressHex>>> 
 const transactionWorkerWithContextType: Promise<TransactionReactionWorker<Set<AddressHex>>> = preparedTransactionWorker;
 void eventWorkerWithContextType;
 void transactionWorkerWithContextType;
+
+void EventReactionWorker.create(unfilteredEventOptions);
+void TransactionReactionWorker.create(unfilteredTransactionOptions);
+const unfilteredPreparedEvent: Promise<EventReactionWorker<Set<AddressHex>>> = EventReactionWorker.create({
+    ...missingEventFilter,
+    prepare: async (events) => new Set(events.map((item) => item.address)),
+    handler: async (item, db, workerName, addresses) => {
+        await db.query("SELECT $1, $2", [(addresses?.has(item.address) ?? false), workerName]);
+    },
+});
+const unfilteredPreparedTransaction: Promise<TransactionReactionWorker<Set<AddressHex>>> =
+    TransactionReactionWorker.create({
+        ...missingTransactionFilter,
+        prepare: async (transactions) => new Set(transactions.map((item) => item.from)),
+        handler: async (item, db, workerName, addresses) => {
+            await db.query("SELECT $1, $2", [(addresses?.has(item.from) ?? false), workerName]);
+        },
+    });
+void unfilteredPreparedEvent;
+void unfilteredPreparedTransaction;

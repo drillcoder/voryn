@@ -148,7 +148,8 @@ The reaction pipeline runs user logic over data within the committed position. E
 - Uses `blocksRepository.getOldestBlockNumber` once per tick to detect a cursor before available committed history.
 - Rechecks a candidate gap under the chain cursor lock and saves `(firstAvailableBlock, -1, -1)` before the handler.
   After commit, logs `reaction_history_gap`; empty streams and confirmation waiting also account for gaps.
-- Calls the required synchronous `filter(item): boolean` outside business transactions, in stream order.
+- When supplied, calls the synchronous `filter(item): boolean` outside business transactions, in stream order.
+  Without a filter, all selected items are accepted.
   The filter checks the loaded item and returns `true` or `false` without writing to the database,
   making external requests or changing external state.
 - Keeps one cursor: rejected items accumulate a position in memory and never call the handler. A fully rejected

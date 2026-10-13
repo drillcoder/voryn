@@ -18,7 +18,7 @@ import {
     transactionManager,
 } from "../helpers/pipeline-test-helpers.js";
 
-test("transaction reaction worker create wires service execution", async () => {
+test.each([true, false])("transaction worker wires execution (filter=%s)", async (withFilter) => {
     const handled: Array<[number, number]> = [];
     const filtered: number[] = [];
     let accept = true;
@@ -38,7 +38,9 @@ test("transaction reaction worker create wires service execution", async () => {
     const worker = await TransactionReactionWorker.create({
         logLevel: "error",
         ...config,
-        filter: (item) => { filtered.push(item.index); return accept; },
+        ...(withFilter ? { filter: (item: Parameters<TransactionReactionHandler>[0]) => {
+            filtered.push(item.index); return accept;
+        } } : {}),
         handler,
         overrides: {
             blocksRepository: createNoopBlocksRepository(),
@@ -89,8 +91,8 @@ test("transaction reaction worker create wires service execution", async () => {
 
     accept = false;
     await invokeTick(worker);
-    expect(filtered).toEqual([0, 0]);
-    expect(handled).toEqual([[1, 0]]);
+    expect(filtered).toEqual(withFilter ? [0, 0] : []);
+    expect(handled).toEqual(withFilter ? [[1, 0]] : [[1, 0], [1, 0]]);
     expect(invokeStartLogMeta(worker)).toEqual({
         chainId: 13,
         workerName: "transaction-reaction",

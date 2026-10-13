@@ -35,7 +35,6 @@ const eventReactionOptions: EventReactionWorkerOptions = {
     initialBlock: 10,
     dbUrl: "postgres://user:pass@localhost:5432/voryn",
     logLevel: "info",
-    filter: () => true,
     handler: async () => undefined,
 };
 const transactionReactionOptions: TransactionReactionWorkerOptions = {
@@ -48,7 +47,6 @@ const transactionReactionOptions: TransactionReactionWorkerOptions = {
     initialBlock: 10,
     dbUrl: "postgres://user:pass@localhost:5432/voryn",
     logLevel: "info",
-    filter: () => true,
     handler: async () => undefined,
 };
 
@@ -78,15 +76,15 @@ const transactionBlocksRepository = (
 
 const preparedEvent = () => EventReactionWorker.create({
     ...eventReactionOptions,
+    filter: undefined,
     prepare: async (events) => new Set(events.map((event) => event.address)),
-    filter: (event, addresses) => (addresses?.has(event.address) ?? false),
     handler: async (event, db, workerName, addresses) => {
         await db.query("SELECT $1, $2", [(addresses?.has(event.address) ?? false), workerName]);
     },
 });
 const preparedTransaction = () => TransactionReactionWorker.create({
     ...transactionReactionOptions,
+    filter: undefined,
     prepare: async (transactions) => new Set(transactions.map((transaction) => transaction.from)),
-    filter: (transaction, addresses) => (addresses?.has(transaction.from) ?? false),
     handler: async () => undefined,
 });

@@ -21,6 +21,6 @@ export type TransactionReactionHandler<TContext = undefined> = ReactionHandler<P
 
 export interface ReactionCallbacks<TItem, TContext = undefined> {
     prepare?: (items: readonly TItem[]) => Promise<TContext>;
-    filter: ReactionFilter<TItem, NoInfer<TContext>>;
+    filter?: ReactionFilter<TItem, NoInfer<TContext>>;
     handler: ReactionHandler<TItem, NoInfer<TContext>>;
 }

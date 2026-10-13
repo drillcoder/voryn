@@ -216,7 +216,7 @@ export class ReactionService<TContext = undefined> {
             const position = getPosition(item);
 
             try {
-                const accepted = callbacks.filter(item, context);
+                const accepted = callbacks.filter === undefined ? true : callbacks.filter(item, context);
                 if (typeof accepted !== "boolean") {
                     throw new Error("Reaction filter must return a boolean synchronously");
                 }
