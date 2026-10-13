@@ -1,7 +1,8 @@
 import type { Pool } from "pg";
 import type { Logger } from "../interfaces/logger.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
-import type { EventReactionFilter, EventReactionHandler } from "../interfaces/reaction.js";
+import type { PipelineEvent } from "../interfaces/pipeline.js";
+import type { ReactionCallbacks } from "../interfaces/reaction.js";
 import type {
     BlocksRepository,
     ChainCursorRepository,
@@ -31,14 +32,16 @@ export interface EventReactionWorkerDatabaseDependencies {
     leaderLock: LeaderLock;
 }
 
-export type EventReactionWorkerOptions =
+export type EventReactionWorkerOptions<TContext = undefined> =
     RuntimeLoggerOptions
     & ReactionServiceConfig
     & RuntimeDbOptions<EventReactionWorkerDatabaseDependencies>
-    & { filter: EventReactionFilter; handler: EventReactionHandler };
+    & ReactionCallbacks<PipelineEvent, TContext>;
 
-export class EventReactionWorker extends ReactionPollingWorker {
-    static async create(options: EventReactionWorkerOptions): Promise<EventReactionWorker> {
+export class EventReactionWorker<TContext = undefined> extends ReactionPollingWorker<TContext> {
+    static async create<TContext = undefined>(
+        options: EventReactionWorkerOptions<TContext>,
+    ): Promise<EventReactionWorker<TContext>> {
         const logger = resolveLogger(options);
         const serviceConfig: ReactionServiceConfig = {
             chainId: options.chainId,
@@ -64,11 +67,10 @@ export class EventReactionWorker extends ReactionPollingWorker {
             }),
         );
         try {
-            const service = new ReactionService({
+            const service = new ReactionService<TContext>({
+                ...options,
                 config: serviceConfig,
                 streamType: "event",
-                filter: options.filter,
-                handler: options.handler,
                 chainCursorRepository: dependencies.chainCursorRepository,
                 blocksRepository: dependencies.blocksRepository,
                 eventsRepository: dependencies.eventsRepository,
@@ -85,7 +87,7 @@ export class EventReactionWorker extends ReactionPollingWorker {
 
     private constructor(
         private readonly serviceConfig: ReactionServiceConfig,
-        service: ReactionService,
+        service: ReactionService<TContext>,
         leaderLock: LeaderLock,
         logger: Logger,
         dispose?: () => Promise<void>,

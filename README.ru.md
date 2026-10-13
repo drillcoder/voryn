@@ -288,6 +288,32 @@ retentionDepthBlocks > max reaction confirmations + максимальный о�
 - [EventReactionWorker](./examples/event-reaction-worker.ts)
 - [TransactionReactionWorker](./examples/transaction-reaction-worker.ts)
 
+### Подготовка пачки
+
+Используйте необязательный `prepare(items)`, если фильтру или handler нужны дополнительные данные для пачки.
+Верните их из prepare: Voryn передаст результат аргументом `context` в оба callback.
+Тип контекста выводится из результата подготовки и включает undefined, поэтому перед использованием нужна проверка.
+
+```ts
+const worker = await EventReactionWorker.create({
+    chainId: 1,
+    workerName: "prepared-events",
+    delayBetweenTicksMs: 1000,
+    batchSize: 100,
+    confirmations: 12,
+    dbUrl: "postgres://user:pass@localhost:5432/voryn",
+    logLevel: "info",
+    prepare: async (events) => new Set(events.map((event) => event.address)),
+    filter: (event, addresses) => (addresses?.has(event.address) ?? false),
+    handler: async (event, db, workerName, addresses) => {
+        await db.query("SELECT $1, $2", [(addresses?.has(event.address) ?? false), workerName]);
+    },
+});
+```
+
+В примере набор адресов строится локально; prepare может вместо этого загрузить правила или другие данные пачки
+из БД либо внешнего сервиса. Без prepare контекст равен undefined.
+
 ## Метрики и recovery
 
 `PipelineMetrics` дает снимок состояния пайплайна: текущий RPC head, отставание стадий, свежесть данных, статусы block jobs, failed-блоки и lag reaction-воркеров.

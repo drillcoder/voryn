@@ -1,3 +1,4 @@
+import { EventReactionWorker, TransactionReactionWorker } from "../../src/index.js";
 import type * as publicApi from "../../src/index.js";
 import type {
     AddressHex,
@@ -23,6 +24,8 @@ import type {
     DataHex,
     DbExecutor,
     DbQueryResult,
+    EventReactionPrepare,
+    TransactionReactionPrepare,
     EventReactionFilter,
     EventReactionHandler,
     EventReactionWorkerDatabaseDependencies,
@@ -219,3 +222,101 @@ const { handler: removedTransactionHandler, ...missingTransactionHandler } = val
 const invalidEventHandlerOptions: EventReactionWorkerOptions = missingEventHandler;
 // @ts-expect-error Transaction options require a handler.
 const invalidTransactionHandlerOptions: TransactionReactionWorkerOptions = missingTransactionHandler;
+
+const preparedEventWorker = EventReactionWorker.create({
+    ...validEventOptions,
+    prepare: async (events) => {
+        // @ts-expect-error Preparation receives a readonly batch.
+        const mutable: PipelineEvent[] = events;
+        return new Set(events.map((event) => event.address));
+    },
+    filter: (event, addresses) => (addresses?.has(event.address) ?? false),
+    handler: async (event, db, workerName, addresses) => {
+        const accepted: boolean = (addresses?.has(event.address) ?? false);
+        await db.query("SELECT $1, $2", [accepted, workerName]);
+    },
+});
+const preparedTransactionWorker = TransactionReactionWorker.create({
+    ...validTransactionOptions,
+    prepare: async (transactions) => new Set(transactions.map((transaction) => transaction.from)),
+    filter: (transaction, addresses) => (addresses?.has(transaction.from) ?? false),
+    handler: async (transaction, db, workerName, addresses) => {
+        await db.query("SELECT $1, $2", [(addresses?.has(transaction.from) ?? false), workerName]);
+    },
+});
+const { prepare: omittedPreparation, ...optionsWithoutPreparation } = validEventOptions;
+const missingPreparation: EventReactionWorkerOptions<Set<string>> = {
+    ...optionsWithoutPreparation,
+    filter: () => true,
+    handler: async () => undefined,
+};
+void EventReactionWorker.create({
+    ...validEventOptions,
+    prepare: async () => new Set<string>(),
+    // @ts-expect-error The filter context must match the preparation result.
+    filter: (_event, context: number) => context > 0,
+});
+void TransactionReactionWorker.create({
+    ...validTransactionOptions,
+    prepare: async () => new Set<string>(),
+    // @ts-expect-error Preparation does not allow asynchronous filters.
+    filter: async () => true,
+});
+void preparedEventWorker;
+void preparedTransactionWorker;
+
+const eventPreparation: EventReactionPrepare<Set<string>> = async (events) =>
+    new Set(events.map((event) => event.address));
+const transactionPreparation: TransactionReactionPrepare<Set<string>> = async (transactions) =>
+    new Set(transactions.map((transaction) => transaction.from));
+const typedPreparedOptions: EventReactionWorkerOptions<Set<string>> = {
+    ...validEventOptions,
+    prepare: eventPreparation,
+    filter: (event, addresses) => (addresses?.has(event.address) ?? false),
+    handler: async (event, db, workerName, addresses) => {
+        await db.query("SELECT $1, $2", [(addresses?.has(event.address) ?? false), workerName]);
+    },
+};
+void EventReactionWorker.create(typedPreparedOptions);
+void TransactionReactionWorker.create({
+    ...validTransactionOptions,
+    prepare: transactionPreparation,
+    filter: () => true,
+    // @ts-expect-error The handler context must match preparation.
+    handler: async (_item, _db, _name, context: number) => { Number.isInteger(context); },
+});
+// @ts-expect-error An event preparation cannot prepare transactions.
+void TransactionReactionWorker.create({ ...validTransactionOptions, prepare: eventPreparation });
+
+declare const event: PipelineEvent;
+declare const transaction: PipelineTransaction;
+declare const dbExecutor: DbExecutor;
+
+type EventFilterArguments = Parameters<EventReactionFilter>;
+type EventHandlerArguments = Parameters<EventReactionHandler>;
+type TransactionFilterArguments = Parameters<TransactionReactionFilter>;
+type TransactionHandlerArguments = Parameters<TransactionReactionHandler>;
+const eventFilterArguments: EventFilterArguments = [event, undefined];
+const eventHandlerArguments: EventHandlerArguments = [event, dbExecutor, "worker", undefined];
+const transactionFilterArguments: TransactionFilterArguments = [transaction, undefined];
+const transactionHandlerArguments: TransactionHandlerArguments = [transaction, dbExecutor, "worker", undefined];
+const extraFilterContext: EventFilterArguments = [event, undefined];
+const extraHandlerContext: TransactionHandlerArguments = [transaction, dbExecutor, "worker", undefined];
+
+type EventOptionsHavePrepare = "prepare" extends keyof EventReactionWorkerOptions ? true : false;
+type TransactionOptionsHavePrepare = "prepare" extends keyof TransactionReactionWorkerOptions ? true : false;
+const eventOptionsHavePrepare: EventOptionsHavePrepare = true;
+const transactionOptionsHavePrepare: TransactionOptionsHavePrepare = true;
+
+void EventReactionWorker.create(missingPreparation);
+void EventReactionWorker.create({
+    ...validEventOptions,
+    prepare: eventPreparation,
+    // @ts-expect-error Context can be undefined even when preparation is configured.
+    filter: (_event, context: Set<string>) => context.size > 0,
+});
+
+const eventWorkerWithContextType: Promise<EventReactionWorker<Set<AddressHex>>> = preparedEventWorker;
+const transactionWorkerWithContextType: Promise<TransactionReactionWorker<Set<AddressHex>>> = preparedTransactionWorker;
+void eventWorkerWithContextType;
+void transactionWorkerWithContextType;

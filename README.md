@@ -284,6 +284,32 @@ Examples:
 - [EventReactionWorker](./examples/event-reaction-worker.ts)
 - [TransactionReactionWorker](./examples/transaction-reaction-worker.ts)
 
+### Batch preparation
+
+Use optional `prepare(items)` when a filter or handler needs additional data for the batch.
+Return those data from prepare; Voryn passes the result as `context` to both callbacks.
+The context type is inferred from the return value and includes undefined, so check it before use.
+
+```ts
+const worker = await EventReactionWorker.create({
+    chainId: 1,
+    workerName: "prepared-events",
+    delayBetweenTicksMs: 1000,
+    batchSize: 100,
+    confirmations: 12,
+    dbUrl: "postgres://user:pass@localhost:5432/voryn",
+    logLevel: "info",
+    prepare: async (events) => new Set(events.map((event) => event.address)),
+    filter: (event, addresses) => (addresses?.has(event.address) ?? false),
+    handler: async (event, db, workerName, addresses) => {
+        await db.query("SELECT $1, $2", [(addresses?.has(event.address) ?? false), workerName]);
+    },
+});
+```
+
+The example builds an address set locally; your prepare can instead load rules or other batch data from a database
+or external service. Without prepare, context is undefined.
+
 ## Metrics and recovery
 
 `PipelineMetrics` returns a pipeline snapshot: current RPC head, stage lag, data freshness, block job statuses, failed blocks, and reaction worker lag.
@@ -330,7 +356,7 @@ Examples:
 
 The RPC branch of `sourceConfig` makes Voryn create and own an internal RPC-pool-backed `BlockSource`. The pool pins every
 block-source operation to one endpoint. Eligible transport or endpoint-data failures retry the whole operation on
-another endpoint. Fetch job retries remain a separate pipeline-level recovery mechanism.
+another endpoint. Fetch job retries are a separate pipeline-level recovery mechanism.
 
 The internal adapter validates hashes, addresses, `data` fields, transaction indexes, and block number consistency.
 To use another data source, implement the public `BlockSource` interface. For direct RPC pool access, use

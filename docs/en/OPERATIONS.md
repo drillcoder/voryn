@@ -96,6 +96,7 @@ query parameters, authorization data, or RPC payloads.
 - `initialBlock`: optional first block to read, inclusively, when this worker has no cursor. An existing cursor takes precedence.
 - `batchSize`: maximum stream items read in one tick.
 - `confirmations`: required non-negative safe integer that controls how far this worker stays behind the latest head seen by `HeadWorker`.
+- `prepare`: optional async `(items) => Promise<TContext>` for batch data used by filter and handler.
 - `filter`: required synchronous `(item) => boolean`. Checks the item without writing to the database,
   making external requests or changing external state. Use `() => true` to accept all items.
 - `handler`: async `(item, db, workerName) => Promise<void>` for an accepted item.
@@ -164,6 +165,25 @@ The previous position includes indexes because part of its block may have been p
 fetched above the committed position do not establish a gap; an empty `blocks` table does not establish a boundary.
 Accounting for a gap updates the cursor's `updatedAt` and its progress freshness metric without processing an item.
 A process crash between the cursor commit and logging can prevent the warning from being written.
+
+### Batch Preparation
+
+Preparation time contributes to reaction lag: the worker waits for it before processing the batch. Size `batchSize`
+for the external service's request and response limits, and bound concurrent requests inside prepare. Deduplicate
+lookup keys when multiple items need the same data.
+
+Set request timeouts and retry limits in your client. Voryn does not time out or cancel prepare; `stop()` and
+`destroy()` wait for the current tick. A hung request can therefore delay shutdown and let reaction lag grow
+until data leave the retention window.
+
+If required data are unavailable, fail preparation. Returning false from the filter checkpoints an intentional skip,
+so it is unsuitable for a temporary lookup failure. A preparation error is logged as `worker_tick_failed`; the next
+tick retries from saved progress after `delayBetweenTicksMs`. Repeated failures need investigation of the external
+service, its limits and client settings.
+
+Preparation may repeat after failure, restart or reorg. Use it for reads; define cache freshness and, where results
+depend on chain state, key cached data by the relevant block hash. Monitor reaction lag and external request latency
+and errors together.
 
 ## Retention
 

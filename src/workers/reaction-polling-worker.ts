@@ -3,7 +3,7 @@ import type { Logger } from "../interfaces/logger.js";
 import type { ReactionService } from "../services/reaction-service.js";
 import { SingletonPollingWorker } from "./singleton-polling-worker.js";
 
-export abstract class ReactionPollingWorker extends SingletonPollingWorker {
+export abstract class ReactionPollingWorker<TContext = undefined> extends SingletonPollingWorker {
     private destroyRequested = false;
     private destroyPromise: Promise<void> | null = null;
 
@@ -12,7 +12,7 @@ export abstract class ReactionPollingWorker extends SingletonPollingWorker {
         delayBetweenTicksMs: number,
         logger: Logger,
         leaderLock: LeaderLock,
-        protected readonly service: ReactionService,
+        protected readonly service: ReactionService<TContext>,
         dispose?: () => Promise<void>,
     ) {
         super(name, delayBetweenTicksMs, logger, leaderLock, dispose);

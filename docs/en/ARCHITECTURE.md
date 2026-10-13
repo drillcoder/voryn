@@ -168,6 +168,22 @@ The reaction pipeline runs user logic over data within the committed position. E
 - Advances only when the cursor version still matches. A version conflict stops the current batch; the next tick reads
   the rewound state.
 
+### Batch Preparation
+
+`ReactionService.execute` loads the confirmed batch and passes it to `processItems`. An empty batch returns
+before invoking prepare. For a nonempty batch, processItems awaits optional prepare and keeps its result in a local
+variable shared by that attempt's filters and handlers. The context is neither stored in PostgreSQL nor carried
+into the next tick.
+
+Preparation precedes the item loop and runs outside business transactions. Its error exits before any item checkpoint;
+cursor initialization or history-gap accounting already completed by execute is not rolled back.
+
+After preparation, the service rereads `chain_cursor` and compares reorgVersion with the batch's version. A missing
+cursor or changed version ends the attempt before filters and handlers. No additional read is needed without prepare.
+This check avoids processing a batch invalidated during the external wait; it does not lock the chain for subsequent
+processing. Each cursor write uses `advanceIfVersion`, so a later version conflict rolls back the accepted item's
+SQL writes and stops the batch.
+
 ## Operational Tools
 
 ### `PipelineMetrics`

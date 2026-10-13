@@ -26,6 +26,8 @@ export type {
 } from "./workers/retention-worker.js";
 
 export type {
+    EventReactionPrepare,
+    TransactionReactionPrepare,
     EventReactionFilter,
     EventReactionHandler,
     TransactionReactionFilter,

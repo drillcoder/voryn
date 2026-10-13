@@ -75,3 +75,18 @@ const eventBlocksRepository = (
 const transactionBlocksRepository = (
     dependencies: TransactionReactionWorkerDatabaseDependencies,
 ) => dependencies.blocksRepository;
+
+const preparedEvent = () => EventReactionWorker.create({
+    ...eventReactionOptions,
+    prepare: async (events) => new Set(events.map((event) => event.address)),
+    filter: (event, addresses) => (addresses?.has(event.address) ?? false),
+    handler: async (event, db, workerName, addresses) => {
+        await db.query("SELECT $1, $2", [(addresses?.has(event.address) ?? false), workerName]);
+    },
+});
+const preparedTransaction = () => TransactionReactionWorker.create({
+    ...transactionReactionOptions,
+    prepare: async (transactions) => new Set(transactions.map((transaction) => transaction.from)),
+    filter: (transaction, addresses) => (addresses?.has(transaction.from) ?? false),
+    handler: async () => undefined,
+});

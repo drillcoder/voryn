@@ -36,7 +36,10 @@ describe("integration: transactional reactions", () => {
     });
     afterAll(async () => { await context.close(); });
 
-    const fixture = async (streamType: StreamType) => {
+    const fixture = async (
+        streamType: StreamType,
+        prepare?: (items: readonly (PipelineEvent | PipelineTransaction)[]) => Promise<undefined>,
+    ) => {
         const pool = context.pool;
         const transactionManager = new PostgresTransactionManager(pool);
         const chainCursorRepository = new PostgresChainCursorRepository(pool);
@@ -68,6 +71,7 @@ describe("integration: transactional reactions", () => {
         const common = {
             config: { chainId: CHAIN_ID, workerName: "aggregate", delayBetweenTicksMs: 1,
                 batchSize: 3, confirmations: 0 },
+            ...(prepare === undefined ? {} : { prepare }),
             filter: () => true, handler, transactionManager, chainCursorRepository, workerCursorsRepository,
             blocksRepository: new PostgresBlocksRepository(pool),
         };
@@ -85,6 +89,50 @@ describe("integration: transactional reactions", () => {
     };
 
     for (const streamType of ["event", "transaction"] as const) {
+        test(`${streamType} discards preparation invalidated by reorg and loads the replacement`, async () => {
+            let started: () => void = () => undefined;
+            let finish: () => void = () => undefined;
+            const preparing = new Promise<void>((resolve) => { started = resolve; });
+            const waiting = new Promise<void>((resolve) => { finish = resolve; });
+            const hashes: string[] = [];
+            const prepare = vi.fn(async (items: readonly (PipelineEvent | PipelineTransaction)[]) => {
+                hashes.push(...items.map((item) => item.blockHash));
+                started();
+                await waiting;
+                return undefined;
+            });
+            const f = await fixture(streamType, prepare);
+            const execution = f.createService().execute();
+            await preparing;
+            const replacement = hashFromNumber(50_000);
+            await f.transactionManager.run(async (db) => {
+                const version = await f.chainCursorRepository.setPositionsAndIncrementReorgVersion(
+                    CHAIN_ID, 500, replacement, 500, db,
+                );
+                await f.workerCursorsRepository.rewindForReorg(CHAIN_ID, 500, version, db);
+                if (streamType === "event") {
+                    await f.eventsRepository.deleteBlockNumberRange(CHAIN_ID, 500, 500, db);
+                    await f.eventsRepository.insertMany(f.block.logs.map((event) => ({
+                        ...event, blockHash: replacement,
+                    })), db);
+                } else {
+                    await f.transactionsRepository.deleteBlockNumberRange(CHAIN_ID, 500, 500, db);
+                    await f.transactionsRepository.insertMany(f.block.transactions.map((transaction) => ({
+                        ...transaction, blockHash: replacement,
+                    })), db);
+                }
+            });
+            finish();
+            await execution;
+            expect(f.handled).toEqual([]);
+            expect(await f.totals()).toEqual([]);
+            expect((await f.cursor())?.position.lastTransactionIndex).toBe(-1);
+            hashes.length = 0;
+            await f.createService().execute();
+            expect(hashes).toEqual([replacement, replacement, replacement]);
+            expect(f.handled).toEqual([0, 1, 2]);
+        });
+
         test(`${streamType} commits business writes and progress together and resumes after restart`, async () => {
             const f = await fixture(streamType);
             await f.createService().execute();
@@ -129,7 +177,7 @@ describe("integration: transactional reactions", () => {
         );
 
         test(`${streamType} rolls back on reorg and keeps already committed aggregates`, async () => {
-            const f = await fixture(streamType);
+            const f = await fixture(streamType, async () => undefined);
             let reorg = true;
             f.setAction(async (item) => {
                 if (item.index !== 1 || !reorg) { return; }

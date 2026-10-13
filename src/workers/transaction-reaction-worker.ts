@@ -1,7 +1,8 @@
 import type { Pool } from "pg";
 import type { Logger } from "../interfaces/logger.js";
 import type { LeaderLock } from "../interfaces/leader-lock.js";
-import type { TransactionReactionFilter, TransactionReactionHandler } from "../interfaces/reaction.js";
+import type { PipelineTransaction } from "../interfaces/pipeline.js";
+import type { ReactionCallbacks } from "../interfaces/reaction.js";
 import type {
     BlocksRepository,
     ChainCursorRepository,
@@ -31,14 +32,16 @@ export interface TransactionReactionWorkerDatabaseDependencies {
     leaderLock: LeaderLock;
 }
 
-export type TransactionReactionWorkerOptions =
+export type TransactionReactionWorkerOptions<TContext = undefined> =
     RuntimeLoggerOptions
     & ReactionServiceConfig
     & RuntimeDbOptions<TransactionReactionWorkerDatabaseDependencies>
-    & { filter: TransactionReactionFilter; handler: TransactionReactionHandler };
+    & ReactionCallbacks<PipelineTransaction, TContext>;
 
-export class TransactionReactionWorker extends ReactionPollingWorker {
-    static async create(options: TransactionReactionWorkerOptions): Promise<TransactionReactionWorker> {
+export class TransactionReactionWorker<TContext = undefined> extends ReactionPollingWorker<TContext> {
+    static async create<TContext = undefined>(
+        options: TransactionReactionWorkerOptions<TContext>,
+    ): Promise<TransactionReactionWorker<TContext>> {
         const logger = resolveLogger(options);
         const serviceConfig: ReactionServiceConfig = {
             chainId: options.chainId,
@@ -64,11 +67,10 @@ export class TransactionReactionWorker extends ReactionPollingWorker {
             }),
         );
         try {
-            const service = new ReactionService({
+            const service = new ReactionService<TContext>({
+                ...options,
                 config: serviceConfig,
                 streamType: "transaction",
-                filter: options.filter,
-                handler: options.handler,
                 chainCursorRepository: dependencies.chainCursorRepository,
                 blocksRepository: dependencies.blocksRepository,
                 transactionsRepository: dependencies.transactionsRepository,
@@ -85,7 +87,7 @@ export class TransactionReactionWorker extends ReactionPollingWorker {
 
     private constructor(
         private readonly serviceConfig: ReactionServiceConfig,
-        service: ReactionService,
+        service: ReactionService<TContext>,
         leaderLock: LeaderLock,
         logger: Logger,
         dispose?: () => Promise<void>,

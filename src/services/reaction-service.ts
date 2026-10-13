@@ -2,12 +2,8 @@ import type { DbExecutor } from "../interfaces/db.js";
 import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
 import type { ChainCursor, WorkerCursor, WorkerCursorPosition } from "../interfaces/pipeline.js";
-import type {
-    EventReactionHandler,
-    EventReactionFilter,
-    TransactionReactionFilter,
-    TransactionReactionHandler,
-} from "../interfaces/reaction.js";
+import type { ReactionCallbacks } from "../interfaces/reaction.js";
+import type { PipelineEvent, PipelineTransaction } from "../interfaces/pipeline.js";
 import type {
     BlocksRepository,
     ChainCursorRepository,
@@ -38,17 +34,17 @@ interface ReactionServiceBaseOptions<TStreamType extends StreamType> {
     logger?: Logger;
 }
 
-type ReactionServiceOptions = EventReactionServiceOptions | TransactionReactionServiceOptions;
+type ReactionServiceOptions<TContext> =
+    | EventReactionServiceOptions<TContext>
+    | TransactionReactionServiceOptions<TContext>;
 
-interface EventReactionServiceOptions extends ReactionServiceBaseOptions<"event"> {
-    filter: EventReactionFilter;
-    handler: EventReactionHandler;
+interface EventReactionServiceOptions<TContext>
+    extends ReactionServiceBaseOptions<"event">, ReactionCallbacks<PipelineEvent, TContext> {
     eventsRepository: EventsRepository;
 }
 
-interface TransactionReactionServiceOptions extends ReactionServiceBaseOptions<"transaction"> {
-    filter: TransactionReactionFilter;
-    handler: TransactionReactionHandler;
+interface TransactionReactionServiceOptions<TContext>
+    extends ReactionServiceBaseOptions<"transaction">, ReactionCallbacks<PipelineTransaction, TContext> {
     transactionsRepository: TransactionsRepository;
 }
 
@@ -59,10 +55,10 @@ interface ReactionState {
 
 class InvalidatedReactionBatch extends Error {}
 
-export class ReactionService {
+export class ReactionService<TContext = undefined> {
     private readonly logger: Logger;
 
-    constructor(private readonly options: ReactionServiceOptions) {
+    constructor(private readonly options: ReactionServiceOptions<TContext>) {
         if (!Number.isSafeInteger(options.config.confirmations) || options.config.confirmations < 0) {
             throw new Error("Reaction confirmations must be a non-negative safe integer");
         }
@@ -122,8 +118,7 @@ export class ReactionService {
                     lastTransactionIndex: event.transactionIndex,
                     lastLogIndex: event.index,
                 }),
-                options.filter,
-                options.handler,
+                options,
                 cursor.reorgVersion,
             );
 
@@ -144,8 +139,7 @@ export class ReactionService {
                 lastTransactionIndex: transaction.index,
                 lastLogIndex: -1,
             }),
-            options.filter,
-            options.handler,
+            options,
             cursor.reorgVersion,
         );
     }
@@ -158,10 +152,26 @@ export class ReactionService {
     private async processItems<TItem>(
         items: TItem[],
         getPosition: (item: TItem) => WorkerCursorPosition,
-        filter: (item: TItem) => boolean,
-        handle: (item: TItem, db: DbExecutor, workerName: string) => Promise<void>,
+        callbacks: ReactionCallbacks<TItem, TContext>,
         reorgVersion: number,
     ): Promise<void> {
+        if (items.length === 0) {
+            this.logger.debug(`${this.options.streamType}_reaction_tick_no_items`, {
+                chainId: this.options.config.chainId,
+                workerName: this.options.config.workerName,
+            });
+            return;
+        }
+
+        let context: TContext | undefined;
+        if (callbacks.prepare !== undefined) {
+            context = await callbacks.prepare(items);
+            const chainCursor = await this.options.chainCursorRepository.get(this.options.config.chainId);
+            if (chainCursor?.reorgVersion !== reorgVersion) {
+                return;
+            }
+        }
+
         const { config, streamType, workerCursorsRepository } = this.options;
         const { workerName, chainId } = config;
         let pendingSkippedPosition: WorkerCursorPosition | null = null;
@@ -206,7 +216,7 @@ export class ReactionService {
             const position = getPosition(item);
 
             try {
-                const accepted = filter(item);
+                const accepted = callbacks.filter(item, context);
                 if (typeof accepted !== "boolean") {
                     throw new Error("Reaction filter must return a boolean synchronously");
                 }
@@ -217,7 +227,7 @@ export class ReactionService {
                 }
 
                 await this.options.transactionManager.run(async (db) => {
-                    await handle(item, db, workerName);
+                    await callbacks.handler(item, db, workerName, context);
                     if (!await advance(position, db)) {
                         throw new InvalidatedReactionBatch();
                     }
@@ -238,23 +248,19 @@ export class ReactionService {
             return;
         }
 
-        if (items.length > 0) {
-            const message = `${this.options.streamType}_reaction_tick_scanned`;
-            const meta = {
-                chainId,
-                workerName,
-                processed: processedCount,
-                skipped: skippedCount,
-                lastAdvancedPosition,
-            };
+        const message = `${this.options.streamType}_reaction_tick_scanned`;
+        const meta = {
+            chainId,
+            workerName,
+            processed: processedCount,
+            skipped: skippedCount,
+            lastAdvancedPosition,
+        };
 
-            if (processedCount > 0) {
-                this.logger.info(message, meta);
-            } else {
-                this.logger.debug(message, meta);
-            }
+        if (processedCount > 0) {
+            this.logger.info(message, meta);
         } else {
-            this.logger.debug(`${this.options.streamType}_reaction_tick_no_items`, { chainId, workerName });
+            this.logger.debug(message, meta);
         }
     }
 
