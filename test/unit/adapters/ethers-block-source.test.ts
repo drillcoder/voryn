@@ -106,7 +106,7 @@ beforeEach(() => {
 
 test("maps latest block, transactions and logs from ethers provider", async () => {
     const blockCalls: Array<{ blockNumber: number; prefetchTxs?: boolean }> = [];
-    const logCalls: Array<{ fromBlock: number; toBlock: number }> = [];
+    const logCalls: Array<{ blockHash: string }> = [];
 
     const provider = createProviderMock();
     provider.getBlockNumber.mockResolvedValue(120);
@@ -139,7 +139,7 @@ test("maps latest block, transactions and logs from ethers provider", async () =
 
         return block;
     });
-    provider.getLogs.mockImplementation(async (filter: { fromBlock: number; toBlock: number }) => {
+    provider.getLogs.mockImplementation(async (filter: { blockHash: string }) => {
         logCalls.push(filter);
         const log: EthersLogLike = {
             blockNumber: 12,
@@ -192,7 +192,7 @@ test("maps latest block, transactions and logs from ethers provider", async () =
         }],
     });
     expect(blockCalls).toEqual([{ blockNumber: 12, prefetchTxs: true }]);
-    expect(logCalls).toEqual([{ fromBlock: 12, toBlock: 12 }]);
+    expect(logCalls).toEqual([{ blockHash: hash("a") }]);
 });
 
 test("falls back to getTransaction when prefetched transactions are unavailable", async () => {
@@ -565,6 +565,47 @@ test("throws on log block hash mismatch", async () => {
     await expect(source.getBlockData(7, 9)).rejects.toThrow(
         "log block hash mismatch for chain 7 block 9",
     );
+});
+
+test("rejects block data when logs request by block hash fails", async () => {
+    const provider = createProviderMock();
+    const block: EthersBlockLike = {
+        number: 9,
+        hash: hash("a"),
+        parentHash: hash("b"),
+        timestamp: 1,
+        transactions: [],
+        prefetchedTransactions: [],
+    };
+    provider.getBlock.mockResolvedValue(block);
+    provider.getLogs.mockRejectedValue(new Error("unknown block"));
+
+    const source = await createSource(provider);
+
+    await expect(source.getBlockData(7, 9)).rejects.toThrow("unknown block");
+    expect(provider.getLogs.mock.calls).toEqual([[{ blockHash: hash("a") }]]);
+});
+
+test("returns empty logs when the endpoint knows the block and it has no logs", async () => {
+    const provider = createProviderMock();
+    const block: EthersBlockLike = {
+        number: 9,
+        hash: hash("a"),
+        parentHash: hash("b"),
+        timestamp: 1,
+        transactions: [],
+        prefetchedTransactions: [],
+    };
+    provider.getBlock.mockResolvedValue(block);
+    provider.getLogs.mockResolvedValue([]);
+
+    const source = await createSource(provider);
+
+    await expect(source.getBlockData(7, 9)).resolves.toMatchObject({
+        block: { number: 9, hash: hash("a") },
+        logs: [],
+    });
+    expect(provider.getLogs.mock.calls).toEqual([[{ blockHash: hash("a") }]]);
 });
 
 test("restarts the whole block data load on fallback after invalid logs", async () => {

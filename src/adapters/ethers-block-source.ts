@@ -36,7 +36,7 @@ export interface EthersProviderLike {
 
     getTransaction(hash: string): Promise<EthersTransactionLike | null>;
 
-    getLogs(filter: { fromBlock: BlockNumber; toBlock: BlockNumber }): Promise<EthersLogLike[]>;
+    getLogs(filter: { blockHash: string }): Promise<EthersLogLike[]>;
 }
 
 export interface EthersBlockSourceOptions {
@@ -281,7 +281,7 @@ export class EthersBlockSource implements BlockSource {
         blockNumber: BlockNumber,
         blockHash: HashHex,
     ): Promise<ChainLog[]> {
-        const logs = await provider.getLogs({ fromBlock: blockNumber, toBlock: blockNumber });
+        const logs = await provider.getLogs({ blockHash });
 
         return logs.map((log) => {
             if (log.blockNumber !== blockNumber) {
