@@ -1,3 +1,9 @@
+## [1.4.1](https://github.com/drillcoder/voryn/compare/v1.4.0...v1.4.1) (2026-11-10)
+
+### Bug Fixes
+
+* **rpc:** fetch block logs by block hash ([5d5f9a4](https://github.com/drillcoder/voryn/commit/5d5f9a4cf29afc58d10f65638e641b8e49b8952e))
+
 ## [1.4.0](https://github.com/drillcoder/voryn/compare/v1.3.0...v1.4.0) (2026-10-13)
 
 ### Features
