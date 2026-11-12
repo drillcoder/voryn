@@ -58,7 +58,16 @@ export class PostgresBlocksRepository implements BlocksRepository {
             `SELECT
                  latest.block_number AS max_fetched_block,
                  latest.block_timestamp AS max_fetched_block_timestamp,
-                 (SELECT MAX(fetched_at) FROM blocks WHERE chain_id = $1) AS last_fetched_at
+                 (
+                     SELECT MAX(recent.fetched_at)
+                     FROM (
+                         SELECT fetched_at
+                         FROM blocks
+                         WHERE chain_id = $1
+                         ORDER BY block_number DESC
+                         LIMIT 1000
+                     ) recent
+                 ) AS last_fetched_at
              FROM (
                  SELECT block_number, block_timestamp
                  FROM blocks
