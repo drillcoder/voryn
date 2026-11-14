@@ -1,3 +1,13 @@
+## [1.5.0](https://github.com/drillcoder/voryn/compare/v1.4.1...v1.5.0) (2026-11-14)
+
+### Features
+
+* **postgres:** prefix all tables and indexes with voryn_ ([a444b94](https://github.com/drillcoder/voryn/commit/a444b942d0d372732da7e1c82cccd1b386a536d1))
+
+### Performance Improvements
+
+* **postgres:** limit last fetched_at lookup to recent blocks ([d67b516](https://github.com/drillcoder/voryn/commit/d67b51693cad4e0d162f5b434ddc4c1ecbeff803))
+
 ## [1.4.1](https://github.com/drillcoder/voryn/compare/v1.4.0...v1.4.1) (2026-11-10)
 
 ### Bug Fixes
