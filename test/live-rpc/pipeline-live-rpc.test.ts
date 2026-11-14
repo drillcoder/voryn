@@ -134,19 +134,19 @@ describeLive("live rpc pipeline", () => {
         expect(cursor?.lastCommittedHash).toBe(expected.block.hash);
 
         await expect(db.countRows(
-            "block_jobs",
+            "voryn_block_jobs",
             `chain_id = ${String(chainId)} AND block_number = ${String(latest)} AND status = 'committed'`,
         )).resolves.toBe(1);
         await expect(db.countRows(
-            "blocks",
+            "voryn_blocks",
             `chain_id = ${String(chainId)} AND block_number = ${String(latest)}`,
         )).resolves.toBe(1);
         await expect(db.countRows(
-            "transactions",
+            "voryn_transactions",
             `chain_id = ${String(chainId)} AND block_number = ${String(latest)}`,
         )).resolves.toBe(expected.transactions.length);
         await expect(db.countRows(
-            "events",
+            "voryn_events",
             `chain_id = ${String(chainId)} AND block_number = ${String(latest)}`,
         )).resolves.toBe(expected.logs.length);
 

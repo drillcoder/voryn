@@ -119,7 +119,7 @@ test("insertMany writes one batch for small input", async () => {
 
     expect(query).toHaveBeenCalledTimes(1);
     const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
-    expect(calls[0]?.[0]).toContain("INSERT INTO transactions");
+    expect(calls[0]?.[0]).toContain("INSERT INTO voryn_transactions");
     expect(calls[0]?.[1]).toEqual([1, 10, HASH_A, 0, TX_HASH, FROM, null, "1", DATA]);
 });
 

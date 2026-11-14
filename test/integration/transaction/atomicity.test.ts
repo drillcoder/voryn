@@ -67,10 +67,10 @@ describe("integration transaction manager", () => {
             }),
         ).rejects.toThrow("force rollback");
 
-        await expect(db.countRows("chain_cursor")).resolves.toBe(0);
-        await expect(db.countRows("block_jobs")).resolves.toBe(0);
-        await expect(db.countRows("blocks")).resolves.toBe(0);
-        await expect(db.countRows("transactions")).resolves.toBe(0);
-        await expect(db.countRows("events")).resolves.toBe(0);
+        await expect(db.countRows("voryn_chain_cursor")).resolves.toBe(0);
+        await expect(db.countRows("voryn_block_jobs")).resolves.toBe(0);
+        await expect(db.countRows("voryn_blocks")).resolves.toBe(0);
+        await expect(db.countRows("voryn_transactions")).resolves.toBe(0);
+        await expect(db.countRows("voryn_events")).resolves.toBe(0);
     });
 });

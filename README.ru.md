@@ -45,19 +45,19 @@ Voryn сфокусирован на надежных пайплайнах инд
 ```mermaid
 flowchart LR
     RPC["EVM RPC"] --> Head["HeadWorker"]
-    Head --> Jobs["block_jobs"]
+    Head --> Jobs["voryn_block_jobs"]
     Jobs --> Fetch["FetchWorker x N"]
-    Fetch --> Data["blocks / transactions / events"]
+    Fetch --> Data["voryn_blocks / voryn_transactions / voryn_events"]
     Data --> Sequencer["SequencerWorker"]
     Jobs --> Sequencer
-    Sequencer --> Cursor["chain_cursor"]
+    Sequencer --> Cursor["voryn_chain_cursor"]
     Data --> Reactions["Reaction workers"]
     Cursor --> Reactions
 ```
 
-- `Fetch` можно масштабировать горизонтально. Он пишет нормализованные `blocks`, `transactions` и `events`.
-- `Sequencer` проверяет порядок через хеши блоков, двигает `chain_cursor` и помечает соответствующие строки
-`block_jobs` как committed.
+- `Fetch` можно масштабировать горизонтально. Он пишет нормализованные `voryn_blocks`, `voryn_transactions` и `voryn_events`.
+- `Sequencer` проверяет порядок через хеши блоков, двигает `voryn_chain_cursor` и помечает соответствующие строки
+`voryn_block_jobs` как committed.
 - `Head`, `Sequencer`, `Retention` и Reaction-воркеры работают как singleton-процессы через `LeaderLock`.
 
 ## Установка

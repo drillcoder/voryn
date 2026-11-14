@@ -191,14 +191,14 @@ describe("e2e multi-chain isolation", () => {
                 return cursorA?.lastCommittedBlock === 11 && cursorB?.lastCommittedBlock === 101;
             });
 
-            await expect(db.countRows("blocks", "chain_id = 1 AND block_number BETWEEN 10 AND 11"))
+            await expect(db.countRows("voryn_blocks", "chain_id = 1 AND block_number BETWEEN 10 AND 11"))
                 .resolves.toBe(2);
-            await expect(db.countRows("blocks", "chain_id = 137 AND block_number BETWEEN 100 AND 101"))
+            await expect(db.countRows("voryn_blocks", "chain_id = 137 AND block_number BETWEEN 100 AND 101"))
                 .resolves.toBe(2);
-            await expect(db.countRows("transactions", "chain_id = 1")).resolves.toBe(2);
-            await expect(db.countRows("transactions", "chain_id = 137")).resolves.toBe(2);
-            await expect(db.countRows("block_jobs", "chain_id = 1 AND status = 'committed'")).resolves.toBe(2);
-            await expect(db.countRows("block_jobs", "chain_id = 137 AND status = 'committed'")).resolves.toBe(2);
+            await expect(db.countRows("voryn_transactions", "chain_id = 1")).resolves.toBe(2);
+            await expect(db.countRows("voryn_transactions", "chain_id = 137")).resolves.toBe(2);
+            await expect(db.countRows("voryn_block_jobs", "chain_id = 1 AND status = 'committed'")).resolves.toBe(2);
+            await expect(db.countRows("voryn_block_jobs", "chain_id = 137 AND status = 'committed'")).resolves.toBe(2);
         } finally {
             await stopWorkers(workers);
         }

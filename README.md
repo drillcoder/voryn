@@ -45,19 +45,19 @@ Voryn focuses on durable PostgreSQL-backed indexing pipelines with application-o
 ```mermaid
 flowchart LR
     RPC["EVM RPC"] --> Head["HeadWorker"]
-    Head --> Jobs["block_jobs"]
+    Head --> Jobs["voryn_block_jobs"]
     Jobs --> Fetch["FetchWorker x N"]
-    Fetch --> Data["blocks / transactions / events"]
+    Fetch --> Data["voryn_blocks / voryn_transactions / voryn_events"]
     Data --> Sequencer["SequencerWorker"]
     Jobs --> Sequencer
-    Sequencer --> Cursor["chain_cursor"]
+    Sequencer --> Cursor["voryn_chain_cursor"]
     Data --> Reactions["Reaction workers"]
     Cursor --> Reactions
 ```
 
-- `Fetch` can be scaled horizontally. It writes normalized `blocks`, `transactions`, and `events`.
-- `Sequencer` validates order through block hashes, advances `chain_cursor`, and marks the matching
-`block_jobs` rows as committed.
+- `Fetch` can be scaled horizontally. It writes normalized `voryn_blocks`, `voryn_transactions`, and `voryn_events`.
+- `Sequencer` validates order through block hashes, advances `voryn_chain_cursor`, and marks the matching
+`voryn_block_jobs` rows as committed.
 - `Head`, `Sequencer`, `Retention`, and Reaction workers run as singleton processes through `LeaderLock`.
 
 ## Installation

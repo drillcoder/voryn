@@ -39,7 +39,7 @@ export class PostgresBlocksRepository implements BlocksRepository {
         const executor = transaction ?? this.pool;
         const result = await executor.query<BlockRow>(
             `SELECT chain_id, block_number, block_hash, parent_hash, block_timestamp, fetched_at
-             FROM blocks
+             FROM voryn_blocks
              WHERE chain_id = $1
                AND block_number = $2`,
             [chainId, blockNumber],
@@ -62,7 +62,7 @@ export class PostgresBlocksRepository implements BlocksRepository {
                      SELECT MAX(recent.fetched_at)
                      FROM (
                          SELECT fetched_at
-                         FROM blocks
+                         FROM voryn_blocks
                          WHERE chain_id = $1
                          ORDER BY block_number DESC
                          LIMIT 1000
@@ -70,7 +70,7 @@ export class PostgresBlocksRepository implements BlocksRepository {
                  ) AS last_fetched_at
              FROM (
                  SELECT block_number, block_timestamp
-                 FROM blocks
+                 FROM voryn_blocks
                  WHERE chain_id = $1
                  ORDER BY block_number DESC
                  LIMIT 1
@@ -107,7 +107,7 @@ export class PostgresBlocksRepository implements BlocksRepository {
         const executor = transaction ?? this.pool;
         const result = await executor.query<OldestBlockRow>(
             `SELECT MIN(block_number) AS oldest_block
-             FROM blocks
+             FROM voryn_blocks
              WHERE chain_id = $1`,
             [chainId],
         );
@@ -119,7 +119,7 @@ export class PostgresBlocksRepository implements BlocksRepository {
     async insert(block: PipelineBlock, transaction?: DbExecutor): Promise<void> {
         const executor = transaction ?? this.pool;
         await executor.query(
-            `INSERT INTO blocks
+            `INSERT INTO voryn_blocks
                  (chain_id, block_number, block_hash, parent_hash, block_timestamp, fetched_at)
              VALUES ($1, $2, $3, $4, $5, $6)`,
             [
@@ -145,7 +145,7 @@ export class PostgresBlocksRepository implements BlocksRepository {
 
         const executor = transaction ?? this.pool;
         const deleted = await executor.query(
-            `DELETE FROM blocks WHERE chain_id = $1 AND block_number BETWEEN $2 AND $3`,
+            `DELETE FROM voryn_blocks WHERE chain_id = $1 AND block_number BETWEEN $2 AND $3`,
             [chainId, fromBlock, toBlock],
         );
 
@@ -159,7 +159,7 @@ export class PostgresBlocksRepository implements BlocksRepository {
     ): Promise<number> {
         const executor = transaction ?? this.pool;
         const deleted = await executor.query(
-            `DELETE FROM blocks WHERE chain_id = $1 AND block_number = $2`,
+            `DELETE FROM voryn_blocks WHERE chain_id = $1 AND block_number = $2`,
             [chainId, blockNumber],
         );
 

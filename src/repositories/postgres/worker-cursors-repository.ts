@@ -39,7 +39,7 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
                  last_log_index,
                  reorg_version,
                  updated_at
-             FROM worker_cursors
+             FROM voryn_worker_cursors
              WHERE worker_name = $1
                AND chain_id = $2
                AND stream_type = $3`,
@@ -76,7 +76,7 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
                  last_log_index,
                  reorg_version,
                  updated_at
-             FROM worker_cursors
+             FROM voryn_worker_cursors
              WHERE chain_id = $1
              ORDER BY worker_name, stream_type`,
             [chainId],
@@ -104,7 +104,7 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
     ): Promise<boolean> {
         const executor = transaction ?? this.pool;
         const deleted = await executor.query(
-            `DELETE FROM worker_cursors
+            `DELETE FROM voryn_worker_cursors
              WHERE worker_name = $1
                AND chain_id = $2
                AND stream_type = $3`,
@@ -123,7 +123,7 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
     ): Promise<void> {
         const executor = transaction ?? this.pool;
         await executor.query(
-            `INSERT INTO worker_cursors
+            `INSERT INTO voryn_worker_cursors
                  (worker_name, chain_id, stream_type, last_block_number, last_transaction_index, last_log_index,
                   reorg_version)
              VALUES ($1, $2, $3, $4, $5, $6, $7)`,
@@ -149,7 +149,7 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
     ): Promise<boolean> {
         const executor = transaction ?? this.pool;
         const updated = await executor.query(
-            `UPDATE worker_cursors
+            `UPDATE voryn_worker_cursors
              SET last_block_number = $4,
                  last_transaction_index = $5,
                  last_log_index = $6,
@@ -192,7 +192,7 @@ export class PostgresWorkerCursorsRepository implements WorkerCursorsRepository 
         transaction: DbExecutor,
     ): Promise<number> {
         const updated = await transaction.query<{ rewound: boolean }>(
-            `UPDATE worker_cursors
+            `UPDATE voryn_worker_cursors
              SET last_block_number = CASE
                      WHEN last_block_number >= $2 THEN $2
                      ELSE last_block_number

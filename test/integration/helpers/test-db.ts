@@ -3,12 +3,12 @@ import { readFile } from "node:fs/promises";
 import { Pool } from "pg";
 
 const PIPELINE_TABLES = [
-    "events",
-    "transactions",
-    "blocks",
-    "block_jobs",
-    "chain_cursor",
-    "worker_cursors",
+    "voryn_events",
+    "voryn_transactions",
+    "voryn_blocks",
+    "voryn_block_jobs",
+    "voryn_chain_cursor",
+    "voryn_worker_cursors",
 ] as const;
 
 type PipelineTableName = (typeof PIPELINE_TABLES)[number];
@@ -58,12 +58,12 @@ export async function createIsolatedDbContext(databaseUrlRaw: string): Promise<I
         truncatePipelineTables: async () => {
             await pool.query(
                 `TRUNCATE TABLE
-                    events,
-                    transactions,
-                    blocks,
-                    block_jobs,
-                    chain_cursor,
-                    worker_cursors
+                    voryn_events,
+                    voryn_transactions,
+                    voryn_blocks,
+                    voryn_block_jobs,
+                    voryn_chain_cursor,
+                    voryn_worker_cursors
                  RESTART IDENTITY`,
             );
         },

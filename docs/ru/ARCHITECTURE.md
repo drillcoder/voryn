@@ -10,8 +10,8 @@ Voryn — каркас индексатора для EVM-сетей.
 
 - Источник истины для reaction-воркеров: данные в пределах committed-позиции цепи.
 - Порядок блоков: коммит только `N -> N+1` для каждой сети (`chain_id`).
-- Committed-позиция хранится в `chain_cursor.last_committed_block` и `chain_cursor.last_committed_hash`.
-- Данные блока пишет `FetchService`: `blocks`, `transactions` и `events`.
+- Committed-позиция хранится в `voryn_chain_cursor.last_committed_block` и `voryn_chain_cursor.last_committed_hash`.
+- Данные блока пишет `FetchService`: `voryn_blocks`, `voryn_transactions` и `voryn_events`.
 - `SequencerWorker` входит в контур обработки блоков и отвечает за порядок committed-позиции.
 - Горячий путь должен быть дешевым: минимум join-ов, минимум массовых update-ов, явные delete по диапазонам.
 - Разделение ответственности:
@@ -68,19 +68,19 @@ Voryn — каркас индексатора для EVM-сетей.
 
 ### `HeadWorker`
 
-Следит за высотой сети и ставит в очередь блоки, которые должны быть загружены. Он обновляет границу поставленных задач в `chain_cursor.last_enqueued_block`.
+Следит за высотой сети и ставит в очередь блоки, которые должны быть загружены. Он обновляет границу поставленных задач в `voryn_chain_cursor.last_enqueued_block`.
 
 - Получает `latest` из `BlockSource`.
 - Считает нижнюю границу доступной глубины: `floorBlock = max(0, latest - depthBlocks + 1)`.
-- Если курсора нет, инициализирует `chain_cursor` и завершает тик без добавления заданий в очередь:
+- Если курсора нет, инициализирует `voryn_chain_cursor` и завершает тик без добавления заданий в очередь:
   - без `initialBlock` устанавливает обе позиции блоков в `latest`, а committed-хеш — в хеш этого блока,
   - с `initialBlock` требует безопасное целое число в диапазоне `[floorBlock, latest]`, устанавливает обе позиции блоков в `initialBlock - 1`, а committed-хеш — в `parentHash` этого блока; следующий тик может ставить блоки в очередь, начиная с `initialBlock`,
   - недопустимый `initialBlock` завершает тик ошибкой без записи курсора и заданий.
 - Существующий курсор имеет приоритет над `initialBlock`.
 - Если `last_committed_block < floorBlock - 1`, выполняет rebase:
   - читает `floorBlock` из RPC и берет `parentHash`,
-  - в транзакции сдвигает `chain_cursor` на `floorBlock - 1`,
-  - удаляет записи до этой границы из `block_jobs`, `blocks`, `transactions` и `events`,
+  - в транзакции сдвигает `voryn_chain_cursor` на `floorBlock - 1`,
+  - удаляет записи до этой границы из `voryn_block_jobs`, `voryn_blocks`, `voryn_transactions` и `voryn_events`,
   - добавляет jobs в диапазоне `[floorBlock, latest]`,
   - обновляет `lastEnqueuedBlock`,
   - завершает тик.
@@ -93,29 +93,29 @@ Voryn — каркас индексатора для EVM-сетей.
 
 Обрабатывает очередь загрузки. Он забирает job, скачивает блок с транзакциями и событиями, сохраняет данные в таблицы и переводит job в статус `fetched`.
 
-- Забирает задачи из `block_jobs` через `claimForFetch`.
+- Забирает задачи из `voryn_block_jobs` через `claimForFetch`.
 - Поддерживает recovery stale-fetch задач через `claimed_at` + TTL (`fetchClaimTtlMs`).
 - Для каждой задачи:
   - тянет блок из `BlockSource`,
-  - в транзакции сохраняет строку в `blocks`,
-  - bulk-вставкой сохраняет `transactions` и `events`,
+  - в транзакции сохраняет строку в `voryn_blocks`,
+  - bulk-вставкой сохраняет `voryn_transactions` и `voryn_events`,
   - помечает job как `fetched`,
   - при ошибке ставит `failed` и `next_retry_at` с экспоненциальным backoff.
 
 ### `SequencerWorker`
 
-Продвигает committed-позицию цепи. Он берет загруженные блоки строго по порядку, проверяет связь с предыдущим committed-блоком и фиксирует новый прогресс в `chain_cursor`.
+Продвигает committed-позицию цепи. Он берет загруженные блоки строго по порядку, проверяет связь с предыдущим committed-блоком и фиксирует новый прогресс в `voryn_chain_cursor`.
 
 - За тик коммитит до `maxBlocksPerTick` последовательных блоков (`N+1`, `N+2`, ...).
 - Для каждого блока в транзакции:
-  - читает `chain_cursor`,
+  - читает `voryn_chain_cursor`,
   - проверяет, что следующий job имеет статус `fetched`,
-  - берет следующий блок из `blocks`,
+  - берет следующий блок из `voryn_blocks`,
   - проверяет `parent_hash` против `last_committed_hash`,
-  - двигает `last_committed_*` в `chain_cursor`,
+  - двигает `last_committed_*` в `voryn_chain_cursor`,
   - помечает job как `committed`.
 - Если `parent_hash` отличается от `last_committed_hash`, ищет общий предок через `BlockSource`, удаляет данные после
-  него, возвращает `chain_cursor` к предку, увеличивает `reorg_version` и атомарно отматывает затронутые reaction
+  него, возвращает `voryn_chain_cursor` к предку, увеличивает `reorg_version` и атомарно отматывает затронутые reaction
   cursors. Отстающие reaction cursors сохраняют позицию, но получают новую version.
 
 ### `RetentionService`
@@ -125,10 +125,10 @@ Voryn — каркас индексатора для EVM-сетей.
 - На время очистки блокирует курсор цепи, согласуя удаление с Head, reorg и учётом пропуска истории в реакторах.
 - В транзакции считает границу purge по `last_committed_block - retentionDepthBlocks`.
 - Удаляет данные за границей retention из:
-  - `block_jobs`
-  - `blocks`
-  - `transactions`
-  - `events`
+  - `voryn_block_jobs`
+  - `voryn_blocks`
+  - `voryn_transactions`
+  - `voryn_events`
 
 ## Reaction-контур
 
@@ -139,10 +139,10 @@ Reaction-контур запускает пользовательскую лог
 - Для каждого reaction worker требует безопасное целое `confirmations >= 0`.
 - Ограничивает чтение границей `min(last_committed_block, last_enqueued_block - confirmations)`.
 - Читает элементы потока в порядке репозитория: события идут по `(block_number, transaction_index, log_index)`, транзакции - по `(block_number, transaction_index)`.
-- Ведет прогресс в `worker_cursors` с `stream_type = event` или `stream_type = transaction`.
+- Ведет прогресс в `voryn_worker_cursors` с `stream_type = event` или `stream_type = transaction`.
 - Курсор событий хранит `last_block_number`, `last_transaction_index`, `last_log_index`.
 - Курсор транзакций хранит `last_block_number`, `last_transaction_index` и sentinel `-1` в `last_log_index`.
-- При первом запуске нового `workerName` блокирует `chain_cursor` и инициализирует cursor текущей committed-позицией
+- При первом запуске нового `workerName` блокирует `voryn_chain_cursor` и инициализирует cursor текущей committed-позицией
   и `reorg_version`.
 - Через `blocksRepository.getOldestBlockNumber` один раз за тик проверяет курсор относительно доступной committed-истории.
 - При возможном пропуске повторяет проверку под блокировкой курсора цепи и сохраняет `(firstAvailableBlock, -1, -1)`
@@ -179,7 +179,7 @@ Reaction-контур запускает пользовательскую лог
 Подготовка выполняется до цикла элементов и вне бизнес-транзакций. Её ошибка завершает попытку до checkpoint
 элементов; уже выполненные в execute создание курсора или учёт недоступной истории не откатываются.
 
-После подготовки сервис повторно читает `chain_cursor` и сравнивает reorgVersion с версией загруженной пачки.
+После подготовки сервис повторно читает `voryn_chain_cursor` и сравнивает reorgVersion с версией загруженной пачки.
 Отсутствие курсора или изменение версии завершает попытку до фильтров и handler. Без prepare дополнительное чтение
 не требуется. Эта проверка отсеивает пачку, устаревшую за время внешнего ожидания, но не блокирует цепочку на время
 дальнейшей обработки. Каждая запись курсора использует `advanceIfVersion`: более поздний конфликт версии откатывает
@@ -191,7 +191,7 @@ SQL-записи принятого элемента и прекращает о�
 
 - Читает `latestBlock` из `BlockSource`.
 - Возвращает lag стадий `head`, `fetch`, `sequencer`.
-- Показывает свежесть cursor/fetch, счетчики `block_jobs`, список failed-блоков и lag reaction-воркеров по позициям.
+- Показывает свежесть cursor/fetch, счетчики `voryn_block_jobs`, список failed-блоков и lag reaction-воркеров по позициям.
 - Собирает все настроенные сети в один snapshot и один Prometheus document.
 
 ### `BlockJobRecovery`
@@ -213,11 +213,11 @@ SQL-записи принятого элемента и прекращает о�
 
 ## Таблицы и потоки
 
-- Очередь блоков: `block_jobs`
-- Блоки: `blocks`
-- Транзакции: `transactions`
-- События: `events`
-- Курсор цепочки: `chain_cursor`
-- Курсоры реакторов: `worker_cursors`
+- Очередь блоков: `voryn_block_jobs`
+- Блоки: `voryn_blocks`
+- Транзакции: `voryn_transactions`
+- События: `voryn_events`
+- Курсор цепочки: `voryn_chain_cursor`
+- Курсоры реакторов: `voryn_worker_cursors`
 
 Подробная схема: [DB_SCHEMA.md](./DB_SCHEMA.md)

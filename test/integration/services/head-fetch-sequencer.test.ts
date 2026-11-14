@@ -69,11 +69,11 @@ describe("integration services: head/fetch/sequencer", () => {
             lastCommittedHash: hashFromNumber(17),
             lastEnqueuedBlock: 17,
         });
-        await expect(db.countRows("block_jobs")).resolves.toBe(0);
+        await expect(db.countRows("voryn_block_jobs")).resolves.toBe(0);
 
         await service.execute();
 
-        await expect(db.countRows("block_jobs")).resolves.toBe(3);
+        await expect(db.countRows("voryn_block_jobs")).resolves.toBe(3);
         await expect(blockJobsRepository.get(CHAIN_ID, 18)).resolves.toMatchObject({ status: "pending" });
     });
 
@@ -159,10 +159,10 @@ describe("integration services: head/fetch/sequencer", () => {
         expect(cursor?.lastCommittedBlock).toBe(12);
         expect(cursor?.lastCommittedHash).toBe(block12.block.hash);
 
-        await expect(db.countRows("block_jobs", "status = 'committed'")).resolves.toBe(3);
-        await expect(db.countRows("blocks")).resolves.toBe(3);
-        await expect(db.countRows("transactions")).resolves.toBe(3);
-        await expect(db.countRows("events")).resolves.toBe(3);
+        await expect(db.countRows("voryn_block_jobs", "status = 'committed'")).resolves.toBe(3);
+        await expect(db.countRows("voryn_blocks")).resolves.toBe(3);
+        await expect(db.countRows("voryn_transactions")).resolves.toBe(3);
+        await expect(db.countRows("voryn_events")).resolves.toBe(3);
     });
 
     test("sequencer rolls back fetched data on parent hash mismatch", async () => {
@@ -187,7 +187,7 @@ describe("integration services: head/fetch/sequencer", () => {
             reorgVersion: 0,
         });
         await db.pool.query(
-            `INSERT INTO block_jobs (chain_id, block_number, status)
+            `INSERT INTO voryn_block_jobs (chain_id, block_number, status)
              VALUES ($1, $2, 'fetched')`,
             [CHAIN_ID, 400],
         );
@@ -231,9 +231,9 @@ describe("integration services: head/fetch/sequencer", () => {
         const cursor = await chainCursorRepository.get(CHAIN_ID);
         expect(cursor?.lastCommittedBlock).toBe(399);
         expect(cursor?.lastCommittedHash).toBe(committedHash);
-        await expect(db.countRows("blocks")).resolves.toBe(1);
-        await expect(db.countRows("transactions")).resolves.toBe(0);
-        await expect(db.countRows("events")).resolves.toBe(0);
-        await expect(db.countRows("block_jobs", "status = 'pending'")).resolves.toBe(0);
+        await expect(db.countRows("voryn_blocks")).resolves.toBe(1);
+        await expect(db.countRows("voryn_transactions")).resolves.toBe(0);
+        await expect(db.countRows("voryn_events")).resolves.toBe(0);
+        await expect(db.countRows("voryn_block_jobs", "status = 'pending'")).resolves.toBe(0);
     });
 });

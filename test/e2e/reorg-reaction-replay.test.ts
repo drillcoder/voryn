@@ -84,7 +84,7 @@ describe("e2e reaction replay after reorg", () => {
         }
         await transactionsRepository.insertMany(oldBlock.transactions);
         await db.pool.query(
-            `INSERT INTO block_jobs (chain_id, block_number, status)
+            `INSERT INTO voryn_block_jobs (chain_id, block_number, status)
              VALUES ($1, $2, 'fetched')`,
             [CHAIN_ID, 11],
         );

@@ -50,7 +50,7 @@ export class PostgresTransactionsRepository implements TransactionsRepository {
                  to_address,
                  value,
                  data
-             FROM transactions
+             FROM voryn_transactions
              WHERE chain_id = $1
                AND block_number <= $2
                AND (block_number, transaction_index) > ($3, $4)
@@ -77,7 +77,7 @@ export class PostgresTransactionsRepository implements TransactionsRepository {
             const placeholders = buildValuesPlaceholders(batch.length, columnsPerRow);
 
             await executor.query(
-                `INSERT INTO transactions
+                `INSERT INTO voryn_transactions
                     (
                         chain_id,
                         block_number,
@@ -107,7 +107,7 @@ export class PostgresTransactionsRepository implements TransactionsRepository {
 
         const executor = transaction ?? this.pool;
         const deleted = await executor.query(
-            `DELETE FROM transactions WHERE chain_id = $1 AND block_number BETWEEN $2 AND $3`,
+            `DELETE FROM voryn_transactions WHERE chain_id = $1 AND block_number BETWEEN $2 AND $3`,
             [chainId, fromBlock, toBlock],
         );
 
@@ -121,7 +121,7 @@ export class PostgresTransactionsRepository implements TransactionsRepository {
     ): Promise<number> {
         const executor = transaction ?? this.pool;
         const deleted = await executor.query(
-            `DELETE FROM transactions WHERE chain_id = $1 AND block_number = $2`,
+            `DELETE FROM voryn_transactions WHERE chain_id = $1 AND block_number = $2`,
             [chainId, blockNumber],
         );
 

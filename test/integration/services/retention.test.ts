@@ -76,14 +76,14 @@ describe("integration services: retention", () => {
 
         await service.execute();
 
-        await expect(db.countRows("block_jobs", "block_number <= 7")).resolves.toBe(0);
-        await expect(db.countRows("blocks", "block_number <= 7")).resolves.toBe(0);
-        await expect(db.countRows("transactions", "block_number <= 7")).resolves.toBe(0);
-        await expect(db.countRows("events", "block_number <= 7")).resolves.toBe(0);
-        await expect(db.countRows("block_jobs", "block_number = 8")).resolves.toBe(1);
-        await expect(db.countRows("blocks", "block_number = 8")).resolves.toBe(1);
-        await expect(db.countRows("transactions", "block_number = 8")).resolves.toBe(1);
-        await expect(db.countRows("events", "block_number = 8")).resolves.toBe(1);
+        await expect(db.countRows("voryn_block_jobs", "block_number <= 7")).resolves.toBe(0);
+        await expect(db.countRows("voryn_blocks", "block_number <= 7")).resolves.toBe(0);
+        await expect(db.countRows("voryn_transactions", "block_number <= 7")).resolves.toBe(0);
+        await expect(db.countRows("voryn_events", "block_number <= 7")).resolves.toBe(0);
+        await expect(db.countRows("voryn_block_jobs", "block_number = 8")).resolves.toBe(1);
+        await expect(db.countRows("voryn_blocks", "block_number = 8")).resolves.toBe(1);
+        await expect(db.countRows("voryn_transactions", "block_number = 8")).resolves.toBe(1);
+        await expect(db.countRows("voryn_events", "block_number = 8")).resolves.toBe(1);
     });
 
     test("retention worker skips purge when oldest block is after purge boundary", async () => {
@@ -125,10 +125,10 @@ describe("integration services: retention", () => {
 
         await service.execute();
 
-        await expect(db.countRows("block_jobs")).resolves.toBe(3);
-        await expect(db.countRows("blocks")).resolves.toBe(1);
-        await expect(db.countRows("transactions")).resolves.toBe(1);
-        await expect(db.countRows("events")).resolves.toBe(1);
+        await expect(db.countRows("voryn_block_jobs")).resolves.toBe(3);
+        await expect(db.countRows("voryn_blocks")).resolves.toBe(1);
+        await expect(db.countRows("voryn_transactions")).resolves.toBe(1);
+        await expect(db.countRows("voryn_events")).resolves.toBe(1);
     });
 
     test("retention worker keeps block jobs when oldest block is missing", async () => {
@@ -158,10 +158,10 @@ describe("integration services: retention", () => {
 
         await service.execute();
 
-        await expect(db.countRows("block_jobs")).resolves.toBe(3);
-        await expect(db.countRows("blocks")).resolves.toBe(0);
-        await expect(db.countRows("transactions")).resolves.toBe(0);
-        await expect(db.countRows("events")).resolves.toBe(0);
+        await expect(db.countRows("voryn_block_jobs")).resolves.toBe(3);
+        await expect(db.countRows("voryn_blocks")).resolves.toBe(0);
+        await expect(db.countRows("voryn_transactions")).resolves.toBe(0);
+        await expect(db.countRows("voryn_events")).resolves.toBe(0);
     });
 });
 

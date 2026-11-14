@@ -105,7 +105,7 @@ RPC pool полностью повторяет допустимую операц
 
 ## Масштабирование и настройки
 
-Сначала масштабируйте `fetch`. Очередь загрузки хранится в `block_jobs`, и несколько процессов `FetchWorker` могут
+Сначала масштабируйте `fetch`. Очередь загрузки хранится в `voryn_block_jobs`, и несколько процессов `FetchWorker` могут
 забирать jobs из очереди одной сети.
 
 Настройки `FetchWorker`:
@@ -126,9 +126,9 @@ RPC pool полностью повторяет допустимую операц
 
 Reaction workers запускают прикладную логику по committed-данным:
 
-- `EventReactionWorker` читает из `events`.
-- `TransactionReactionWorker` читает из `transactions`.
-- У каждого worker свой cursor в `worker_cursors`.
+- `EventReactionWorker` читает из `voryn_events`.
+- `TransactionReactionWorker` читает из `voryn_transactions`.
+- У каждого worker свой cursor в `voryn_worker_cursors`.
 - Идентификатор cursor: `workerName + chainId + streamType`.
 
 При первом запуске reaction worker создает cursor на текущем committed-блоке. Он не обрабатывает старые committed-данные
@@ -163,7 +163,7 @@ confirmations; ошибка handler или перезапуск не повто�
 Предупреждение содержит `chainId`, `workerName`, `streamType`, `previousPosition`, `fromBlock`, `toBlock` и
 `firstAvailableBlock`. Оно сообщает о недоступной истории блоков, а не о доказанной потере конкретных событий или
 транзакций. Прежняя позиция содержит индексы, поскольку часть её блока могла быть обработана. Блоки выше committed,
-которые Fetch ещё загружает, не доказывают пропуск; пустая таблица `blocks` не задаёт границу доступной истории.
+которые Fetch ещё загружает, не доказывают пропуск; пустая таблица `voryn_blocks` не задаёт границу доступной истории.
 Учёт пропуска обновляет `updatedAt` курсора и метрику давности прогресса без обработки элемента.
 Если процесс упадёт между commit курсора и записью лога, предупреждение может не попасть в лог.
 
@@ -189,7 +189,7 @@ confirmations; ошибка handler или перезапуск не повто�
 ## Retention
 
 `retentionDepthBlocks` — это число committed-блоков, которые нужно хранить позади текущей committed-позиции.
-`RetentionWorker` удаляет старые строки из `block_jobs`, `blocks`, `transactions` и `events`, когда данные выходят за
+`RetentionWorker` удаляет старые строки из `voryn_block_jobs`, `voryn_blocks`, `voryn_transactions` и `voryn_events`, когда данные выходят за
 retention-окно.
 
 Выбирайте глубину с учетом:
@@ -454,13 +454,13 @@ Prometheus-вывод включает такие gauges:
 ## Reorg behavior
 
 `SequencerWorker` проверяет, что следующий fetched-блок связан с текущей committed-позицией.
-Если `parent_hash` следующего блока не совпадает с `chain_cursor.last_committed_hash`, sequencer считает это reorg.
+Если `parent_hash` следующего блока не совпадает с `voryn_chain_cursor.last_committed_hash`, sequencer считает это reorg.
 
 Во время обработки reorg он:
 
 - ищет общего предка через `BlockSource`;
-- возвращает `chain_cursor` к этому предку;
-- удаляет замененные данные после предка из `block_jobs`, `blocks`, `transactions` и `events`;
+- возвращает `voryn_chain_cursor` к этому предку;
+- удаляет замененные данные после предка из `voryn_block_jobs`, `voryn_blocks`, `voryn_transactions` и `voryn_events`;
 - дает `head` заново поставить правильные блоки в очередь.
 
 Reaction workers читают только данные внутри committed-позиции. Поэтому handlers не работают с fetched, но еще

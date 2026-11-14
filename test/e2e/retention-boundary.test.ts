@@ -142,19 +142,19 @@ describe("e2e retention boundary", () => {
 
             await retentionWorker.start();
             await waitFor(async () => {
-                const oldBlocks = await db.countRows("blocks", "block_number <= 11");
+                const oldBlocks = await db.countRows("voryn_blocks", "block_number <= 11");
                 return oldBlocks === 0;
             });
 
-            await expect(db.countRows("block_jobs", "block_number <= 11")).resolves.toBe(0);
-            await expect(db.countRows("blocks", "block_number <= 11")).resolves.toBe(0);
-            await expect(db.countRows("transactions", "block_number <= 11")).resolves.toBe(0);
-            await expect(db.countRows("events", "block_number <= 11")).resolves.toBe(0);
+            await expect(db.countRows("voryn_block_jobs", "block_number <= 11")).resolves.toBe(0);
+            await expect(db.countRows("voryn_blocks", "block_number <= 11")).resolves.toBe(0);
+            await expect(db.countRows("voryn_transactions", "block_number <= 11")).resolves.toBe(0);
+            await expect(db.countRows("voryn_events", "block_number <= 11")).resolves.toBe(0);
 
-            await expect(db.countRows("block_jobs", "block_number >= 12")).resolves.toBe(2);
-            await expect(db.countRows("blocks", "block_number >= 12")).resolves.toBe(2);
-            await expect(db.countRows("transactions", "block_number >= 12")).resolves.toBe(3);
-            await expect(db.countRows("events", "block_number >= 12")).resolves.toBe(3);
+            await expect(db.countRows("voryn_block_jobs", "block_number >= 12")).resolves.toBe(2);
+            await expect(db.countRows("voryn_blocks", "block_number >= 12")).resolves.toBe(2);
+            await expect(db.countRows("voryn_transactions", "block_number >= 12")).resolves.toBe(3);
+            await expect(db.countRows("voryn_events", "block_number >= 12")).resolves.toBe(3);
         } finally {
             await stopWorkers([headWorker, fetchWorker, sequencerWorker, retentionWorker]);
         }

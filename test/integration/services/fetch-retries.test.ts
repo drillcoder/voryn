@@ -89,11 +89,11 @@ describe("integration services: fetch retries", () => {
         );
 
         await service.execute();
-        await expect(db.countRows("block_jobs", "status = 'failed'")).resolves.toBe(1);
-        await expect(db.countRows("blocks")).resolves.toBe(0);
+        await expect(db.countRows("voryn_block_jobs", "status = 'failed'")).resolves.toBe(1);
+        await expect(db.countRows("voryn_blocks")).resolves.toBe(0);
 
         await db.pool.query(
-            `UPDATE block_jobs
+            `UPDATE voryn_block_jobs
              SET next_retry_at = NOW() - INTERVAL '1 second'
              WHERE chain_id = $1
                AND block_number = $2`,
@@ -109,7 +109,7 @@ describe("integration services: fetch retries", () => {
             error: string | null;
         }>(
             `SELECT status, attempts, next_retry_at, error
-             FROM block_jobs
+             FROM voryn_block_jobs
              WHERE chain_id = $1
                AND block_number = $2`,
             [CHAIN_ID, targetBlock],
@@ -119,9 +119,9 @@ describe("integration services: fetch retries", () => {
         expect(result.rows[0]?.attempts).toBe(2);
         expect(result.rows[0]?.next_retry_at).toBeNull();
         expect(result.rows[0]?.error).toBeNull();
-        await expect(db.countRows("blocks")).resolves.toBe(1);
-        await expect(db.countRows("transactions")).resolves.toBe(1);
-        await expect(db.countRows("events")).resolves.toBe(1);
+        await expect(db.countRows("voryn_blocks")).resolves.toBe(1);
+        await expect(db.countRows("voryn_transactions")).resolves.toBe(1);
+        await expect(db.countRows("voryn_events")).resolves.toBe(1);
     });
 
     test("fetch worker replaces orphan block events during retry", async () => {
@@ -134,16 +134,16 @@ describe("integration services: fetch retries", () => {
         const payload = buildFetchedBlock(targetBlock, hashFromNumber(204));
 
         await db.pool.query(
-            `INSERT INTO block_jobs
+            `INSERT INTO voryn_block_jobs
              (chain_id, block_number, status, attempts, next_retry_at, claimed_by, claimed_at, error)
              VALUES ($1, $2, 'failed', 9, NOW() - INTERVAL '1 second', NULL, NULL, $3)`,
             [CHAIN_ID, targetBlock, "duplicate key value violates unique constraint \"events_pkey\""],
         );
         await eventsRepository.insertMany(payload.logs);
 
-        await expect(db.countRows("blocks", "block_number = 205")).resolves.toBe(0);
-        await expect(db.countRows("transactions", "block_number = 205")).resolves.toBe(0);
-        await expect(db.countRows("events", "block_number = 205")).resolves.toBe(1);
+        await expect(db.countRows("voryn_blocks", "block_number = 205")).resolves.toBe(0);
+        await expect(db.countRows("voryn_transactions", "block_number = 205")).resolves.toBe(0);
+        await expect(db.countRows("voryn_events", "block_number = 205")).resolves.toBe(1);
 
         const source: BlockSource = {
             async getLatestBlockNumber(): Promise<number> {
@@ -184,7 +184,7 @@ describe("integration services: fetch retries", () => {
 
         const result = await db.pool.query<{ status: string; attempts: number; error: string | null }>(
             `SELECT status, attempts, error
-             FROM block_jobs
+             FROM voryn_block_jobs
              WHERE chain_id = $1
                AND block_number = $2`,
             [CHAIN_ID, targetBlock],
@@ -193,9 +193,9 @@ describe("integration services: fetch retries", () => {
         expect(result.rows[0]?.status).toBe("fetched");
         expect(result.rows[0]?.attempts).toBe(10);
         expect(result.rows[0]?.error).toBeNull();
-        await expect(db.countRows("blocks", "block_number = 205")).resolves.toBe(1);
-        await expect(db.countRows("transactions", "block_number = 205")).resolves.toBe(1);
-        await expect(db.countRows("events", "block_number = 205")).resolves.toBe(1);
+        await expect(db.countRows("voryn_blocks", "block_number = 205")).resolves.toBe(1);
+        await expect(db.countRows("voryn_transactions", "block_number = 205")).resolves.toBe(1);
+        await expect(db.countRows("voryn_events", "block_number = 205")).resolves.toBe(1);
     });
 
     test("fetch worker takes over stale fetching claims", async () => {
@@ -208,7 +208,7 @@ describe("integration services: fetch retries", () => {
         const payload = buildFetchedBlock(targetBlock, hashFromNumber(209));
 
         await db.pool.query(
-            `INSERT INTO block_jobs
+            `INSERT INTO voryn_block_jobs
              (chain_id, block_number, status, attempts, next_retry_at, claimed_by, claimed_at, error)
              VALUES ($1, $2, 'fetching', 1, NULL, 'stale-worker', NOW() - INTERVAL '2 hours', NULL)`,
             [CHAIN_ID, targetBlock],
@@ -258,7 +258,7 @@ describe("integration services: fetch retries", () => {
             claimed_at: Date | null;
         }>(
             `SELECT status, attempts, claimed_by, claimed_at
-             FROM block_jobs
+             FROM voryn_block_jobs
              WHERE chain_id = $1
                AND block_number = $2`,
             [CHAIN_ID, targetBlock],
@@ -268,8 +268,8 @@ describe("integration services: fetch retries", () => {
         expect(result.rows[0]?.attempts).toBe(2);
         expect(result.rows[0]?.claimed_by).toBeNull();
         expect(result.rows[0]?.claimed_at).toBeNull();
-        await expect(db.countRows("blocks")).resolves.toBe(1);
-        await expect(db.countRows("transactions")).resolves.toBe(1);
-        await expect(db.countRows("events")).resolves.toBe(1);
+        await expect(db.countRows("voryn_blocks")).resolves.toBe(1);
+        await expect(db.countRows("voryn_transactions")).resolves.toBe(1);
+        await expect(db.countRows("voryn_events")).resolves.toBe(1);
     });
 });

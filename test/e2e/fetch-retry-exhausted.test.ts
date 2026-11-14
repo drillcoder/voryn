@@ -112,7 +112,7 @@ describe("e2e fetch retry exhausted", () => {
             expect(job?.nextRetryAt).toBeNull();
             expect(job?.error).toContain("permanent RPC error");
             expect(source.blockFetchCalls).toBe(3);
-            await expect(db.countRows("blocks", "block_number = 10")).resolves.toBe(0);
+            await expect(db.countRows("voryn_blocks", "block_number = 10")).resolves.toBe(0);
         } finally {
             await stopWorkers([headWorker, fetchWorker]);
         }

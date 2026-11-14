@@ -2,18 +2,18 @@
 
 This document describes the fields from [postgres-schema.sql](../../src/sql/postgres-schema.sql).
 
-## `chain_cursor`
+## `voryn_chain_cursor`
 
 Current indexing progress for each network.
 
 - `chain_id` (`INT`, PK): numeric chain id.
-- `last_enqueued_block` (`BIGINT`): the latest block for which jobs have been added to `block_jobs`.
+- `last_enqueued_block` (`BIGINT`): the latest block for which jobs have been added to `voryn_block_jobs`.
 - `last_committed_block` (`BIGINT`): the latest block in the committed position.
 - `last_committed_hash` (`VARCHAR(66)`): hash of the latest block in the committed position.
 - `reorg_version` (`BIGINT`): increments after each sequencer rollback and invalidates stale reaction batches.
 - `updated_at` (`TIMESTAMPTZ`): last row update time.
 
-## `block_jobs`
+## `voryn_block_jobs`
 
 Block processing queue.
 
@@ -31,7 +31,7 @@ Keys and indexes:
 - PK: (`chain_id`, `block_number`)
 - Index: (`chain_id`, `status`, `next_retry_at`, `block_number`)
 
-## `blocks`
+## `voryn_blocks`
 
 Stored block data.
 
@@ -45,7 +45,7 @@ Stored block data.
 Keys and indexes:
 - PK: (`chain_id`, `block_number`)
 
-## `transactions`
+## `voryn_transactions`
 
 Stored transactions.
 
@@ -61,7 +61,7 @@ Stored transactions.
 Keys and indexes:
 - PK: (`chain_id`, `block_number`, `transaction_index`)
 
-## `events`
+## `voryn_events`
 
 Stored events/logs.
 
@@ -77,7 +77,7 @@ Stored events/logs.
 Keys and indexes:
 - PK: (`chain_id`, `block_number`, `transaction_index`, `log_index`)
 
-## `worker_cursors`
+## `voryn_worker_cursors`
 
 Reaction cursors tracked separately for each stream.
 

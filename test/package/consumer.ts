@@ -27,7 +27,7 @@ const create = (createOptions: HeadWorkerOptions): Promise<HeadWorker> => HeadWo
 
 const eventReactionOptions: EventReactionWorkerOptions = {
     chainId: 1,
-    workerName: "events",
+    workerName: "voryn_events",
     delayBetweenTicksMs: 1_000,
     batchSize: 100,
 
@@ -39,7 +39,7 @@ const eventReactionOptions: EventReactionWorkerOptions = {
 };
 const transactionReactionOptions: TransactionReactionWorkerOptions = {
     chainId: 1,
-    workerName: "transactions",
+    workerName: "voryn_transactions",
     delayBetweenTicksMs: 1_000,
     batchSize: 100,
 

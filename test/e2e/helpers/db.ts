@@ -18,7 +18,7 @@ export async function getBlockJob(
         error: string | null;
     }>(
         `SELECT status, attempts, next_retry_at, error
-         FROM block_jobs
+         FROM voryn_block_jobs
          WHERE chain_id = 1
            AND block_number = $1`,
         [blockNumber],

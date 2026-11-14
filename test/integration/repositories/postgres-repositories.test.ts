@@ -54,9 +54,9 @@ describe("integration repositories: postgres", () => {
         expect(savedBlock?.blockHash).toBe(block.block.hash);
         expect(transactions.map((transaction) => transaction.index)).toEqual([0, 1]);
         expect(events.map((event) => event.index)).toEqual([0, 1]);
-        await expect(db.countRows("blocks")).resolves.toBe(1);
-        await expect(db.countRows("transactions")).resolves.toBe(2);
-        await expect(db.countRows("events")).resolves.toBe(2);
+        await expect(db.countRows("voryn_blocks")).resolves.toBe(1);
+        await expect(db.countRows("voryn_transactions")).resolves.toBe(2);
+        await expect(db.countRows("voryn_events")).resolves.toBe(2);
     });
 
     test("worker cursor advance and reorg rewind are ordered by version", async () => {

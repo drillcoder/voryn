@@ -47,7 +47,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
         const executor = transaction ?? this.pool;
         const result = await executor.query<BlockJobRow>(
             `SELECT chain_id, block_number, status, attempts, next_retry_at, error, claimed_at, updated_at
-             FROM block_jobs
+             FROM voryn_block_jobs
              WHERE chain_id = $1
                AND block_number = $2`,
             [chainId, blockNumber],
@@ -72,7 +72,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
 
         const executor = transaction ?? this.pool;
         await executor.query(
-            `INSERT INTO block_jobs (chain_id, block_number, status)
+            `INSERT INTO voryn_block_jobs (chain_id, block_number, status)
              SELECT $1, gs, 'pending'
              FROM generate_series($2::BIGINT, $3::BIGINT) AS gs
              ON CONFLICT (chain_id, block_number) DO NOTHING`,
@@ -90,7 +90,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
         const result = await executor.query<BlockJobRow>(
             `WITH candidate AS (
                  SELECT chain_id, block_number
-                 FROM block_jobs
+                 FROM voryn_block_jobs
                  WHERE chain_id = $1
                    AND (
                        status = 'pending'
@@ -101,7 +101,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
                  FOR UPDATE SKIP LOCKED
                  LIMIT 1
              )
-             UPDATE block_jobs j
+             UPDATE voryn_block_jobs j
              SET status = 'fetching',
                  attempts = j.attempts + 1,
                  claimed_by = $2,
@@ -139,7 +139,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
     ): Promise<void> {
         const executor = transaction ?? this.pool;
         const result = await executor.query(
-            `UPDATE block_jobs
+            `UPDATE voryn_block_jobs
              SET status = 'fetched',
                  claimed_by = NULL,
                  claimed_at = NULL,
@@ -170,7 +170,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
     ): Promise<void> {
         const executor = transaction ?? this.pool;
         const result = await executor.query(
-            `UPDATE block_jobs
+            `UPDATE voryn_block_jobs
              SET status = 'failed',
                  claimed_by = NULL,
                  claimed_at = NULL,
@@ -198,7 +198,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
     ): Promise<void> {
         const executor = transaction ?? this.pool;
         const updated = await executor.query(
-            `UPDATE block_jobs
+            `UPDATE voryn_block_jobs
              SET status = 'committed',
                  updated_at = NOW()
              WHERE chain_id = $1
@@ -223,7 +223,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
                  COUNT(*) FILTER (WHERE status = 'fetched') AS fetched_count,
                  COUNT(*) FILTER (WHERE status = 'committed') AS committed_count,
                  COUNT(*) FILTER (WHERE status = 'failed') AS failed_count
-             FROM block_jobs
+             FROM voryn_block_jobs
              WHERE chain_id = $1`,
             [chainId],
         );
@@ -246,7 +246,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
         const executor = transaction ?? this.pool;
         const result = await executor.query<FailedBlockMetricsRow>(
             `SELECT block_number, attempts, error, next_retry_at, updated_at
-             FROM block_jobs
+             FROM voryn_block_jobs
              WHERE chain_id = $1
                AND status = 'failed'
              ORDER BY block_number ASC
@@ -275,7 +275,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
 
         const executor = transaction ?? this.pool;
         const updated = await executor.query(
-            `UPDATE block_jobs
+            `UPDATE voryn_block_jobs
              SET attempts = 0,
                  claimed_by = NULL,
                  claimed_at = NULL,
@@ -293,7 +293,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
     async retryAllFailed(chainId: ChainId, transaction?: DbExecutor): Promise<number> {
         const executor = transaction ?? this.pool;
         const updated = await executor.query(
-            `UPDATE block_jobs
+            `UPDATE voryn_block_jobs
              SET attempts = 0,
                  claimed_by = NULL,
                  claimed_at = NULL,
@@ -319,7 +319,7 @@ export class PostgresBlockJobsRepository implements BlockJobsRepository {
 
         const executor = transaction ?? this.pool;
         const deleted = await executor.query(
-            `DELETE FROM block_jobs WHERE chain_id = $1 AND block_number BETWEEN $2 AND $3`,
+            `DELETE FROM voryn_block_jobs WHERE chain_id = $1 AND block_number BETWEEN $2 AND $3`,
             [chainId, fromBlock, toBlock],
         );
 

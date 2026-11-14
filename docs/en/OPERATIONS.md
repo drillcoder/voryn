@@ -106,7 +106,7 @@ Returning early from a handler still commits its cursor in a business transactio
 
 ## Scaling and Tuning
 
-Scale `fetch` first. The fetch queue lives in `block_jobs`, and multiple `FetchWorker` processes can claim jobs from
+Scale `fetch` first. The fetch queue lives in `voryn_block_jobs`, and multiple `FetchWorker` processes can claim jobs from
 the same chain queue.
 
 `FetchWorker` settings:
@@ -127,9 +127,9 @@ increase failed jobs, and make retries worse.
 
 Reaction workers run application logic over committed data:
 
-- `EventReactionWorker` reads from `events`.
-- `TransactionReactionWorker` reads from `transactions`.
-- Each worker has its own cursor in `worker_cursors`.
+- `EventReactionWorker` reads from `voryn_events`.
+- `TransactionReactionWorker` reads from `voryn_transactions`.
+- Each worker has its own cursor in `voryn_worker_cursors`.
 - Cursor identity is `workerName + chainId + streamType`.
 
 On the first start, a reaction worker creates its cursor at the current committed block. It does not process older
@@ -165,7 +165,7 @@ confirmations; a handler failure or restart does not repeat a gap already record
 The warning includes `chainId`, `workerName`, `streamType`, `previousPosition`, `fromBlock`, `toBlock`, and
 `firstAvailableBlock`. It reports unavailable block history, not a confirmed loss of specific events or transactions.
 The previous position includes indexes because part of its block may have been processed already. Blocks still being
-fetched above the committed position do not establish a gap; an empty `blocks` table does not establish a boundary.
+fetched above the committed position do not establish a gap; an empty `voryn_blocks` table does not establish a boundary.
 Accounting for a gap updates the cursor's `updatedAt` and its progress freshness metric without processing an item.
 A process crash between the cursor commit and logging can prevent the warning from being written.
 
@@ -191,7 +191,7 @@ and errors together.
 ## Retention
 
 `retentionDepthBlocks` is the number of committed blocks to keep behind the current committed position.
-`RetentionWorker` deletes old rows from `block_jobs`, `blocks`, `transactions`, and `events` after data is outside the
+`RetentionWorker` deletes old rows from `voryn_block_jobs`, `voryn_blocks`, `voryn_transactions`, and `voryn_events` after data is outside the
 retention window.
 
 Choose a depth that covers:
@@ -456,13 +456,13 @@ Actions:
 ## Reorg Behavior
 
 `SequencerWorker` checks that the next fetched block links to the current committed position.
-If the next block `parent_hash` does not match `chain_cursor.last_committed_hash`, the sequencer treats it as a reorg.
+If the next block `parent_hash` does not match `voryn_chain_cursor.last_committed_hash`, the sequencer treats it as a reorg.
 
 During reorg handling it:
 
 - finds the common ancestor through `BlockSource`;
-- moves `chain_cursor` back to that ancestor;
-- deletes replaced data after the ancestor from `block_jobs`, `blocks`, `transactions`, and `events`;
+- moves `voryn_chain_cursor` back to that ancestor;
+- deletes replaced data after the ancestor from `voryn_block_jobs`, `voryn_blocks`, `voryn_transactions`, and `voryn_events`;
 - lets `head` enqueue the correct blocks again.
 
 Reaction workers read only data inside the committed position. This keeps handlers away from fetched but uncommitted

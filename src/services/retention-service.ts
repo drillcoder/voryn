@@ -109,7 +109,7 @@ export class RetentionService {
             this.logger.debug("retention_purge_stage_started", {
                 chainId,
                 depthBlocks,
-                stage: "block_jobs",
+                stage: "voryn_block_jobs",
                 fromBlock: oldestBlock,
                 toBlock: purgeToBlock,
             });
@@ -123,7 +123,7 @@ export class RetentionService {
             this.logger.debug("retention_purge_stage_started", {
                 chainId,
                 depthBlocks,
-                stage: "blocks",
+                stage: "voryn_blocks",
                 fromBlock: oldestBlock,
                 toBlock: purgeToBlock,
             });
@@ -137,7 +137,7 @@ export class RetentionService {
             this.logger.debug("retention_purge_stage_started", {
                 chainId,
                 depthBlocks,
-                stage: "transactions",
+                stage: "voryn_transactions",
                 fromBlock: oldestBlock,
                 toBlock: purgeToBlock,
             });
@@ -151,7 +151,7 @@ export class RetentionService {
             this.logger.debug("retention_purge_stage_started", {
                 chainId,
                 depthBlocks,
-                stage: "events",
+                stage: "voryn_events",
                 fromBlock: oldestBlock,
                 toBlock: purgeToBlock,
             });

@@ -2,18 +2,18 @@
 
 Документ описывает поля из файла [postgres-schema.sql](../../src/sql/postgres-schema.sql).
 
-## `chain_cursor`
+## `voryn_chain_cursor`
 
 Текущее состояние прогресса индексации по каждой сети.
 
 - `chain_id` (`INT`, PK): числовой chain id.
-- `last_enqueued_block` (`BIGINT`): до какого блока задания уже поставлены в `block_jobs`.
+- `last_enqueued_block` (`BIGINT`): до какого блока задания уже поставлены в `voryn_block_jobs`.
 - `last_committed_block` (`BIGINT`): последний блок в committed-позиции.
 - `last_committed_hash` (`VARCHAR(66)`): хэш последнего блока в committed-позиции.
 - `reorg_version` (`BIGINT`): увеличивается при каждом rollback sequencer и инвалидирует устаревшие reaction batches.
 - `updated_at` (`TIMESTAMPTZ`): время последнего обновления строки.
 
-## `block_jobs`
+## `voryn_block_jobs`
 
 Очередь заданий по блокам.
 
@@ -31,7 +31,7 @@
 - PK: (`chain_id`, `block_number`)
 - Index: (`chain_id`, `status`, `next_retry_at`, `block_number`)
 
-## `blocks`
+## `voryn_blocks`
 
 Сохраненные данные блока.
 
@@ -45,7 +45,7 @@
 Ключи и индексы:
 - PK: (`chain_id`, `block_number`)
 
-## `transactions`
+## `voryn_transactions`
 
 Сохраненные транзакции.
 
@@ -61,7 +61,7 @@
 Ключи и индексы:
 - PK: (`chain_id`, `block_number`, `transaction_index`)
 
-## `events`
+## `voryn_events`
 
 Сохраненные события (логи).
 
@@ -77,7 +77,7 @@
 Ключи и индексы:
 - PK: (`chain_id`, `block_number`, `transaction_index`, `log_index`)
 
-## `worker_cursors`
+## `voryn_worker_cursors`
 
 Курсоры реакторов по каждому потоку отдельно.
 

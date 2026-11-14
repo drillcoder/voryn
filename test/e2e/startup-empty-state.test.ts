@@ -149,7 +149,7 @@ describe("e2e startup from empty state", () => {
                 lastTransactionIndex: -1,
                 lastLogIndex: -1,
             });
-            await expect(db.countRows("block_jobs")).resolves.toBe(0);
+            await expect(db.countRows("voryn_block_jobs")).resolves.toBe(0);
         } finally {
             await stopWorkers([headWorker, eventWorker, transactionWorker]);
         }

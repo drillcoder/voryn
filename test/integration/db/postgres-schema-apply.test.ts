@@ -28,12 +28,12 @@ describe("integration postgres schema apply script", () => {
 
             const checkPool = new Pool({ connectionString: db.databaseUrl });
             try {
-                await expect(hasTable(checkPool, "chain_cursor")).resolves.toBe(true);
-                await expect(hasTable(checkPool, "block_jobs")).resolves.toBe(true);
-                await expect(hasTable(checkPool, "blocks")).resolves.toBe(true);
-                await expect(hasTable(checkPool, "transactions")).resolves.toBe(true);
-                await expect(hasTable(checkPool, "events")).resolves.toBe(true);
-                await expect(hasTable(checkPool, "worker_cursors")).resolves.toBe(true);
+                await expect(hasTable(checkPool, "voryn_chain_cursor")).resolves.toBe(true);
+                await expect(hasTable(checkPool, "voryn_block_jobs")).resolves.toBe(true);
+                await expect(hasTable(checkPool, "voryn_blocks")).resolves.toBe(true);
+                await expect(hasTable(checkPool, "voryn_transactions")).resolves.toBe(true);
+                await expect(hasTable(checkPool, "voryn_events")).resolves.toBe(true);
+                await expect(hasTable(checkPool, "voryn_worker_cursors")).resolves.toBe(true);
             } finally {
                 await checkPool.end();
             }

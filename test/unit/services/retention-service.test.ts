@@ -167,28 +167,28 @@ test("retention service purges committed data and logs result", async () => {
     expect(debug).toHaveBeenCalledWith("retention_purge_stage_started", {
         chainId: 1,
         depthBlocks: 42,
-        stage: "block_jobs",
+        stage: "voryn_block_jobs",
         fromBlock: 48,
         toBlock: 48,
     });
     expect(debug).toHaveBeenCalledWith("retention_purge_stage_started", {
         chainId: 1,
         depthBlocks: 42,
-        stage: "blocks",
+        stage: "voryn_blocks",
         fromBlock: 48,
         toBlock: 48,
     });
     expect(debug).toHaveBeenCalledWith("retention_purge_stage_started", {
         chainId: 1,
         depthBlocks: 42,
-        stage: "transactions",
+        stage: "voryn_transactions",
         fromBlock: 48,
         toBlock: 48,
     });
     expect(debug).toHaveBeenCalledWith("retention_purge_stage_started", {
         chainId: 1,
         depthBlocks: 42,
-        stage: "events",
+        stage: "voryn_events",
         fromBlock: 48,
         toBlock: 48,
     });

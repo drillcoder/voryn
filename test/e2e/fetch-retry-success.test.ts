@@ -129,7 +129,7 @@ describe("e2e fetch retry success", () => {
             expect(job?.status).toBe("committed");
             expect(job?.attempts).toBe(2);
             expect(source.blockFetchCalls).toBe(2);
-            await expect(db.countRows("blocks", "block_number = 10")).resolves.toBe(1);
+            await expect(db.countRows("voryn_blocks", "block_number = 10")).resolves.toBe(1);
         } finally {
             await stopWorkers([headWorker, fetchWorker, sequencerWorker]);
         }

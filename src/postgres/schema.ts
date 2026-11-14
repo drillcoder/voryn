@@ -44,7 +44,7 @@ interface SchemaIndexRow {
 }
 
 const EXPECTED_SCHEMA = {
-    chain_cursor: {
+    voryn_chain_cursor: {
         columns: {
             chain_id: { dataType: "integer", isNullable: false },
             last_enqueued_block: { dataType: "bigint", isNullable: false },
@@ -59,7 +59,7 @@ const EXPECTED_SCHEMA = {
         },
         primaryKey: ["chain_id"],
     },
-    block_jobs: {
+    voryn_block_jobs: {
         columns: {
             chain_id: { dataType: "integer", isNullable: false },
             block_number: { dataType: "bigint", isNullable: false },
@@ -73,7 +73,7 @@ const EXPECTED_SCHEMA = {
         },
         primaryKey: ["chain_id", "block_number"],
     },
-    blocks: {
+    voryn_blocks: {
         columns: {
             chain_id: { dataType: "integer", isNullable: false },
             block_number: { dataType: "bigint", isNullable: false },
@@ -92,7 +92,7 @@ const EXPECTED_SCHEMA = {
         },
         primaryKey: ["chain_id", "block_number"],
     },
-    transactions: {
+    voryn_transactions: {
         columns: {
             chain_id: { dataType: "integer", isNullable: false },
             block_number: { dataType: "bigint", isNullable: false },
@@ -122,7 +122,7 @@ const EXPECTED_SCHEMA = {
         },
         primaryKey: ["chain_id", "block_number", "transaction_index"],
     },
-    events: {
+    voryn_events: {
         columns: {
             chain_id: { dataType: "integer", isNullable: false },
             block_number: { dataType: "bigint", isNullable: false },
@@ -148,7 +148,7 @@ const EXPECTED_SCHEMA = {
         },
         primaryKey: ["chain_id", "block_number", "transaction_index", "log_index"],
     },
-    worker_cursors: {
+    voryn_worker_cursors: {
         columns: {
             worker_name: { dataType: "text", isNullable: false },
             chain_id: { dataType: "integer", isNullable: false },
@@ -164,8 +164,8 @@ const EXPECTED_SCHEMA = {
 } as const satisfies Record<string, ExpectedTable>;
 
 const EXPECTED_INDEXES = {
-    block_jobs_claim_idx: {
-        tableName: "block_jobs",
+    voryn_block_jobs_claim_idx: {
+        tableName: "voryn_block_jobs",
         columns: ["chain_id", "status", "next_retry_at", "block_number"],
     },
 } as const satisfies Record<string, ExpectedIndex>;

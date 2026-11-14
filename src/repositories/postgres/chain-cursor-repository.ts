@@ -27,7 +27,7 @@ export class PostgresChainCursorRepository implements ChainCursorRepository {
                     last_committed_hash,
                     reorg_version,
                     updated_at
-             FROM chain_cursor
+             FROM voryn_chain_cursor
              WHERE chain_id = $1`,
             [chainId],
         );
@@ -54,7 +54,7 @@ export class PostgresChainCursorRepository implements ChainCursorRepository {
                     last_committed_hash,
                     reorg_version,
                     updated_at
-             FROM chain_cursor
+             FROM voryn_chain_cursor
              WHERE chain_id = $1
              FOR UPDATE`,
             [chainId],
@@ -77,7 +77,7 @@ export class PostgresChainCursorRepository implements ChainCursorRepository {
     async insert(cursor: Omit<ChainCursor, "updatedAt">, transaction?: DbExecutor): Promise<void> {
         const executor = transaction ?? this.pool;
         await executor.query(
-            `INSERT INTO chain_cursor
+            `INSERT INTO voryn_chain_cursor
              (chain_id, last_enqueued_block, last_committed_block, last_committed_hash, reorg_version)
              VALUES ($1, $2, $3, $4, $5)
              ON CONFLICT (chain_id) DO NOTHING`,
@@ -99,7 +99,7 @@ export class PostgresChainCursorRepository implements ChainCursorRepository {
         transaction: DbExecutor,
     ): Promise<number> {
         const updated = await transaction.query<{ reorg_version: bigint | number | string }>(
-            `UPDATE chain_cursor
+            `UPDATE voryn_chain_cursor
              SET last_committed_block = $2,
                  last_committed_hash = $3,
                  last_enqueued_block = $4,
@@ -120,7 +120,7 @@ export class PostgresChainCursorRepository implements ChainCursorRepository {
     async setLastEnqueued(chainId: ChainId, blockNumber: BlockNumber, transaction?: DbExecutor): Promise<void> {
         const executor = transaction ?? this.pool;
         const updated = await executor.query(
-            `UPDATE chain_cursor
+            `UPDATE voryn_chain_cursor
              SET last_enqueued_block = GREATEST(last_enqueued_block, $2),
                  updated_at = NOW()
              WHERE chain_id = $1`,
@@ -141,7 +141,7 @@ export class PostgresChainCursorRepository implements ChainCursorRepository {
     ): Promise<void> {
         const executor = transaction ?? this.pool;
         const updated = await executor.query(
-            `UPDATE chain_cursor
+            `UPDATE voryn_chain_cursor
              SET last_committed_block = $2,
                  last_committed_hash = $3,
                  last_enqueued_block = $4,
@@ -165,7 +165,7 @@ export class PostgresChainCursorRepository implements ChainCursorRepository {
     ): Promise<void> {
         const executor = transaction ?? this.pool;
         const updated = await executor.query(
-            `UPDATE chain_cursor
+            `UPDATE voryn_chain_cursor
              SET last_committed_block = $4,
                  last_committed_hash = $5,
                  updated_at = NOW()

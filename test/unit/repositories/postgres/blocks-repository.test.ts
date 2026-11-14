@@ -57,7 +57,7 @@ test("save inserts block data", async () => {
 
     expect(query).toHaveBeenCalledTimes(1);
     const calls = query.mock.calls as unknown as Array<[string, readonly unknown[] | undefined]>;
-    expect(calls[0]?.[0]).toContain("INSERT INTO blocks");
+    expect(calls[0]?.[0]).toContain("INSERT INTO voryn_blocks");
     expect(calls[0]?.[1]).toEqual([1, 100, HASH_A, HASH_B, 1711792800, fetchedAt]);
 });
 

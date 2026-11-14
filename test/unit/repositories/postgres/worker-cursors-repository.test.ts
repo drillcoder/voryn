@@ -18,7 +18,7 @@ test.each([0, 1, null])("delete reports whether the exact worker cursor existed"
     const repository = new PostgresWorkerCursorsRepository(createExecutor(query));
 
     await expect(repository.delete("worker-a", 1, "event")).resolves.toBe(rowCount === 1);
-    expect(query).toHaveBeenCalledWith(expect.stringContaining("DELETE FROM worker_cursors"), [
+    expect(query).toHaveBeenCalledWith(expect.stringContaining("DELETE FROM voryn_worker_cursors"), [
         "worker-a", 1, "event",
     ]);
 });

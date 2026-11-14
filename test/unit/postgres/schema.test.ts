@@ -45,74 +45,74 @@ const createLogger = (): MockLogger => ({
 
 const createValidSchemaFixture = (): SchemaFixture => ({
     tables: [
-        "chain_cursor",
-        "block_jobs",
-        "blocks",
-        "transactions",
-        "events",
-        "worker_cursors",
+        "voryn_chain_cursor",
+        "voryn_block_jobs",
+        "voryn_blocks",
+        "voryn_transactions",
+        "voryn_events",
+        "voryn_worker_cursors",
     ],
     columns: [
-        column("chain_cursor", "chain_id", "integer", "NO", "int4"),
-        column("chain_cursor", "last_enqueued_block", "bigint", "NO", "int8"),
-        column("chain_cursor", "last_committed_block", "bigint", "NO", "int8"),
-        column("chain_cursor", "last_committed_hash", "character varying", "NO", "varchar", 66),
-        column("chain_cursor", "reorg_version", "bigint", "NO", "int8"),
-        column("chain_cursor", "updated_at", "timestamp with time zone", "NO", "timestamptz"),
-        column("block_jobs", "chain_id", "integer", "NO", "int4"),
-        column("block_jobs", "block_number", "bigint", "NO", "int8"),
-        column("block_jobs", "status", "text", "NO", "text"),
-        column("block_jobs", "attempts", "integer", "NO", "int4"),
-        column("block_jobs", "next_retry_at", "timestamp with time zone", "YES", "timestamptz"),
-        column("block_jobs", "claimed_by", "text", "YES", "text"),
-        column("block_jobs", "claimed_at", "timestamp with time zone", "YES", "timestamptz"),
-        column("block_jobs", "error", "text", "YES", "text"),
-        column("block_jobs", "updated_at", "timestamp with time zone", "NO", "timestamptz"),
-        column("blocks", "chain_id", "integer", "NO", "int4"),
-        column("blocks", "block_number", "bigint", "NO", "int8"),
-        column("blocks", "block_hash", "character varying", "NO", "varchar", 66),
-        column("blocks", "parent_hash", "character varying", "NO", "varchar", 66),
-        column("blocks", "block_timestamp", "bigint", "NO", "int8"),
-        column("blocks", "fetched_at", "timestamp with time zone", "NO", "timestamptz"),
-        column("transactions", "chain_id", "integer", "NO", "int4"),
-        column("transactions", "block_number", "bigint", "NO", "int8"),
-        column("transactions", "block_hash", "character varying", "NO", "varchar", 66),
-        column("transactions", "transaction_index", "integer", "NO", "int4"),
-        column("transactions", "transaction_hash", "character varying", "NO", "varchar", 66),
-        column("transactions", "from_address", "character varying", "NO", "varchar", 42),
-        column("transactions", "to_address", "character varying", "YES", "varchar", 42),
-        column("transactions", "value", "text", "NO", "text"),
-        column("transactions", "data", "text", "NO", "text"),
-        column("events", "chain_id", "integer", "NO", "int4"),
-        column("events", "block_number", "bigint", "NO", "int8"),
-        column("events", "block_hash", "character varying", "NO", "varchar", 66),
-        column("events", "transaction_index", "integer", "NO", "int4"),
-        column("events", "transaction_hash", "character varying", "NO", "varchar", 66),
-        column("events", "log_index", "integer", "NO", "int4"),
-        column("events", "address", "character varying", "NO", "varchar", 42),
-        column("events", "topics", "ARRAY", "NO", "_text"),
-        column("events", "data", "text", "NO", "text"),
-        column("worker_cursors", "worker_name", "text", "NO", "text"),
-        column("worker_cursors", "chain_id", "integer", "NO", "int4"),
-        column("worker_cursors", "stream_type", "text", "NO", "text"),
-        column("worker_cursors", "last_block_number", "bigint", "NO", "int8"),
-        column("worker_cursors", "last_transaction_index", "integer", "NO", "int4"),
-        column("worker_cursors", "last_log_index", "integer", "NO", "int4"),
-        column("worker_cursors", "reorg_version", "bigint", "NO", "int8"),
-        column("worker_cursors", "updated_at", "timestamp with time zone", "NO", "timestamptz"),
+        column("voryn_chain_cursor", "chain_id", "integer", "NO", "int4"),
+        column("voryn_chain_cursor", "last_enqueued_block", "bigint", "NO", "int8"),
+        column("voryn_chain_cursor", "last_committed_block", "bigint", "NO", "int8"),
+        column("voryn_chain_cursor", "last_committed_hash", "character varying", "NO", "varchar", 66),
+        column("voryn_chain_cursor", "reorg_version", "bigint", "NO", "int8"),
+        column("voryn_chain_cursor", "updated_at", "timestamp with time zone", "NO", "timestamptz"),
+        column("voryn_block_jobs", "chain_id", "integer", "NO", "int4"),
+        column("voryn_block_jobs", "block_number", "bigint", "NO", "int8"),
+        column("voryn_block_jobs", "status", "text", "NO", "text"),
+        column("voryn_block_jobs", "attempts", "integer", "NO", "int4"),
+        column("voryn_block_jobs", "next_retry_at", "timestamp with time zone", "YES", "timestamptz"),
+        column("voryn_block_jobs", "claimed_by", "text", "YES", "text"),
+        column("voryn_block_jobs", "claimed_at", "timestamp with time zone", "YES", "timestamptz"),
+        column("voryn_block_jobs", "error", "text", "YES", "text"),
+        column("voryn_block_jobs", "updated_at", "timestamp with time zone", "NO", "timestamptz"),
+        column("voryn_blocks", "chain_id", "integer", "NO", "int4"),
+        column("voryn_blocks", "block_number", "bigint", "NO", "int8"),
+        column("voryn_blocks", "block_hash", "character varying", "NO", "varchar", 66),
+        column("voryn_blocks", "parent_hash", "character varying", "NO", "varchar", 66),
+        column("voryn_blocks", "block_timestamp", "bigint", "NO", "int8"),
+        column("voryn_blocks", "fetched_at", "timestamp with time zone", "NO", "timestamptz"),
+        column("voryn_transactions", "chain_id", "integer", "NO", "int4"),
+        column("voryn_transactions", "block_number", "bigint", "NO", "int8"),
+        column("voryn_transactions", "block_hash", "character varying", "NO", "varchar", 66),
+        column("voryn_transactions", "transaction_index", "integer", "NO", "int4"),
+        column("voryn_transactions", "transaction_hash", "character varying", "NO", "varchar", 66),
+        column("voryn_transactions", "from_address", "character varying", "NO", "varchar", 42),
+        column("voryn_transactions", "to_address", "character varying", "YES", "varchar", 42),
+        column("voryn_transactions", "value", "text", "NO", "text"),
+        column("voryn_transactions", "data", "text", "NO", "text"),
+        column("voryn_events", "chain_id", "integer", "NO", "int4"),
+        column("voryn_events", "block_number", "bigint", "NO", "int8"),
+        column("voryn_events", "block_hash", "character varying", "NO", "varchar", 66),
+        column("voryn_events", "transaction_index", "integer", "NO", "int4"),
+        column("voryn_events", "transaction_hash", "character varying", "NO", "varchar", 66),
+        column("voryn_events", "log_index", "integer", "NO", "int4"),
+        column("voryn_events", "address", "character varying", "NO", "varchar", 42),
+        column("voryn_events", "topics", "ARRAY", "NO", "_text"),
+        column("voryn_events", "data", "text", "NO", "text"),
+        column("voryn_worker_cursors", "worker_name", "text", "NO", "text"),
+        column("voryn_worker_cursors", "chain_id", "integer", "NO", "int4"),
+        column("voryn_worker_cursors", "stream_type", "text", "NO", "text"),
+        column("voryn_worker_cursors", "last_block_number", "bigint", "NO", "int8"),
+        column("voryn_worker_cursors", "last_transaction_index", "integer", "NO", "int4"),
+        column("voryn_worker_cursors", "last_log_index", "integer", "NO", "int4"),
+        column("voryn_worker_cursors", "reorg_version", "bigint", "NO", "int8"),
+        column("voryn_worker_cursors", "updated_at", "timestamp with time zone", "NO", "timestamptz"),
     ],
     primaryKeys: [
-        { tableName: "chain_cursor", columnNames: ["chain_id"] },
-        { tableName: "block_jobs", columnNames: ["chain_id", "block_number"] },
-        { tableName: "blocks", columnNames: ["chain_id", "block_number"] },
-        { tableName: "transactions", columnNames: ["chain_id", "block_number", "transaction_index"] },
-        { tableName: "events", columnNames: ["chain_id", "block_number", "transaction_index", "log_index"] },
-        { tableName: "worker_cursors", columnNames: ["worker_name", "chain_id", "stream_type"] },
+        { tableName: "voryn_chain_cursor", columnNames: ["chain_id"] },
+        { tableName: "voryn_block_jobs", columnNames: ["chain_id", "block_number"] },
+        { tableName: "voryn_blocks", columnNames: ["chain_id", "block_number"] },
+        { tableName: "voryn_transactions", columnNames: ["chain_id", "block_number", "transaction_index"] },
+        { tableName: "voryn_events", columnNames: ["chain_id", "block_number", "transaction_index", "log_index"] },
+        { tableName: "voryn_worker_cursors", columnNames: ["worker_name", "chain_id", "stream_type"] },
     ],
     indexes: [
         {
-            tableName: "block_jobs",
-            indexName: "block_jobs_claim_idx",
+            tableName: "voryn_block_jobs",
+            indexName: "voryn_block_jobs_claim_idx",
             columnNames: ["chain_id", "status", "next_retry_at", "block_number"],
         },
     ],
@@ -285,49 +285,49 @@ test("validatePostgresSchema passes when required schema matches", async () => {
 
 test("validatePostgresSchema throws when required table is missing", async () => {
     const fixture = createValidSchemaFixture();
-    fixture.tables = fixture.tables.filter((tableName) => tableName !== "block_jobs");
+    fixture.tables = fixture.tables.filter((tableName) => tableName !== "voryn_block_jobs");
     const pool = createSchemaPool(fixture);
     const logger = createLogger();
 
     await expect(
         validatePostgresSchema({ pool: pool as never, logger }),
-    ).rejects.toThrow("postgres schema is invalid: missing table block_jobs");
+    ).rejects.toThrow("postgres schema is invalid: missing table voryn_block_jobs");
 
     expect(logger.error).toHaveBeenCalledTimes(1);
     const [, validationFailedMeta] = logger.error.mock.calls[0] ?? [];
     expect(validationFailedMeta).toBeDefined();
     expect(typeof validationFailedMeta?.error).toBe("string");
-    expect(String(validationFailedMeta?.error)).toContain("missing table block_jobs");
+    expect(String(validationFailedMeta?.error)).toContain("missing table voryn_block_jobs");
 });
 
 test("validatePostgresSchema throws when required column is missing", async () => {
     const fixture = createValidSchemaFixture();
     fixture.columns = fixture.columns.filter(
-        (schemaColumn) => !(schemaColumn.tableName === "blocks" && schemaColumn.columnName === "parent_hash"),
+        (schemaColumn) => !(schemaColumn.tableName === "voryn_blocks" && schemaColumn.columnName === "parent_hash"),
     );
     const pool = createSchemaPool(fixture);
     const logger = createLogger();
 
     await expect(
         validatePostgresSchema({ pool: pool as never, logger }),
-    ).rejects.toThrow("missing column blocks.parent_hash");
+    ).rejects.toThrow("missing column voryn_blocks.parent_hash");
 });
 
 test("validatePostgresSchema throws when table column metadata is missing", async () => {
     const fixture = createValidSchemaFixture();
-    fixture.columns = fixture.columns.filter((schemaColumn) => schemaColumn.tableName !== "chain_cursor");
+    fixture.columns = fixture.columns.filter((schemaColumn) => schemaColumn.tableName !== "voryn_chain_cursor");
     const pool = createSchemaPool(fixture);
     const logger = createLogger();
 
     await expect(
         validatePostgresSchema({ pool: pool as never, logger }),
-    ).rejects.toThrow("missing column chain_cursor.chain_id");
+    ).rejects.toThrow("missing column voryn_chain_cursor.chain_id");
 });
 
 test("validatePostgresSchema throws when column type does not match", async () => {
     const fixture = createValidSchemaFixture();
     const blockHashColumn = fixture.columns.find(
-        (schemaColumn) => schemaColumn.tableName === "blocks" && schemaColumn.columnName === "block_hash",
+        (schemaColumn) => schemaColumn.tableName === "voryn_blocks" && schemaColumn.columnName === "block_hash",
     );
     if (blockHashColumn === undefined) {
         throw new Error("test fixture is invalid");
@@ -340,13 +340,13 @@ test("validatePostgresSchema throws when column type does not match", async () =
 
     await expect(
         validatePostgresSchema({ pool: pool as never, logger }),
-    ).rejects.toThrow("column blocks.block_hash type mismatch: expected character varying(66), got text");
+    ).rejects.toThrow("column voryn_blocks.block_hash type mismatch: expected character varying(66), got text");
 });
 
 test("validatePostgresSchema throws when column nullable does not match", async () => {
     const fixture = createValidSchemaFixture();
     const attemptsColumn = fixture.columns.find(
-        (schemaColumn) => schemaColumn.tableName === "block_jobs" && schemaColumn.columnName === "attempts",
+        (schemaColumn) => schemaColumn.tableName === "voryn_block_jobs" && schemaColumn.columnName === "attempts",
     );
     if (attemptsColumn === undefined) {
         throw new Error("test fixture is invalid");
@@ -357,12 +357,12 @@ test("validatePostgresSchema throws when column nullable does not match", async 
 
     await expect(
         validatePostgresSchema({ pool: pool as never, logger }),
-    ).rejects.toThrow("column block_jobs.attempts nullable mismatch: expected not nullable, got nullable");
+    ).rejects.toThrow("column voryn_block_jobs.attempts nullable mismatch: expected not nullable, got nullable");
 });
 
 test("validatePostgresSchema throws when primary key does not match", async () => {
     const fixture = createValidSchemaFixture();
-    const blockJobsPrimaryKey = fixture.primaryKeys.find((primaryKey) => primaryKey.tableName === "block_jobs");
+    const blockJobsPrimaryKey = fixture.primaryKeys.find((primaryKey) => primaryKey.tableName === "voryn_block_jobs");
     if (blockJobsPrimaryKey === undefined) {
         throw new Error("test fixture is invalid");
     }
@@ -373,7 +373,7 @@ test("validatePostgresSchema throws when primary key does not match", async () =
     await expect(
         validatePostgresSchema({ pool: pool as never, logger }),
     ).rejects.toThrow(
-        "primary key block_jobs mismatch: expected (chain_id, block_number), got (block_number, chain_id)",
+        "primary key voryn_block_jobs mismatch: expected (chain_id, block_number), got (block_number, chain_id)",
     );
 });
 
@@ -386,16 +386,16 @@ test("validatePostgresSchema throws when required index is missing", async () =>
     await expect(
         validatePostgresSchema({ pool: pool as never, logger }),
     ).rejects.toThrow(
-        "index block_jobs_claim_idx mismatch: "
-        + "expected block_jobs(chain_id, status, next_retry_at, block_number), got none",
+        "index voryn_block_jobs_claim_idx mismatch: "
+        + "expected voryn_block_jobs(chain_id, status, next_retry_at, block_number), got none",
     );
 });
 
 test("validatePostgresSchema throws when required index columns do not match", async () => {
     const fixture = createValidSchemaFixture();
     fixture.indexes[0] = {
-        tableName: "block_jobs",
-        indexName: "block_jobs_claim_idx",
+        tableName: "voryn_block_jobs",
+        indexName: "voryn_block_jobs_claim_idx",
         columnNames: ["chain_id", "status", "block_number"],
     };
     const pool = createSchemaPool(fixture);
@@ -404,19 +404,19 @@ test("validatePostgresSchema throws when required index columns do not match", a
     await expect(
         validatePostgresSchema({ pool: pool as never, logger }),
     ).rejects.toThrow(
-        "index block_jobs_claim_idx mismatch: "
-        + "expected block_jobs(chain_id, status, next_retry_at, block_number), "
-        + "got block_jobs(chain_id, status, block_number)",
+        "index voryn_block_jobs_claim_idx mismatch: "
+        + "expected voryn_block_jobs(chain_id, status, next_retry_at, block_number), "
+        + "got voryn_block_jobs(chain_id, status, block_number)",
     );
 });
 
 test("validatePostgresSchema aggregates validation errors", async () => {
     const fixture = createValidSchemaFixture();
-    fixture.tables = fixture.tables.filter((tableName) => tableName !== "events");
+    fixture.tables = fixture.tables.filter((tableName) => tableName !== "voryn_events");
     fixture.columns = fixture.columns.filter(
-        (schemaColumn) => !(schemaColumn.tableName === "blocks" && schemaColumn.columnName === "parent_hash"),
+        (schemaColumn) => !(schemaColumn.tableName === "voryn_blocks" && schemaColumn.columnName === "parent_hash"),
     );
-    fixture.primaryKeys = fixture.primaryKeys.filter((primaryKey) => primaryKey.tableName !== "chain_cursor");
+    fixture.primaryKeys = fixture.primaryKeys.filter((primaryKey) => primaryKey.tableName !== "voryn_chain_cursor");
     fixture.indexes = [];
     const pool = createSchemaPool(fixture);
     const logger = createLogger();
@@ -425,11 +425,11 @@ test("validatePostgresSchema aggregates validation errors", async () => {
         validatePostgresSchema({ pool: pool as never, logger }),
     ).rejects.toThrow(
         "postgres schema is invalid: "
-        + "primary key chain_cursor mismatch: expected (chain_id), got none; "
-        + "missing column blocks.parent_hash; "
-        + "missing table events; "
-        + "index block_jobs_claim_idx mismatch: "
-        + "expected block_jobs(chain_id, status, next_retry_at, block_number), got none",
+        + "primary key voryn_chain_cursor mismatch: expected (chain_id), got none; "
+        + "missing column voryn_blocks.parent_hash; "
+        + "missing table voryn_events; "
+        + "index voryn_block_jobs_claim_idx mismatch: "
+        + "expected voryn_block_jobs(chain_id, status, next_retry_at, block_number), got none",
     );
 });
 

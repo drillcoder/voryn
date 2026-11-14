@@ -207,7 +207,7 @@ describe("e2e pipeline", () => {
                     return false;
                 }
 
-                const committedJobs = await db.countRows("block_jobs", "status = 'committed'");
+                const committedJobs = await db.countRows("voryn_block_jobs", "status = 'committed'");
                 return committedJobs === 4;
             });
 
@@ -222,18 +222,18 @@ describe("e2e pipeline", () => {
 
             await retentionWorker.start();
             await waitFor(async () => {
-                const oldRows = await db.countRows("blocks", "block_number <= 11");
+                const oldRows = await db.countRows("voryn_blocks", "block_number <= 11");
                 return oldRows === 0;
             });
             await retentionWorker.stop();
 
-            await expect(db.countRows("blocks", "block_number <= 11")).resolves.toBe(0);
-            await expect(db.countRows("transactions", "block_number <= 11")).resolves.toBe(0);
-            await expect(db.countRows("events", "block_number <= 11")).resolves.toBe(0);
-            await expect(db.countRows("block_jobs", "block_number <= 11")).resolves.toBe(0);
-            await expect(db.countRows("blocks", "block_number >= 12")).resolves.toBe(2);
-            await expect(db.countRows("transactions", "block_number >= 12")).resolves.toBe(3);
-            await expect(db.countRows("events", "block_number >= 12")).resolves.toBe(3);
+            await expect(db.countRows("voryn_blocks", "block_number <= 11")).resolves.toBe(0);
+            await expect(db.countRows("voryn_transactions", "block_number <= 11")).resolves.toBe(0);
+            await expect(db.countRows("voryn_events", "block_number <= 11")).resolves.toBe(0);
+            await expect(db.countRows("voryn_block_jobs", "block_number <= 11")).resolves.toBe(0);
+            await expect(db.countRows("voryn_blocks", "block_number >= 12")).resolves.toBe(2);
+            await expect(db.countRows("voryn_transactions", "block_number >= 12")).resolves.toBe(3);
+            await expect(db.countRows("voryn_events", "block_number >= 12")).resolves.toBe(3);
         } finally {
             await Promise.all([
                 eventWorker.stop(),

@@ -298,9 +298,9 @@ async function startPipeline(workers: {
 
 async function snapshotCounts(db: IsolatedDbContext): Promise<Record<string, number>> {
     return {
-        blockJobs: await db.countRows("block_jobs", "block_number BETWEEN 10 AND 11"),
-        blocks: await db.countRows("blocks", "block_number BETWEEN 10 AND 11"),
-        transactions: await db.countRows("transactions", "block_number BETWEEN 10 AND 11"),
-        events: await db.countRows("events", "block_number BETWEEN 10 AND 11"),
+        blockJobs: await db.countRows("voryn_block_jobs", "block_number BETWEEN 10 AND 11"),
+        blocks: await db.countRows("voryn_blocks", "block_number BETWEEN 10 AND 11"),
+        transactions: await db.countRows("voryn_transactions", "block_number BETWEEN 10 AND 11"),
+        events: await db.countRows("voryn_events", "block_number BETWEEN 10 AND 11"),
     };
 }

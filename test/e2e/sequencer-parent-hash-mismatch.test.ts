@@ -127,7 +127,7 @@ describe("e2e sequencer mismatch", () => {
             await fetchWorker.start();
 
             await waitFor(async () => {
-                const blockCount = await db.countRows("blocks", "block_number = 10");
+                const blockCount = await db.countRows("voryn_blocks", "block_number = 10");
                 return blockCount === 1;
             });
 
@@ -136,16 +136,17 @@ describe("e2e sequencer mismatch", () => {
             await sequencerWorker.start();
 
             await waitFor(async () => {
-                const blockCount = await db.countRows("blocks", "block_number = 10");
+                const blockCount = await db.countRows("voryn_blocks", "block_number = 10");
                 return blockCount === 0;
             });
 
             const cursor = await chainCursorRepository.get(CHAIN_ID);
             expect(cursor?.lastCommittedBlock).toBe(9);
             expect(cursor?.lastCommittedHash).toBe(committedHash);
-            await expect(db.countRows("block_jobs", "status = 'committed' AND block_number = 10")).resolves.toBe(0);
-            await expect(db.countRows("transactions")).resolves.toBe(0);
-            await expect(db.countRows("events")).resolves.toBe(0);
+            await expect(db.countRows("voryn_block_jobs", "status = 'committed' AND block_number = 10"))
+                .resolves.toBe(0);
+            await expect(db.countRows("voryn_transactions")).resolves.toBe(0);
+            await expect(db.countRows("voryn_events")).resolves.toBe(0);
         } finally {
             await stopWorkers([headWorker, fetchWorker, sequencerWorker]);
         }

@@ -155,7 +155,7 @@ describe("e2e concurrent fetch workers", () => {
 
             const attemptsAboveOne = await db.pool.query<{ count: string }>(
                 `SELECT COUNT(*)::TEXT AS count
-                 FROM block_jobs
+                 FROM voryn_block_jobs
                  WHERE chain_id = $1
                    AND block_number BETWEEN 10 AND 16
                    AND attempts > 1`,
@@ -164,11 +164,11 @@ describe("e2e concurrent fetch workers", () => {
 
             expect(Number(attemptsAboveOne.rows[0]?.count ?? "0")).toBe(0);
             await expect(
-                db.countRows("block_jobs", "status = 'committed' AND block_number BETWEEN 10 AND 16"),
+                db.countRows("voryn_block_jobs", "status = 'committed' AND block_number BETWEEN 10 AND 16"),
             ).resolves.toBe(7);
-            await expect(db.countRows("blocks", "block_number BETWEEN 10 AND 16")).resolves.toBe(7);
-            await expect(db.countRows("transactions", "block_number BETWEEN 10 AND 16")).resolves.toBe(7);
-            await expect(db.countRows("events", "block_number BETWEEN 10 AND 16")).resolves.toBe(7);
+            await expect(db.countRows("voryn_blocks", "block_number BETWEEN 10 AND 16")).resolves.toBe(7);
+            await expect(db.countRows("voryn_transactions", "block_number BETWEEN 10 AND 16")).resolves.toBe(7);
+            await expect(db.countRows("voryn_events", "block_number BETWEEN 10 AND 16")).resolves.toBe(7);
         } finally {
             await stopWorkers([headWorker, fetchWorkerA, fetchWorkerB, sequencerWorker]);
         }
