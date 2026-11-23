@@ -78,7 +78,7 @@
 		"eslint-plugin-import-newlines": "^2.0.0",
 		"eslint-plugin-n": "^18.3.0",
 		"prettier": "^3.8.1",
-		"semantic-release": "^25.0.5",
+		"semantic-release": "^26.0.1",
 		"tsx": "^4.21.0",
 		"typescript": "^6.0.3",
 		"typescript-eslint": "^8.56.1",
