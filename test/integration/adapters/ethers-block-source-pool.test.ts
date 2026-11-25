@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 
+import { getAddress } from "ethers";
 import { createServer } from "node:http";
 import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import { EthersBlockSource } from "../../../src/adapters/ethers-block-source.js";
@@ -21,6 +22,37 @@ interface BlockDataRpcServer {
 }
 
 const blockHash = `0x${"a".repeat(64)}`;
+const eip7702TransactionHash = "0xad6c7fee5491ff044f356434cfd92f496417aefa25f77f2e28462f8dad441dd2";
+const eip7702Sender = "0x3983e854ec290c53c23c3d99632451f5b3210f21";
+const eip7702TransactionWithInvalidAuthorization = {
+    type: "0x4",
+    hash: eip7702TransactionHash,
+    blockHash,
+    blockNumber: "0x9",
+    transactionIndex: "0x0",
+    from: eip7702Sender,
+    to: eip7702Sender,
+    value: "0x0",
+    input: "0x",
+    nonce: "0x0",
+    gas: "0x5208",
+    maxFeePerGas: "0x1",
+    maxPriorityFeePerGas: "0x1",
+    chainId: "0x1",
+    accessList: [],
+    authorizationList: [{
+        chainId: "0x1",
+        address: eip7702Sender,
+        nonce: "0x1",
+        yParity: "0xbc",
+        r: `0x${"1".repeat(64)}`,
+        s: `0x${"2".repeat(64)}`,
+    }],
+    v: "0x0",
+    yParity: "0x0",
+    r: `0x${"3".repeat(64)}`,
+    s: `0x${"4".repeat(64)}`,
+};
 
 interface TestRpcServer {
     close(): Promise<void>;
@@ -73,6 +105,36 @@ test("requests block logs by block hash", async () => {
     }
 });
 
+test("reads block data with an EIP-7702 authorization that has an invalid y parity", async () => {
+    const server = await startBlockDataRpcServer("empty", [eip7702TransactionWithInvalidAuthorization]);
+    const source = await EthersBlockSource.create({
+        networks: [{ chainId: 1, rpcUrls: [server.url] }],
+        requestTimeoutMs: 500,
+        operationTimeoutMs: 2_000,
+    });
+
+    try {
+        await expect(source.getBlockData(1, 9)).resolves.toMatchObject({
+            block: { chainId: 1, number: 9, hash: blockHash },
+            transactions: [{
+                chainId: 1,
+                blockNumber: 9,
+                blockHash,
+                index: 0,
+                hash: eip7702TransactionHash,
+                from: getAddress(eip7702Sender),
+                to: getAddress(eip7702Sender),
+                data: "0x",
+                value: "0",
+            }],
+            logs: [],
+        });
+    } finally {
+        await source.close();
+        await server.close();
+    }
+});
+
 test("rejects block data when the endpoint does not know the block hash", async () => {
     const server = await startBlockDataRpcServer("unknown-block");
     const source = await EthersBlockSource.create({
@@ -90,10 +152,13 @@ test("rejects block data when the endpoint does not know the block hash", async 
     }
 });
 
-async function startBlockDataRpcServer(logsMode: LogsMode): Promise<BlockDataRpcServer> {
+async function startBlockDataRpcServer(
+    logsMode: LogsMode,
+    transactions: readonly unknown[] = [],
+): Promise<BlockDataRpcServer> {
     const logFilters: unknown[] = [];
     const server = createServer((request, response) => {
-        void handleBlockDataRequest(request, response, logsMode, logFilters);
+        void handleBlockDataRequest(request, response, logsMode, logFilters, transactions);
     });
 
     await new Promise<void>((resolve) => {
@@ -116,6 +181,7 @@ async function handleBlockDataRequest(
     response: ServerResponse,
     logsMode: LogsMode,
     logFilters: unknown[],
+    transactions: readonly unknown[],
 ): Promise<void> {
     const body = await readRequestBody(request);
     const rpcRequest = JSON.parse(body) as RpcRequest;
@@ -136,7 +202,7 @@ async function handleBlockDataRequest(
                 gasUsed: "0x0",
                 miner: `0x${"0".repeat(40)}`,
                 extraData: "0x",
-                transactions: [],
+                transactions,
             });
             return;
         case "eth_getLogs":

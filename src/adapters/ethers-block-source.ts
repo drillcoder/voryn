@@ -1,6 +1,7 @@
 import { RpcEndpointDataError, RpcPoolManager } from "@drillcoder/ethers-rpc-pool";
 import type { RpcPoolLoggerEvent } from "@drillcoder/ethers-rpc-pool";
-import type { Block, Log, TransactionResponse } from "ethers";
+import { toQuantity } from "ethers";
+import type { Block, Log, Network, TransactionResponse } from "ethers";
 import type { BlockSource } from "../interfaces/block-source.js";
 import type { Logger } from "../interfaces/logger.js";
 import { noopLogger } from "../interfaces/logger.js";
@@ -37,6 +38,12 @@ export interface EthersProviderLike {
     getTransaction(hash: string): Promise<EthersTransactionLike | null>;
 
     getLogs(filter: { blockHash: string }): Promise<EthersLogLike[]>;
+
+    getNetwork(): Promise<Network>;
+
+    send(method: string, params: unknown[]): Promise<unknown>;
+
+    _wrapBlock(value: unknown, network: Network): EthersBlockLike;
 }
 
 export interface EthersBlockSourceOptions {
@@ -115,7 +122,7 @@ export class EthersBlockSource implements BlockSource {
         chainId: ChainId,
         blockNumber: BlockNumber,
     ): Promise<FetchedBlock> {
-        const block = await provider.getBlock(blockNumber, true);
+        const block = await fetchBlockWithTransactions(provider, blockNumber);
 
         if (!block) {
             throw new RpcEndpointDataError(
@@ -321,6 +328,44 @@ export class EthersBlockSource implements BlockSource {
             };
         });
     }
+}
+
+async function fetchBlockWithTransactions(
+    provider: EthersProviderLike,
+    blockNumber: BlockNumber,
+): Promise<EthersBlockLike | null> {
+    const rawBlock = await provider.send("eth_getBlockByNumber", [toQuantity(blockNumber), true]);
+    if (rawBlock === null) {
+        return null;
+    }
+
+    return provider._wrapBlock(omitAuthorizationLists(rawBlock), await provider.getNetwork());
+}
+
+function omitAuthorizationLists(rawBlock: unknown): unknown {
+    if (!isRecord(rawBlock) || !Array.isArray(rawBlock.transactions)) {
+        return rawBlock;
+    }
+
+    const transactions: unknown[] = rawBlock.transactions;
+    return {
+        ...rawBlock,
+        transactions: transactions.map((transaction) => omitAuthorizationList(transaction)),
+    };
+}
+
+function omitAuthorizationList(transaction: unknown): unknown {
+    if (!isRecord(transaction)) {
+        return transaction;
+    }
+
+    const rest = { ...transaction };
+    delete rest.authorizationList;
+    return rest;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null;
 }
 
 function mapEndpointData<TResult>(map: () => TResult): TResult {

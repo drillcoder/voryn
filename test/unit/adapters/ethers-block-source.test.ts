@@ -1,4 +1,5 @@
 import type { Mocked } from "vitest";
+import { Network } from "ethers";
 import { beforeEach, expect, test, vi } from "vitest";
 
 import type {
@@ -68,6 +69,9 @@ const createProviderMock = (): Mocked<EthersProviderLike> => ({
     getBlock: vi.fn(),
     getTransaction: vi.fn(),
     getLogs: vi.fn(),
+    getNetwork: vi.fn(async () => Network.from(7)),
+    send: vi.fn(async () => ({})),
+    _wrapBlock: vi.fn(),
 });
 
 const createSource = async (
@@ -105,17 +109,11 @@ beforeEach(() => {
 });
 
 test("maps latest block, transactions and logs from ethers provider", async () => {
-    const blockCalls: Array<{ blockNumber: number; prefetchTxs?: boolean }> = [];
     const logCalls: Array<{ blockHash: string }> = [];
 
     const provider = createProviderMock();
     provider.getBlockNumber.mockResolvedValue(120);
-    provider.getBlock.mockImplementation(async (blockNumber: number | "latest", prefetchTxs?: boolean) => {
-        if (blockNumber === "latest") {
-            throw new Error("latest block is not expected");
-        }
-
-        blockCalls.push({ blockNumber, prefetchTxs });
+    provider._wrapBlock.mockImplementation(() => {
         const transaction: EthersTransactionLike = {
             chainId: 7n,
             blockNumber: 12,
@@ -191,8 +189,67 @@ test("maps latest block, transactions and logs from ethers provider", async () =
             index: 3,
         }],
     });
-    expect(blockCalls).toEqual([{ blockNumber: 12, prefetchTxs: true }]);
+    expect(provider.getBlock.mock.calls).toEqual([]);
+    expect(provider.send.mock.calls).toEqual([["eth_getBlockByNumber", ["0xc", true]]]);
+    expect(provider._wrapBlock.mock.calls).toEqual([[{}, Network.from(7)]]);
     expect(logCalls).toEqual([{ blockHash: hash("a") }]);
+});
+
+test("drops authorization lists from raw transactions before ethers formats the block", async () => {
+    const provider = createProviderMock();
+    const rawBlock = {
+        number: "0x9",
+        hash: hash("a"),
+        transactions: [
+            hash("c"),
+            {
+                hash: hash("d"),
+                type: "0x4",
+                authorizationList: [{ yParity: "0xbc" }],
+            },
+        ],
+    };
+    provider.send.mockResolvedValue(rawBlock);
+    provider._wrapBlock.mockReturnValue({
+        number: 9,
+        hash: hash("a"),
+        parentHash: hash("b"),
+        timestamp: 1,
+        transactions: [],
+        prefetchedTransactions: [],
+    });
+    provider.getLogs.mockResolvedValue([]);
+    const source = await createSource(provider);
+
+    await expect(source.getBlockData(7, 9)).resolves.toMatchObject({
+        block: { number: 9, hash: hash("a") },
+    });
+
+    expect(provider._wrapBlock.mock.calls).toEqual([[{
+        number: "0x9",
+        hash: hash("a"),
+        transactions: [
+            hash("c"),
+            { hash: hash("d"), type: "0x4" },
+        ],
+    }, Network.from(7)]]);
+    expect(rawBlock.transactions[1]).toHaveProperty("authorizationList");
+});
+
+test.each([
+    ["a non-object block", "unexpected"],
+    ["a block without transactions", { number: "0x9" }],
+])("passes %s to ethers unchanged", async (_name, rawBlock) => {
+    const provider = createProviderMock();
+    const formatError = new Error("ethers rejected block");
+    provider.send.mockResolvedValue(rawBlock);
+    provider._wrapBlock.mockImplementation(() => {
+        throw formatError;
+    });
+    const source = await createSource(provider);
+
+    await expect(source.getBlockData(7, 9)).rejects.toBe(formatError);
+    expect(provider._wrapBlock.mock.calls).toEqual([[rawBlock, Network.from(7)]]);
 });
 
 test("falls back to getTransaction when prefetched transactions are unavailable", async () => {
@@ -212,7 +269,7 @@ test("falls back to getTransaction when prefetched transactions are unavailable"
         },
     };
 
-    provider.getBlock.mockResolvedValue(block);
+    provider._wrapBlock.mockReturnValue(block);
     provider.getTransaction.mockImplementation(async (transactionHash: string) => {
         requestedHashes.push(transactionHash);
         if (transactionHash === transactionHashA) {
@@ -464,7 +521,7 @@ test("reads latest block without validating requested number", async () => {
 
 test("throws when block is missing", async () => {
     const provider = createProviderMock();
-    provider.getBlock.mockResolvedValue(null);
+    provider.send.mockResolvedValue(null);
 
     const source = await createSource(provider);
 
@@ -557,7 +614,7 @@ test("throws on log block hash mismatch", async () => {
         topics: [],
         data: "0x",
     };
-    provider.getBlock.mockResolvedValue(block);
+    provider._wrapBlock.mockReturnValue(block);
     provider.getLogs.mockResolvedValue([log]);
 
     const source = await createSource(provider);
@@ -577,7 +634,7 @@ test("rejects block data when logs request by block hash fails", async () => {
         transactions: [],
         prefetchedTransactions: [],
     };
-    provider.getBlock.mockResolvedValue(block);
+    provider._wrapBlock.mockReturnValue(block);
     provider.getLogs.mockRejectedValue(new Error("unknown block"));
 
     const source = await createSource(provider);
@@ -596,7 +653,7 @@ test("returns empty logs when the endpoint knows the block and it has no logs", 
         transactions: [],
         prefetchedTransactions: [],
     };
-    provider.getBlock.mockResolvedValue(block);
+    provider._wrapBlock.mockReturnValue(block);
     provider.getLogs.mockResolvedValue([]);
 
     const source = await createSource(provider);
@@ -633,9 +690,9 @@ test("restarts the whole block data load on fallback after invalid logs", async 
         ...invalidLog,
         blockHash: hash("a"),
     };
-    provider.getBlock.mockResolvedValue(block);
+    provider._wrapBlock.mockReturnValue(block);
     provider.getLogs.mockResolvedValue([invalidLog]);
-    fallbackProvider.getBlock.mockResolvedValue(block);
+    fallbackProvider._wrapBlock.mockReturnValue(block);
     fallbackProvider.getLogs.mockResolvedValue([validLog]);
     const source = await createSource(provider, 7n, fallbackProvider);
 
@@ -644,15 +701,15 @@ test("restarts the whole block data load on fallback after invalid logs", async 
         logs: [{ blockHash: hash("a") }],
     });
 
-    expect(provider.getBlock.mock.calls).toHaveLength(1);
+    expect(provider.send.mock.calls).toHaveLength(1);
     expect(provider.getLogs.mock.calls).toHaveLength(1);
-    expect(fallbackProvider.getBlock.mock.calls).toHaveLength(1);
+    expect(fallbackProvider.send.mock.calls).toHaveLength(1);
     expect(fallbackProvider.getLogs.mock.calls).toHaveLength(1);
 });
 
 test("throws when block hash is missing", async () => {
     const provider = createProviderMock();
-    provider.getBlock.mockResolvedValue({
+    provider._wrapBlock.mockReturnValue({
         number: 21,
         hash: null,
         parentHash: hash("b"),
@@ -670,7 +727,7 @@ test("throws when block hash is missing", async () => {
 
 test("throws when block number mismatches requested number", async () => {
     const provider = createProviderMock();
-    provider.getBlock.mockResolvedValue({
+    provider._wrapBlock.mockReturnValue({
         number: 22,
         hash: hash("a"),
         parentHash: hash("b"),
@@ -700,7 +757,7 @@ test("throws when fallback transaction is not found", async () => {
         },
     };
 
-    provider.getBlock.mockResolvedValue(block);
+    provider._wrapBlock.mockReturnValue(block);
     provider.getTransaction.mockResolvedValue(null);
     provider.getLogs.mockResolvedValue([]);
 
@@ -713,7 +770,7 @@ test("throws when fallback transaction is not found", async () => {
 
 test("throws on transaction chain id mismatch", async () => {
     const provider = createProviderMock();
-    provider.getBlock.mockResolvedValue({
+    provider._wrapBlock.mockReturnValue({
         number: 9,
         hash: hash("a"),
         parentHash: hash("b"),
@@ -742,7 +799,7 @@ test("throws on transaction chain id mismatch", async () => {
 
 test("allows transaction with null chain id", async () => {
     const provider = createProviderMock();
-    provider.getBlock.mockResolvedValue({
+    provider._wrapBlock.mockReturnValue({
         number: 9,
         hash: hash("a"),
         parentHash: hash("b"),
@@ -786,7 +843,7 @@ test("allows transaction with null chain id", async () => {
 
 test("throws on transaction block number mismatch", async () => {
     const provider = createProviderMock();
-    provider.getBlock.mockResolvedValue({
+    provider._wrapBlock.mockReturnValue({
         number: 9,
         hash: hash("a"),
         parentHash: hash("b"),
@@ -815,7 +872,7 @@ test("throws on transaction block number mismatch", async () => {
 
 test("throws on transaction block hash mismatch", async () => {
     const provider = createProviderMock();
-    provider.getBlock.mockResolvedValue({
+    provider._wrapBlock.mockReturnValue({
         number: 9,
         hash: hash("a"),
         parentHash: hash("b"),
@@ -844,7 +901,7 @@ test("throws on transaction block hash mismatch", async () => {
 
 test("throws on negative transaction index", async () => {
     const provider = createProviderMock();
-    provider.getBlock.mockResolvedValue({
+    provider._wrapBlock.mockReturnValue({
         number: 9,
         hash: hash("a"),
         parentHash: hash("b"),
@@ -873,7 +930,7 @@ test("throws on negative transaction index", async () => {
 
 test("throws on non-integer transaction index", async () => {
     const provider = createProviderMock();
-    provider.getBlock.mockResolvedValue({
+    provider._wrapBlock.mockReturnValue({
         number: 9,
         hash: hash("a"),
         parentHash: hash("b"),
@@ -902,7 +959,7 @@ test("throws on non-integer transaction index", async () => {
 
 test("throws on log block number mismatch", async () => {
     const provider = createProviderMock();
-    provider.getBlock.mockResolvedValue({
+    provider._wrapBlock.mockReturnValue({
         number: 9,
         hash: hash("a"),
         parentHash: hash("b"),
@@ -930,7 +987,7 @@ test("throws on log block number mismatch", async () => {
 
 test("throws on invalid log transaction index", async () => {
     const provider = createProviderMock();
-    provider.getBlock.mockResolvedValue({
+    provider._wrapBlock.mockReturnValue({
         number: 9,
         hash: hash("a"),
         parentHash: hash("b"),
@@ -958,7 +1015,7 @@ test("throws on invalid log transaction index", async () => {
 
 test("throws on invalid log index", async () => {
     const provider = createProviderMock();
-    provider.getBlock.mockResolvedValue({
+    provider._wrapBlock.mockReturnValue({
         number: 9,
         hash: hash("a"),
         parentHash: hash("b"),
