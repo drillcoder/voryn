@@ -1,3 +1,9 @@
+## [1.5.1](https://github.com/drillcoder/voryn/compare/v1.5.0...v1.5.1) (2026-11-25)
+
+### Bug Fixes
+
+* **ethers:** ignore authorization lists when loading block transactions ([94ffc01](https://github.com/drillcoder/voryn/commit/94ffc013b38a08e64422e968d9a17870ba36fc61))
+
 ## [1.5.0](https://github.com/drillcoder/voryn/compare/v1.4.1...v1.5.0) (2026-11-14)
 
 ### Features
